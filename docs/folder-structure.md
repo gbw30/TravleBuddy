@@ -1,0 +1,62 @@
+src/
+  app/
+    (auth)/
+    (dashboard)/
+      dashboard/
+      trips/
+      profile/
+    api/
+      recommendations/
+      itinerary/
+      export/
+
+  components/
+    ui/
+    layout/
+    questionnaire/
+    recommendations/
+    itinerary/
+    map/
+    profile/
+
+  features/
+    trips/
+      actions.ts
+      queries.ts
+      schemas.ts
+      types.ts
+    preferences/
+      actions.ts
+      schemas.ts
+      types.ts
+    recommendations/
+      service.ts
+      scoring.ts
+      schemas.ts
+      types.ts
+    itinerary/
+      builder.ts
+      conflict-engine.ts
+      schemas.ts
+      types.ts
+
+  lib/
+    db.ts
+    auth.ts
+    google/
+      places.ts
+      routes.ts
+      maps.ts
+    ai/
+      gemini.ts
+      prompts.ts
+    export/
+      pdf.ts
+      json.ts
+
+  prisma/
+    schema.prisma
+    migrations/
+
+  types/
+    index.ts
