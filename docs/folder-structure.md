@@ -1,3 +1,16 @@
+docs/
+  ci-cd-tutorial.md
+  folder-structure.md
+  neon-env-setup.md
+  nextauth-setup.md
+  phase-2-documentation.md
+  requirements.md
+  travlebuddy_agent_development_plan.md
+
+prisma/
+  schema.prisma
+  migrations/
+
 src/
   app/
     (auth)/
@@ -22,7 +35,9 @@ src/
   features/
     trips/
       actions.ts
+      planning-feedback.ts
       queries.ts
+      readiness.ts
       schemas.ts
       types.ts
     preferences/
@@ -43,6 +58,7 @@ src/
   lib/
     db.ts
     auth.ts
+    env.ts
     google/
       places.ts
       routes.ts
@@ -53,10 +69,6 @@ src/
     export/
       pdf.ts
       json.ts
-
-  prisma/
-    schema.prisma
-    migrations/
 
   types/
     index.ts

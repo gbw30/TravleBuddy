@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,442 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum TripStatus {
+  DRAFT
+  PLANNING
+  ARCHIVED
+}
+
+enum BudgetLevel {
+  BUDGET
+  MODERATE
+  LUXURY
+}
+
+enum TravelPace {
+  RELAXED
+  BALANCED
+  PACKED
+}
+
+enum TransportationMode {
+  WALKING
+  PUBLIC_TRANSIT
+  RIDE_SHARE
+  RENTAL_CAR
+  MIXED
+}
+
+enum AccommodationType {
+  HOSTEL
+  HOTEL
+  RESORT
+  AIRBNB
+  OTHER
+}
+
+enum Provider {
+  MOCK
+  GOOGLE_PLACES
+  GEMINI
+  USER
+}
+
+enum SuggestionCategory {
+  DESTINATION
+  HOTEL
+  ATTRACTION
+  RESTAURANT
+  ACTIVITY
+  LANDMARK
+  ENTERTAINMENT
+}
+
+enum SuggestionStatus {
+  PENDING
+  SELECTED
+  REJECTED
+}
+
+enum PlanningActor {
+  USER
+  ENGINE
+  SYSTEM
+}
+
+enum PlanningEventType {
+  USER_FEEDBACK
+  ENGINE_EXPLANATION
+  READINESS_WARNING
+  RECOMMENDATION_BATCH
+  ITINERARY_PROPOSAL
+  BUDGET_WARNING
+  CONFLICT_SUMMARY
+  SYSTEM_NOTE
+}
+
+enum FeedbackTargetType {
+  TRIP
+  PREFERENCE
+  PLACE_SUGGESTION
+  ITINERARY_DAY
+  ITINERARY_ITEM
+  CONFLICT
+}
+
+enum FeedbackAction {
+  ACCEPT
+  REJECT
+  REFRESH
+  REFINE
+  SELECT
+  DESELECT
+  IGNORE
+  RESOLVE
+  REQUEST_ALTERNATIVE
+}
+
+enum FeedbackReason {
+  NOT_INTERESTED
+  TOO_EXPENSIVE
+  TOO_FAR
+  WRONG_VIBE
+  ALREADY_BEEN_THERE
+  TOO_BUSY
+  TOO_SLOW
+  GOOD_MATCH
+  OTHER
+}
+
+enum ConflictType {
+  TIME
+  DISTANCE
+  BUDGET
+  SCHEDULE_DENSITY
+  HOTEL_LOCATION
+  MISSING_DURATION
+  CLOSED_OR_UNAVAILABLE
+}
+
+enum ConflictSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ConflictStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  accounts Account[]
+  sessions Session[]
+  trips    Trip[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Trip {
+  id                    String     @id @default(cuid())
+  userId                String     @map("user_id")
+  title                 String
+  status                TripStatus @default(DRAFT)
+  destinationSearchText String?    @map("destination_search_text")
+  startDate             DateTime?  @map("start_date")
+  endDate               DateTime?  @map("end_date")
+  budgetAmount          Decimal?   @map("budget_amount") @db.Decimal(12, 2)
+  budgetCurrency        String?    @map("budget_currency") @db.VarChar(3)
+  createdAt             DateTime   @default(now()) @map("created_at")
+  updatedAt             DateTime   @updatedAt @map("updated_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destinations     TripDestination[]
+  preference       TripPreference?
+  suggestions      PlaceSuggestion[]
+  planningFeedback PlanningFeedback[]
+  planningEvents   PlanningEvent[]
+  itineraryDays    ItineraryDay[]
+  itineraryItems   ItineraryItem[]
+  conflicts        Conflict[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("trips")
+}
+
+model TripDestination {
+  id        String   @id @default(cuid())
+  tripId    String   @map("trip_id")
+  city      String
+  country   String
+  region    String?
+  latitude  Decimal? @db.Decimal(10, 7)
+  longitude Decimal? @db.Decimal(10, 7)
+  sortOrder Int      @default(0) @map("sort_order")
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  trip        Trip              @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  suggestions PlaceSuggestion[] @relation("TripDestinationPlaceSuggestions")
+
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@index([tripId, sortOrder])
+  @@map("trip_destinations")
+}
+
+model TripPreference {
+  id                  String               @id @default(cuid())
+  tripId              String               @unique @map("trip_id")
+  budgetLevel         BudgetLevel?         @map("budget_level")
+  pace                TravelPace?
+  interests           String[]             @default([])
+  transportationModes TransportationMode[] @default([]) @map("transportation_modes")
+  accommodationTypes  AccommodationType[]  @default([]) @map("accommodation_types")
+  hotelPriority       Int?                 @map("hotel_priority")
+  walkingToleranceKm  Decimal?             @map("walking_tolerance_km") @db.Decimal(5, 2)
+  dietaryRestrictions Json?                @map("dietary_restrictions")
+  accessibilityNeeds  Json?                @map("accessibility_needs")
+  mustAvoid           Json?                @map("must_avoid")
+  customNotes         String?              @map("custom_notes") @db.Text
+  metadata            Json?
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  trip     Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  feedback PlanningFeedback[] @relation("TripPreferenceFeedback")
+
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@map("trip_preferences")
+}
+
+model PlaceSuggestion {
+  id                    String             @id @default(cuid())
+  tripId                String             @map("trip_id")
+  destinationId         String?            @map("destination_id")
+  provider              Provider           @default(MOCK)
+  providerPlaceId       String?            @map("provider_place_id")
+  category              SuggestionCategory
+  status                SuggestionStatus   @default(PENDING)
+  name                  String
+  description           String?            @db.Text
+  explanation           String?            @db.Text
+  address               String?
+  city                  String?
+  country               String?
+  latitude              Decimal?           @db.Decimal(10, 7)
+  longitude             Decimal?           @db.Decimal(10, 7)
+  rating                Decimal?           @db.Decimal(3, 2)
+  priceLevel            Int?               @map("price_level")
+  estimatedCostAmount   Decimal?           @map("estimated_cost_amount") @db.Decimal(12, 2)
+  estimatedCostCurrency String?            @map("estimated_cost_currency") @db.VarChar(3)
+  score                 Decimal?           @db.Decimal(6, 2)
+  rawProviderData       Json?              @map("raw_provider_data")
+  metadata              Json?
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  trip           Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  destination    TripDestination?   @relation("TripDestinationPlaceSuggestions", fields: [tripId, destinationId], references: [tripId, id], onDelete: NoAction)
+  itineraryItems ItineraryItem[]    @relation("PlaceSuggestionItineraryItems")
+  feedback       PlanningFeedback[] @relation("PlaceSuggestionFeedback")
+
+  @@unique([tripId, id])
+  @@unique([tripId, provider, providerPlaceId])
+  @@index([tripId])
+  @@index([destinationId])
+  @@index([tripId, category])
+  @@index([tripId, status])
+  @@map("place_suggestions")
+}
+
+model PlanningFeedback {
+  id                String             @id @default(cuid())
+  tripId            String             @map("trip_id")
+  targetType        FeedbackTargetType @map("target_type")
+  targetId          String             @map("target_id")
+  source            PlanningActor      @default(USER)
+  action            FeedbackAction?
+  reason            FeedbackReason?
+  userNote          String?            @map("user_note") @db.Text
+  metadata          Json?
+  tripPreferenceId  String?            @map("trip_preference_id")
+  placeSuggestionId String?            @map("place_suggestion_id")
+  itineraryDayId    String?            @map("itinerary_day_id")
+  itineraryItemId   String?            @map("itinerary_item_id")
+  conflictId        String?            @map("conflict_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  trip            Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tripPreference  TripPreference?  @relation("TripPreferenceFeedback", fields: [tripId, tripPreferenceId], references: [tripId, id], onDelete: NoAction)
+  placeSuggestion PlaceSuggestion? @relation("PlaceSuggestionFeedback", fields: [tripId, placeSuggestionId], references: [tripId, id], onDelete: NoAction)
+  itineraryDay    ItineraryDay?    @relation("ItineraryDayFeedback", fields: [tripId, itineraryDayId], references: [tripId, id], onDelete: NoAction)
+  itineraryItem   ItineraryItem?   @relation("ItineraryItemFeedback", fields: [tripId, itineraryItemId], references: [tripId, id], onDelete: NoAction)
+  conflict        Conflict?        @relation("ConflictFeedback", fields: [tripId, conflictId], references: [tripId, id], onDelete: NoAction)
+
+  @@index([tripId])
+  @@index([targetType])
+  @@index([targetType, targetId])
+  @@index([tripPreferenceId])
+  @@index([placeSuggestionId])
+  @@index([itineraryDayId])
+  @@index([itineraryItemId])
+  @@index([conflictId])
+  @@map("planning_feedback")
+}
+
+model PlanningEvent {
+  id            String            @id @default(cuid())
+  tripId        String            @map("trip_id")
+  actor         PlanningActor
+  type          PlanningEventType
+  title         String
+  message       String?           @db.Text
+  visibleToUser Boolean           @default(true) @map("visible_to_user")
+  metadata      Json?
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([actor])
+  @@index([type])
+  @@index([createdAt])
+  @@map("planning_events")
+}
+
+model ItineraryDay {
+  id                    String    @id @default(cuid())
+  tripId                String    @map("trip_id")
+  dayNumber             Int       @map("day_number")
+  date                  DateTime?
+  title                 String?
+  notes                 String?   @db.Text
+  estimatedCostAmount   Decimal?  @map("estimated_cost_amount") @db.Decimal(12, 2)
+  estimatedCostCurrency String?   @map("estimated_cost_currency") @db.VarChar(3)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  trip     Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  items    ItineraryItem[]    @relation("ItineraryDayItems")
+  feedback PlanningFeedback[] @relation("ItineraryDayFeedback")
+
+  @@unique([tripId, dayNumber])
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@map("itinerary_days")
+}
+
+model ItineraryItem {
+  id                    String    @id @default(cuid())
+  tripId                String    @map("trip_id")
+  dayId                 String    @map("day_id")
+  placeSuggestionId     String?   @map("place_suggestion_id")
+  title                 String
+  description           String?   @db.Text
+  startTime             DateTime? @map("start_time")
+  endTime               DateTime? @map("end_time")
+  durationMinutes       Int?      @map("duration_minutes")
+  sortOrder             Int       @default(0) @map("sort_order")
+  estimatedCostAmount   Decimal?  @map("estimated_cost_amount") @db.Decimal(12, 2)
+  estimatedCostCurrency String?   @map("estimated_cost_currency") @db.VarChar(3)
+  notes                 String?   @db.Text
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  trip            Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  day             ItineraryDay       @relation("ItineraryDayItems", fields: [tripId, dayId], references: [tripId, id], onDelete: Cascade)
+  placeSuggestion PlaceSuggestion?   @relation("PlaceSuggestionItineraryItems", fields: [tripId, placeSuggestionId], references: [tripId, id], onDelete: NoAction)
+  conflicts       Conflict[]         @relation("ItineraryItemConflicts")
+  feedback        PlanningFeedback[] @relation("ItineraryItemFeedback")
+
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@index([dayId])
+  @@index([placeSuggestionId])
+  @@index([dayId, sortOrder])
+  @@map("itinerary_items")
+}
+
+model Conflict {
+  id              String           @id @default(cuid())
+  tripId          String           @map("trip_id")
+  itineraryItemId String?          @map("itinerary_item_id")
+  type            ConflictType
+  severity        ConflictSeverity
+  status          ConflictStatus   @default(OPEN)
+  message         String           @db.Text
+  recommendation  String?          @db.Text
+  metadata        Json?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  trip          Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  itineraryItem ItineraryItem?     @relation("ItineraryItemConflicts", fields: [tripId, itineraryItemId], references: [tripId, id], onDelete: NoAction)
+  feedback      PlanningFeedback[] @relation("ConflictFeedback")
+
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@index([itineraryItemId])
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@map("conflicts")
 }

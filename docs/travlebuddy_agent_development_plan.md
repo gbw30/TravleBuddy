@@ -17,10 +17,11 @@ Build a working MVP where:
 3. A user can answer structured travel preference questions.
 4. The app can generate 5 place suggestions using mock data first.
 5. The user can select or reject suggestions.
-6. The app can build a simple day-by-day itinerary.
-7. The app can detect basic conflicts.
-8. The app can display selected places on a map.
-9. The user can export/download a copy of the trip.
+6. The app can persist feedback, engine explanations, readiness warnings, and suggested next actions as planning context.
+7. The app can build a simple day-by-day itinerary after the trip has destinations, dates, and budget.
+8. The app can detect basic conflicts after the trip has destinations, dates, and budget.
+9. The app can display selected places on a map after the trip has destinations, dates, and budget.
+10. The user can export/download a copy of the trip.
 
 The MVP should prioritize correctness, clean architecture, and testable logic over visual polish.
 
@@ -52,8 +53,7 @@ As of this plan, the repository uses:
 - Next.js: 16.x App Router
 - React: 19.x
 - Prisma: 7.x
-- Auth package currently installed: `next-auth` v4
-- Preferred auth direction: Auth.js-style setup using Google OAuth, with v4 compatibility aliases until the package is upgraded
+- Auth direction: Auth.js v5-style setup with `next-auth@beta`, Google OAuth, and `@auth/prisma-adapter`
 - Test runner installed: Vitest
 
 ### Project Structure Convention
@@ -99,10 +99,14 @@ The coding agent must follow these rules throughout the project:
 5. **All user-owned data must be protected by ownership checks.**
    - Every trip, preference, suggestion, itinerary item, and conflict lookup must verify the authenticated user owns the parent trip.
 
-6. **Every major phase must end with build/test verification.**
+6. **Preserve the planning feedback loop.**
+   - User feedback, engine reasoning, readiness warnings, budget warnings, conflict summaries, and proposed next actions should be stored as durable planning context.
+   - The MVP feedback loop is structured and persisted, not a chat-first interface.
+
+7. **Every major phase must end with build/test verification.**
    - Run lint, typecheck, tests, and build when available.
 
-7. **Prefer small, reviewable changes.**
+8. **Prefer small, reviewable changes.**
    - Implement one phase at a time.
    - Do not combine auth, database schema, Google APIs, and UI polish in one giant change.
 
@@ -125,7 +129,7 @@ AUTH_GOOGLE_SECRET=
 
 `DIRECT_URL` is required for migration workflows even if app startup can temporarily fall back to `DATABASE_URL`.
 
-Compatibility aliases are allowed while the project still has `next-auth` v4 installed:
+Legacy aliases may exist only as local migration aids during the move away from v4-style naming:
 
 ```env
 NEXTAUTH_SECRET=
@@ -307,7 +311,7 @@ src/lib/errors.ts
 
 ## Goal
 
-Create the persistent data foundation for users, trips, preferences, suggestions, itinerary items, and conflicts.
+Create the persistent data foundation for users, trips, destinations, preferences, suggestions, planning feedback, planning events, itinerary items, and conflicts.
 
 ## Agent Tasks
 
@@ -321,9 +325,11 @@ Account
 Session
 VerificationToken
 Trip
+TripDestination
 TripPreference
 PlaceSuggestion
-RecommendationFeedback
+PlanningFeedback
+PlanningEvent
 ItineraryDay
 ItineraryItem
 Conflict
@@ -334,6 +340,24 @@ Conflict
 ```text
 User -> Trip -> child records
 ```
+
+Child records that carry `tripId` must not reference child records from a different trip. Use database-level same-trip foreign keys where possible and service-level ownership checks for every authenticated lookup.
+
+- Add draft and full-planning rules:
+
+```text
+DRAFT trips can use discovery only.
+PLANNING trips can use itinerary, map, conflicts, and full export only when destination list, date range, budget amount, and budget currency exist.
+```
+
+- Add planning feedback loop storage:
+
+```text
+PlanningFeedback = user response or structured feedback on trip objects
+PlanningEvent = append-only planning timeline for user actions, engine explanations, warnings, proposals, and summaries
+```
+
+`PlanningFeedback.targetId` must be derived from the typed target field and kept synchronized with it. Do not allow arbitrary target IDs that disagree with `tripPreferenceId`, `placeSuggestionId`, `itineraryDayId`, `itineraryItemId`, or `conflictId`.
 
 - Add timestamps:
 
@@ -346,14 +370,20 @@ updatedAt
 
 ```text
 Trip.userId
+TripDestination.tripId
 TripPreference.tripId
 PlaceSuggestion.tripId
+PlanningFeedback.tripId
+PlanningEvent.tripId
 ItineraryDay.tripId
 Conflict.tripId
 ```
 
 - Generate Prisma Client.
 - Add safe database helper in `src/lib/db.ts`.
+- Add trip readiness helpers in `src/features/trips`.
+- Add unit tests for readiness and feedback-target validation.
+- Create or update `docs/phase-2-documentation.md` throughout the work.
 
 ## User Tasks
 
@@ -367,6 +397,8 @@ Conflict.tripId
 - Prisma Client generates successfully.
 - Local database connection works.
 - Initial migration exists.
+- Draft/full-planning readiness rules have tests.
+- Planning feedback target rules have tests.
 - No secrets are committed.
 
 ---
@@ -375,13 +407,37 @@ Conflict.tripId
 
 ## Goal
 
-Allow users to sign in and protect user-specific data.
+Allow users to sign in with Google OAuth and protect user-specific data with both route-level session checks and server-side ownership checks.
+
+## Documentation and Comment Review First
+
+- Review `docs/phase-2-documentation.md` against the current Phase 2 codebase.
+- Confirm Phase 2 schema, migration, helper, dependency, and validation changes are recorded.
+- Fix stale Phase 2 documentation notes before Phase 3 implementation begins.
+- Confirm Phase 2 docs do not include environment values, API keys, database URLs, OAuth credentials, or sensitive terminal output.
+- Review Phase 2 code comments with this policy:
+
+```text
+Add comments only for non-obvious business rules, security invariants, schema constraints, or future agent responsibilities.
+Do not add comments that restate straightforward code.
+Prefer short comments near complex Prisma constraints and auth/ownership boundaries.
+Prefer documentation entries for broader rationale.
+```
+
+- Create and maintain:
+
+```text
+docs/phase-3-documentation.md
+```
+
+Record every Phase 3 change, implementation decision, command, validation result, manual test result, and any remaining user task without exposing secrets.
 
 ## Agent Tasks
 
-- Configure NextAuth/Auth.js.
-- Best next step: upgrade to `next-auth@beta` and `@auth/prisma-adapter` before implementing auth, unless the user explicitly wants to stay on v4.
-- Use Google login first unless user requests otherwise.
+- Upgrade to `next-auth@beta` and add `@auth/prisma-adapter`.
+- Configure Auth.js / NextAuth v5-style auth.
+- Use Google OAuth only for MVP.
+- Do not add a dev-only auth bypass.
 - Add auth route:
 
 ```text
@@ -404,6 +460,8 @@ src/app/dashboard/page.tsx
 - Add auth-aware navigation.
 - Ensure authenticated user ID is available server-side.
 - Add route protection in `src/proxy.ts` because this project uses Next.js 16.
+- Redirect signed-out protected-route requests to `/login`.
+- Redirect signed-in `/login` requests to `/dashboard`.
 - Add ownership guard helper, for example:
 
 ```ts
@@ -416,14 +474,18 @@ requireTripOwner(userId: string, tripId: string)
 - Add authorized redirect URIs.
 - Add provider client ID and secret to `.env.local` and Vercel if required.
 - Confirm final production domain for auth callback settings.
+- Manually verify Google sign-in/sign-out in a browser once local credentials are present.
 
 ## Exit Criteria
 
+- `docs/phase-3-documentation.md` records documentation review, implementation decisions, commands, and validation results.
 - User can sign in locally.
 - User can sign out.
 - Dashboard is inaccessible when signed out.
 - Session user is available to server routes/actions.
-- No trip data can be accessed without auth.
+- Protected APIs reject unauthenticated requests.
+- No trip data can be accessed without auth and ownership checks.
+- No secrets are committed or documented.
 
 ---
 
@@ -478,6 +540,8 @@ travelStyle
 ```
 
 - Ensure all trip operations check ownership.
+- Keep trips in `DRAFT` until destination list, dates, budget amount, and budget currency are present.
+- Surface missing requirements before enabling full planning.
 
 ## User Tasks
 
@@ -635,7 +699,7 @@ POST /api/trips/[tripId]/recommendations/[suggestionId]/reject
 POST /api/trips/[tripId]/recommendations/refresh
 ```
 
-- Store feedback in `RecommendationFeedback`.
+- Store feedback in `PlanningFeedback`.
 - Ensure selected places are clearly visible.
 
 ## User Tasks
@@ -654,6 +718,7 @@ POST /api/trips/[tripId]/recommendations/refresh
 - User can reject a suggestion.
 - User can refresh recommendations.
 - Feedback is stored.
+- Engine explanations, readiness warnings, and user feedback are stored in the planning timeline.
 - Selected places persist after page reload.
 
 ---
@@ -663,6 +728,8 @@ POST /api/trips/[tripId]/recommendations/refresh
 ## Goal
 
 Convert selected places into a day-by-day itinerary.
+
+Itinerary building is locked unless the trip is full-planning ready.
 
 ## Agent Tasks
 
@@ -720,6 +787,8 @@ packed   = 5-6 activities/day
 ## Goal
 
 Warn users when selected itinerary items are unrealistic or inconsistent.
+
+Conflict detection is locked unless the trip is full-planning ready.
 
 ## Agent Tasks
 
@@ -920,6 +989,8 @@ interpret user feedback
 ## Goal
 
 Show itinerary places visually on a map.
+
+Route maps and day-by-day map filtering are locked unless the trip is full-planning ready.
 
 ## Agent Tasks
 

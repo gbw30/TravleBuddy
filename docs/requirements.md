@@ -113,6 +113,27 @@ The MVP focuses exclusively on:
 - Trip persistence
 - Trip export/download
 
+### Trip Modes
+
+The MVP supports two trip modes:
+
+- Draft trips
+- Planning trips
+
+Draft trips are used for early discovery only. Users may explore possible destinations, cities, attractions, and general ideas before committing to travel dates or budget.
+
+Draft trips must not build itineraries, map routes, run itinerary conflict checks, or generate full trip exports because date-sensitive and budget-sensitive planning may be inaccurate before the user commits to a real trip window.
+
+Planning trips unlock the full planning workflow only after the trip has:
+
+- At least one ordered destination city or travel destination
+- Start date
+- End date
+- Trip-level maximum budget amount
+- Budget currency
+
+This prevents the backend from spending effort on itinerary, route, map, and conflict calculations before the trip is specific enough to produce useful results.
+
 ### Excluded
 
 - Social feed
@@ -140,10 +161,10 @@ User creates a new trip.
 
 Inputs:
 
-- Destination
-- Travel dates
+- Destination search text or one or more selected destination cities
+- Travel dates, required for full planning
 - Travelers
-- Budget
+- Trip-level maximum budget, required for full planning
 
 ## Step 3
 
@@ -195,6 +216,20 @@ Conflict detection runs.
 ## Step 9
 
 System suggests adjustments if needed.
+
+## Continuous Feedback Loop
+
+Throughout planning, the system should maintain a feedback loop with the user.
+
+The reasoning engine should:
+
+- Explain why suggestions were made
+- Surface missing information before full planning is unlocked
+- Show budget impact as places and activities are selected
+- Ask for refinement when user feedback changes recommendation direction
+- Preserve feedback as planning context for future recommendations and itinerary changes
+
+The MVP feedback loop is structured and persisted, not a full chat system. It stores user feedback, engine explanations, readiness warnings, budget warnings, itinerary proposals, and conflict summaries so future AI or chat features can build on reliable historical context.
 
 ## Step 10
 
@@ -355,6 +390,21 @@ Example:
 
 > Recommended because it matches your interest in food, is within your budget, and is located near your selected hotel.
 
+Recommendation explanations and user responses should be persisted as part of the planning feedback loop.
+
+User feedback may include:
+
+- Accept
+- Reject
+- Refresh
+- Refine
+- Request alternative
+- Too expensive
+- Too far
+- Wrong vibe
+- Already been there
+- Other
+
 ---
 
 # 10. Recommendation Scoring System
@@ -382,6 +432,21 @@ Future versions may include ML-based ranking.
 Automatically organize selected destinations.
 
 ---
+
+## Full Planning Requirement
+
+Itinerary generation requires a planning-ready trip.
+
+A trip is planning-ready only when it has:
+
+- Planning status
+- At least one destination city or travel destination
+- Start date
+- End date
+- Trip-level maximum budget amount
+- Budget currency
+
+Draft trips may collect suggestions, but they must not generate itinerary days or itinerary items.
 
 ## Inputs
 
@@ -464,6 +529,12 @@ Selected hotel is far from majority of activities.
 # 13. Map System
 
 ## Requirements
+
+Map route visualization requires a planning-ready trip.
+
+Draft trips may later show lightweight discovery results if needed, but MVP route maps and day-by-day map filtering are only available after the trip has destination, date, and budget requirements filled.
+
+## Display
 
 Display:
 
@@ -566,7 +637,8 @@ User {
   id
   name
   email
-  passwordHash
+  emailVerified
+  image
   createdAt
 }
 ```
@@ -579,11 +651,32 @@ User {
 Trip {
   id
   userId
-  destination
+  title
+  status
+  destinationSearchText
   startDate
   endDate
-  budget
-  status
+  budgetAmount
+  budgetCurrency
+  createdAt
+  updatedAt
+}
+```
+
+---
+
+## TripDestination
+
+```typescript
+TripDestination {
+  id
+  tripId
+  city
+  country
+  region
+  latitude
+  longitude
+  sortOrder
 }
 ```
 
@@ -598,20 +691,36 @@ PreferenceProfile {
   budgetLevel
   pace
   interests[]
-  transportation
+  transportationModes[]
+  accommodationTypes[]
+  hotelPriority
+  walkingTolerance
+  dietaryRestrictions
+  accessibilityNeeds
+  mustAvoid
+  customNotes
+  metadata
 }
 ```
 
 ---
 
-## Place
+## PlaceSuggestion
 
 ```typescript
-Place {
+PlaceSuggestion {
   id
-  externalId
+  tripId
+  destinationId
+  provider
+  providerPlaceId
   name
   category
+  status
+  score
+  explanation
+  estimatedCostAmount
+  estimatedCostCurrency
   rating
   address
   latitude
@@ -638,10 +747,13 @@ ItineraryDay {
 ```typescript
 ItineraryItem {
   id
+  tripId
   dayId
-  placeId
+  placeSuggestionId
   startTime
   endTime
+  estimatedCostAmount
+  estimatedCostCurrency
 }
 ```
 
@@ -653,9 +765,55 @@ ItineraryItem {
 Conflict {
   id
   tripId
+  itineraryItemId
   type
   severity
+  status
   message
+  recommendation
+}
+```
+
+---
+
+## PlanningFeedback
+
+```typescript
+PlanningFeedback {
+  id
+  tripId
+  targetType
+  targetId
+  source
+  action
+  reason
+  userNote
+  tripPreferenceId
+  placeSuggestionId
+  itineraryDayId
+  itineraryItemId
+  conflictId
+  metadata
+  createdAt
+}
+```
+
+`targetId` must match the typed target field for the selected `targetType`. Trip-level feedback uses the parent `tripId` as `targetId`. Child-target feedback must reference a child record owned by the same trip.
+
+---
+
+## PlanningEvent
+
+```typescript
+PlanningEvent {
+  id
+  tripId
+  actor
+  type
+  title
+  message
+  metadata
+  createdAt
 }
 ```
 
@@ -694,13 +852,25 @@ Conflict {
 
 ## Authentication
 
-The project will use Auth.js / NextAuth.
+The project will use Auth.js / NextAuth with the v5-style `next-auth@beta` API.
 
 MVP authentication will use Google OAuth.
 
+Google OAuth is the only MVP login method. Email/password auth, magic links, Clerk, and dev-only auth bypasses are out of scope for Phase 3.
+
 Email/password authentication is deferred because it requires additional security work, including password hashing, email verification, password reset, and abuse protection.
 
-All user-specific resources must be protected by session checks. Users may only access trips where `trip.userId === session.user.id`.
+All user-specific resources must be protected by both session checks and ownership checks. Users may only access trips where `trip.userId === session.user.id`.
+
+The implementation must use:
+
+- `next-auth@beta`
+- `@auth/prisma-adapter`
+- Auth.js-compatible Prisma models from Phase 2
+- `src/proxy.ts` for Next.js 16 protected-route redirects
+- Server-side authorization helpers for protected data access
+
+Route protection is not enough by itself. Server Actions, Route Handlers, and query helpers must verify the authenticated user owns the parent trip before reading or mutating user-owned data.
 
 ---
 
@@ -957,11 +1127,13 @@ The MVP is considered complete when a user can:
 3. Complete preference onboarding.
 4. Receive personalized recommendations.
 5. Select destinations.
-6. Automatically generate an itinerary.
-7. View itinerary on a map.
-8. Receive conflict warnings.
-9. Save trip progress.
-10. Export itinerary.
+6. Provide feedback that influences later planning suggestions.
+7. See system explanations, budget impact, missing information, and suggested next actions during planning.
+8. Automatically generate an itinerary after the trip has destinations, dates, and budget.
+9. View itinerary on a map after the trip has destinations, dates, and budget.
+10. Receive conflict warnings.
+11. Save trip progress.
+12. Export itinerary.
 
 ---
 
@@ -1030,7 +1202,7 @@ GOOGLE_PLACES_API_KEY
 GOOGLE_ROUTES_API_KEY
 ```
 
-If staying on `next-auth` v4, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` may be used as compatibility aliases. If Clerk is selected instead of Auth.js, replace the auth secrets with Clerk publishable and secret keys.
+Legacy `NEXTAUTH_*` and `GOOGLE_CLIENT_*` aliases may exist only as local migration aids. Phase 3 uses the `AUTH_*` names above as the canonical variables.
 
 ---
 
