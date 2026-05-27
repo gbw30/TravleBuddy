@@ -200,6 +200,9 @@ model Trip {
   title                 String
   status                TripStatus @default(DRAFT)
   destinationSearchText String?    @map("destination_search_text")
+  departureCity         String?    @map("departure_city")
+  departureCountry      String?    @map("departure_country")
+  departureTimeZone     String?    @map("departure_time_zone")
   startDate             DateTime?  @map("start_date")
   endDate               DateTime?  @map("end_date")
   budgetAmount          Decimal?   @map("budget_amount") @db.Decimal(12, 2)
@@ -229,6 +232,7 @@ model TripDestination {
   city      String
   country   String
   region    String?
+  timeZone  String?  @map("time_zone")
   latitude  Decimal? @db.Decimal(10, 7)
   longitude Decimal? @db.Decimal(10, 7)
   sortOrder Int      @default(0) @map("sort_order")

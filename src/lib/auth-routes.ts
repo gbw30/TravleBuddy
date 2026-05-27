@@ -1,6 +1,7 @@
 export const protectedPagePrefixes = ["/dashboard", "/profile", "/trips"] as const;
 
 export const protectedApiPrefixes = [
+  "/api/trips",
   "/api/export",
   "/api/itinerary",
   "/api/recommendations",
@@ -11,6 +12,7 @@ export const authRouteMatcher = [
   "/dashboard/:path*",
   "/profile/:path*",
   "/trips/:path*",
+  "/api/trips/:path*",
   "/api/export/:path*",
   "/api/itinerary/:path*",
   "/api/recommendations/:path*",
