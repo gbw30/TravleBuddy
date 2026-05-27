@@ -6,6 +6,7 @@ export const config = {
     "/dashboard/:path*",
     "/profile/:path*",
     "/trips/:path*",
+    "/api/trips/:path*",
     "/api/export/:path*",
     "/api/itinerary/:path*",
     "/api/recommendations/:path*",

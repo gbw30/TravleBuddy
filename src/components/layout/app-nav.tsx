@@ -18,6 +18,9 @@ export async function AppNav() {
               <Link className="font-medium text-zinc-700 hover:text-zinc-950" href="/dashboard">
                 Dashboard
               </Link>
+              <Link className="font-medium text-zinc-700 hover:text-zinc-950" href="/trips">
+                Trips
+              </Link>
               <Link className="font-medium text-zinc-700 hover:text-zinc-950" href="/profile">
                 Profile
               </Link>

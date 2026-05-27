@@ -507,7 +507,7 @@ updateTrip
 deleteTrip
 ```
 
-- Add routes or server actions for:
+- Add routes and server actions for:
 
 ```text
 POST   /api/trips
@@ -530,6 +530,8 @@ DELETE /api/trips/[tripId]
 
 ```text
 title
+departureCity
+departureCountry
 destinationCity
 destinationCountry
 startDate
@@ -540,14 +542,46 @@ travelStyle
 ```
 
 - Ensure all trip operations check ownership.
+- Use the same core trip-detail fields on the new-trip screen and the settings screen.
+- Require only `title` for trip creation.
+- Use generated `Trip.id` values as database and route keys; do not make trip names unique.
+- Add `Save as draft` and `Continue trip creation` actions on the new-trip screen.
+- Keep `Save as draft` available whenever title is filled and persist the trip as `DRAFT`.
+- Gate `Continue trip creation` until title, at least one destination, valid date range, positive budget amount, budget currency, and travel style are complete.
+- Explain missing requirements when the user tries to continue before the trip is complete.
+- Redirect successful continue creation to `/trips/[tripId]/preferences`.
+- Add a guarded `/trips/[tripId]/preferences` entry page as the future preference/recommendation/itinerary workflow start.
+- Model multi-city routes as one trip with ordered `TripDestination` rows, not linked trip records.
+- Add optional departure city/country/time-zone fields for future jet lag and time-zone-aware planning.
+- Use a curated static city/country/time-zone dropdown catalog during Phase 4.
+- Automatically save incomplete named trips as `DRAFT`.
+- Allow undated draft trips.
+- Support only `USD` and `EUR` during Phase 4.
+- Store the user's original budget amount and budget currency.
+- Do not normalize budgets to USD in Phase 4. Future conversion should be a derived budgeting feature with exchange-rate snapshots.
+- Store Phase 4 destinations as ordered `TripDestination` rows.
+- Map `travelStyle` to `TripPreference.pace`.
+- Treat `PATCH /api/trips/[tripId]` as a true partial update endpoint.
+- Reject empty PATCH payloads.
+- Validate destination, date, and budget pairs after merging PATCH payloads with existing trip state.
+- Reject impossible calendar dates such as `2026-02-31`.
+- Block edits and deletes for `ARCHIVED` trips until a future explicit restore/archive workflow exists.
 - Keep trips in `DRAFT` until destination list, dates, budget amount, and budget currency are present.
 - Surface missing requirements before enabling full planning.
+- Add sign-out confirmation before submitting the sign-out server action.
+- Create and maintain:
+
+```text
+docs/phase-4-documentation.md
+```
+
+Record Phase 4 decisions, implementation details, security considerations, commands, validation results, manual test notes, and remaining user tasks without exposing secrets.
 
 ## User Tasks
 
-- Decide required trip creation fields.
-- Confirm supported currencies for MVP.
-- Confirm whether trips can exist without dates.
+- Review the implemented full-detail creation flow and confirm whether any fields should be visually grouped or deferred.
+- Confirm when future currency conversion should be added to budget/conflict features.
+- Confirm whether future trip settings should support multiple destinations.
 
 ## Exit Criteria
 
@@ -556,6 +590,9 @@ travelStyle
 - Signed-in user can edit a trip.
 - Signed-in user can delete a trip.
 - User cannot access another user's trip by URL guessing.
+- PATCH supports partial trip updates.
+- Archived trips cannot be edited or deleted.
+- Automated tests cover trip schemas, query ownership, mutations, and route-handler success/error responses.
 
 ---
 

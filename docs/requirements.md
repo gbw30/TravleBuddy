@@ -161,10 +161,13 @@ User creates a new trip.
 
 Inputs:
 
-- Destination search text or one or more selected destination cities
-- Travel dates, required for full planning
-- Travelers
-- Trip-level maximum budget, required for full planning
+- Title, required for trip creation
+- Departure city and country, optional for drafts and useful for future jet lag and time-zone-aware planning
+- Destination search text or one or more selected destination cities, optional for drafts and required for full planning
+- Travel dates, optional for drafts and required for full planning
+- Travelers, deferred from Phase 4
+- Trip-level maximum budget, optional for drafts and required for full planning
+- Budget currency, stored as entered by the user
 
 ## Step 3
 
@@ -604,6 +607,67 @@ Users can:
 - Duplicate trips
 - Save drafts
 
+### Phase 4 Trip CRUD
+
+Phase 4 implements authenticated trip CRUD with a full-detail trip creation form.
+
+Trip creation requires:
+
+- Title
+
+Trip records use generated `Trip.id` values as database and route keys. Trip titles are user-facing labels and are not unique.
+
+The new trip screen should expose the full core creation fields:
+
+- Departure city
+- Departure country
+- Destination city
+- Destination country
+- Start date
+- End date
+- Budget amount
+- Budget currency
+- Travel style
+
+The new trip screen has two actions:
+
+- `Save as draft`, available whenever title is filled.
+- `Continue trip creation`, available only after the required planning fields are complete.
+
+When users try to continue with missing planning fields, the UI must explain why the action is unavailable and focus the first missing field.
+
+Long trips across multiple cities or countries are modeled as one `Trip` with multiple ordered `TripDestination` rows. The app must not create separate linked trip records for this Stage 4 flow.
+
+Destination and departure fields use a curated static city/country/time-zone dropdown catalog during Phase 4. External autocomplete is deferred to the Google Places phase.
+
+Trip settings support:
+
+- Destination city
+- Destination country
+- Start date
+- End date
+- Budget amount
+- Budget currency
+- Travel style
+
+Draft trips may omit destination, dates, budget, and travel style. If a user saves a named trip as draft, the system persists it as `DRAFT`. Continuing into the planning workflow remains locked until the trip has:
+
+- At least one destination
+- Valid date range
+- Positive trip-level budget amount
+- Budget currency
+- Travel style
+
+Phase 4 supports `USD` and `EUR` only. The database stores the original user-entered budget amount and currency. Currency conversion and USD-normalized comparison values are deferred to a later budget/conflict feature and should include exchange-rate snapshots if implemented.
+
+Every trip read, update, and delete must verify that the authenticated user owns the trip.
+
+The Phase 4 API uses true partial updates for `PATCH /api/trips/[tripId]`. Empty PATCH payloads are rejected. Destination, date, and budget pair requirements are checked after the incoming patch is merged with the existing trip state.
+
+Trip date inputs must be strict `YYYY-MM-DD` calendar dates. Invalid normalized dates, such as `2026-02-31`, must be rejected instead of silently converted.
+
+Archived trips are immutable in Phase 4. They cannot be edited or deleted until a future explicit archive/restore workflow is designed.
+
 ---
 
 # 17. Trip Export
@@ -654,6 +718,9 @@ Trip {
   title
   status
   destinationSearchText
+  departureCity
+  departureCountry
+  departureTimeZone
   startDate
   endDate
   budgetAmount
@@ -674,6 +741,7 @@ TripDestination {
   city
   country
   region
+  timeZone
   latitude
   longitude
   sortOrder

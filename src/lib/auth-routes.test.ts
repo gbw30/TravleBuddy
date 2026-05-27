@@ -21,6 +21,8 @@ describe("auth route classification", () => {
   });
 
   it("identifies protected API routes", () => {
+    expect(isProtectedApiRoute("/api/trips")).toBe(true);
+    expect(isProtectedApiRoute("/api/trips/trip_1")).toBe(true);
     expect(isProtectedApiRoute("/api/recommendations")).toBe(true);
     expect(isProtectedApiRoute("/api/itinerary/build")).toBe(true);
     expect(isProtectedApiRoute("/api/export/json")).toBe(true);
