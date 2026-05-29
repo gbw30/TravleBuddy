@@ -9,6 +9,7 @@ import {
   getTripLocationsForCountry,
   tripLocationCountries,
 } from "@/features/trips/location-catalog";
+import type { UserTravelPreferenceDto } from "@/features/profile/types";
 
 type DestinationRow = {
   id: number;
@@ -18,6 +19,7 @@ type DestinationRow = {
 
 type NewTripFormProps = {
   action: (formData: FormData) => void | Promise<void>;
+  profilePreference?: UserTravelPreferenceDto | null;
 };
 
 function fieldClasses() {
@@ -45,7 +47,7 @@ function focusFirstMissingField(missing: string[]) {
   document.querySelector<HTMLElement>(`[name="${fieldName}"]`)?.focus();
 }
 
-export function NewTripForm({ action }: NewTripFormProps) {
+export function NewTripForm({ action, profilePreference }: NewTripFormProps) {
   const [title, setTitle] = useState("");
   const [departureCountry, setDepartureCountry] = useState("");
   const [departureCity, setDepartureCity] = useState("");
@@ -58,6 +60,7 @@ export function NewTripForm({ action }: NewTripFormProps) {
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetCurrency, setBudgetCurrency] = useState("");
   const [travelStyle, setTravelStyle] = useState("");
+  const [useProfilePreferences, setUseProfilePreferences] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
 
   const missingRequirements = useMemo(
@@ -310,6 +313,34 @@ export function NewTripForm({ action }: NewTripFormProps) {
             <option value="PACKED">Packed</option>
           </select>
         </label>
+
+        {profilePreference ? (
+          <label className="flex items-start gap-3 rounded-md border border-zinc-200 p-4 text-sm text-zinc-800">
+            <input
+              type="checkbox"
+              name="useProfilePreferences"
+              checked={useProfilePreferences}
+              onChange={(event) => {
+                const checked = event.target.checked;
+
+                setUseProfilePreferences(checked);
+                if (checked && profilePreference.pace) {
+                  setTravelStyle(profilePreference.pace);
+                }
+              }}
+              className="mt-1 size-4 rounded border-zinc-300"
+            />
+            <span>
+              <span className="block font-medium">
+                Use my saved travel preferences
+              </span>
+              <span className="mt-1 block leading-6 text-zinc-600">
+                Applies your saved pace and carries profile preference defaults
+                into this trip.
+              </span>
+            </span>
+          </label>
+        ) : null}
       </div>
 
       {showMissing && missingRequirements.length > 0 ? (

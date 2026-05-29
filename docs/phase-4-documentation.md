@@ -226,3 +226,8 @@ Results:
 - The first production build attempt generated Prisma Client successfully but failed because the sandbox could not fetch Google Fonts for `next/font`.
 - The production build passed after rerunning with network permission for the font fetch.
 - The successful build generated the expected dynamic routes for `/api/trips`, `/api/trips/[tripId]`, `/trips`, `/trips/new`, `/trips/[tripId]`, `/trips/[tripId]/preferences`, and `/trips/[tripId]/settings`.
+
+Post-audit update:
+
+- Deleted the local ignored `.env.production.local` file because it was untracked, contained blank secret assignments, and masked valid `.env.local` values during `next build`.
+- After the cleanup, `npm.cmd run build` passed with Next.js loading `.env.local` and `.env`.

@@ -105,6 +105,10 @@ const formIntentSchema = z.preprocess(
   (value) => blankStringToUndefined(value),
   createTripIntentSchema.default("draft"),
 );
+const profilePreferenceAutofillSchema = z.preprocess(
+  (value) => (value === "on" || value === true ? true : undefined),
+  z.boolean().optional(),
+);
 
 const tripLocationInputSchema = z
   .object({
@@ -258,6 +262,7 @@ export const createTripInputSchema = z
       supportedBudgetCurrencySchema.optional(),
     ),
     travelStyle: z.preprocess(blankStringToUndefined, travelStyleSchema.optional()),
+    useProfilePreferences: profilePreferenceAutofillSchema,
     destinations: destinationsInputSchema,
   })
   .superRefine((value, context) => {

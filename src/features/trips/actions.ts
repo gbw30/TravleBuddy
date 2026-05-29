@@ -18,6 +18,7 @@ import {
   tripWithDetailsSelect,
   type TripWithDetails,
 } from "./queries";
+import type { Prisma, UserTravelPreference } from "@/generated/prisma/client";
 
 export type UpdateTripResult =
   | {
@@ -65,7 +66,41 @@ function destinationsForCreate(
   };
 }
 
-function preferenceForCreate(travelStyle: ParsedCreateTripInput["travelStyle"]) {
+type ProfilePreferenceForTripCreate = UserTravelPreference | null;
+
+function jsonStringArray(value: Prisma.JsonValue | null | undefined) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function preferenceForCreate(
+  travelStyle: ParsedCreateTripInput["travelStyle"],
+  profilePreference?: ProfilePreferenceForTripCreate,
+) {
+  if (profilePreference) {
+    const create = {
+      budgetLevel: profilePreference.budgetLevel ?? undefined,
+      pace: travelStyle ?? profilePreference.pace ?? undefined,
+      interests: profilePreference.interests,
+      transportationModes: profilePreference.transportationModes,
+      accommodationTypes: profilePreference.accommodationTypes,
+      hotelPriority: profilePreference.hotelPriority ?? undefined,
+      walkingToleranceKm: profilePreference.walkingToleranceKm ?? undefined,
+      dietaryRestrictions: jsonStringArray(profilePreference.dietaryRestrictions),
+      accessibilityNeeds: jsonStringArray(profilePreference.accessibilityNeeds),
+      mustAvoid: jsonStringArray(profilePreference.mustAvoid),
+      metadata: {
+        customPreferences: jsonStringArray(profilePreference.customPreferences),
+        source: "user_travel_preference",
+      },
+    } satisfies Prisma.TripPreferenceCreateWithoutTripInput;
+
+    return {
+      create,
+    };
+  }
+
   return travelStyle
     ? {
         create: {
@@ -105,6 +140,13 @@ async function refreshTripStatus(
 
 export async function createTrip(userId: string, input: CreateTripInput) {
   const parsed = createTripInputSchema.parse(input);
+  const profilePreference = parsed.useProfilePreferences
+    ? await db.userTravelPreference.findUnique({
+        where: {
+          userId,
+        },
+      })
+    : null;
   const destinations = parsed.destinations ?? [];
   const status =
     parsed.intent === "continue"
@@ -130,7 +172,7 @@ export async function createTrip(userId: string, input: CreateTripInput) {
       budgetAmount: parsed.budgetAmount ?? null,
       budgetCurrency: parsed.budgetCurrency ?? null,
       destinations: destinationsForCreate(destinations),
-      preference: preferenceForCreate(parsed.travelStyle),
+      preference: preferenceForCreate(parsed.travelStyle, profilePreference),
     },
     select: tripWithDetailsSelect,
   });
@@ -424,6 +466,7 @@ function getTripDetailsInputFromFormData(formData: FormData) {
         ? ""
         : budgetCurrency,
     travelStyle: formData.get("travelStyle"),
+    useProfilePreferences: formData.get("useProfilePreferences"),
   };
 }
 

@@ -4,6 +4,9 @@ docs/
   neon-env-setup.md
   nextauth-setup.md
   phase-2-documentation.md
+  phase-3-documentation.md
+  phase-4-documentation.md
+  phase-5-documentation.md
   requirements.md
   travlebuddy_agent_development_plan.md
 
@@ -14,61 +17,113 @@ prisma/
 src/
   app/
     (auth)/
+      login/
     (dashboard)/
       dashboard/
-      trips/
       profile/
+        page.tsx
+      trips/
+        [tripId]/
+          preferences/
+            page.tsx
+          settings/
+            page.test.tsx
+            page.tsx
+          page.tsx
+        new/
+          page.tsx
+        page.tsx
     api/
-      recommendations/
-      itinerary/
-      export/
+      auth/
+        [...nextauth]/
+      trips/
+        [tripId]/
+          preferences/
+            route.test.ts
+            route.ts
+          route.test.ts
+          route.ts
+        route.test.ts
+        route.ts
+    favicon.ico
+    globals.css
+    layout.tsx
+    page.tsx
 
   components/
-    ui/
+    auth/
+      auth-buttons.tsx
+      sign-out-confirm-form.tsx
     layout/
-    questionnaire/
-    recommendations/
-    itinerary/
-    map/
-    profile/
+      app-nav.tsx
+    preferences/
+      preference-form.tsx
+      preference-summary.tsx
+    trips/
+      new-trip-form.tsx
+      trip-readiness-panel.tsx
+      trip-settings-form.tsx
+      trip-summary-card.tsx
 
   features/
-    trips/
-      actions.ts
-      planning-feedback.ts
-      queries.ts
-      readiness.ts
-      schemas.ts
-      types.ts
-    preferences/
-      actions.ts
-      schemas.ts
-      types.ts
-    recommendations/
-      service.ts
-      scoring.ts
-      schemas.ts
-      types.ts
     itinerary/
       builder.ts
       conflict-engine.ts
       schemas.ts
       types.ts
+    profile/
+      actions.ts
+      actions.test.ts
+      preferences.ts
+      preferences.test.ts
+      queries.ts
+      queries.test.ts
+      schemas.ts
+      schemas.test.ts
+      types.ts
+    preferences/
+      actions.ts
+      actions.test.ts
+      queries.ts
+      queries.test.ts
+      schemas.ts
+      schemas.test.ts
+      types.ts
+    recommendations/
+      schemas.ts
+      scoring.ts
+      service.ts
+      types.ts
+    trips/
+      actions.ts
+      location-catalog.ts
+      planning-feedback.ts
+      queries.ts
+      readiness.ts
+      schemas.ts
+      types.ts
 
   lib/
-    db.ts
-    auth.ts
-    env.ts
-    google/
-      places.ts
-      routes.ts
-      maps.ts
     ai/
       gemini.ts
       prompts.ts
+    auth.ts
+    auth-policy.ts
+    auth-routes.ts
+    authorization.ts
+    authorization-rules.ts
+    db.ts
+    env.ts
     export/
       pdf.ts
       json.ts
+    google/
+      maps.ts
+      places.ts
+      routes.ts
+
+  proxy.ts
 
   types/
     index.ts
+    next-auth.d.ts
