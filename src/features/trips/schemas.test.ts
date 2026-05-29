@@ -49,6 +49,18 @@ describe("trip Stage 4 schemas", () => {
     expect(parsed.intent).toBe("continue");
   });
 
+  it("parses the new-trip preference autofill option", () => {
+    expect(
+      createTripInputSchema.parse({
+        title: "Profile-backed trip",
+        useProfilePreferences: "on",
+      }),
+    ).toMatchObject({
+      title: "Profile-backed trip",
+      useProfilePreferences: true,
+    });
+  });
+
   it("rejects invalid city and country catalog pairs", () => {
     expect(() =>
       createTripInputSchema.parse({

@@ -148,8 +148,33 @@ model User {
   accounts Account[]
   sessions Session[]
   trips    Trip[]
+  travelPreference UserTravelPreference?
 
   @@map("users")
+}
+
+model UserTravelPreference {
+  id                  String               @id @default(cuid())
+  userId              String               @unique @map("user_id")
+  budgetLevel         BudgetLevel?         @map("budget_level")
+  pace                TravelPace?
+  interests           String[]             @default([])
+  transportationModes TransportationMode[] @default([]) @map("transportation_modes")
+  accommodationTypes  AccommodationType[]  @default([]) @map("accommodation_types")
+  hotelPriority       Int?                 @map("hotel_priority")
+  walkingToleranceKm  Decimal?             @map("walking_tolerance_km") @db.Decimal(5, 2)
+  dietaryRestrictions Json?                @map("dietary_restrictions")
+  accessibilityNeeds  Json?                @map("accessibility_needs")
+  mustAvoid           Json?                @map("must_avoid")
+  customPreferences   Json?                @map("custom_preferences")
+  metadata            Json?
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_travel_preferences")
 }
 
 model Account {

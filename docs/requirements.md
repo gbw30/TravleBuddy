@@ -103,7 +103,8 @@ The MVP focuses exclusively on:
 - User profiles
 - Trip creation
 - Preference questionnaire
-- Dynamic question flow
+- Trip-local structured preference profile
+- Guided preference feedback loop
 - Destination recommendations
 - Hotel recommendations
 - Activity recommendations
@@ -171,9 +172,9 @@ Inputs:
 
 ## Step 3
 
-System begins preference discovery.
+System begins preference discovery for the current trip.
 
-Questions adapt based on responses.
+Phase 5 currently implements this as a single-page structured questionnaire and preference API foundation. Before the final MVP is considered product-complete, this should evolve into a guided feedback loop where the user answers focused questions with predefined options or custom answers.
 
 Example:
 
@@ -191,7 +192,9 @@ Options:
 
 ## Step 4
 
-Preference profile is generated.
+Trip-local preference profile is saved.
+
+The Phase 5 profile belongs to one trip and becomes the recommendation input for Phase 6. User-level learned preferences are deferred until the trip-local MVP loop is stable.
 
 ## Step 5
 
@@ -234,6 +237,8 @@ The reasoning engine should:
 
 The MVP feedback loop is structured and persisted, not a full chat system. It stores user feedback, engine explanations, readiness warnings, budget warnings, itinerary proposals, and conflict summaries so future AI or chat features can build on reliable historical context.
 
+Preference capture is part of this feedback loop. In the final MVP and product, users should not primarily save preferences through one large static form. The system should ask focused questions, let users choose predefined options or enter custom answers, and save those answers back into the trip-local preference profile.
+
 ## Step 10
 
 User saves or exports itinerary.
@@ -248,11 +253,24 @@ Collect structured travel preferences.
 
 ## Requirements
 
-Questions should adapt based on previous responses.
+Phase 5 currently collects a complete trip-local profile with a single structured form as the data and API foundation.
 
-Question order should not be fixed.
+Final MVP preference capture should evolve into a guided feedback loop.
+
+The loop should:
+
+- Ask one focused preference question at a time.
+- Present predefined answer options where available.
+- Allow a custom answer when predefined options do not fit.
+- Save each answer into the trip-local preference profile.
+- Add, remove, or refine non-core preferences as the user gives more feedback.
+- Preserve preference changes as planning context when useful.
+
+Future versions may adapt questions based on previous responses and vary the question order.
 
 ### Example
+
+Future adaptive example:
 
 If user values hotels:
 
@@ -304,6 +322,12 @@ Options:
 - Shopping
 - Photography
 - Beaches
+- Art
+- Architecture
+- Music
+- Wellness
+- Local culture
+- Hidden gems
 
 ## Transportation
 
@@ -313,6 +337,7 @@ Options:
 - Public Transit
 - Ride Share
 - Rental Car
+- Mixed
 
 ## Accommodation
 
@@ -322,6 +347,7 @@ Options:
 - Hotel
 - Resort
 - Airbnb
+- Other
 
 ## Accessibility
 
@@ -341,7 +367,7 @@ Generate personalized travel recommendations.
 
 ## Inputs
 
-- User preferences
+- Trip-local preference profile
 - Trip details
 - Existing itinerary
 - Budget
@@ -584,6 +610,15 @@ Store:
 - Name
 - Email
 - Saved Trips
+- Saved travel preference defaults
+
+Profile behavior:
+
+- Users can edit their display name from `/profile`.
+- The profile tab displays saved travel preferences extracted from trip preferences.
+- Saved travel preferences use a separate `UserTravelPreference` model.
+- The saved profile preferences can be applied when creating a new trip.
+- Profile defaults are deterministic latest-save defaults, not inferred ML recommendations.
 
 ---
 
@@ -594,6 +629,7 @@ Store:
 - Public profiles
 - Shared itineraries
 - Uploaded photos
+- Advanced cross-trip learning from long-term behavior and feedback
 
 ---
 
@@ -649,6 +685,7 @@ Trip settings support:
 - Budget amount
 - Budget currency
 - Travel style
+- A separate Preferences tab for reviewing and modifying trip-local preferences
 
 Draft trips may omit destination, dates, budget, and travel style. If a user saves a named trip as draft, the system persists it as `DRAFT`. Continuing into the planning workflow remains locked until the trip has:
 
@@ -670,7 +707,113 @@ Archived trips are immutable in Phase 4. They cannot be edited or deleted until 
 
 ---
 
-# 17. Trip Export
+# 17. Preference Questionnaire
+
+### Phase 5 Preference Questionnaire
+
+Phase 5 implements trip-local preference profiles on the existing `TripPreference` model and reusable profile defaults on the migration-backed `UserTravelPreference` model.
+
+The current Phase 5 page is a foundation for saving, editing, reloading, and exposing preferences to recommendations. It is not the final product preference UX.
+
+The preference page is available at:
+
+```text
+/trips/[tripId]/preferences
+```
+
+The page is locked until the trip is planning-ready. A planning-ready trip has:
+
+- Title
+- At least one ordered destination
+- Valid start and end date
+- Positive budget amount
+- Budget currency
+- Travel style
+
+The complete preference profile requires:
+
+- Budget level
+- Pace
+- At least one interest
+- At least one transportation mode
+
+Optional profile fields include:
+
+- Accommodation types
+- Hotel priority
+- Walking tolerance in kilometers
+- Dietary restrictions
+- Accessibility needs
+- Must-avoid items
+- Custom notes
+- Custom preferences
+
+`TripPreference.pace` remains the source of truth for the Phase 4 travel style.
+
+Dietary restrictions, accessibility needs, and must-avoid values are stored as structured arrays after splitting comma- or newline-separated input, trimming whitespace, and dropping blanks.
+
+Custom preferences are stored as deduped structured trip-local values in `TripPreference.metadata.customPreferences`.
+
+The authenticated API surface is:
+
+```text
+GET /api/trips/[tripId]/preferences
+PUT /api/trips/[tripId]/preferences
+```
+
+Successful creates and updates append a visible system planning event so later recommendation and itinerary phases can explain how preference context changed.
+
+Reset/delete preferences and user-level learned preferences are future scope. Learned preferences should be designed as a transparent cross-trip loop after the MVP trip-local workflow works end to end.
+
+### Preference Editing UX
+
+Users must be able to modify preferences from trip settings.
+
+Settings requirements:
+
+- `/trips/[tripId]/settings` includes a separate Preferences tab.
+- The Preferences tab loads the same trip-local preference profile used by recommendations.
+- Core preference fields remain obvious because they are needed for recommendation readiness.
+- Non-core preferences appear as boxes or chips.
+- Each non-core preference box includes a clickable `x` for removal.
+- Adding a new custom preference creates a new visible box immediately.
+
+Preference search/add requirements:
+
+- The Preferences tab includes a search bar for adding preferences manually.
+- When the search query matches known preference options, matching options are shown.
+- When no known option matches, the UI should allow creating a custom preference from the query.
+- Custom preferences are stored as structured trip-local preference values, not only as display text.
+
+### Final Preference Capture UX
+
+The final MVP and product should save preferences through a guided feedback loop.
+
+Feedback-loop requirements:
+
+- Ask focused questions during trip planning.
+- Let the user select from available options or enter a custom answer.
+- Persist answers to the trip-local preference profile.
+- Use the same profile in the settings Preferences tab.
+- Write durable planning context for meaningful preference changes.
+- Keep user-level learned preferences separate from trip-local preferences until cross-trip learning is explicitly designed.
+
+### User-Level Preference Defaults
+
+Phase 5 stores reusable profile defaults in `UserTravelPreference`.
+
+Requirements:
+
+- Saving trip preferences updates the user's saved travel preference defaults.
+- The profile page displays saved travel preference defaults.
+- The profile page lets users edit their display name.
+- New trip creation offers a `Use my saved travel preferences` option when saved defaults exist.
+- Applying saved profile preferences creates a trip-local `TripPreference` for the new trip.
+- Trip-local preferences stay editable per trip after autofill.
+
+---
+
+# 18. Trip Export
 
 ## Supported Formats
 
@@ -690,7 +833,7 @@ Archived trips are immutable in Phase 4. They cannot be edited or deleted until 
 
 ---
 
-# 18. Data Models
+# 19. Data Models
 
 ---
 
@@ -703,9 +846,35 @@ User {
   email
   emailVerified
   image
+  travelPreference
   createdAt
 }
 ```
+
+---
+
+## UserTravelPreference
+
+```typescript
+UserTravelPreference {
+  id
+  userId
+  budgetLevel
+  pace
+  interests[]
+  transportationModes[]
+  accommodationTypes[]
+  hotelPriority
+  walkingToleranceKm
+  dietaryRestrictions
+  accessibilityNeeds
+  mustAvoid
+  customPreferences
+  metadata
+}
+```
+
+`UserTravelPreference` stores reusable profile defaults extracted from the user's latest saved trip preference. It is separate from `TripPreference`, which remains the trip-local source of truth.
 
 ---
 
@@ -767,6 +936,7 @@ PreferenceProfile {
   accessibilityNeeds
   mustAvoid
   customNotes
+  customPreferences
   metadata
 }
 ```
@@ -887,7 +1057,7 @@ PlanningEvent {
 
 ---
 
-# 19. Technology Stack
+# 20. Technology Stack
 
 ## Frontend
 
@@ -972,7 +1142,7 @@ Alternative:
 
 ---
 
-# 20. System Architecture
+# 21. System Architecture
 
 ```text
 User
@@ -1006,7 +1176,7 @@ Google Routes API
 
 ---
 
-# 21. Folder Structure
+# 22. Folder Structure
 
 ```text
 src/
@@ -1039,6 +1209,7 @@ src/
 
     preferences/
       actions.ts
+      queries.ts
       schemas.ts
       types.ts
 
@@ -1081,7 +1252,7 @@ src/
 
 ---
 
-# 22. Security Requirements
+# 23. Security Requirements
 
 ## Authentication
 
@@ -1105,7 +1276,7 @@ No API keys exposed to frontend.
 
 ---
 
-# 23. Scalability Requirements
+# 24. Scalability Requirements
 
 System should support:
 
@@ -1116,7 +1287,7 @@ System should support:
 
 ---
 
-# 24. Future Roadmap
+# 25. Future Roadmap
 
 ## Phase 2
 
@@ -1168,7 +1339,7 @@ AI can:
 
 ---
 
-# 25. Success Metrics
+# 26. Success Metrics
 
 ## Product Metrics
 
@@ -1186,7 +1357,7 @@ AI can:
 
 ---
 
-# 26. MVP Completion Criteria
+# 27. MVP Completion Criteria
 
 The MVP is considered complete when a user can:
 
@@ -1205,7 +1376,7 @@ The MVP is considered complete when a user can:
 
 ---
 
-# 27. CI/CD Requirements
+# 28. CI/CD Requirements
 
 ## Source Control
 

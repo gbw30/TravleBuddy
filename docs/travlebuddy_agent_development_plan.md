@@ -600,15 +600,36 @@ Record Phase 4 decisions, implementation details, security considerations, comma
 
 ## Goal
 
-Collect structured user preferences for each trip.
+Collect structured, trip-local user preferences for each planning-ready trip.
+
+Product direction:
+
+- Phase 5's current single-page form is the backend and CRUD foundation for preferences.
+- The final MVP should expose preference modification through a separate Preferences tab in trip settings.
+- The final MVP and product should collect and save preferences primarily through a guided feedback loop, not through a static all-fields-at-once form.
+- Phase 5 includes a basic profile tab where users can edit their name and view saved travel preference defaults.
+- Saved user travel preferences use a separate `UserTravelPreference` model extracted from trip preferences.
+- New trip creation should offer an option to apply saved profile preferences.
 
 ## Agent Tasks
 
-- Add `TripPreference` CRUD operations.
-- Build route/page:
+- Add `TripPreference` create/read/update operations using the existing schema.
+- Add `UserTravelPreference` persistence for reusable profile defaults.
+- Build a planning-ready-only route/page:
 
 ```text
 /trips/[tripId]/preferences
+```
+
+- If trip details are incomplete, keep the locked-state guidance and route users back to trip settings.
+- If the trip is archived, block mutation and explain that preferences cannot be updated.
+- If the trip is planning-ready, show a single-page questionnaire plus a right-side summary panel.
+- Keep the user on the page after save and show a saved confirmation.
+- Add authenticated JSON interfaces:
+
+```text
+GET /api/trips/[tripId]/preferences
+PUT /api/trips/[tripId]/preferences
 ```
 
 - Add structured fields:
@@ -617,32 +638,70 @@ Collect structured user preferences for each trip.
 pace
 budgetLevel
 interests
-transportationMode
+transportationModes
+accommodationTypes
 hotelPriority
-walkingTolerance
+walkingToleranceKm
 dietaryRestrictions
 accessibilityNeeds
 mustAvoid
 customNotes
+customPreferences
 ```
 
-- Use multi-select fields for interests.
-- Add an `Other` option where appropriate.
-- Store preferences in normalized columns or JSON fields, depending on schema.
+- Require `pace`, `budgetLevel`, at least one interest, and at least one transportation mode for a complete profile.
+- Use the expanded Travel MVP interest list: Food, History, Museums, Nature, Adventure, Nightlife, Shopping, Photography, Beaches, Art, Architecture, Music, Wellness, Local Culture, and Hidden Gems.
+- Use enum-backed options for budget, pace, transportation, and accommodation.
+- Use sliders for hotel priority and walking tolerance.
+- Store dietary restrictions, accessibility needs, and must-avoid items as parsed arrays.
+- Store blank custom notes as `null`.
+- Store custom non-core preferences as deduped structured values in `TripPreference.metadata.customPreferences`.
+- Keep `TripPreference.pace` as the source of truth for Phase 4 travel style.
 - Add preference summary component.
+- Add a visible `SYSTEM_NOTE` planning event on successful preference create/update.
+- Expose the serialized preference DTO for Phase 6 recommendations.
+- Document that reset/delete preferences and user-level learned preferences are future scope.
+- Add a settings Preferences tab so users can discover and modify saved preferences from `/trips/[tripId]/settings`.
+- In the settings Preferences tab, display non-core preferences as removable boxes or chips with a clickable `x`.
+- Add a search-based preference entry control:
+  - Matching known preference options are shown as selectable results.
+  - If there are no matches, the user can create a custom preference from the search query.
+  - Creating a custom preference adds a new visible preference box.
+- Preserve the same trip-local preference DTO as the source consumed by Phase 6.
+- Upsert saved user travel preferences when trip preferences are saved.
+- Let users edit their display name in `/profile`.
+- Show saved travel preference defaults in `/profile`.
+- Add a `Use my saved travel preferences` option to `/trips/new`.
+- When profile preference autofill is enabled, create the new trip with a trip-local `TripPreference` seeded from the saved user defaults.
+- Plan the final MVP preference capture as a question-by-question feedback loop:
+  - Ask focused preference questions during planning.
+  - Let users choose from options or enter a custom answer.
+  - Save answers into the trip-local preference profile.
+  - Persist meaningful changes as planning context.
 
 ## User Tasks
 
-- Confirm exact questionnaire questions.
-- Confirm default options for interests and travel styles.
-- Confirm whether accessibility/dietary questions should be included in MVP.
+- Review the implemented questionnaire and confirm whether any labels or default option ordering should change.
+- Confirm future rules for resetting preferences.
+- Confirm the product direction for user-level learned preferences before cross-trip learning is implemented.
+- Review the settings-tab preference editing model.
+- Confirm which non-core preference categories should support custom chips first.
+- Confirm when the static Phase 5 form can be retired in favor of the guided feedback loop.
 
 ## Exit Criteria
 
 - User can save preferences for a trip.
 - User can edit preferences.
+- User can discover preference editing from a separate tab in trip settings.
+- User can add and remove non-core custom preference boxes.
+- User can edit their profile name.
+- User can see saved travel preference defaults in their profile.
+- User can apply saved profile preferences while creating a new trip.
 - Preferences reload from the database.
 - Preferences are available to the recommendation engine.
+- Preference create/update writes a summary planning event.
+- API route tests cover success and access/error responses.
+- The implementation docs clearly distinguish the current Phase 5 form foundation from the final MVP feedback-loop UX.
 
 ---
 

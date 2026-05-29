@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
       deleteMany: vi.fn(),
     },
+    userTravelPreference: {
+      findUnique: vi.fn(),
+    },
   },
   tx: {
     trip: {
@@ -185,6 +188,62 @@ describe("trip actions", () => {
       }),
     );
     expect(result.status).toBe("PLANNING");
+  });
+
+  it("uses saved profile preferences when creating a new trip with autofill enabled", async () => {
+    mocks.db.userTravelPreference.findUnique.mockResolvedValue({
+      budgetLevel: "MODERATE",
+      pace: "PACKED",
+      interests: ["FOOD", "ART"],
+      transportationModes: ["WALKING"],
+      accommodationTypes: ["HOTEL"],
+      hotelPriority: 8,
+      walkingToleranceKm: { toString: () => "7.5" },
+      dietaryRestrictions: ["vegetarian"],
+      accessibilityNeeds: [],
+      mustAvoid: ["crowds"],
+      customPreferences: ["quiet mornings"],
+      metadata: {
+        sourceTripId: "trip_1",
+      },
+    });
+    mocks.db.trip.create.mockResolvedValue(
+      trip({
+        title: "Profile-backed trip",
+        preference: {
+          pace: "PACKED",
+        },
+      }),
+    );
+
+    await createTrip("user_1", {
+      intent: "draft",
+      title: "Profile-backed trip",
+      useProfilePreferences: true,
+    });
+
+    expect(mocks.db.userTravelPreference.findUnique).toHaveBeenCalledWith({
+      where: {
+        userId: "user_1",
+      },
+    });
+    expect(mocks.db.trip.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          preference: {
+            create: expect.objectContaining({
+              pace: "PACKED",
+              budgetLevel: "MODERATE",
+              interests: ["FOOD", "ART"],
+              metadata: {
+                customPreferences: ["quiet mornings"],
+                source: "user_travel_preference",
+              },
+            }),
+          },
+        }),
+      }),
+    );
   });
 
   it("allows duplicate trip titles by using generated ids as keys", async () => {

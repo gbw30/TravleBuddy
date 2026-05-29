@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createTripFormAction } from "@/features/trips/actions";
 import { requireUser } from "@/lib/authorization";
 import { NewTripForm } from "@/components/trips/new-trip-form";
+import { getUserTravelPreferenceForUser } from "@/features/profile/queries";
 
 type NewTripPageProps = {
   searchParams?: Promise<{
@@ -10,9 +11,10 @@ type NewTripPageProps = {
 };
 
 export default async function NewTripPage({ searchParams }: NewTripPageProps) {
-  await requireUser();
+  const userId = await requireUser();
   const params = await searchParams;
   const hasError = params?.error === "invalid";
+  const travelPreference = await getUserTravelPreferenceForUser(userId);
 
   return (
     <main className="flex-1 bg-zinc-50">
@@ -35,7 +37,10 @@ export default async function NewTripPage({ searchParams }: NewTripPageProps) {
           </div>
         ) : null}
 
-        <NewTripForm action={createTripFormAction} />
+        <NewTripForm
+          action={createTripFormAction}
+          profilePreference={travelPreference}
+        />
         <Link
           href="/trips"
           className="mt-4 inline-flex h-10 items-center rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100"
