@@ -21,6 +21,7 @@ export const authConfig = {
     }),
   ],
   secret: env.AUTH_SECRET,
+  redirectProxyUrl: env.AUTH_REDIRECT_PROXY_URL,
   trustHost: true,
   pages: {
     signIn: "/login",

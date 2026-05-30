@@ -11,7 +11,8 @@ const serverEnvSchema = z.object({
   AUTH_SECRET: nonEmpty.min(32, {
     message: "Must be at least 32 characters.",
   }),
-  AUTH_URL: z.url(),
+  AUTH_URL: z.url().optional(),
+  AUTH_REDIRECT_PROXY_URL: z.url().optional(),
   AUTH_GOOGLE_ID: nonEmpty,
   AUTH_GOOGLE_SECRET: nonEmpty,
   GEMINI_API_KEY: nonEmpty.optional(),
@@ -20,19 +21,24 @@ const serverEnvSchema = z.object({
   GOOGLE_ROUTES_API_KEY: nonEmpty.optional(),
 });
 
-const rawServerEnv = {
-  DATABASE_URL: process.env.DATABASE_URL,
-  DIRECT_URL: process.env.DIRECT_URL,
-  AUTH_SECRET: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-  AUTH_URL: process.env.AUTH_URL ?? process.env.NEXTAUTH_URL,
-  AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_CLIENT_ID,
-  AUTH_GOOGLE_SECRET:
-    process.env.AUTH_GOOGLE_SECRET ?? process.env.GOOGLE_CLIENT_SECRET,
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  GOOGLE_MAPS_API_KEY: process.env.GOOGLE_MAPS_API_KEY,
-  GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
-  GOOGLE_ROUTES_API_KEY: process.env.GOOGLE_ROUTES_API_KEY,
-};
+type RawServerEnv = Record<string, string | undefined>;
+
+function normalizeServerEnv(source: RawServerEnv) {
+  return {
+    DATABASE_URL: source.DATABASE_URL,
+    DIRECT_URL: source.DIRECT_URL,
+    AUTH_SECRET: source.AUTH_SECRET ?? source.NEXTAUTH_SECRET,
+    AUTH_URL: source.AUTH_URL ?? source.NEXTAUTH_URL,
+    AUTH_REDIRECT_PROXY_URL: source.AUTH_REDIRECT_PROXY_URL,
+    AUTH_GOOGLE_ID: source.AUTH_GOOGLE_ID ?? source.GOOGLE_CLIENT_ID,
+    AUTH_GOOGLE_SECRET:
+      source.AUTH_GOOGLE_SECRET ?? source.GOOGLE_CLIENT_SECRET,
+    GEMINI_API_KEY: source.GEMINI_API_KEY,
+    GOOGLE_MAPS_API_KEY: source.GOOGLE_MAPS_API_KEY,
+    GOOGLE_PLACES_API_KEY: source.GOOGLE_PLACES_API_KEY,
+    GOOGLE_ROUTES_API_KEY: source.GOOGLE_ROUTES_API_KEY,
+  };
+}
 
 function formatEnvErrors(error: z.ZodError) {
   return error.issues
@@ -40,8 +46,8 @@ function formatEnvErrors(error: z.ZodError) {
     .join("\n");
 }
 
-export function validateServerEnv() {
-  const parsed = serverEnvSchema.safeParse(rawServerEnv);
+export function validateServerEnv(source: RawServerEnv = process.env) {
+  const parsed = serverEnvSchema.safeParse(normalizeServerEnv(source));
 
   if (!parsed.success) {
     throw new Error(

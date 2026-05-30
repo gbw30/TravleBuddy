@@ -37,10 +37,11 @@ For the recommended Auth.js setup, add these locally in `.env.local`:
 
 ```text
 AUTH_SECRET="long-random-secret"
-AUTH_URL="http://localhost:3000"
 AUTH_GOOGLE_ID="google-client-id"
 AUTH_GOOGLE_SECRET="google-client-secret"
 ```
+
+`AUTH_URL` is optional with Auth.js v5. Locally you may set it to `http://localhost:3000`, but on Vercel it is usually safer to leave it unset so Auth.js infers the current deployment host from request headers.
 
 Keep database variables from the Neon setup:
 
@@ -49,10 +50,28 @@ DATABASE_URL="neon-pooled-url"
 DIRECT_URL="neon-direct-url"
 ```
 
-For Vercel production, use:
+For Vercel production, either leave `AUTH_URL` unset or set it to the exact production origin:
 
 ```text
 AUTH_URL="https://your-production-domain.com"
+```
+
+For Vercel preview or branch deployments, do not set `AUTH_URL` to the production domain while testing from a preview domain. That can make the sign-in step set the PKCE cookie on one host while Google redirects the callback to another host, causing:
+
+```text
+InvalidCheck: pkceCodeVerifier value could not be parsed
+```
+
+If you need preview deployments to use a single Google OAuth redirect URI, configure:
+
+```text
+AUTH_REDIRECT_PROXY_URL="https://your-production-domain.com/api/auth"
+```
+
+Then add this Google redirect URI:
+
+```text
+https://your-production-domain.com/api/auth/callback/google
 ```
 
 If staying on NextAuth v4, use:
@@ -370,7 +389,7 @@ npm run typecheck
 npm run dev
 ```
 
-The app validates auth environment variables at server startup through Zod. If `AUTH_SECRET`, `AUTH_URL`, `AUTH_GOOGLE_ID`, or `AUTH_GOOGLE_SECRET` is missing, startup should fail with the variable name and validation message.
+The app validates auth environment variables at server startup through Zod. If `AUTH_SECRET`, `AUTH_GOOGLE_ID`, or `AUTH_GOOGLE_SECRET` is missing, startup should fail with the variable name and validation message. `AUTH_URL` is optional because Auth.js can infer the active deployment host.
 
 Open:
 
