@@ -705,13 +705,27 @@ customPreferences
 
 ---
 
-# Phase 6 - Mock Recommendation Engine
+# Phase 6 - Conversational Planning Recommendations
 
 ## Goal
 
-Build deterministic recommendation logic before connecting external APIs.
+Build the core conversational planning loop before connecting external APIs.
+
+Users describe trip ideas in natural English, the app saves extracted preference signals, and the system generates topic-specific recommendation groups once enough context exists. The live plan preview grows inside the planning workspace instead of sending users to a separate itinerary page.
 
 ## Agent Tasks
+
+- Add planning workspace:
+
+```text
+/trips/[tripId]/planning
+```
+
+- Add deterministic preference extraction:
+
+```text
+src/features/recommendations/extraction.ts
+```
 
 - Create mock place dataset:
 
@@ -736,30 +750,48 @@ pace fit
 penalties
 ```
 
-- Add route/action:
+- Add routes/actions:
 
 ```text
+GET  /api/trips/[tripId]/recommendations?topic=HOTEL_BASE
 POST /api/trips/[tripId]/recommendations/generate
+POST /api/trips/[tripId]/recommendations/[suggestionId]/select
+POST /api/trips/[tripId]/recommendations/refresh
 ```
 
-- Return 5 suggestions.
-- Store suggestions in `PlaceSuggestion`.
+- Store user planning messages in `PlanningFeedback`.
+- Autosave extracted preference signals into `TripPreference`.
+- Save already-decided user places as selected `PlaceSuggestion` rows with `provider = USER`.
+- Generate 5 topic-specific suggestions.
+- Store mock suggestions in `PlaceSuggestion` with stable upserts by `tripId + provider + providerPlaceId`.
 - Add explanation text for each suggestion.
-- Add Vitest tests for scoring.
+- Show selected anchors and picked recommendations in a live plan preview.
+- Add Vitest tests for extraction, topic readiness, scoring, service persistence, route behavior, and planning page rendering.
 
 ## User Tasks
 
 - Review scoring weights.
-- Confirm whether recommendations should be category-specific or general at first.
-- Confirm whether refresh should exclude previously rejected places.
+- Review the conversational planning workspace.
+- Confirm whether deterministic extraction labels feel understandable before Gemini is added later.
 
 ## Exit Criteria
 
-- App generates 5 mock recommendations.
-- Recommendations are stored in the database.
+- User can open `/trips/[tripId]/planning` for a planning-ready trip.
+- User can save natural-language planning feedback.
+- Extracted preference signals are persisted to the trip-local preference profile.
+- User can add already-decided places as selected anchors.
+- App generates 5 topic-specific mock recommendations.
+- Recommendations are stored in the database with stable upserts.
 - Each recommendation has a score and explanation.
-- Scoring tests pass.
+- User can pick a recommendation into the live plan preview.
+- User can refresh recommendations with a natural-language note.
+- Planning feedback and recommendation batch events are stored.
+- Focused Stage 6 tests pass.
 - No Google or Gemini API call is required yet.
+
+## Final MVP Optimization Note
+
+Redis preference caching should be evaluated as the final MVP optimization stage, after core planning, recommendations, itinerary, maps, export, and polish are working. Redis should cache derived preference/readiness/recommendation-input DTOs, not replace Postgres. The optimization stage should include cache invalidation rules and before/after latency measurements.
 
 ---
 
