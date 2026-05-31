@@ -26,6 +26,7 @@ describe("preference input schema", () => {
     const result = preferenceInputSchema.parse(validPreferenceInput);
 
     expect(result).toEqual({
+      budgetAmount: null,
       budgetLevel: "MODERATE",
       pace: "BALANCED",
       interests: ["FOOD", "HISTORY"],
@@ -120,6 +121,15 @@ describe("preference input schema", () => {
         walkingToleranceKm: 12.25,
       }).success,
     ).toBe(false);
+  });
+
+  it("parses the trip budget amount slider value from preferences", () => {
+    const result = preferenceInputSchema.parse({
+      ...validPreferenceInput,
+      budgetAmount: "2500",
+    });
+
+    expect(result.budgetAmount).toBe(2500);
   });
 
   it("splits free text lists by comma and newline", () => {

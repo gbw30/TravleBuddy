@@ -19,9 +19,9 @@ export const travelMvpInterestOptions = [
 ] as const;
 
 export const budgetLevelOptions = [
-  { value: "BUDGET", label: "Budget" },
-  { value: "MODERATE", label: "Moderate" },
-  { value: "LUXURY", label: "Luxury" },
+  { value: "BUDGET", label: "Lower-cost comfort" },
+  { value: "MODERATE", label: "Balanced comfort" },
+  { value: "LUXURY", label: "Higher-comfort / luxury" },
 ] as const;
 
 export const paceOptions = [
@@ -177,6 +177,11 @@ const optionalHotelPrioritySchema = z.preprocess(
   z.coerce.number().int().min(1).max(10).optional(),
 ).transform((value) => value ?? null);
 
+const optionalBudgetAmountSchema = z.preprocess(
+  blankStringToUndefined,
+  z.coerce.number().positive().optional(),
+).transform((value) => value ?? null);
+
 const optionalWalkingToleranceSchema = z
   .preprocess(
     blankStringToUndefined,
@@ -204,6 +209,7 @@ const optionalNotesSchema = z
   .transform((value) => value ?? null);
 
 export const preferenceInputSchema = z.object({
+  budgetAmount: optionalBudgetAmountSchema,
   budgetLevel: budgetLevelSchema,
   pace: paceSchema,
   interests: requiredInterestArraySchema,
@@ -223,6 +229,7 @@ export type ParsedPreferenceInput = z.output<typeof preferenceInputSchema>;
 
 export function getPreferenceInputFromFormData(formData: FormData) {
   return {
+    budgetAmount: formData.get("budgetAmount"),
     budgetLevel: formData.get("budgetLevel"),
     pace: formData.get("pace"),
     interests: formData.getAll("interests"),

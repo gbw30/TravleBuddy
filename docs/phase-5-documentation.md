@@ -83,13 +83,14 @@ Expanded interest options:
 
 Enum-backed option groups:
 
-- Budget: Budget, Moderate, Luxury
+- Comfort target: Lower-cost comfort, Balanced comfort, Higher-comfort / luxury
 - Pace: Relaxed, Balanced, Packed
 - Transportation: Walking, Public Transit, Ride Share, Rental Car, Mixed
 - Accommodation: Hostel, Hotel, Resort, Airbnb, Other
 
 Slider rules:
 
+- `budgetAmount`: trip-level budget amount slider stored on `Trip.budgetAmount`
 - `hotelPriority`: integer from 1 to 10
 - `walkingToleranceKm`: 0.5 to 25 km in 0.5 km steps
 

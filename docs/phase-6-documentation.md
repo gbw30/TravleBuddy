@@ -106,6 +106,19 @@ Redis should not be introduced during Stage 6 because preference reads are still
 
 ---
 
+## Pre-Phase-7 Polish
+
+Before Phase 7 begins, the Stage 6 planning entry flow was tightened:
+
+- After saving trip preferences, the saved confirmation now includes a direct link to `/trips/[tripId]/planning`.
+- The planning workspace already-decided-place form now uses country and city dropdowns derived from the trip's saved destinations.
+- User-entered planning anchors are rejected if their city and country are not one of the trip's saved destination pairs.
+- New-trip and trip-settings date inputs now prevent selecting dates before the current day, and server validation rejects past trip dates as well.
+- The preferences form now exposes the trip budget amount as a range slider while keeping `Trip.budgetAmount` as the source of truth.
+- The former "Budget level" UI label is now presented as a comfort/luxury target, clarifying that trip budget amount is the primary budget constraint and the comfort target controls how luxury-forward recommendations should feel inside that budget.
+
+---
+
 ## Validation Results
 
 Stage 6 focused tests:

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  getTodayDateInputValue,
   getContinueTripCreationMissingRequirements,
   supportedBudgetCurrencies,
 } from "@/features/trips/schemas";
@@ -62,6 +63,7 @@ export function NewTripForm({ action, profilePreference }: NewTripFormProps) {
   const [travelStyle, setTravelStyle] = useState("");
   const [useProfilePreferences, setUseProfilePreferences] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
+  const today = getTodayDateInputValue();
 
   const missingRequirements = useMemo(
     () =>
@@ -251,6 +253,7 @@ export function NewTripForm({ action, profilePreference }: NewTripFormProps) {
             <input
               type="date"
               name="startDate"
+              min={today}
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
               className={fieldClasses()}
@@ -261,6 +264,7 @@ export function NewTripForm({ action, profilePreference }: NewTripFormProps) {
             <input
               type="date"
               name="endDate"
+              min={startDate || today}
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
               className={fieldClasses()}

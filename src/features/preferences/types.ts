@@ -36,6 +36,8 @@ export type PreferenceTripSummary = {
   id: string;
   title: string;
   status: "DRAFT" | "PLANNING" | "ARCHIVED";
+  budgetAmount: number | null;
+  budgetCurrency: string | null;
   travelStyle: TravelPace | null;
 };
 

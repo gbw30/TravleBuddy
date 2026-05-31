@@ -69,6 +69,14 @@ function parseStrictDate(value: unknown, blankValue: undefined | null) {
   return date;
 }
 
+export function getTodayDateInputValue(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function isBeforeCurrentDay(value: Date) {
+  return value.toISOString().slice(0, 10) < getTodayDateInputValue();
+}
+
 const optionalDateSchema = z.preprocess(
   (value) => parseStrictDate(value, undefined),
   z.coerce.date().optional(),
@@ -302,6 +310,22 @@ export const createTripInputSchema = z
       });
     }
 
+    if (value.startDate && isBeforeCurrentDay(value.startDate)) {
+      context.addIssue({
+        code: "custom",
+        message: "Start date cannot be before today.",
+        path: ["startDate"],
+      });
+    }
+
+    if (value.endDate && isBeforeCurrentDay(value.endDate)) {
+      context.addIssue({
+        code: "custom",
+        message: "End date cannot be before today.",
+        path: ["endDate"],
+      });
+    }
+
     if (Boolean(value.budgetAmount) !== Boolean(value.budgetCurrency)) {
       context.addIssue({
         code: "custom",
@@ -409,6 +433,14 @@ export const updateTripInputSchema = z
       path: ["endDate"],
     },
   )
+  .refine((value) => !value.startDate || !isBeforeCurrentDay(value.startDate), {
+    message: "Start date cannot be before today.",
+    path: ["startDate"],
+  })
+  .refine((value) => !value.endDate || !isBeforeCurrentDay(value.endDate), {
+    message: "End date cannot be before today.",
+    path: ["endDate"],
+  })
   .refine(
     (value) =>
       Boolean(value.budgetAmount) === Boolean(value.budgetCurrency),
@@ -488,7 +520,18 @@ export const patchTripInputSchema = z
       message: "Select a supported destination city and country pair.",
       path: ["destinationCity"],
     },
-  );
+  )
+  .refine(
+    (value) => !value.startDate || !isBeforeCurrentDay(value.startDate),
+    {
+      message: "Start date cannot be before today.",
+      path: ["startDate"],
+    },
+  )
+  .refine((value) => !value.endDate || !isBeforeCurrentDay(value.endDate), {
+    message: "End date cannot be before today.",
+    path: ["endDate"],
+  });
 
 export type CreateTripInput = z.input<typeof createTripInputSchema>;
 export type ParsedCreateTripInput = z.output<typeof createTripInputSchema>;
@@ -584,6 +627,14 @@ export function mergeTripPatchForValidation(
 
   if (merged.startDate && merged.endDate && merged.endDate < merged.startDate) {
     throw new Error("End date must be on or after start date.");
+  }
+
+  if (merged.startDate && isBeforeCurrentDay(merged.startDate)) {
+    throw new Error("Start date cannot be before today.");
+  }
+
+  if (merged.endDate && isBeforeCurrentDay(merged.endDate)) {
+    throw new Error("End date cannot be before today.");
   }
 
   if (hasBudget && !(merged.budgetAmount && merged.budgetCurrency)) {

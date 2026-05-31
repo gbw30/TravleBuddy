@@ -275,6 +275,27 @@ export type PlanningAccessResult =
   | { status: "not_found" | "archived" }
   | { status: "not_ready"; missingRequirements: string[] };
 
+function findMatchingDestination(
+  destinations: TripPlanningRecord["destinations"],
+  city?: string | null,
+  country?: string | null,
+) {
+  if (!city && !country) {
+    return destinations[0] ?? null;
+  }
+
+  if (!city || !country) {
+    return null;
+  }
+
+  return (
+    destinations.find(
+      (destination) =>
+        destination.city === city && destination.country === country,
+    ) ?? null
+  );
+}
+
 export async function recordPlanningMessage(
   userId: string,
   tripId: string,
@@ -554,7 +575,18 @@ export async function addUserPlanningPlace(
       return { status: "not_found" as const };
     }
 
-    const destination = trip.destinations[0];
+    const destination = findMatchingDestination(
+      trip.destinations,
+      input.city,
+      input.country,
+    );
+
+    if (!destination) {
+      return {
+        status: "invalid_destination" as const,
+      };
+    }
+
     const record = await tx.placeSuggestion.create({
       data: {
         tripId,
@@ -565,8 +597,8 @@ export async function addUserPlanningPlace(
         name: input.name,
         description: input.note ?? null,
         explanation: "Added by you as an already-decided place.",
-        city: input.city ?? destination.city,
-        country: input.country ?? destination.country,
+        city: destination.city,
+        country: destination.country,
         metadata: {
           topic: input.topic,
           source: "user_anchor",
@@ -825,6 +857,9 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
   if (result.status === "not_found") redirect("/trips?error=not-found");
   if (result.status === "archived") planningRedirect(tripId, "error=archived");
   if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "invalid_destination") {
+    planningRedirect(tripId, `topic=${topic}&error=invalid-destination`);
+  }
 
   revalidatePath(`/trips/${tripId}/planning`);
   planningRedirect(tripId, `topic=${topic}&anchor=saved`);

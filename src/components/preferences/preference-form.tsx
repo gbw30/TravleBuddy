@@ -20,6 +20,8 @@ type Option = {
 type PreferenceFormProps = {
   tripId: string;
   preference: TripPreferenceDto | null;
+  budgetAmount: number | null;
+  budgetCurrency: string | null;
   defaultPace: string | null;
   saved: boolean;
   error?: string;
@@ -45,6 +47,18 @@ function textareaClasses() {
 
 function checked(value: string, values: readonly string[]) {
   return values.includes(value);
+}
+
+const comfortLevelValues = ["BUDGET", "MODERATE", "LUXURY"] as const;
+
+function comfortLevelFromSlider(value: number) {
+  return comfortLevelValues[Math.max(0, Math.min(2, value - 1))];
+}
+
+function sliderFromComfortLevel(value?: string | null) {
+  const index = comfortLevelValues.findIndex((option) => option === value);
+
+  return index >= 0 ? index + 1 : 2;
 }
 
 function textListValue(values: readonly string[]) {
@@ -188,6 +202,8 @@ function CustomPreferenceBoxes({
 export function PreferenceForm({
   tripId,
   preference,
+  budgetAmount,
+  budgetCurrency,
   defaultPace,
   saved,
   error,
@@ -201,6 +217,17 @@ export function PreferenceForm({
   const [walkingTolerance, setWalkingTolerance] = useState(
     preference?.walkingToleranceKm ?? 5,
   );
+  const [budgetSliderAmount, setBudgetSliderAmount] = useState(
+    budgetAmount ?? 1500,
+  );
+  const [comfortLevel, setComfortLevel] = useState(
+    sliderFromComfortLevel(preference?.budgetLevel),
+  );
+  const budgetSliderMax = Math.max(20000, budgetSliderAmount);
+  const selectedComfortLevel = comfortLevelFromSlider(comfortLevel);
+  const selectedComfortLabel =
+    options.budgetLevels.find((option) => option.value === selectedComfortLevel)
+      ?.label ?? "Balanced comfort";
 
   return (
     <form action={action} className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
@@ -218,8 +245,14 @@ export function PreferenceForm({
       </div>
 
       {saved ? (
-        <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          Preferences saved.
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <span>Preferences saved.</span>
+          <a
+            href={`/trips/${tripId}/planning`}
+            className="inline-flex h-9 items-center rounded-md bg-emerald-700 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
+          >
+            Go to planning loop
+          </a>
         </div>
       ) : null}
       {error ? (
@@ -233,20 +266,46 @@ export function PreferenceForm({
           <h2 className="text-base font-semibold text-zinc-950">Core profile</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium text-zinc-800">
-              Budget level
-              <select
-                required
-                name="budgetLevel"
-                defaultValue={preference?.budgetLevel ?? ""}
-                className={fieldClasses()}
-              >
-                <option value="">Select</option>
-                {options.budgetLevels.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              Trip budget amount: {budgetCurrency ?? "USD"} {budgetSliderAmount}
+              <input
+                type="range"
+                min="100"
+                max={budgetSliderMax}
+                step="100"
+                name="budgetAmount"
+                value={budgetSliderAmount}
+                onChange={(event) =>
+                  setBudgetSliderAmount(Number(event.target.value))
+                }
+                className="mt-3 w-full accent-zinc-950"
+              />
+              <span className="mt-2 block text-xs font-normal leading-5 text-zinc-500">
+                This is the primary budget constraint used when weighing
+                recommendation options.
+              </span>
+            </label>
+            <label className="text-sm font-medium text-zinc-800">
+              Comfort target: {selectedComfortLabel}
+              <input type="hidden" name="budgetLevel" value={selectedComfortLevel} />
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="1"
+                value={comfortLevel}
+                onChange={(event) => setComfortLevel(Number(event.target.value))}
+                className="mt-3 w-full accent-zinc-950"
+              />
+              <span className="mt-2 grid grid-cols-3 text-xs font-normal text-zinc-500">
+                <span>Lower cost</span>
+                <span className="text-center">Balanced</span>
+                <span className="text-right">Luxury</span>
+              </span>
+              <span className="mt-2 block text-xs font-normal leading-5 text-zinc-500">
+                Your trip budget amount is the primary constraint; this tells
+                TravleBuddy how comfort-forward or luxury-forward the options
+                should feel inside that budget.
+              </span>
             </label>
             <label className="text-sm font-medium text-zinc-800">
               Pace

@@ -4,6 +4,7 @@ import {
   updateTripSettingsFormAction,
 } from "@/features/trips/actions";
 import {
+  getTodayDateInputValue,
   supportedBudgetCurrencies,
   type TravelStyle,
 } from "@/features/trips/schemas";
@@ -26,6 +27,7 @@ function fieldClasses() {
 }
 
 export function TripSettingsForm({ trip }: { trip: TripDto }) {
+  const today = getTodayDateInputValue();
   const destinationRows =
     trip.destinations && trip.destinations.length > 0
       ? [
@@ -168,6 +170,7 @@ export function TripSettingsForm({ trip }: { trip: TripDto }) {
               <input
                 type="date"
                 name="startDate"
+                min={today}
                 defaultValue={dateInputValue(trip.startDate)}
                 className={fieldClasses()}
               />
@@ -177,6 +180,7 @@ export function TripSettingsForm({ trip }: { trip: TripDto }) {
               <input
                 type="date"
                 name="endDate"
+                min={today}
                 defaultValue={dateInputValue(trip.endDate)}
                 className={fieldClasses()}
               />
