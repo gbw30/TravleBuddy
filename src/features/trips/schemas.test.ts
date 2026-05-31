@@ -9,6 +9,12 @@ import {
   updateTripInputSchema,
 } from "./schemas";
 
+function dateInputFromOffset(days: number) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 describe("trip Stage 4 schemas", () => {
   it("allows title-only draft trip creation", () => {
     const parsed = createTripInputSchema.parse({
@@ -126,6 +132,32 @@ describe("trip Stage 4 schemas", () => {
         title: "Madrid",
         startDate: "2026-07-10",
         endDate: "2026-07-01",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects trip dates before the current day", () => {
+    const yesterday = dateInputFromOffset(-1);
+    const tomorrow = dateInputFromOffset(1);
+
+    expect(() =>
+      createTripInputSchema.parse({
+        intent: "continue",
+        title: "Past trip",
+        destinations: [{ city: "Barcelona", country: "Spain" }],
+        startDate: yesterday,
+        endDate: tomorrow,
+        budgetAmount: "1200",
+        budgetCurrency: "EUR",
+        travelStyle: "BALANCED",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      updateTripInputSchema.parse({
+        title: "Past trip",
+        startDate: yesterday,
+        endDate: tomorrow,
       }),
     ).toThrow();
   });

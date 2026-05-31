@@ -117,6 +117,20 @@ function getTripDestinations(trip: TripWithDetails) {
   }));
 }
 
+function destinationsAreEqual(
+  left: readonly { city: string; country: string }[],
+  right: readonly { city: string; country: string }[],
+) {
+  return (
+    left.length === right.length &&
+    left.every(
+      (destination, index) =>
+        destination.city === right[index]?.city &&
+        destination.country === right[index]?.country,
+    )
+  );
+}
+
 async function refreshTripStatus(
   tx: Parameters<Parameters<typeof db.$transaction>[0]>[0],
   trip: TripWithDetails,
@@ -292,7 +306,23 @@ export async function updateTrip(
       },
     });
 
-    if (hasDestinationFields) {
+    const destinationsChanged =
+      hasDestinationFields &&
+      !destinationsAreEqual(getTripDestinations(existingTrip), nextDestinations);
+
+    if (destinationsChanged) {
+      await tx.placeSuggestion.updateMany({
+        where: {
+          tripId,
+          destinationId: {
+            not: null,
+          },
+        },
+        data: {
+          destinationId: null,
+        },
+      });
+
       await tx.tripDestination.deleteMany({
         where: {
           tripId,

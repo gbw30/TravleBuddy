@@ -64,7 +64,9 @@ function explanationParts(
   }
 
   if (preference.budgetLevel && place.budgetLevels.includes(preference.budgetLevel)) {
-    parts.push(`fits your ${preference.budgetLevel.toLocaleLowerCase()} budget`);
+    parts.push(
+      `fits your ${preference.budgetLevel.toLocaleLowerCase()} comfort target`,
+    );
   }
 
   if (preference.pace && place.pace.includes(preference.pace)) {

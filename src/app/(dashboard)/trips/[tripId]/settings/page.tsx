@@ -95,6 +95,8 @@ export default async function TripSettingsPage({
             <PreferenceForm
               tripId={trip.id}
               preference={preferenceResult.preference}
+              budgetAmount={preferenceResult.trip.budgetAmount}
+              budgetCurrency={preferenceResult.trip.budgetCurrency}
               defaultPace={trip.travelStyle ?? null}
               saved={query?.saved === "1"}
               error={query?.error}

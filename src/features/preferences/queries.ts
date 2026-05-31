@@ -122,6 +122,8 @@ function toPreferenceTripSummary(trip: PreferenceTripRecord): PreferenceTripSumm
     id: trip.id,
     title: trip.title,
     status: trip.status,
+    budgetAmount: serializeDecimalNumber(trip.budgetAmount),
+    budgetCurrency: trip.budgetCurrency,
     travelStyle: trip.preference?.pace ?? null,
   };
 }

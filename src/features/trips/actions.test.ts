@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
       deleteMany: vi.fn(),
       create: vi.fn(),
     },
+    placeSuggestion: {
+      updateMany: vi.fn(),
+    },
     tripPreference: {
       upsert: vi.fn(),
       updateMany: vi.fn(),
@@ -332,6 +335,122 @@ describe("trip actions", () => {
     if (result.status === "updated") {
       expect(result.trip.status).toBe("PLANNING");
     }
+  });
+
+  it("does not delete destination rows when only budget changes from the settings form", async () => {
+    const existingTrip = trip({
+      status: "PLANNING",
+      title: "Barcelona",
+      startDate: new Date("2026-07-01T00:00:00.000Z"),
+      endDate: new Date("2026-07-07T00:00:00.000Z"),
+      budgetAmount: "1500",
+      budgetCurrency: "EUR",
+      destinations: [
+        {
+          id: "destination_1",
+          city: "Barcelona",
+          country: "Spain",
+          region: null,
+          sortOrder: 0,
+          timeZone: "Europe/Madrid",
+        },
+      ],
+      preference: { pace: "BALANCED" },
+    });
+    mocks.tx.trip.findFirst.mockResolvedValue(existingTrip);
+    mocks.tx.trip.findFirstOrThrow.mockResolvedValue(
+      trip({
+        ...existingTrip,
+        budgetAmount: "2100",
+      }),
+    );
+
+    const result = await updateTrip("user_1", "trip_1", {
+      title: "Barcelona",
+      destinations: [{ city: "Barcelona", country: "Spain" }],
+      startDate: "2026-07-01",
+      endDate: "2026-07-07",
+      budgetAmount: "2100",
+      budgetCurrency: "EUR",
+      travelStyle: "BALANCED",
+    });
+
+    expect(result.status).toBe("updated");
+    expect(mocks.tx.tripDestination.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.tx.tripDestination.create).not.toHaveBeenCalled();
+    expect(mocks.tx.placeSuggestion.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("detaches place suggestions before replacing changed destination rows", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValue(
+      trip({
+        status: "PLANNING",
+        title: "Spain route",
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+        endDate: new Date("2026-07-07T00:00:00.000Z"),
+        budgetAmount: "1500",
+        budgetCurrency: "EUR",
+        destinations: [
+          {
+            id: "destination_1",
+            city: "Barcelona",
+            country: "Spain",
+            region: null,
+            sortOrder: 0,
+            timeZone: "Europe/Madrid",
+          },
+        ],
+        preference: { pace: "BALANCED" },
+      }),
+    );
+    mocks.tx.trip.findFirstOrThrow.mockResolvedValue(
+      trip({
+        status: "PLANNING",
+        title: "Spain route",
+        startDate: new Date("2026-07-01T00:00:00.000Z"),
+        endDate: new Date("2026-07-07T00:00:00.000Z"),
+        budgetAmount: "1500",
+        budgetCurrency: "EUR",
+        destinations: [
+          {
+            id: "destination_2",
+            city: "Madrid",
+            country: "Spain",
+            region: null,
+            sortOrder: 0,
+            timeZone: "Europe/Madrid",
+          },
+        ],
+        preference: { pace: "BALANCED" },
+      }),
+    );
+
+    await updateTrip("user_1", "trip_1", {
+      title: "Spain route",
+      destinations: [{ city: "Madrid", country: "Spain" }],
+      startDate: "2026-07-01",
+      endDate: "2026-07-07",
+      budgetAmount: "1500",
+      budgetCurrency: "EUR",
+      travelStyle: "BALANCED",
+    });
+
+    expect(mocks.tx.placeSuggestion.updateMany).toHaveBeenCalledWith({
+      where: {
+        tripId: "trip_1",
+        destinationId: {
+          not: null,
+        },
+      },
+      data: {
+        destinationId: null,
+      },
+    });
+    expect(mocks.tx.tripDestination.deleteMany).toHaveBeenCalledWith({
+      where: {
+        tripId: "trip_1",
+      },
+    });
   });
 
   it("returns not_found when deleting a non-owned trip", async () => {

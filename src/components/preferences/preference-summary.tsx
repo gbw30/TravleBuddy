@@ -24,7 +24,15 @@ export function PreferenceSummary({
           <p className="font-medium text-zinc-800">Core profile</p>
           <dl className="mt-2 grid gap-2 text-zinc-600">
             <div className="flex justify-between gap-4">
-              <dt>Budget</dt>
+              <dt>Budget amount</dt>
+              <dd className="font-medium text-zinc-900">
+                {trip.budgetAmount && trip.budgetCurrency
+                  ? `${trip.budgetCurrency} ${trip.budgetAmount}`
+                  : "Not set"}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt>Comfort target</dt>
               <dd className="font-medium text-zinc-900">
                 {optionalValue(preference?.budgetLevel ?? null)}
               </dd>

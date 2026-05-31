@@ -74,6 +74,10 @@ function currentRecommendations(
     .slice(0, 5);
 }
 
+function uniqueValues(values: readonly string[]) {
+  return Array.from(new Set(values)).filter(Boolean);
+}
+
 function money(recommendation: RecommendationDto) {
   if (!recommendation.estimatedCostAmount || !recommendation.estimatedCostCurrency) {
     return "Cost not estimated";
@@ -115,6 +119,10 @@ export function PlanningWorkspace({
     recommendations,
     activeTopic,
   );
+  const destinationCountries = uniqueValues(
+    trip.destinations.map((destination) => destination.country),
+  );
+  const destinationCities = trip.destinations;
 
   return (
     <main className="flex-1 bg-zinc-50">
@@ -143,6 +151,11 @@ export function PlanningWorkspace({
           <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Add one more detail for {topicLabel(activeTopic)} before generating
             recommendations.
+          </div>
+        ) : null}
+        {error === "invalid-destination" ? (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Choose a city and country already saved on this trip.
           </div>
         ) : null}
 
@@ -240,16 +253,35 @@ export function PlanningWorkspace({
                     </option>
                   ))}
                 </select>
-                <input
-                  name="city"
-                  className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none focus:border-zinc-500"
-                  placeholder={trip.destinations[0]?.city ?? "City"}
-                />
-                <input
+                <select
                   name="country"
+                  required
+                  defaultValue={trip.destinations[0]?.country ?? ""}
                   className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none focus:border-zinc-500"
-                  placeholder={trip.destinations[0]?.country ?? "Country"}
-                />
+                >
+                  <option value="">Country</option>
+                  {destinationCountries.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  name="city"
+                  required
+                  defaultValue={trip.destinations[0]?.city ?? ""}
+                  className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none focus:border-zinc-500"
+                >
+                  <option value="">City</option>
+                  {destinationCities.map((destination) => (
+                    <option
+                      key={`${destination.country}-${destination.city}`}
+                      value={destination.city}
+                    >
+                      {destination.city}
+                    </option>
+                  ))}
+                </select>
                 <textarea
                   name="note"
                   rows={2}
@@ -357,7 +389,7 @@ export function PlanningWorkspace({
               </h2>
               <dl className="mt-4 grid gap-3 text-sm">
                 <div>
-                  <dt className="font-medium text-zinc-500">Budget</dt>
+                  <dt className="font-medium text-zinc-500">Comfort target</dt>
                   <dd className="mt-1 text-zinc-950">
                     {preference.budgetLevel ?? "Not set"}
                   </dd>

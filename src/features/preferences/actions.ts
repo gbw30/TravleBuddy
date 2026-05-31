@@ -147,6 +147,18 @@ export async function saveTripPreference(
     });
     const operation = existingPreference ? "updated" : "created";
     const data = preferencePersistenceData(parsed.data);
+
+    if (parsed.data.budgetAmount !== null) {
+      await tx.trip.update({
+        where: {
+          id: tripId,
+        },
+        data: {
+          budgetAmount: parsed.data.budgetAmount,
+        },
+      });
+    }
+
     const preference = await tx.tripPreference.upsert({
       where: {
         tripId,

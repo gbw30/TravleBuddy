@@ -203,6 +203,19 @@ describe("planning recommendation service", () => {
     );
   });
 
+  it("rejects user-entered anchors outside the saved trip destinations", async () => {
+    const result = await addUserPlanningPlace("user_1", "trip_1", {
+      topic: "ACTIVITIES",
+      name: "Louvre Museum",
+      category: "ATTRACTION",
+      city: "Paris",
+      country: "France",
+    });
+
+    expect(result.status).toBe("invalid_destination");
+    expect(mocks.tx.placeSuggestion.create).not.toHaveBeenCalled();
+  });
+
   it("selects an owned recommendation and stores feedback", async () => {
     mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
       id: "suggestion_1",
