@@ -114,8 +114,9 @@ Before Phase 7 begins, the Stage 6 planning entry flow was tightened:
 - The planning workspace already-decided-place form now uses country and city dropdowns derived from the trip's saved destinations.
 - User-entered planning anchors are rejected if their city and country are not one of the trip's saved destination pairs.
 - New-trip and trip-settings date inputs now prevent selecting dates before the current day, and server validation rejects past trip dates as well.
-- The preferences form now exposes the trip budget amount as a range slider while keeping `Trip.budgetAmount` as the source of truth.
+- The new-trip, trip-settings, and preferences forms now expose the trip budget amount with the same range slider while keeping `Trip.budgetAmount` as the source of truth.
 - The former "Budget level" UI label is now presented as a comfort/luxury target, clarifying that trip budget amount is the primary budget constraint and the comfort target controls how luxury-forward recommendations should feel inside that budget.
+- Trip settings no longer replace destination rows when the submitted destination list matches the existing trip destinations. When destinations really change, existing place suggestions are detached from their old destination rows before replacement so the `place_suggestions_trip_id_destination_id_fkey` constraint is respected.
 
 ---
 

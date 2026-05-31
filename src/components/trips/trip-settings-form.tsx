@@ -13,6 +13,7 @@ import {
   tripLocationCountries,
 } from "@/features/trips/location-catalog";
 import type { TripDto } from "@/features/trips/types";
+import { BudgetAmountSlider } from "./budget-amount-slider";
 
 function dateInputValue(value?: string | Date | null) {
   if (!value) {
@@ -187,18 +188,11 @@ export function TripSettingsForm({ trip }: { trip: TripDto }) {
             </label>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
-            <label className="text-sm font-medium text-zinc-800">
-              Budget amount
-              <input
-                type="number"
-                min="1"
-                step="0.01"
-                name="budgetAmount"
-                defaultValue={trip.budgetAmount ?? ""}
-                className={fieldClasses()}
-              />
-            </label>
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+            <BudgetAmountSlider
+              value={trip.budgetAmount ?? null}
+              currency={trip.budgetCurrency ?? null}
+            />
             <label className="text-sm font-medium text-zinc-800">
               Currency
               <select

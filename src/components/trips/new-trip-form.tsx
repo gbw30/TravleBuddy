@@ -11,6 +11,7 @@ import {
   tripLocationCountries,
 } from "@/features/trips/location-catalog";
 import type { UserTravelPreferenceDto } from "@/features/profile/types";
+import { BudgetAmountSlider } from "./budget-amount-slider";
 
 type DestinationRow = {
   id: number;
@@ -58,7 +59,7 @@ export function NewTripForm({ action, profilePreference }: NewTripFormProps) {
   const [nextDestinationId, setNextDestinationId] = useState(2);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [budgetAmount, setBudgetAmount] = useState("");
+  const [budgetAmount, setBudgetAmount] = useState("1500");
   const [budgetCurrency, setBudgetCurrency] = useState("");
   const [travelStyle, setTravelStyle] = useState("");
   const [useProfilePreferences, setUseProfilePreferences] = useState(false);
@@ -273,18 +274,11 @@ export function NewTripForm({ action, profilePreference }: NewTripFormProps) {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
-          <label className="text-sm font-medium text-zinc-800">
-            Budget amount
-            <input
-              type="number"
-              min="1"
-              step="0.01"
-              name="budgetAmount"
-              value={budgetAmount}
-              onChange={(event) => setBudgetAmount(event.target.value)}
-              className={fieldClasses()}
-            />
-          </label>
+          <BudgetAmountSlider
+            value={budgetAmount}
+            currency={budgetCurrency}
+            onValueChange={setBudgetAmount}
+          />
           <label className="text-sm font-medium text-zinc-800">
             Currency
             <select

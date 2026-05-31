@@ -90,7 +90,7 @@ Enum-backed option groups:
 
 Slider rules:
 
-- `budgetAmount`: trip-level budget amount slider stored on `Trip.budgetAmount`
+- `budgetAmount`: shared trip-level budget amount slider stored on `Trip.budgetAmount` in new-trip creation, trip settings, and trip preferences
 - `hotelPriority`: integer from 1 to 10
 - `walkingToleranceKm`: 0.5 to 25 km in 0.5 km steps
 

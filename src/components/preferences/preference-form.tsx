@@ -2,6 +2,7 @@
 
 import { Save, X } from "lucide-react";
 import { useState } from "react";
+import { BudgetAmountSlider } from "@/components/trips/budget-amount-slider";
 import type {
   accommodationTypeOptions,
   budgetLevelOptions,
@@ -217,13 +218,9 @@ export function PreferenceForm({
   const [walkingTolerance, setWalkingTolerance] = useState(
     preference?.walkingToleranceKm ?? 5,
   );
-  const [budgetSliderAmount, setBudgetSliderAmount] = useState(
-    budgetAmount ?? 1500,
-  );
   const [comfortLevel, setComfortLevel] = useState(
     sliderFromComfortLevel(preference?.budgetLevel),
   );
-  const budgetSliderMax = Math.max(20000, budgetSliderAmount);
   const selectedComfortLevel = comfortLevelFromSlider(comfortLevel);
   const selectedComfortLabel =
     options.budgetLevels.find((option) => option.value === selectedComfortLevel)
@@ -265,25 +262,7 @@ export function PreferenceForm({
         <section className="grid gap-4 rounded-md border border-zinc-200 p-4">
           <h2 className="text-base font-semibold text-zinc-950">Core profile</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-sm font-medium text-zinc-800">
-              Trip budget amount: {budgetCurrency ?? "USD"} {budgetSliderAmount}
-              <input
-                type="range"
-                min="100"
-                max={budgetSliderMax}
-                step="100"
-                name="budgetAmount"
-                value={budgetSliderAmount}
-                onChange={(event) =>
-                  setBudgetSliderAmount(Number(event.target.value))
-                }
-                className="mt-3 w-full accent-zinc-950"
-              />
-              <span className="mt-2 block text-xs font-normal leading-5 text-zinc-500">
-                This is the primary budget constraint used when weighing
-                recommendation options.
-              </span>
-            </label>
+            <BudgetAmountSlider value={budgetAmount} currency={budgetCurrency} />
             <label className="text-sm font-medium text-zinc-800">
               Comfort target: {selectedComfortLabel}
               <input type="hidden" name="budgetLevel" value={selectedComfortLevel} />
