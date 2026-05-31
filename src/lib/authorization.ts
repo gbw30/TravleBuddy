@@ -13,8 +13,22 @@ export class UnauthorizedError extends Error {
 
 export const getCurrentUserId = cache(async () => {
   const session = await auth();
+  const sessionUserId = session?.user?.id ?? null;
 
-  return session?.user?.id ?? null;
+  if (!sessionUserId) {
+    return null;
+  }
+
+  const user = await db.user.findUnique({
+    where: {
+      id: sessionUserId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return user?.id ?? null;
 });
 
 export const requireUser = cache(async () => {

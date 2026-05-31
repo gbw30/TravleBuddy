@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { TripDto } from "@/features/trips/types";
 
@@ -30,6 +31,16 @@ export function TripReadinessPanel({ trip }: { trip: TripDto }) {
               ))}
             </ul>
           ) : null}
+          <Link
+            href={isReady ? `/trips/${trip.id}/planning` : `/trips/${trip.id}/settings`}
+            className={
+              isReady
+                ? "mt-5 inline-flex h-10 items-center rounded-md bg-zinc-950 px-4 text-sm font-medium text-white hover:bg-zinc-800"
+                : "mt-5 inline-flex h-10 items-center rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            }
+          >
+            {isReady ? "Open planning loop" : "Complete trip details"}
+          </Link>
         </div>
       </div>
     </section>

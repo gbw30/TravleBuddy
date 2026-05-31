@@ -239,6 +239,25 @@ The MVP feedback loop is structured and persisted, not a full chat system. It st
 
 Preference capture is part of this feedback loop. In the final MVP and product, users should not primarily save preferences through one large static form. The system should ask focused questions, let users choose predefined options or enter custom answers, and save those answers back into the trip-local preference profile.
 
+### Stage 6 Conversational Planning Loop
+
+The core product workflow is a conversational planning workspace, not a separate questionnaire, recommendation page, and itinerary page.
+
+Users should be able to describe trip ideas in natural English. The system stores those messages as planning feedback, extracts structured preference signals into the trip-local preference profile, and shows the extracted signals as visible preference chips.
+
+The loop begins by asking what topic should guide the conversation:
+
+- Hotel/base location
+- Must-do activities
+- Food/nightlife
+- Budget/pace
+
+The system should recommend places when enough topic-specific preference information has been collected. Recommendations are presented in topic-specific groups of five and include explanations for why they were chosen.
+
+Users can pick one recommendation or refresh the group by explaining what is missing from the current selection. Refresh notes are preference refinements and should improve later recommendations.
+
+The travel plan should take shape inside the same feedback loop. Already-decided places and picked recommendations appear in a live plan preview. Full day/time scheduling, route maps, and conflict checks can build on that preview in later stages.
+
 ## Step 10
 
 User saves or exports itinerary.
@@ -1284,6 +1303,8 @@ System should support:
 - Thousands of trips
 - API request caching
 - Future social features
+
+Redis preference caching is a final MVP optimization candidate, not part of the initial recommendation loop. If added, Redis should cache derived preference/readiness/recommendation-input DTOs while Postgres remains the source of truth. Cache invalidation must run after preference updates, feedback refinements, selected-place changes, and trip settings updates, and the optimization stage should include before/after latency measurements.
 
 ---
 
