@@ -76,4 +76,40 @@ describe("recommendation scoring", () => {
     expect(result.breakdown.penalties).toBeLessThan(0);
     expect(result.explanation).toContain("penalized");
   });
+
+  it("applies deterministic penalties from rejection feedback", () => {
+    const result = scoreMockPlace(place, {
+      topic: "HOTEL_BASE",
+      preference: {
+        budgetLevel: "MODERATE",
+        pace: "RELAXED",
+        interests: ["MUSEUMS"],
+        transportationModes: ["WALKING"],
+        accommodationTypes: ["HOTEL"],
+        hotelPriority: null,
+        walkingToleranceKm: null,
+        customPreferences: [],
+        mustAvoid: [],
+      },
+      selectedPlaces: [],
+      rejectedFeedback: [
+        {
+          providerPlaceId: "other-hotel",
+          topic: "HOTEL_BASE",
+          category: "HOTEL",
+          name: "Other expensive hotel",
+          reason: "TOO_EXPENSIVE",
+          note: null,
+          tags: ["MUSEUMS"],
+          estimatedCostAmount: 200,
+          priceLevel: 3,
+          latitude: null,
+          longitude: null,
+        },
+      ],
+    });
+
+    expect(result.breakdown.penalties).toBeLessThan(0);
+    expect(result.explanation).toContain("similar cost");
+  });
 });

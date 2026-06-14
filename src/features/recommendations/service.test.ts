@@ -20,9 +20,11 @@ const mocks = vi.hoisted(() => ({
     },
     planningFeedback: {
       create: vi.fn(),
+      findMany: vi.fn(),
     },
     planningEvent: {
       create: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -37,8 +39,11 @@ vi.mock("@/lib/authorization", () => ({
 
 import {
   addUserPlanningPlace,
+  getPlanningWorkspace,
   generateRecommendations,
   recordPlanningMessage,
+  deselectRecommendation,
+  rejectRecommendation,
   selectRecommendation,
 } from "./service";
 
@@ -88,6 +93,8 @@ describe("planning recommendation service", () => {
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip());
     mocks.tx.placeSuggestion.findMany.mockResolvedValue([]);
+    mocks.tx.planningFeedback.findMany.mockResolvedValue([]);
+    mocks.tx.planningEvent.findMany.mockResolvedValue([]);
     mocks.tx.placeSuggestion.upsert.mockImplementation(({ create }) =>
       Promise.resolve({
         id: create.providerPlaceId,
@@ -244,5 +251,131 @@ describe("planning recommendation service", () => {
         action: "SELECT",
       }),
     });
+    expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tripId: "trip_1",
+        actor: "USER",
+        type: "USER_FEEDBACK",
+        visibleToUser: true,
+      }),
+    });
+  });
+
+  it("rejects an owned recommendation with a reason and timeline event", async () => {
+    mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
+      id: "suggestion_1",
+      tripId: "trip_1",
+      status: "PENDING",
+      name: "Barcelona Gallery Quarter Hotel",
+    });
+
+    const result = await rejectRecommendation("user_1", "trip_1", {
+      suggestionId: "suggestion_1",
+      reason: "TOO_EXPENSIVE",
+      note: "More than I want to spend.",
+    });
+
+    expect(result.status).toBe("rejected");
+    expect(mocks.tx.placeSuggestion.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "suggestion_1",
+        tripId: "trip_1",
+      },
+      data: {
+        status: "REJECTED",
+      },
+    });
+    expect(mocks.tx.planningFeedback.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "REJECT",
+        reason: "TOO_EXPENSIVE",
+        userNote: "More than I want to spend.",
+        placeSuggestionId: "suggestion_1",
+      }),
+    });
+    expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actor: "USER",
+        type: "USER_FEEDBACK",
+        title: "Recommendation rejected",
+      }),
+    });
+  });
+
+  it("deselects a selected place without rejecting it", async () => {
+    mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
+      id: "suggestion_1",
+      tripId: "trip_1",
+      status: "SELECTED",
+      name: "Barcelona Gallery Quarter Hotel",
+    });
+
+    const result = await deselectRecommendation("user_1", "trip_1", {
+      suggestionId: "suggestion_1",
+    });
+
+    expect(result.status).toBe("deselected");
+    expect(mocks.tx.placeSuggestion.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "suggestion_1",
+        tripId: "trip_1",
+      },
+      data: {
+        status: "PENDING",
+      },
+    });
+    expect(mocks.tx.planningFeedback.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "DESELECT",
+        placeSuggestionId: "suggestion_1",
+      }),
+    });
+  });
+
+  it("returns a place action log for misclick recovery", async () => {
+    mocks.tx.placeSuggestion.findMany.mockResolvedValueOnce([]);
+    mocks.tx.placeSuggestion.findMany.mockResolvedValueOnce([]);
+    mocks.tx.planningEvent.findMany.mockResolvedValue([]);
+    mocks.tx.planningFeedback.findMany.mockResolvedValueOnce([
+      {
+        id: "feedback_1",
+        action: "REJECT",
+        reason: "TOO_EXPENSIVE",
+        userNote: "Misclicked this one.",
+        createdAt: new Date("2026-05-31T12:00:00.000Z"),
+        placeSuggestion: {
+          id: "suggestion_1",
+          name: "Barcelona Gallery Quarter Hotel",
+          category: "HOTEL",
+          status: "REJECTED",
+          city: "Barcelona",
+          country: "Spain",
+        },
+      },
+    ]);
+
+    const result = await getPlanningWorkspace("user_1", "trip_1");
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") {
+      throw new Error("Expected planning workspace.");
+    }
+    expect(result.placeActionLog).toEqual([
+      {
+        id: "feedback_1",
+        action: "REJECT",
+        reason: "TOO_EXPENSIVE",
+        note: "Misclicked this one.",
+        createdAt: "2026-05-31T12:00:00.000Z",
+        place: {
+          id: "suggestion_1",
+          name: "Barcelona Gallery Quarter Hotel",
+          category: "HOTEL",
+          status: "REJECTED",
+          city: "Barcelona",
+          country: "Spain",
+        },
+      },
+    ]);
   });
 });

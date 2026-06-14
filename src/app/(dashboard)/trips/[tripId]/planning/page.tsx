@@ -80,6 +80,8 @@ export default async function PlanningPage({
       preference={result.preference}
       selectedPlaces={result.selectedPlaces}
       recommendations={result.recommendations}
+      timelineEvents={result.timelineEvents}
+      placeActionLog={result.placeActionLog}
       activeTopic={activeTopic(query?.topic)}
       message={query?.message}
       error={query?.error}

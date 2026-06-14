@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { Prisma, SuggestionCategory } from "@/generated/prisma/client";
+import type {
+  FeedbackReason,
+  Prisma,
+  SuggestionCategory,
+} from "@/generated/prisma/client";
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/authorization";
@@ -10,11 +14,18 @@ import {
   hasTopicRecommendationReadiness,
   mergePreferenceSignals,
 } from "./extraction";
+import {
+  recommendationRejectReasons,
+  rejectedProviderPlaceIds,
+} from "./feedback-policy";
 import { getMockPlacesForCityTopic } from "./mock-places";
 import { scoreMockPlace } from "./scoring";
 import type {
   ExtractedPreferenceSignals,
+  PlaceActionLogEntry,
   PlanningTopic,
+  PlanningTimelineEvent,
+  RecommendationFeedbackSignal,
   RecommendationDto,
   RecommendationPreferenceSnapshot,
   SelectedPlanningPlace,
@@ -85,14 +96,69 @@ const placeSuggestionSelect = {
   explanation: true,
   city: true,
   country: true,
+  latitude: true,
+  longitude: true,
   score: true,
   rating: true,
+  priceLevel: true,
   estimatedCostAmount: true,
   estimatedCostCurrency: true,
   metadata: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.PlaceSuggestionSelect;
+
+const planningEventSelect = {
+  id: true,
+  actor: true,
+  type: true,
+  title: true,
+  message: true,
+  createdAt: true,
+} satisfies Prisma.PlanningEventSelect;
+
+const recommendationFeedbackSelect = {
+  reason: true,
+  userNote: true,
+  placeSuggestion: {
+    select: {
+      providerPlaceId: true,
+      category: true,
+      name: true,
+      estimatedCostAmount: true,
+      priceLevel: true,
+      latitude: true,
+      longitude: true,
+      metadata: true,
+    },
+  },
+} satisfies Prisma.PlanningFeedbackSelect;
+
+const placeActionLogSelect = {
+  id: true,
+  action: true,
+  reason: true,
+  userNote: true,
+  createdAt: true,
+  placeSuggestion: {
+    select: {
+      id: true,
+      name: true,
+      category: true,
+      status: true,
+      city: true,
+      country: true,
+    },
+  },
+} satisfies Prisma.PlanningFeedbackSelect;
+
+type RecommendationFeedbackRecord = Prisma.PlanningFeedbackGetPayload<{
+  select: typeof recommendationFeedbackSelect;
+}>;
+
+type PlaceActionLogRecord = Prisma.PlanningFeedbackGetPayload<{
+  select: typeof placeActionLogSelect;
+}>;
 
 function toStringArray(value: Prisma.JsonValue | null | undefined) {
   return Array.isArray(value)
@@ -170,7 +236,7 @@ function toRecommendationDto(record: PlaceSuggestionRecord): RecommendationDto {
 function selectedPlaceDto(
   record: Pick<
     PlaceSuggestionRecord,
-    "id" | "name" | "category" | "city" | "country"
+    "id" | "name" | "category" | "city" | "country" | "latitude" | "longitude"
   >,
 ): SelectedPlanningPlace {
   return {
@@ -179,7 +245,157 @@ function selectedPlaceDto(
     category: record.category,
     city: record.city,
     country: record.country,
+    latitude: serializeDecimalNumber(record.latitude),
+    longitude: serializeDecimalNumber(record.longitude),
   };
+}
+
+function metadataTopic(metadata: Prisma.JsonValue | null | undefined) {
+  if (!metadata || Array.isArray(metadata) || typeof metadata !== "object") {
+    return null;
+  }
+
+  const topic = metadata.topic;
+
+  return topic === "HOTEL_BASE" ||
+    topic === "ACTIVITIES" ||
+    topic === "FOOD_NIGHTLIFE" ||
+    topic === "BUDGET_PACE"
+    ? topic
+    : null;
+}
+
+function timelineEventDto(
+  record: Prisma.PlanningEventGetPayload<{ select: typeof planningEventSelect }>,
+): PlanningTimelineEvent {
+  return {
+    id: record.id,
+    actor: record.actor,
+    type: record.type,
+    title: record.title,
+    message: record.message,
+    createdAt: record.createdAt.toISOString(),
+  };
+}
+
+function recommendationFeedbackSignal(
+  record: RecommendationFeedbackRecord,
+): RecommendationFeedbackSignal | null {
+  const suggestion = record.placeSuggestion;
+
+  if (!suggestion) {
+    return null;
+  }
+
+  return {
+    providerPlaceId: suggestion.providerPlaceId,
+    topic: metadataTopic(suggestion.metadata),
+    category: suggestion.category,
+    name: suggestion.name,
+    reason: record.reason,
+    note: record.userNote,
+    tags: getMetadataStringArray(suggestion.metadata, "tags"),
+    estimatedCostAmount: serializeDecimalNumber(suggestion.estimatedCostAmount),
+    priceLevel: suggestion.priceLevel,
+    latitude: serializeDecimalNumber(suggestion.latitude),
+    longitude: serializeDecimalNumber(suggestion.longitude),
+  };
+}
+
+function placeActionLogEntry(
+  record: PlaceActionLogRecord,
+): PlaceActionLogEntry | null {
+  if (
+    !record.placeSuggestion ||
+    (record.action !== "SELECT" &&
+      record.action !== "REJECT" &&
+      record.action !== "DESELECT")
+  ) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    action: record.action,
+    reason: record.reason,
+    note: record.userNote,
+    createdAt: record.createdAt.toISOString(),
+    place: {
+      id: record.placeSuggestion.id,
+      name: record.placeSuggestion.name,
+      category: record.placeSuggestion.category,
+      status: record.placeSuggestion.status,
+      city: record.placeSuggestion.city,
+      country: record.placeSuggestion.country,
+    },
+  };
+}
+
+async function getPlaceActionLog(tx: PlanningTx, tripId: string) {
+  const records = await tx.planningFeedback.findMany({
+    where: {
+      tripId,
+      targetType: "PLACE_SUGGESTION",
+      action: {
+        in: ["SELECT", "REJECT", "DESELECT"],
+      },
+      placeSuggestionId: {
+        not: null,
+      },
+    },
+    select: placeActionLogSelect,
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 20,
+  });
+
+  return records
+    .map(placeActionLogEntry)
+    .filter((item): item is PlaceActionLogEntry => item !== null);
+}
+
+async function getRejectedRecommendationFeedback(tx: PlanningTx, tripId: string) {
+  const records = await tx.planningFeedback.findMany({
+    where: {
+      tripId,
+      targetType: "PLACE_SUGGESTION",
+      action: "REJECT",
+      placeSuggestionId: {
+        not: null,
+      },
+    },
+    select: recommendationFeedbackSelect,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return records
+    .map(recommendationFeedbackSignal)
+    .filter((item): item is RecommendationFeedbackSignal => item !== null);
+}
+
+async function writeUserPlanningEvent(
+  tx: PlanningTx,
+  input: {
+    tripId: string;
+    title: string;
+    message: string;
+    metadata?: Prisma.InputJsonValue;
+  },
+) {
+  await tx.planningEvent.create({
+    data: {
+      tripId: input.tripId,
+      actor: "USER",
+      type: "USER_FEEDBACK",
+      title: input.title,
+      message: input.message,
+      visibleToUser: true,
+      metadata: input.metadata,
+    },
+  });
 }
 
 function planningAccessFailure(trip: TripPlanningRecord | null) {
@@ -337,6 +553,15 @@ export async function recordPlanningMessage(
         },
       },
     });
+    await writeUserPlanningEvent(tx, {
+      tripId,
+      title: "Planning note saved",
+      message: input.message,
+      metadata: {
+        topic: input.topic,
+        extractedSignals: signals,
+      },
+    });
 
     const selectedPlaces = await getSelectedPlaces(tx, tripId);
     const readiness = hasTopicRecommendationReadiness({
@@ -389,21 +614,8 @@ export async function generateRecommendations(
     }
 
     const destination = trip.destinations[0];
-    const existingRejected = await tx.placeSuggestion.findMany({
-      where: {
-        tripId,
-        provider: "MOCK",
-        status: "REJECTED",
-      },
-      select: {
-        providerPlaceId: true,
-      },
-    });
-    const rejectedIds = new Set(
-      existingRejected
-        .map((item) => item.providerPlaceId)
-        .filter((item): item is string => Boolean(item)),
-    );
+    const rejectedFeedback = await getRejectedRecommendationFeedback(tx, tripId);
+    const rejectedIds = rejectedProviderPlaceIds(rejectedFeedback);
     const scored = getMockPlacesForCityTopic(
       destination.city,
       destination.country,
@@ -415,6 +627,7 @@ export async function generateRecommendations(
           topic: input.topic,
           preference,
           selectedPlaces,
+          rejectedFeedback,
         }),
       )
       .sort((left, right) => right.score - left.score)
@@ -525,6 +738,9 @@ export async function listRecommendations(
     const records = await tx.placeSuggestion.findMany({
       where: {
         tripId,
+        status: {
+          not: "REJECTED",
+        },
         ...(topic
           ? {
               metadata: {
@@ -622,6 +838,16 @@ export async function addUserPlanningPlace(
         },
       },
     });
+    await writeUserPlanningEvent(tx, {
+      tripId,
+      title: "Already-decided place added",
+      message: `${record.name} was added to the live plan preview.`,
+      metadata: {
+        topic: input.topic,
+        placeSuggestionId: record.id,
+        source: "user_anchor",
+      },
+    });
 
     return {
       status: "saved" as const,
@@ -657,6 +883,7 @@ export async function selectRecommendation(
         id: true,
         tripId: true,
         status: true,
+        name: true,
       },
     });
 
@@ -689,9 +916,177 @@ export async function selectRecommendation(
         },
       },
     });
+    await writeUserPlanningEvent(tx, {
+      tripId,
+      title: "Recommendation selected",
+      message: `${suggestion.name} was added to the live plan preview.`,
+      metadata: {
+        placeSuggestionId: input.suggestionId,
+        source: "recommendation_pick",
+      },
+    });
 
     return {
       status: "selected" as const,
+    };
+  });
+}
+
+export async function rejectRecommendation(
+  userId: string,
+  tripId: string,
+  input: {
+    suggestionId: string;
+    reason: FeedbackReason;
+    note?: string | null;
+  },
+) {
+  return db.$transaction(async (tx) => {
+    const trip = await getPlanningTrip(tx, userId, tripId);
+    const accessFailure = planningAccessFailure(trip);
+
+    if (accessFailure) {
+      return accessFailure;
+    }
+    if (!trip) {
+      return { status: "not_found" as const };
+    }
+
+    const suggestion = await tx.placeSuggestion.findFirst({
+      where: {
+        id: input.suggestionId,
+        tripId,
+      },
+      select: {
+        id: true,
+        tripId: true,
+        status: true,
+        name: true,
+      },
+    });
+
+    if (!suggestion) {
+      return {
+        status: "suggestion_not_found" as const,
+      };
+    }
+
+    await tx.placeSuggestion.updateMany({
+      where: {
+        id: input.suggestionId,
+        tripId,
+      },
+      data: {
+        status: "REJECTED",
+      },
+    });
+
+    await tx.planningFeedback.create({
+      data: {
+        tripId,
+        targetType: "PLACE_SUGGESTION",
+        targetId: input.suggestionId,
+        placeSuggestionId: input.suggestionId,
+        source: "USER",
+        action: "REJECT",
+        reason: input.reason,
+        userNote: input.note ?? null,
+        metadata: {
+          source: "recommendation_reject",
+        },
+      },
+    });
+    await writeUserPlanningEvent(tx, {
+      tripId,
+      title: "Recommendation rejected",
+      message: input.note
+        ? `${suggestion.name} was rejected: ${input.note}`
+        : `${suggestion.name} was rejected because of ${input.reason.toLocaleLowerCase().replaceAll("_", " ")}.`,
+      metadata: {
+        placeSuggestionId: input.suggestionId,
+        reason: input.reason,
+        source: "recommendation_reject",
+      },
+    });
+
+    return {
+      status: "rejected" as const,
+    };
+  });
+}
+
+export async function deselectRecommendation(
+  userId: string,
+  tripId: string,
+  input: {
+    suggestionId: string;
+  },
+) {
+  return db.$transaction(async (tx) => {
+    const trip = await getPlanningTrip(tx, userId, tripId);
+    const accessFailure = planningAccessFailure(trip);
+
+    if (accessFailure) {
+      return accessFailure;
+    }
+    if (!trip) {
+      return { status: "not_found" as const };
+    }
+
+    const suggestion = await tx.placeSuggestion.findFirst({
+      where: {
+        id: input.suggestionId,
+        tripId,
+      },
+      select: {
+        id: true,
+        tripId: true,
+        status: true,
+        name: true,
+      },
+    });
+
+    if (!suggestion) {
+      return {
+        status: "suggestion_not_found" as const,
+      };
+    }
+
+    await tx.placeSuggestion.updateMany({
+      where: {
+        id: input.suggestionId,
+        tripId,
+      },
+      data: {
+        status: "PENDING",
+      },
+    });
+
+    await tx.planningFeedback.create({
+      data: {
+        tripId,
+        targetType: "PLACE_SUGGESTION",
+        targetId: input.suggestionId,
+        placeSuggestionId: input.suggestionId,
+        source: "USER",
+        action: "DESELECT",
+        metadata: {
+          source: "live_plan_remove",
+        },
+      },
+    });
+    await writeUserPlanningEvent(tx, {
+      tripId,
+      title: "Place removed from plan",
+      message: `${suggestion.name} was removed from the live plan preview.`,
+      metadata: {
+        placeSuggestionId: input.suggestionId,
+        source: "live_plan_remove",
+      },
+    });
+
+    return {
+      status: "deselected" as const,
     };
   });
 }
@@ -730,11 +1125,15 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
       return { status: "not_found" as const };
     }
 
-    const [selectedPlaces, suggestions] = await Promise.all([
+    const [selectedPlaces, suggestions, timelineEvents, placeActionLog] =
+      await Promise.all([
       getSelectedPlaces(tx, tripId),
       tx.placeSuggestion.findMany({
         where: {
           tripId,
+          status: {
+            not: "REJECTED",
+          },
         },
         select: placeSuggestionSelect,
         orderBy: [
@@ -746,6 +1145,18 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
           },
         ],
       }),
+      tx.planningEvent.findMany({
+        where: {
+          tripId,
+          visibleToUser: true,
+        },
+        select: planningEventSelect,
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 6,
+      }),
+      getPlaceActionLog(tx, tripId),
     ]);
     const preference = preferenceSnapshot(trip.preference);
 
@@ -759,6 +1170,8 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
       preference,
       selectedPlaces,
       recommendations: suggestions.map(toRecommendationDto),
+      timelineEvents: timelineEvents.map(timelineEventDto),
+      placeActionLog,
     };
   });
 }
@@ -780,6 +1193,15 @@ function formTopic(value: FormDataEntryValue | null): PlanningTopic {
   }
 
   return "HOTEL_BASE";
+}
+
+function formRejectReason(value: FormDataEntryValue | null): FeedbackReason | null {
+  const reason = formString(value);
+  const allowedReasons = new Set<string>(recommendationRejectReasons);
+
+  return allowedReasons.has(reason)
+    ? (reason as FeedbackReason)
+    : null;
 }
 
 function planningRedirect(tripId: string, query: string) {
@@ -888,6 +1310,62 @@ export async function selectRecommendationFormAction(formData: FormData) {
 
   revalidatePath(`/trips/${tripId}/planning`);
   planningRedirect(tripId, `topic=${topic}&selected=1`);
+}
+
+export async function rejectRecommendationFormAction(formData: FormData) {
+  "use server";
+
+  const userId = await requireUser();
+  const tripId = formString(formData.get("tripId"));
+  const topic = formTopic(formData.get("topic"));
+  const suggestionId = formString(formData.get("suggestionId"));
+  const reason = formRejectReason(formData.get("reason"));
+  const note = formString(formData.get("note")) || null;
+
+  if (!tripId || !suggestionId || !reason) {
+    redirect("/trips?error=invalid-rejection");
+  }
+
+  const result = await rejectRecommendation(userId, tripId, {
+    suggestionId,
+    reason,
+    note,
+  });
+
+  if (result.status === "not_found") redirect("/trips?error=not-found");
+  if (result.status === "archived") planningRedirect(tripId, "error=archived");
+  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "suggestion_not_found") {
+    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+  }
+
+  revalidatePath(`/trips/${tripId}/planning`);
+  planningRedirect(tripId, `topic=${topic}&rejected=1`);
+}
+
+export async function deselectRecommendationFormAction(formData: FormData) {
+  "use server";
+
+  const userId = await requireUser();
+  const tripId = formString(formData.get("tripId"));
+  const topic = formTopic(formData.get("topic"));
+  const suggestionId = formString(formData.get("suggestionId"));
+
+  if (!tripId || !suggestionId) {
+    redirect("/trips?error=invalid-deselect");
+  }
+
+  const result = await deselectRecommendation(userId, tripId, { suggestionId });
+
+  if (result.status === "not_found") redirect("/trips?error=not-found");
+  if (result.status === "archived") planningRedirect(tripId, "error=archived");
+  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "suggestion_not_found") {
+    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+  }
+
+  revalidatePath(`/trips/${tripId}/planning`);
+  planningRedirect(tripId, `topic=${topic}&deselected=1`);
 }
 
 export async function refreshRecommendationsFormAction(formData: FormData) {

@@ -1,12 +1,17 @@
 import {
   Check,
+  History,
   MapPin,
   MessageSquareText,
   Plus,
   RefreshCw,
   Sparkles,
+  ThumbsDown,
+  X,
 } from "lucide-react";
 import type {
+  PlaceActionLogEntry,
+  PlanningTimelineEvent,
   PlanningTopic,
   RecommendationDto,
   RecommendationPreferenceSnapshot,
@@ -14,9 +19,11 @@ import type {
 } from "@/features/recommendations/types";
 import {
   addUserPlanningPlaceFormAction,
+  deselectRecommendationFormAction,
   generateRecommendationsFormAction,
   recordPlanningMessageFormAction,
   refreshRecommendationsFormAction,
+  rejectRecommendationFormAction,
   selectRecommendationFormAction,
 } from "@/features/recommendations/service";
 import { hasTopicRecommendationReadiness } from "@/features/recommendations/extraction";
@@ -57,6 +64,15 @@ const categoryOptions = [
   "ENTERTAINMENT",
 ] as const;
 
+const rejectReasonOptions = [
+  ["NOT_INTERESTED", "Not interested"],
+  ["TOO_EXPENSIVE", "Too expensive"],
+  ["TOO_FAR", "Too far"],
+  ["WRONG_VIBE", "Wrong vibe"],
+  ["ALREADY_BEEN_THERE", "Already been there"],
+  ["OTHER", "Other"],
+] as const;
+
 function chipList(values: readonly string[]) {
   return values.length > 0 ? values.join(", ") : "None yet";
 }
@@ -70,7 +86,10 @@ function currentRecommendations(
   topic: PlanningTopic,
 ) {
   return recommendations
-    .filter((recommendation) => recommendation.topic === topic)
+    .filter(
+      (recommendation) =>
+        recommendation.topic === topic && recommendation.status !== "REJECTED",
+    )
     .slice(0, 5);
 }
 
@@ -86,6 +105,17 @@ function money(recommendation: RecommendationDto) {
   return `${recommendation.estimatedCostCurrency} ${recommendation.estimatedCostAmount}`;
 }
 
+function actionLabel(action: PlaceActionLogEntry["action"]) {
+  if (action === "SELECT") return "Accepted";
+  if (action === "REJECT") return "Rejected";
+
+  return "Removed";
+}
+
+function reasonLabel(reason: PlaceActionLogEntry["reason"]) {
+  return reason ? reason.toLocaleLowerCase().replaceAll("_", " ") : null;
+}
+
 export function PlanningWorkspace({
   trip,
   preference,
@@ -94,6 +124,8 @@ export function PlanningWorkspace({
   activeTopic,
   message,
   error,
+  timelineEvents,
+  placeActionLog,
 }: {
   trip: {
     id: string;
@@ -103,6 +135,8 @@ export function PlanningWorkspace({
   preference: RecommendationPreferenceSnapshot;
   selectedPlaces: SelectedPlanningPlace[];
   recommendations: RecommendationDto[];
+  timelineEvents: PlanningTimelineEvent[];
+  placeActionLog: PlaceActionLogEntry[];
   activeTopic: PlanningTopic;
   message?: string;
   error?: string;
@@ -353,6 +387,44 @@ export function PlanningWorkspace({
                           </form>
                         )}
                       </div>
+                      <form
+                        action={rejectRecommendationFormAction}
+                        className="mt-4 grid gap-2 border-t border-zinc-100 pt-4 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto]"
+                      >
+                        <input type="hidden" name="tripId" value={trip.id} />
+                        <input type="hidden" name="topic" value={activeTopic} />
+                        <input
+                          type="hidden"
+                          name="suggestionId"
+                          value={recommendation.id}
+                        />
+                        <select
+                          name="reason"
+                          required
+                          defaultValue="NOT_INTERESTED"
+                          className="h-9 rounded-md border border-zinc-300 px-2 text-sm text-zinc-950 outline-none focus:border-zinc-500"
+                          aria-label={`Reject reason for ${recommendation.name}`}
+                        >
+                          {rejectReasonOptions.map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          name="note"
+                          className="h-9 rounded-md border border-zinc-300 px-2 text-sm text-zinc-950 outline-none focus:border-zinc-500"
+                          placeholder="Optional note"
+                          aria-label={`Optional rejection note for ${recommendation.name}`}
+                        />
+                        <button
+                          type="submit"
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                        >
+                          <ThumbsDown aria-hidden="true" className="size-4" />
+                          Reject
+                        </button>
+                      </form>
                     </article>
                   ))}
                 </div>
@@ -420,23 +492,168 @@ export function PlanningWorkspace({
                 Live plan preview
               </h2>
               {selectedPlaces.length > 0 ? (
-                <ul className="mt-4 grid gap-3">
-                  {selectedPlaces.map((place) => (
-                    <li key={place.id} className="rounded-md border border-zinc-200 p-3">
-                      <p className="text-sm font-medium text-zinc-950">
-                        {place.name}
-                      </p>
-                      <p className="mt-1 text-xs uppercase tracking-normal text-zinc-500">
-                        {place.category}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                    <p className="text-sm font-semibold text-emerald-800">
+                      Ready for itinerary handoff
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-emerald-700">
+                      Stage 8 can build from these selected places. More picks
+                      will make the first itinerary fuller.
+                    </p>
+                  </div>
+                  <ul className="mt-4 grid gap-3">
+                    {selectedPlaces.map((place) => (
+                      <li
+                        key={place.id}
+                        className="rounded-md border border-zinc-200 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-950">
+                              {place.name}
+                            </p>
+                            <p className="mt-1 text-xs uppercase tracking-normal text-zinc-500">
+                              {place.category}
+                            </p>
+                          </div>
+                          <form action={deselectRecommendationFormAction}>
+                            <input type="hidden" name="tripId" value={trip.id} />
+                            <input
+                              type="hidden"
+                              name="topic"
+                              value={activeTopic}
+                            />
+                            <input
+                              type="hidden"
+                              name="suggestionId"
+                              value={place.id}
+                            />
+                            <button
+                              type="submit"
+                              className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                            >
+                              <X aria-hidden="true" className="size-3.5" />
+                              Remove
+                            </button>
+                          </form>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-zinc-600">
-                  Picked recommendations and anchors will appear here.
+                  Picked recommendations and anchors will appear here. Select
+                  at least one place to prepare the itinerary handoff.
                 </p>
               )}
+            </section>
+
+            <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-zinc-950">
+                Planning timeline
+              </h2>
+              {timelineEvents.length > 0 ? (
+                <ol className="mt-4 grid gap-3">
+                  {timelineEvents.map((event) => (
+                    <li
+                      key={event.id}
+                      className="border-l-2 border-zinc-200 pl-3 text-sm"
+                    >
+                      <p className="font-medium text-zinc-950">{event.title}</p>
+                      {event.message ? (
+                        <p className="mt-1 leading-6 text-zinc-600">
+                          {event.message}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-zinc-600">
+                  Planning events will appear as you select, reject, remove, and
+                  refresh recommendations.
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+              <details>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50">
+                  <span className="inline-flex items-center gap-2">
+                    <History aria-hidden="true" className="size-4" />
+                    Show place log
+                  </span>
+                  <span className="text-xs text-zinc-500">
+                    {placeActionLog.length}
+                  </span>
+                </summary>
+                {placeActionLog.length > 0 ? (
+                  <ol className="mt-4 grid gap-3">
+                    {placeActionLog.map((entry) => {
+                      const reason = reasonLabel(entry.reason);
+
+                      return (
+                        <li
+                          key={entry.id}
+                          className="rounded-md border border-zinc-200 p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                {actionLabel(entry.action)}
+                              </p>
+                              <p className="mt-1 text-sm font-medium text-zinc-950">
+                                {entry.place.name}
+                              </p>
+                              <p className="mt-1 text-xs uppercase tracking-normal text-zinc-500">
+                                {entry.place.category}
+                              </p>
+                            </div>
+                            {entry.place.status === "SELECTED" ? (
+                              <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                                In plan
+                              </span>
+                            ) : (
+                              <form action={selectRecommendationFormAction}>
+                                <input type="hidden" name="tripId" value={trip.id} />
+                                <input
+                                  type="hidden"
+                                  name="topic"
+                                  value={activeTopic}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="suggestionId"
+                                  value={entry.place.id}
+                                />
+                                <button
+                                  type="submit"
+                                  className="inline-flex h-8 items-center rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                                >
+                                  Pick again
+                                </button>
+                              </form>
+                            )}
+                          </div>
+                          {reason || entry.note ? (
+                            <p className="mt-2 text-sm leading-6 text-zinc-600">
+                              {reason ? `Reason: ${reason}. ` : ""}
+                              {entry.note ?? ""}
+                            </p>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                ) : (
+                  <p className="mt-3 text-sm leading-6 text-zinc-600">
+                    Accepted, rejected, and removed places will appear here for
+                    quick recovery after a misclick.
+                  </p>
+                )}
+              </details>
             </section>
           </aside>
         </div>
