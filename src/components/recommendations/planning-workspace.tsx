@@ -29,6 +29,7 @@ import {
   selectRecommendationFormAction,
 } from "@/features/recommendations/service";
 import { hasTopicRecommendationReadiness } from "@/features/recommendations/extraction";
+import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 
 const topicOptions = [
   {
@@ -286,24 +287,24 @@ export function PlanningWorkspace({
                   className="min-h-28 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-zinc-500"
                   placeholder="I want a quiet hotel near museums, walkable cafes, and local markets."
                 />
-                <button
-                  type="submit"
+                <PendingSubmitButton
+                  pendingLabel="Saving..."
                   className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white hover:bg-zinc-800"
                 >
                   <MessageSquareText aria-hidden="true" className="size-4" />
                   Save reply
-                </button>
+                </PendingSubmitButton>
               </form>
               <form action={generateRecommendationsFormAction} className="mt-3">
                 <input type="hidden" name="tripId" value={trip.id} />
                 <input type="hidden" name="topic" value={activeTopic} />
-                <button
-                  type="submit"
+                <PendingSubmitButton
+                  pendingLabel="Generating..."
                   className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
                 >
                   <Sparkles aria-hidden="true" className="size-4" />
                   Generate 5
-                </button>
+                </PendingSubmitButton>
               </form>
               <p className="mt-3 text-sm text-zinc-500">
                 {readiness.isReady
@@ -377,13 +378,13 @@ export function PlanningWorkspace({
                   className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none focus:border-zinc-500 md:col-span-2"
                   placeholder="Why this place matters"
                 />
-                <button
-                  type="submit"
+                <PendingSubmitButton
+                  pendingLabel="Adding..."
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 hover:bg-zinc-50 md:w-fit"
                 >
                   <Plus aria-hidden="true" className="size-4" />
                   Add place
-                </button>
+                </PendingSubmitButton>
               </form>
             </div>
 
@@ -432,13 +433,13 @@ export function PlanningWorkspace({
                               name="suggestionId"
                               value={recommendation.id}
                             />
-                            <button
-                              type="submit"
+                            <PendingSubmitButton
+                              pendingLabel="Picking..."
                               className="inline-flex h-9 items-center gap-2 rounded-md bg-zinc-950 px-3 text-sm font-medium text-white hover:bg-zinc-800"
                             >
                               <Check aria-hidden="true" className="size-4" />
                               Pick
-                            </button>
+                            </PendingSubmitButton>
                           </form>
                         )}
                       </div>
@@ -472,13 +473,13 @@ export function PlanningWorkspace({
                           placeholder="Optional note"
                           aria-label={`Optional rejection note for ${recommendation.name}`}
                         />
-                        <button
-                          type="submit"
+                        <PendingSubmitButton
+                          pendingLabel="Rejecting..."
                           className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
                         >
                           <ThumbsDown aria-hidden="true" className="size-4" />
                           Reject
-                        </button>
+                        </PendingSubmitButton>
                       </form>
                     </article>
                   ))}
@@ -498,13 +499,13 @@ export function PlanningWorkspace({
                   className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-950 outline-none focus:border-zinc-500"
                   placeholder="Refresh with quieter hotels closer to museums."
                 />
-                <button
-                  type="submit"
+                <PendingSubmitButton
+                  pendingLabel="Refreshing..."
                   className="inline-flex h-10 w-fit items-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
                 >
                   <RefreshCw aria-hidden="true" className="size-4" />
                   Refresh
-                </button>
+                </PendingSubmitButton>
               </form>
             </div>
           </section>
@@ -594,13 +595,13 @@ export function PlanningWorkspace({
                                     name="suggestionId"
                                     value={place.id}
                                   />
-                                  <button
-                                    type="submit"
+                                  <PendingSubmitButton
+                                    pendingLabel="Removing..."
                                     className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
                                   >
                                     <X aria-hidden="true" className="size-3.5" />
                                     Remove
-                                  </button>
+                                  </PendingSubmitButton>
                                 </form>
                               </div>
                             </li>
@@ -786,12 +787,12 @@ export function PlanningWorkspace({
                                   name="suggestionId"
                                   value={entry.place.id}
                                 />
-                                <button
-                                  type="submit"
+                                <PendingSubmitButton
+                                  pendingLabel="Picking..."
                                   className="inline-flex h-8 items-center rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
                                 >
                                   Pick again
-                                </button>
+                                </PendingSubmitButton>
                               </form>
                             )}
                           </div>

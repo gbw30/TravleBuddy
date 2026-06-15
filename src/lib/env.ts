@@ -58,6 +58,14 @@ export function validateServerEnv(source: RawServerEnv = process.env) {
   return parsed.data;
 }
 
-export const env = validateServerEnv();
-
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+export function getServerEnv(source: RawServerEnv = process.env) {
+  return validateServerEnv(source);
+}
+
+export const env = new Proxy({} as ServerEnv, {
+  get(_target, property: keyof ServerEnv) {
+    return getServerEnv()[property];
+  },
+});

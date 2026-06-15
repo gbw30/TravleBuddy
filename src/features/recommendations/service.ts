@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type {
   FeedbackReason,
@@ -1230,6 +1230,12 @@ function planningRedirect(tripId: string, query: string) {
   redirect(`/trips/${tripId}/planning?${query}`);
 }
 
+function refreshPlanningMutation(tripId: string) {
+  revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
+  refresh();
+}
+
 export async function recordPlanningMessageFormAction(formData: FormData) {
   "use server";
 
@@ -1306,9 +1312,7 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
     planningRedirect(tripId, `topic=${topic}&error=invalid-destination`);
   }
 
-  revalidatePath(`/trips/${tripId}/planning`);
-  revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&anchor=saved`);
+  refreshPlanningMutation(tripId);
 }
 
 export async function selectRecommendationFormAction(formData: FormData) {
@@ -1332,9 +1336,7 @@ export async function selectRecommendationFormAction(formData: FormData) {
     planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
   }
 
-  revalidatePath(`/trips/${tripId}/planning`);
-  revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&selected=1`);
+  refreshPlanningMutation(tripId);
 }
 
 export async function rejectRecommendationFormAction(formData: FormData) {
@@ -1364,9 +1366,7 @@ export async function rejectRecommendationFormAction(formData: FormData) {
     planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
   }
 
-  revalidatePath(`/trips/${tripId}/planning`);
-  revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&rejected=1`);
+  refreshPlanningMutation(tripId);
 }
 
 export async function deselectRecommendationFormAction(formData: FormData) {
@@ -1390,9 +1390,7 @@ export async function deselectRecommendationFormAction(formData: FormData) {
     planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
   }
 
-  revalidatePath(`/trips/${tripId}/planning`);
-  revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&deselected=1`);
+  refreshPlanningMutation(tripId);
 }
 
 export async function refreshRecommendationsFormAction(formData: FormData) {

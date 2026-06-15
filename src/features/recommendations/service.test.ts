@@ -4,6 +4,18 @@ const mocks = vi.hoisted(() => ({
   db: {
     $transaction: vi.fn(),
   },
+  auth: {
+    requireUser: vi.fn(),
+  },
+  nextCache: {
+    revalidatePath: vi.fn(),
+    refresh: vi.fn(),
+  },
+  nextNavigation: {
+    redirect: vi.fn((url: string) => {
+      throw new Error(`NEXT_REDIRECT:${url}`);
+    }),
+  },
   tx: {
     trip: {
       findFirst: vi.fn(),
@@ -38,7 +50,16 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/authorization", () => ({
-  requireUser: vi.fn(),
+  requireUser: mocks.auth.requireUser,
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: mocks.nextCache.revalidatePath,
+  refresh: mocks.nextCache.refresh,
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: mocks.nextNavigation.redirect,
 }));
 
 vi.mock("@/features/itinerary/builder", () => ({
@@ -54,6 +75,7 @@ import {
   deselectRecommendation,
   rejectRecommendation,
   selectRecommendation,
+  selectRecommendationFormAction,
 } from "./service";
 
 function planningTrip(overrides: Record<string, unknown> = {}) {
@@ -100,6 +122,7 @@ describe("planning recommendation service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
+    mocks.auth.requireUser.mockResolvedValue("user_1");
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip());
     mocks.tx.placeSuggestion.findMany.mockResolvedValue([]);
     mocks.tx.planningFeedback.findMany.mockResolvedValue([]);
@@ -273,6 +296,7 @@ describe("planning recommendation service", () => {
       id: "suggestion_1",
       tripId: "trip_1",
       status: "PENDING",
+      name: "Barcelona Gallery Quarter Hotel",
     });
 
     const result = await selectRecommendation("user_1", "trip_1", {
@@ -308,6 +332,25 @@ describe("planning recommendation service", () => {
       mocks.tx,
       "trip_1",
     );
+  });
+
+  it("refreshes the current planning view after a successful form selection without redirecting", async () => {
+    mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
+      id: "suggestion_1",
+      tripId: "trip_1",
+      status: "PENDING",
+      name: "Barcelona Gallery Quarter Hotel",
+    });
+    const formData = new FormData();
+
+    formData.set("tripId", "trip_1");
+    formData.set("topic", "HOTEL_BASE");
+    formData.set("suggestionId", "suggestion_1");
+
+    await selectRecommendationFormAction(formData);
+
+    expect(mocks.nextCache.refresh).toHaveBeenCalledOnce();
+    expect(mocks.nextNavigation.redirect).not.toHaveBeenCalled();
   });
 
   it("rejects an owned recommendation with a reason and timeline event", async () => {
