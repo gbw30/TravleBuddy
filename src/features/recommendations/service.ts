@@ -10,6 +10,10 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/authorization";
 import { getTripReadiness } from "@/features/trips/readiness";
 import {
+  getPersistedItineraryForTripTx,
+  rebuildItineraryDraftForTripTx,
+} from "@/features/itinerary/builder";
+import {
   extractPreferenceSignals,
   hasTopicRecommendationReadiness,
   mergePreferenceSignals,
@@ -531,11 +535,12 @@ export async function recordPlanningMessage(
       return { status: "not_found" as const };
     }
 
+    const previousPreference = preferenceSnapshot(trip.preference);
     const signals = extractPreferenceSignals(input.message);
     const preference = await savePreferenceSignals(
       tx,
       tripId,
-      preferenceSnapshot(trip.preference),
+      previousPreference,
       signals,
     );
 
@@ -562,6 +567,9 @@ export async function recordPlanningMessage(
         extractedSignals: signals,
       },
     });
+    if (previousPreference.pace !== preference.pace) {
+      await rebuildItineraryDraftForTripTx(tx, tripId);
+    }
 
     const selectedPlaces = await getSelectedPlaces(tx, tripId);
     const readiness = hasTopicRecommendationReadiness({
@@ -848,6 +856,7 @@ export async function addUserPlanningPlace(
         source: "user_anchor",
       },
     });
+    await rebuildItineraryDraftForTripTx(tx, tripId);
 
     return {
       status: "saved" as const,
@@ -925,6 +934,7 @@ export async function selectRecommendation(
         source: "recommendation_pick",
       },
     });
+    await rebuildItineraryDraftForTripTx(tx, tripId);
 
     return {
       status: "selected" as const,
@@ -1008,6 +1018,9 @@ export async function rejectRecommendation(
         source: "recommendation_reject",
       },
     });
+    if (suggestion.status === "SELECTED") {
+      await rebuildItineraryDraftForTripTx(tx, tripId);
+    }
 
     return {
       status: "rejected" as const,
@@ -1084,6 +1097,7 @@ export async function deselectRecommendation(
         source: "live_plan_remove",
       },
     });
+    await rebuildItineraryDraftForTripTx(tx, tripId);
 
     return {
       status: "deselected" as const,
@@ -1125,7 +1139,13 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
       return { status: "not_found" as const };
     }
 
-    const [selectedPlaces, suggestions, timelineEvents, placeActionLog] =
+    const [
+      selectedPlaces,
+      suggestions,
+      timelineEvents,
+      placeActionLog,
+      itineraryPreview,
+    ] =
       await Promise.all([
       getSelectedPlaces(tx, tripId),
       tx.placeSuggestion.findMany({
@@ -1157,6 +1177,7 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
         take: 6,
       }),
       getPlaceActionLog(tx, tripId),
+      getPersistedItineraryForTripTx(tx, tripId),
     ]);
     const preference = preferenceSnapshot(trip.preference);
 
@@ -1172,6 +1193,7 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
       recommendations: suggestions.map(toRecommendationDto),
       timelineEvents: timelineEvents.map(timelineEventDto),
       placeActionLog,
+      itineraryPreview,
     };
   });
 }
@@ -1227,6 +1249,7 @@ export async function recordPlanningMessageFormAction(formData: FormData) {
   if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
 
   revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   planningRedirect(tripId, `topic=${topic}&message=recorded`);
 }
 
@@ -1284,6 +1307,7 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   planningRedirect(tripId, `topic=${topic}&anchor=saved`);
 }
 
@@ -1309,6 +1333,7 @@ export async function selectRecommendationFormAction(formData: FormData) {
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   planningRedirect(tripId, `topic=${topic}&selected=1`);
 }
 
@@ -1340,6 +1365,7 @@ export async function rejectRecommendationFormAction(formData: FormData) {
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   planningRedirect(tripId, `topic=${topic}&rejected=1`);
 }
 
@@ -1365,6 +1391,7 @@ export async function deselectRecommendationFormAction(formData: FormData) {
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   planningRedirect(tripId, `topic=${topic}&deselected=1`);
 }
 
@@ -1390,5 +1417,6 @@ export async function refreshRecommendationsFormAction(formData: FormData) {
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   planningRedirect(tripId, `topic=${topic}&refreshed=1`);
 }

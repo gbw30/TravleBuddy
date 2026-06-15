@@ -16,6 +16,7 @@ import {
 } from "./queries";
 import type { TripPreferenceDto } from "./types";
 import { userTravelPreferenceDataFromTripPreference } from "@/features/profile/preferences";
+import { rebuildItineraryDraftForTripTx } from "@/features/itinerary/builder";
 
 export type SaveTripPreferenceResult =
   | {
@@ -201,6 +202,9 @@ export async function saveTripPreference(
         metadata: planningEventMetadata(operation, parsed.data),
       },
     });
+    if ((trip.preference?.pace ?? null) !== parsed.data.pace) {
+      await rebuildItineraryDraftForTripTx(tx, tripId);
+    }
 
     return {
       status: "saved",
@@ -249,5 +253,7 @@ export async function saveTripPreferenceFormAction(formData: FormData) {
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/settings`);
   revalidatePath(`/trips/${tripId}/preferences`);
+  revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   redirect(preferenceRedirectPath(tripId, returnTo, "saved=1"));
 }

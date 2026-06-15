@@ -27,6 +27,10 @@ const mocks = vi.hoisted(() => ({
       findMany: vi.fn(),
     },
   },
+  itinerary: {
+    rebuildItineraryDraftForTripTx: vi.fn(),
+    getPersistedItineraryForTripTx: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -35,6 +39,11 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/authorization", () => ({
   requireUser: vi.fn(),
+}));
+
+vi.mock("@/features/itinerary/builder", () => ({
+  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
+  getPersistedItineraryForTripTx: mocks.itinerary.getPersistedItineraryForTripTx,
 }));
 
 import {
@@ -95,6 +104,25 @@ describe("planning recommendation service", () => {
     mocks.tx.placeSuggestion.findMany.mockResolvedValue([]);
     mocks.tx.planningFeedback.findMany.mockResolvedValue([]);
     mocks.tx.planningEvent.findMany.mockResolvedValue([]);
+    mocks.itinerary.rebuildItineraryDraftForTripTx.mockResolvedValue({
+      status: "rebuilt",
+      itinerary: {
+        days: [],
+        totals: {
+          itemCount: 0,
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+        },
+      },
+    });
+    mocks.itinerary.getPersistedItineraryForTripTx.mockResolvedValue({
+      days: [],
+      totals: {
+        itemCount: 0,
+        estimatedCostAmount: null,
+        estimatedCostCurrency: null,
+      },
+    });
     mocks.tx.placeSuggestion.upsert.mockImplementation(({ create }) =>
       Promise.resolve({
         id: create.providerPlaceId,
@@ -136,6 +164,19 @@ describe("planning recommendation service", () => {
           },
         }),
       }),
+    );
+  });
+
+  it("rebuilds the itinerary when extracted planning feedback changes pace", async () => {
+    const result = await recordPlanningMessage("user_1", "trip_1", {
+      topic: "BUDGET_PACE",
+      message: "Make this a packed schedule with as much as possible.",
+    });
+
+    expect(result.status).toBe("recorded");
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
     );
   });
 
@@ -208,6 +249,10 @@ describe("planning recommendation service", () => {
         }),
       }),
     );
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 
   it("rejects user-entered anchors outside the saved trip destinations", async () => {
@@ -259,6 +304,10 @@ describe("planning recommendation service", () => {
         visibleToUser: true,
       }),
     });
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 
   it("rejects an owned recommendation with a reason and timeline event", async () => {
@@ -302,6 +351,26 @@ describe("planning recommendation service", () => {
     });
   });
 
+  it("rebuilds the itinerary when a selected place is rejected", async () => {
+    mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
+      id: "suggestion_1",
+      tripId: "trip_1",
+      status: "SELECTED",
+      name: "Barcelona Gallery Quarter Hotel",
+    });
+
+    const result = await rejectRecommendation("user_1", "trip_1", {
+      suggestionId: "suggestion_1",
+      reason: "WRONG_VIBE",
+    });
+
+    expect(result.status).toBe("rejected");
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
+  });
+
   it("deselects a selected place without rejecting it", async () => {
     mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
       id: "suggestion_1",
@@ -330,6 +399,10 @@ describe("planning recommendation service", () => {
         placeSuggestionId: "suggestion_1",
       }),
     });
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 
   it("returns a place action log for misclick recovery", async () => {
@@ -377,5 +450,13 @@ describe("planning recommendation service", () => {
         },
       },
     ]);
+    expect(result.itineraryPreview).toEqual({
+      days: [],
+      totals: {
+        itemCount: 0,
+        estimatedCostAmount: null,
+        estimatedCostCurrency: null,
+      },
+    });
   });
 });

@@ -29,6 +29,25 @@ function textContent(node: ReactNode): string {
   return textContent((node as { props: { children?: ReactNode } }).props.children);
 }
 
+function walk(
+  node: ReactNode,
+  visit: (element: { props: Record<string, unknown>; type: unknown }) => void,
+) {
+  if (Array.isArray(node)) {
+    node.forEach((child) => walk(child, visit));
+    return;
+  }
+
+  if (!isValidElement(node)) {
+    return;
+  }
+
+  const element = node as { props: Record<string, unknown>; type: unknown };
+
+  visit(element);
+  walk(element.props.children as ReactNode, visit);
+}
+
 describe("PlanningWorkspace", () => {
   it("renders reject controls, remove controls, timeline, and itinerary handoff", () => {
     const workspace = PlanningWorkspace({
@@ -57,6 +76,15 @@ describe("PlanningWorkspace", () => {
           country: "Spain",
           latitude: 41.391,
           longitude: 2.164,
+        },
+        {
+          id: "suggestion_4",
+          name: "Madrid Market Walk",
+          category: "ACTIVITY",
+          city: "Madrid",
+          country: "Spain",
+          latitude: 40.4168,
+          longitude: -3.7038,
         },
       ],
       recommendations: [
@@ -120,6 +148,39 @@ describe("PlanningWorkspace", () => {
           },
         },
       ],
+      itineraryPreview: {
+        days: [
+          {
+            id: "day_1",
+            dayNumber: 1,
+            date: "2026-07-01",
+            title: "Day 1",
+            notes: null,
+            itemCount: 1,
+            estimatedCostAmount: 300,
+            estimatedCostCurrency: "EUR",
+            items: [
+              {
+                id: "item_1",
+                placeSuggestionId: "suggestion_1",
+                title: "Barcelona Gallery Quarter Hotel",
+                description: null,
+                category: "HOTEL",
+                city: "Barcelona",
+                country: "Spain",
+                sortOrder: 0,
+                estimatedCostAmount: 300,
+                estimatedCostCurrency: "EUR",
+              },
+            ],
+          },
+        ],
+        totals: {
+          itemCount: 1,
+          estimatedCostAmount: 300,
+          estimatedCostCurrency: "EUR",
+        },
+      },
       activeTopic: "HOTEL_BASE",
     });
 
@@ -132,6 +193,56 @@ describe("PlanningWorkspace", () => {
     expect(text).toContain("Rejected Hotel");
     expect(text).toContain("Pick again");
     expect(text).toContain("Ready for itinerary handoff");
+    expect(text).toContain("Itinerary draft");
+    expect(text).toContain("Day 1");
+    expect(text).toContain("Trip estimate");
+    expect(text).toContain("Barcelona, Spain");
+    expect(text).toContain("Madrid, Spain");
     expect(text).toContain("Recommendation rejected");
+  });
+
+  it("keeps the planning columns aligned to the top to avoid stretched cards", () => {
+    const workspace = PlanningWorkspace({
+      trip: {
+        id: "trip_1",
+        title: "Tokyo",
+        destinations: [{ city: "Tokyo", country: "Japan" }],
+      },
+      preference: {
+        budgetLevel: "MODERATE",
+        pace: "BALANCED",
+        interests: [],
+        transportationModes: [],
+        accommodationTypes: [],
+        hotelPriority: null,
+        walkingToleranceKm: null,
+        customPreferences: [],
+        mustAvoid: [],
+      },
+      selectedPlaces: [],
+      recommendations: [],
+      timelineEvents: [],
+      placeActionLog: [],
+      itineraryPreview: {
+        days: [],
+        totals: {
+          itemCount: 0,
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+        },
+      },
+      activeTopic: "HOTEL_BASE",
+    });
+    const classNames: string[] = [];
+
+    walk(workspace, (element) => {
+      if (typeof element.props.className === "string") {
+        classNames.push(element.props.className);
+      }
+    });
+
+    expect(classNames).toContain(
+      "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]",
+    );
   });
 });

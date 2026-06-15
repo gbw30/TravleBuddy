@@ -106,6 +106,16 @@ describe("PlanningPage", () => {
       },
       selectedPlaces: [],
       recommendations: [],
+      timelineEvents: [],
+      placeActionLog: [],
+      itineraryPreview: {
+        days: [],
+        totals: {
+          itemCount: 0,
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+        },
+      },
     });
   });
 

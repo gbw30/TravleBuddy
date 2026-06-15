@@ -1,5 +1,6 @@
 import {
   Check,
+  CalendarDays,
   History,
   MapPin,
   MessageSquareText,
@@ -9,6 +10,7 @@ import {
   ThumbsDown,
   X,
 } from "lucide-react";
+import type { ItineraryDto } from "@/features/itinerary/types";
 import type {
   PlaceActionLogEntry,
   PlanningTimelineEvent,
@@ -105,6 +107,16 @@ function money(recommendation: RecommendationDto) {
   return `${recommendation.estimatedCostCurrency} ${recommendation.estimatedCostAmount}`;
 }
 
+function itineraryMoney(
+  value: { estimatedCostAmount: number | null; estimatedCostCurrency: string | null },
+) {
+  if (!value.estimatedCostAmount || !value.estimatedCostCurrency) {
+    return "Cost not estimated";
+  }
+
+  return `${value.estimatedCostCurrency} ${value.estimatedCostAmount}`;
+}
+
 function actionLabel(action: PlaceActionLogEntry["action"]) {
   if (action === "SELECT") return "Accepted";
   if (action === "REJECT") return "Rejected";
@@ -114,6 +126,40 @@ function actionLabel(action: PlaceActionLogEntry["action"]) {
 
 function reasonLabel(reason: PlaceActionLogEntry["reason"]) {
   return reason ? reason.toLocaleLowerCase().replaceAll("_", " ") : null;
+}
+
+function locationLabel(place: {
+  city?: string | null;
+  country?: string | null;
+}) {
+  if (place.city && place.country) {
+    return `${place.city}, ${place.country}`;
+  }
+
+  return place.city ?? place.country ?? "Location not set";
+}
+
+function groupByLocation<T extends { city?: string | null; country?: string | null }>(
+  places: readonly T[],
+) {
+  const groups = new Map<string, { label: string; places: T[] }>();
+
+  places.forEach((place) => {
+    const label = locationLabel(place);
+    const existing = groups.get(label);
+
+    if (existing) {
+      existing.places.push(place);
+      return;
+    }
+
+    groups.set(label, {
+      label,
+      places: [place],
+    });
+  });
+
+  return Array.from(groups.values());
 }
 
 export function PlanningWorkspace({
@@ -126,6 +172,7 @@ export function PlanningWorkspace({
   error,
   timelineEvents,
   placeActionLog,
+  itineraryPreview,
 }: {
   trip: {
     id: string;
@@ -137,6 +184,7 @@ export function PlanningWorkspace({
   recommendations: RecommendationDto[];
   timelineEvents: PlanningTimelineEvent[];
   placeActionLog: PlaceActionLogEntry[];
+  itineraryPreview: ItineraryDto;
   activeTopic: PlanningTopic;
   message?: string;
   error?: string;
@@ -157,6 +205,7 @@ export function PlanningWorkspace({
     trip.destinations.map((destination) => destination.country),
   );
   const destinationCities = trip.destinations;
+  const selectedPlaceGroups = groupByLocation(selectedPlaces);
 
   return (
     <main className="flex-1 bg-zinc-50">
@@ -173,6 +222,12 @@ export function PlanningWorkspace({
             className="inline-flex h-10 items-center rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-white"
           >
             Trip overview
+          </a>
+          <a
+            href={`/trips/${trip.id}/itinerary`}
+            className="inline-flex h-10 items-center rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-white"
+          >
+            Full itinerary
           </a>
         </div>
 
@@ -193,7 +248,7 @@ export function PlanningWorkspace({
           </div>
         ) : null}
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="grid gap-5">
             <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-medium text-zinc-500">Priority</p>
@@ -498,54 +553,157 @@ export function PlanningWorkspace({
                       Ready for itinerary handoff
                     </p>
                     <p className="mt-1 text-sm leading-6 text-emerald-700">
-                      Stage 8 can build from these selected places. More picks
-                      will make the first itinerary fuller.
+                      The itinerary draft rebuilds from these selected places.
+                      More picks will make the first itinerary fuller.
                     </p>
                   </div>
-                  <ul className="mt-4 grid gap-3">
-                    {selectedPlaces.map((place) => (
-                      <li
-                        key={place.id}
-                        className="rounded-md border border-zinc-200 p-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-zinc-950">
-                              {place.name}
-                            </p>
-                            <p className="mt-1 text-xs uppercase tracking-normal text-zinc-500">
-                              {place.category}
-                            </p>
-                          </div>
-                          <form action={deselectRecommendationFormAction}>
-                            <input type="hidden" name="tripId" value={trip.id} />
-                            <input
-                              type="hidden"
-                              name="topic"
-                              value={activeTopic}
-                            />
-                            <input
-                              type="hidden"
-                              name="suggestionId"
-                              value={place.id}
-                            />
-                            <button
-                              type="submit"
-                              className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                  <div className="mt-4 grid gap-4">
+                    {selectedPlaceGroups.map((group) => (
+                      <section key={group.label}>
+                        <h3 className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                          {group.label}
+                        </h3>
+                        <ul className="mt-2 grid gap-2">
+                          {group.places.map((place) => (
+                            <li
+                              key={place.id}
+                              className="rounded-md border border-zinc-200 p-3"
                             >
-                              <X aria-hidden="true" className="size-3.5" />
-                              Remove
-                            </button>
-                          </form>
-                        </div>
-                      </li>
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium text-zinc-950">
+                                    {place.name}
+                                  </p>
+                                  <p className="mt-1 text-xs uppercase tracking-normal text-zinc-500">
+                                    {place.category}
+                                  </p>
+                                </div>
+                                <form action={deselectRecommendationFormAction}>
+                                  <input
+                                    type="hidden"
+                                    name="tripId"
+                                    value={trip.id}
+                                  />
+                                  <input
+                                    type="hidden"
+                                    name="topic"
+                                    value={activeTopic}
+                                  />
+                                  <input
+                                    type="hidden"
+                                    name="suggestionId"
+                                    value={place.id}
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                                  >
+                                    <X aria-hidden="true" className="size-3.5" />
+                                    Remove
+                                  </button>
+                                </form>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
                     ))}
-                  </ul>
+                  </div>
                 </>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-zinc-600">
                   Picked recommendations and anchors will appear here. Select
                   at least one place to prepare the itinerary handoff.
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <CalendarDays aria-hidden="true" className="size-5 text-zinc-500" />
+                  <h2 className="text-base font-semibold text-zinc-950">
+                    Itinerary draft
+                  </h2>
+                </div>
+                <a
+                  href={`/trips/${trip.id}/itinerary`}
+                  className="text-sm font-medium text-zinc-700 hover:text-zinc-950"
+                >
+                  Expand
+                </a>
+              </div>
+              {itineraryPreview.days.length > 0 ? (
+                <>
+                  <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+                    <p className="text-sm font-semibold text-zinc-950">
+                      Trip estimate
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-600">
+                      {itineraryPreview.totals.itemCount} items -{" "}
+                      {itineraryMoney(itineraryPreview.totals)}
+                    </p>
+                  </div>
+                  <ol className="mt-4 grid gap-3">
+                    {itineraryPreview.days.map((day) => (
+                      <li
+                        key={day.id}
+                        className="rounded-md border border-zinc-200 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium text-zinc-950">
+                              Day {day.dayNumber}
+                            </p>
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {day.date ?? "Date not set"}
+                            </p>
+                          </div>
+                          <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+                            {day.itemCount} items
+                          </span>
+                        </div>
+                        {day.items.length > 0 ? (
+                          <div className="mt-3 grid gap-3">
+                            {groupByLocation(day.items).map((group) => (
+                              <section key={group.label}>
+                                <h4 className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                                  {group.label}
+                                </h4>
+                                <ul className="mt-1 grid gap-1">
+                                  {group.places.map((item) => (
+                                    <li
+                                      key={item.id}
+                                      className="text-sm leading-6 text-zinc-700"
+                                    >
+                                      {item.title}
+                                      {item.category ? (
+                                        <span className="ml-2 text-xs uppercase tracking-normal text-zinc-500">
+                                          {item.category}
+                                        </span>
+                                      ) : null}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </section>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm leading-6 text-zinc-500">
+                            No selected places assigned to this day yet.
+                          </p>
+                        )}
+                        <p className="mt-3 text-xs font-medium text-zinc-500">
+                          {itineraryMoney(day)}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-zinc-600">
+                  Select places from recommendations or add already-decided
+                  anchors to generate the day-by-day draft.
                 </p>
               )}
             </section>

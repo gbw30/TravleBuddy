@@ -266,6 +266,20 @@ Rejected recommendations are not deleted. They remain persisted as `PlaceSuggest
 
 The travel plan should take shape inside the same feedback loop. Already-decided places and picked recommendations appear in a live plan preview. Full day/time scheduling, route maps, and conflict checks can build on that preview in later stages.
 
+### Stage 8 Basic Itinerary Builder
+
+The planning workspace should generate a persistent day-by-day itinerary draft from selected places without moving the primary workflow away from `/trips/[tripId]/planning`.
+
+When at least one `PlaceSuggestion` is `SELECTED`, the system creates `ItineraryDay` rows for every trip date from start through end, inclusive, and `ItineraryItem` rows for selected places. Hotels appear first on Day 1 as base/check-in anchors. Non-hotel places are distributed by pace:
+
+- `RELAXED`: 3 items per day
+- `BALANCED`: 4 items per day
+- `PACKED`: 6 items per day
+
+Generated itinerary drafts rebuild automatically after selected-place changes and pace changes. The planning workspace shows a compact itinerary preview with day/date, item count, selected items, daily estimated cost, and trip estimated cost. `/trips/[tripId]/itinerary` shows a read-only expanded draft and links back to planning.
+
+Stage 8 does not support manual itinerary edits, manual reorder, clock times, route duration, conflict warnings, maps, export, Gemini, Google APIs, or Redis caching.
+
 ## Step 10
 
 User saves or exports itinerary.

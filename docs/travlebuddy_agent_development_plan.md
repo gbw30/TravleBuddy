@@ -865,7 +865,7 @@ POST /api/trips/[tripId]/recommendations/[suggestionId]/deselect
 
 ## Goal
 
-Convert selected places into a day-by-day itinerary.
+Convert selected places into a deterministic, persistent day-by-day itinerary draft.
 
 Itinerary building is locked unless the trip is full-planning ready.
 
@@ -884,31 +884,36 @@ POST /api/trips/[tripId]/itinerary/build
 GET  /api/trips/[tripId]/itinerary
 ```
 
-- Create itinerary days based on trip dates.
-- Assign selected places to days.
-- Respect pace rules:
+- Create `ItineraryDay` rows for every date from `Trip.startDate` through `Trip.endDate`, inclusive.
+- Build from `PlaceSuggestion` rows where `status = SELECTED`.
+- Persist rebuilds by replacing generated itinerary rows for the trip.
+- Rebuild automatically after selected-place changes and pace changes.
+- Respect exact pace rules:
 
 ```text
-relaxed  = 2-3 activities/day
-balanced = 3-4 activities/day
-packed   = 5-6 activities/day
+RELAXED  = 3 non-hotel items/day
+BALANCED = 4 non-hotel items/day
+PACKED   = 6 non-hotel items/day
 ```
 
-- Add basic ordering using approximate distance or category grouping.
+- Place hotels at the start of Day 1.
+- Order non-hotel places by category priority, then recommendation score.
+- Show daily and trip estimated cost totals when selected places have estimated costs.
+- Add a compact itinerary preview inside `/trips/[tripId]/planning`.
 - Add itinerary page:
 
 ```text
 /trips/[tripId]/itinerary
 ```
 
-- Allow manual reorder if simple to implement.
+- Keep itinerary page read-only in Phase 8.
 - Add tests for grouping logic.
 
 ## User Tasks
 
-- Confirm whether users should choose hotel/base first or activities first.
-- Confirm whether itinerary times should be automatically assigned in MVP.
-- Confirm default start/end day schedule, such as 9 AM to 8 PM.
+- Confirm later whether manual itinerary reorder belongs in the MVP.
+- Confirm later whether itinerary times should be automatically assigned.
+- Confirm later whether hotel check-in/check-out and daily start/end windows need explicit settings.
 
 ## Exit Criteria
 
@@ -917,6 +922,7 @@ packed   = 5-6 activities/day
 - User can view itinerary after reload.
 - Pace rules are respected.
 - Tests cover basic itinerary grouping.
+- Manual edits, clock times, route duration, budget warnings, maps, export, Gemini, Google APIs, and Redis remain out of scope for Phase 8.
 
 ---
 
