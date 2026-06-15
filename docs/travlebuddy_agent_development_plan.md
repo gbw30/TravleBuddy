@@ -229,9 +229,12 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build
+npm run dev
 ```
 
 If a command does not exist yet, the agent should either add it or clearly document why it is skipped.
+
+`npm run dev` is a local smoke check: start the development server, confirm it reaches the ready state, then stop it before completing the phase.
 
 `--passWithNoTests` is acceptable while the repo is still pre-MVP and has no test files. Once core logic tests exist, remove that flag so an accidentally empty test suite fails CI.
 
@@ -795,59 +798,66 @@ Redis preference caching should be evaluated as the final MVP optimization stage
 
 ---
 
-# Phase 7 - Suggestion Selection and Feedback
+# Phase 7 - Recommendation Feedback and Itinerary Handoff
 
 ## Goal
 
-Allow users to select, reject, refresh, and refine suggestions.
+Complete the deterministic feedback loop inside the unified planning workspace before building day-by-day itineraries.
+
+Stage 6 already moved recommendation selection and refresh into `/trips/[tripId]/planning`, so Phase 7 must not add the old separate `/suggestions` page. It should strengthen the existing planning workspace with reject/remove semantics, structured feedback reasons, feedback-aware scoring, visible planning history, and a clean selected-place handoff for Phase 8.
 
 ## Agent Tasks
 
-- Build page:
+- Keep recommendations inside:
 
 ```text
-/trips/[tripId]/suggestions
+/trips/[tripId]/planning
 ```
 
-- Build components:
+- Use the existing soft status model:
+  - `PENDING` = available but not selected
+  - `SELECTED` = included in the live plan preview and future itinerary input
+  - `REJECTED` = excluded from future batches and used for feedback penalties
+- Add explicit routes:
 
 ```text
-SuggestionCard
-SuggestionList
-SelectedPlacesPanel
-RefreshSuggestionsButton
-FeedbackInput
-```
-
-- Add actions/routes:
-
-```text
-POST /api/trips/[tripId]/recommendations/[suggestionId]/select
 POST /api/trips/[tripId]/recommendations/[suggestionId]/reject
-POST /api/trips/[tripId]/recommendations/refresh
+POST /api/trips/[tripId]/recommendations/[suggestionId]/deselect
 ```
 
-- Store feedback in `PlanningFeedback`.
-- Ensure selected places are clearly visible.
-
-## User Tasks
-
-- Confirm desired user feedback options:
+- Add structured reject reasons:
   - Not interested
   - Too expensive
   - Too far
   - Wrong vibe
   - Already been there
   - Other
+- Keep `TOO_BUSY`, `TOO_SLOW`, and `GOOD_MATCH` for later itinerary/conflict feedback.
+- Add optional rejection notes.
+- Add remove/deselect behavior so selected places can return to `PENDING` without being rejected.
+- Save every major select, reject, remove, and refresh action to `PlanningFeedback`.
+- Write visible `PlanningEvent` rows for the compact planning timeline.
+- Add deterministic v1 feedback penalties so rejected feedback influences later mock recommendation batches.
+- Show a compact planning timeline in the planning workspace sidebar.
+- Add soft itinerary handoff messaging once at least one place is selected.
+- Keep a future migration path open for a separate selection model if itinerary versions, collaboration, or saved/maybe lists are added later.
+
+## User Tasks
+
+- Review the Stage 7 feedback UX and confirm whether the reject reason labels feel natural.
+- Confirm later whether a separate selection model is needed once itinerary versioning or collaboration is designed.
 
 ## Exit Criteria
 
 - User can select a suggestion.
 - User can reject a suggestion.
+- User can remove a selected place without rejecting it.
 - User can refresh recommendations.
-- Feedback is stored.
-- Engine explanations, readiness warnings, and user feedback are stored in the planning timeline.
+- Rejection reasons and optional notes are stored.
+- Rejected feedback affects later mock recommendation scoring.
+- Engine explanations, recommendation batches, and user feedback are visible in the planning timeline.
 - Selected places persist after page reload.
+- Stage 8 can build from `PlaceSuggestion` rows where `status = SELECTED`.
 
 ---
 
@@ -855,7 +865,7 @@ POST /api/trips/[tripId]/recommendations/refresh
 
 ## Goal
 
-Convert selected places into a day-by-day itinerary.
+Convert selected places into a deterministic, persistent day-by-day itinerary draft.
 
 Itinerary building is locked unless the trip is full-planning ready.
 
@@ -874,31 +884,36 @@ POST /api/trips/[tripId]/itinerary/build
 GET  /api/trips/[tripId]/itinerary
 ```
 
-- Create itinerary days based on trip dates.
-- Assign selected places to days.
-- Respect pace rules:
+- Create `ItineraryDay` rows for every date from `Trip.startDate` through `Trip.endDate`, inclusive.
+- Build from `PlaceSuggestion` rows where `status = SELECTED`.
+- Persist rebuilds by replacing generated itinerary rows for the trip.
+- Rebuild automatically after selected-place changes and pace changes.
+- Respect exact pace rules:
 
 ```text
-relaxed  = 2-3 activities/day
-balanced = 3-4 activities/day
-packed   = 5-6 activities/day
+RELAXED  = 3 non-hotel items/day
+BALANCED = 4 non-hotel items/day
+PACKED   = 6 non-hotel items/day
 ```
 
-- Add basic ordering using approximate distance or category grouping.
+- Place hotels at the start of Day 1.
+- Order non-hotel places by category priority, then recommendation score.
+- Show daily and trip estimated cost totals when selected places have estimated costs.
+- Add a compact itinerary preview inside `/trips/[tripId]/planning`.
 - Add itinerary page:
 
 ```text
 /trips/[tripId]/itinerary
 ```
 
-- Allow manual reorder if simple to implement.
+- Keep itinerary page read-only in Phase 8.
 - Add tests for grouping logic.
 
 ## User Tasks
 
-- Confirm whether users should choose hotel/base first or activities first.
-- Confirm whether itinerary times should be automatically assigned in MVP.
-- Confirm default start/end day schedule, such as 9 AM to 8 PM.
+- Confirm later whether manual itinerary reorder belongs in the MVP.
+- Confirm later whether itinerary times should be automatically assigned.
+- Confirm later whether hotel check-in/check-out and daily start/end windows need explicit settings.
 
 ## Exit Criteria
 
@@ -907,6 +922,7 @@ packed   = 5-6 activities/day
 - User can view itinerary after reload.
 - Pace rules are respected.
 - Tests cover basic itinerary grouping.
+- Manual edits, clock times, route duration, budget warnings, maps, export, Gemini, Google APIs, and Redis remain out of scope for Phase 8.
 
 ---
 
@@ -1363,6 +1379,7 @@ At the end of each phase, the agent should report:
 - [ ] npm run typecheck
 - [ ] npm run test
 - [ ] npm run build
+- [ ] npm run dev
 
 ## User Action Needed
 - ...

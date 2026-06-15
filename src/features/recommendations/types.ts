@@ -1,6 +1,10 @@
 import type {
   AccommodationType,
   BudgetLevel,
+  FeedbackAction,
+  FeedbackReason,
+  PlanningActor,
+  PlanningEventType,
   SuggestionCategory,
   TransportationMode,
   TravelPace,
@@ -74,6 +78,22 @@ export type SelectedPlanningPlace = {
   category: SuggestionCategory;
   city: string | null;
   country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+export type RecommendationFeedbackSignal = {
+  providerPlaceId: string | null;
+  topic: PlanningTopic | null;
+  category: SuggestionCategory;
+  name: string;
+  reason: FeedbackReason | null;
+  note: string | null;
+  tags: string[];
+  estimatedCostAmount: number | null;
+  priceLevel: number | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type RecommendationScoreBreakdown = {
@@ -90,6 +110,31 @@ export type ScoredMockPlace = {
   score: number;
   explanation: string;
   breakdown: RecommendationScoreBreakdown;
+};
+
+export type PlanningTimelineEvent = {
+  id: string;
+  actor: PlanningActor;
+  type: PlanningEventType;
+  title: string;
+  message: string | null;
+  createdAt: string;
+};
+
+export type PlaceActionLogEntry = {
+  id: string;
+  action: Extract<FeedbackAction, "SELECT" | "REJECT" | "DESELECT">;
+  reason: FeedbackReason | null;
+  note: string | null;
+  createdAt: string;
+  place: {
+    id: string;
+    name: string;
+    category: SuggestionCategory;
+    status: "PENDING" | "SELECTED" | "REJECTED";
+    city: string | null;
+    country: string | null;
+  };
 };
 
 export type RecommendationDto = {

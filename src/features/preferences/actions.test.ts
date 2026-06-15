@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
   auth: {
     requireUser: vi.fn(),
   },
+  itinerary: {
+    rebuildItineraryDraftForTripTx: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -30,6 +33,10 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/authorization", () => ({
   requireUser: mocks.auth.requireUser,
+}));
+
+vi.mock("@/features/itinerary/builder", () => ({
+  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
 }));
 
 vi.mock("next/cache", () => ({
@@ -91,6 +98,17 @@ describe("preference actions", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       metadata: null,
+    });
+    mocks.itinerary.rebuildItineraryDraftForTripTx.mockResolvedValue({
+      status: "rebuilt",
+      itinerary: {
+        days: [],
+        totals: {
+          itemCount: 0,
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+        },
+      },
     });
   });
 
@@ -199,5 +217,25 @@ describe("preference actions", () => {
         transportationModes: ["WALKING"],
       }),
     });
+  });
+
+  it("rebuilds the itinerary when saved trip pace changes", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValue(
+      trip({
+        preference: {
+          pace: "RELAXED",
+        },
+      }),
+    );
+
+    await saveTripPreference("user_1", "trip_1", {
+      ...preferenceInput,
+      pace: "PACKED",
+    });
+
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 });

@@ -256,7 +256,29 @@ The system should recommend places when enough topic-specific preference informa
 
 Users can pick one recommendation or refresh the group by explaining what is missing from the current selection. Refresh notes are preference refinements and should improve later recommendations.
 
+### Stage 7 Recommendation Feedback Loop
+
+Recommendation feedback remains inside the same planning workspace. Users can reject recommendations with structured reasons, remove selected places without rejecting them, and see a compact planning timeline of major planning actions.
+
+The planning workspace should also expose a focused place-action log for accepted, rejected, and removed locations. This log supports misclick recovery by letting users find prior place actions and add a removed or rejected place back into the live plan without losing the underlying feedback history.
+
+Rejected recommendations are not deleted. They remain persisted as `PlaceSuggestion` rows with `status = REJECTED`, and the associated `PlanningFeedback` reason influences later deterministic recommendation scoring. Selected places remain the Stage 8 itinerary-builder input through `PlaceSuggestion.status = SELECTED`.
+
 The travel plan should take shape inside the same feedback loop. Already-decided places and picked recommendations appear in a live plan preview. Full day/time scheduling, route maps, and conflict checks can build on that preview in later stages.
+
+### Stage 8 Basic Itinerary Builder
+
+The planning workspace should generate a persistent day-by-day itinerary draft from selected places without moving the primary workflow away from `/trips/[tripId]/planning`.
+
+When at least one `PlaceSuggestion` is `SELECTED`, the system creates `ItineraryDay` rows for every trip date from start through end, inclusive, and `ItineraryItem` rows for selected places. Hotels appear first on Day 1 as base/check-in anchors. Non-hotel places are distributed by pace:
+
+- `RELAXED`: 3 items per day
+- `BALANCED`: 4 items per day
+- `PACKED`: 6 items per day
+
+Generated itinerary drafts rebuild automatically after selected-place changes and pace changes. The planning workspace shows a compact itinerary preview with day/date, item count, selected items, daily estimated cost, and trip estimated cost. `/trips/[tripId]/itinerary` shows a read-only expanded draft and links back to planning.
+
+Stage 8 does not support manual itinerary edits, manual reorder, clock times, route duration, conflict warnings, maps, export, Gemini, Google APIs, or Redis caching.
 
 ## Step 10
 

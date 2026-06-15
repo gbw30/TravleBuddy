@@ -4,7 +4,9 @@ import type {
   ScoredMockPlace,
   SelectedPlanningPlace,
   PlanningTopic,
+  RecommendationFeedbackSignal,
 } from "./types";
+import { feedbackPenaltyForPlace } from "./feedback-policy";
 
 const interestLabelByValue: Record<string, string> = {
   FOOD: "food",
@@ -51,6 +53,7 @@ function explanationParts(
   place: MockPlace,
   preference: RecommendationPreferenceSnapshot,
   penalties: number,
+  feedbackPenaltyReasons: readonly string[],
 ) {
   const parts: string[] = [];
   const matchedInterests = preference.interests.filter((interest) =>
@@ -81,7 +84,11 @@ function explanationParts(
   }
 
   if (penalties < 0) {
-    parts.push("penalized because it overlaps with something you asked to avoid");
+    parts.push(
+      feedbackPenaltyReasons[0]
+        ? `penalized because it has ${feedbackPenaltyReasons[0]}`
+        : "penalized because it overlaps with something you asked to avoid",
+    );
   }
 
   return `Recommended because it ${parts.join(", ")}.`;
@@ -93,6 +100,7 @@ export function scoreMockPlace(
     topic: PlanningTopic;
     preference: RecommendationPreferenceSnapshot;
     selectedPlaces: SelectedPlanningPlace[];
+    rejectedFeedback?: RecommendationFeedbackSignal[];
   },
 ): ScoredMockPlace {
   const preferenceMatch =
@@ -113,7 +121,7 @@ export function scoreMockPlace(
     input.preference.pace && place.pace.includes(input.preference.pace) ? 10 : 0;
   const practicality =
     input.preference.walkingToleranceKm || input.selectedPlaces.length > 0 ? 6 : 2;
-  const penalties = includesTextMatch(input.preference.mustAvoid, [
+  const preferencePenalty = includesTextMatch(input.preference.mustAvoid, [
     ...place.tags,
     ...place.customMatches,
     place.description,
@@ -121,6 +129,12 @@ export function scoreMockPlace(
   ])
     ? -28
     : 0;
+  const feedbackPenalty = feedbackPenaltyForPlace(place, {
+    topic: input.topic,
+    selectedPlaces: input.selectedPlaces,
+    rejectedFeedback: input.rejectedFeedback ?? [],
+  });
+  const penalties = preferencePenalty + feedbackPenalty.penalty;
   const rawScore =
     preferenceMatch + budgetFit + rating + paceFit + practicality + penalties;
   const score = Math.max(0, Math.min(100, Math.round(rawScore)));
@@ -136,6 +150,11 @@ export function scoreMockPlace(
       practicality,
       penalties,
     },
-    explanation: explanationParts(place, input.preference, penalties),
+    explanation: explanationParts(
+      place,
+      input.preference,
+      penalties,
+      feedbackPenalty.reasons,
+    ),
   };
 }
