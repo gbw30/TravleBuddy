@@ -266,6 +266,8 @@ Rejected recommendations are not deleted. They remain persisted as `PlaceSuggest
 
 The travel plan should take shape inside the same feedback loop. Already-decided places and picked recommendations appear in a live plan preview. Full day/time scheduling, route maps, and conflict checks can build on that preview in later stages.
 
+For multi-destination trips, the planning workspace should let the user change the current saved destination city and planning day context. In Phase 9 this context scopes generated recommendations to the selected city and is stored with planning feedback and already-decided places for future scheduling. Exact manual day placement, drag-and-drop reorder, and clock-time scheduling remain deferred beyond Phase 9.
+
 ### Stage 8 Basic Itinerary Builder
 
 The planning workspace should generate a persistent day-by-day itinerary draft from selected places without moving the primary workflow away from `/trips/[tripId]/planning`.
@@ -276,9 +278,48 @@ When at least one `PlaceSuggestion` is `SELECTED`, the system creates `Itinerary
 - `BALANCED`: 4 items per day
 - `PACKED`: 6 items per day
 
-Generated itinerary drafts rebuild automatically after selected-place changes and pace changes. The planning workspace shows a compact itinerary preview with day/date, item count, selected items, daily estimated cost, and trip estimated cost. `/trips/[tripId]/itinerary` shows a read-only expanded draft and links back to planning.
+Generated itinerary drafts rebuild automatically after selected-place changes and pace changes. Trip settings changes that affect dates, destinations, budget, or pace also rebuild the persisted draft when the trip is planning-ready. The planning workspace shows a compact itinerary preview with day/date, item count, selected items, daily estimated cost, and trip estimated cost. `/trips/[tripId]/itinerary` shows a read-only expanded draft and links back to planning.
 
 Stage 8 does not support manual itinerary edits, manual reorder, clock times, route duration, conflict warnings, maps, export, Gemini, Google APIs, or Redis caching.
+
+### Stage 9 Conflict Detection
+
+Conflict detection runs from persisted itinerary days and items after the trip is planning-ready. Phase 9 refreshes deterministic open conflicts automatically after persisted itinerary rebuilds, itinerary page reads, and trip settings changes that affect the itinerary or budget. These checks must remain database-local and must not call maps, AI, route-duration, hours, or availability providers in the selection hot path. Future expensive checks should run through explicit check actions or asynchronous jobs.
+
+Phase 9 stores open conflict warnings, shows them on `/trips/[tripId]/itinerary`, and lets the user mark warnings as resolved or ignored. Rerunning detection replaces only current open warnings and preserves resolved/ignored history.
+
+Open conflict warnings must be deduplicated before display, and severity should follow common visual convention: low as informational, medium as warning, and high as danger.
+
+Already-decided places added in the planning workspace include optional estimated cost. When provided, the cost is stored in the trip budget currency and included in itinerary totals and budget conflict detection. Cost input must be server-validated before database writes so out-of-range values show a recoverable planning error instead of crashing the site.
+
+Phase 9 also records the final product direction for meal coverage: a complete itinerary should assign restaurants to every day that contains activities when the user has selected restaurants. Restaurant assignment should be based on closeness to that day's selected activities and then scheduled by realistic meal times. Phase 9 only warns when a day has activities but no restaurant; automatic restaurant placement is deferred until place coordinates, route durations, and hours data exist.
+
+### Pre-Places Logistics and Time Grid Foundation
+
+Before Google Places integration, the planning flow should collect city-timing intent at `/trips/[tripId]/logistics` after preferences and before the planning loop.
+
+The user has two planning-mode options:
+
+- Ticketed timing: the user enters structured transfer timing for flights, trains, buses, cars, ferries, or other travel segments.
+- Flexible timing: the user decides city timing inside the planning loop, preserving the current manual city/day selector.
+
+Ticketed timing stores `Trip.logisticsMode = TICKETED` and `TripTravelSegment` rows with origin city/country, destination city/country, depart date-time, arrive date-time, optional carrier, optional reference, and sort order. Saving a ticket/transfer keeps the user on the logistics page so they can enter every known segment before planning. Rebuilding the itinerary derives `ItineraryCityWindow` rows for each day. Same-day transfers split the day so a single date can contain an origin-city window, a travel block, and a destination-city window.
+
+Flexible timing stores `Trip.logisticsMode = FLEXIBLE` and does not auto-assign city windows. The planning workspace keeps the manual saved-destination and day context.
+
+The itinerary DTO exposes a read-only 30-minute time-grid foundation. Every itinerary day has 48 half-hour slots. Ticketed trips show city context and travel blocks in those slots. Existing selected places without start/end times remain unscheduled within their day; exact activity placement is deferred. The planning loop's day selector must always use the trip's original date range from settings, not the number of saved tickets or the presence of itinerary items.
+
+Final MVP scheduling should support chat-controlled planning limits and preferences, including:
+
+- maximum restaurants or food stops per day
+- maximum attractions or activities per day
+- preferred duration per attraction or activity category
+- meal frequency and meal windows
+- daily start/end limits
+- pacing rules by day
+- whether split-city travel days should prefer lighter activity schedules
+
+This foundation stage does not implement a full auto-scheduler, drag/drop editing, route-duration optimization, opening-hours checks, ticket uploads, PDF parsing, or reservation-management workflows. Those require Google Places, route-duration APIs, provider hours/availability, quota policy, caching, and QA scenarios before production use.
 
 ## Step 10
 
@@ -553,6 +594,21 @@ Day 2
 Detect impractical itineraries.
 
 ---
+
+## Phase 9 Deterministic Scope
+
+The initial engine detects:
+
+- Time overlap when both overlapping items have start and end times.
+- Mixed-city/mixed-country day warnings as a placeholder for future route-distance checks.
+- Trip-budget overrun in the trip budget currency.
+- Schedule density warnings based on the selected travel pace.
+- Hotel location mismatch when hotel city differs from the majority non-hotel activity city.
+- Missing activity duration warnings.
+- Explicit closed/unavailable metadata warnings.
+- Missing restaurant coverage warnings for days that contain activities but no restaurant.
+
+Future proximity and route-duration checks require Google Places, Google Routes, provider hours, caching, quota controls, and QA seed trips before production use.
 
 ## MVP Conflict Types
 
@@ -927,6 +983,7 @@ Trip {
   userId
   title
   status
+  logisticsMode
   destinationSearchText
   departureCity
   departureCountry
@@ -939,6 +996,29 @@ Trip {
   updatedAt
 }
 ```
+
+---
+
+## TripTravelSegment
+
+```typescript
+TripTravelSegment {
+  id
+  tripId
+  mode
+  originCity
+  originCountry
+  destinationCity
+  destinationCountry
+  departAt
+  arriveAt
+  carrier
+  referenceCode
+  sortOrder
+}
+```
+
+`TripTravelSegment` stores structured ticket/transfer timing for the pre-Places logistics foundation. It is not a ticket-upload or confirmation-management model.
 
 ---
 
@@ -957,6 +1037,27 @@ TripDestination {
   sortOrder
 }
 ```
+
+---
+
+## ItineraryCityWindow
+
+```typescript
+ItineraryCityWindow {
+  id
+  tripId
+  dayId
+  destinationId
+  travelSegmentId
+  city
+  country
+  startTime
+  endTime
+  source
+}
+```
+
+`ItineraryCityWindow` records ticket-derived city context for itinerary days. A transfer day may have two city windows on the same date; travel blocks are exposed in itinerary time slots from the associated travel segments.
 
 ---
 

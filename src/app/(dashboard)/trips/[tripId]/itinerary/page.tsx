@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays } from "lucide-react";
+import { AlertTriangle, CalendarDays } from "lucide-react";
 import { requireUser } from "@/lib/authorization";
 import { getItinerary } from "@/features/itinerary/builder";
-import type { ItineraryItemDto } from "@/features/itinerary/types";
+import {
+  checkItineraryConflictsFormAction,
+  updateItineraryConflictStatusFormAction,
+} from "@/features/itinerary/conflict-actions";
+import type {
+  ItineraryConflictDto,
+  ItineraryItemDto,
+  ItineraryTimeSlotDto,
+} from "@/features/itinerary/types";
+import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 
 type ItineraryPageProps = {
   params: Promise<{
@@ -49,6 +58,69 @@ function groupItemsByLocation(items: readonly ItineraryItemDto[]) {
   });
 
   return Array.from(groups.values());
+}
+
+function openIssueLabel(count: number) {
+  return `${count} open issue${count === 1 ? "" : "s"}`;
+}
+
+function severityLabel(conflict: ItineraryConflictDto) {
+  return conflict.severity.toLocaleLowerCase();
+}
+
+function severityTone(conflict: ItineraryConflictDto) {
+  if (conflict.severity === "HIGH") {
+    return {
+      item: "rounded-md border border-red-200 bg-red-50 p-4",
+      label: "text-xs font-semibold uppercase tracking-normal text-red-800",
+      button:
+        "inline-flex h-9 items-center rounded-md border border-red-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:bg-red-100",
+    };
+  }
+
+  if (conflict.severity === "MEDIUM") {
+    return {
+      item: "rounded-md border border-amber-200 bg-amber-50 p-4",
+      label: "text-xs font-semibold uppercase tracking-normal text-amber-800",
+      button:
+        "inline-flex h-9 items-center rounded-md border border-amber-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:bg-amber-100",
+    };
+  }
+
+  return {
+    item: "rounded-md border border-sky-200 bg-sky-50 p-4",
+    label: "text-xs font-semibold uppercase tracking-normal text-sky-800",
+    button:
+      "inline-flex h-9 items-center rounded-md border border-sky-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:bg-sky-100",
+  };
+}
+
+function slotTime(value: string) {
+  return new Date(value).toISOString().slice(11, 16);
+}
+
+function slotLabel(slot: ItineraryTimeSlotDto) {
+  if (slot.travelSegmentId) {
+    return "Travel";
+  }
+
+  if (slot.city && slot.country) {
+    return slot.city;
+  }
+
+  return "Open";
+}
+
+function slotClasses(slot: ItineraryTimeSlotDto) {
+  if (slot.travelSegmentId) {
+    return "min-h-12 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-left";
+  }
+
+  if (slot.city || slot.country) {
+    return "min-h-12 rounded border border-sky-200 bg-sky-50 px-2 py-1 text-left";
+  }
+
+  return "min-h-12 rounded border border-zinc-200 bg-zinc-50 px-2 py-1 text-left";
 }
 
 export default async function ItineraryPage({ params }: ItineraryPageProps) {
@@ -100,6 +172,7 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
   }
 
   const { itinerary } = result;
+  const hasConflicts = itinerary.conflicts.length > 0;
 
   return (
     <main className="flex-1 bg-zinc-50">
@@ -120,6 +193,103 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
             Back to planning
           </Link>
         </div>
+
+        <section className="mb-5 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle
+                aria-hidden="true"
+                className={
+                  hasConflicts ? "mt-0.5 size-5 text-amber-600" : "mt-0.5 size-5 text-zinc-500"
+                }
+              />
+              <div>
+                <p className="text-sm font-medium text-zinc-500">
+                  Conflict check
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-zinc-950">
+                  {openIssueLabel(itinerary.conflictSummary.total)}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  Checks refresh automatically when the itinerary or trip
+                  settings change. Use the button to rerun the same check now.
+                </p>
+              </div>
+            </div>
+            <form action={checkItineraryConflictsFormAction}>
+              <input type="hidden" name="tripId" value={tripId} />
+              <PendingSubmitButton
+                pendingLabel="Checking..."
+                className="inline-flex h-10 items-center rounded-md bg-zinc-950 px-4 text-sm font-medium text-white hover:bg-zinc-800"
+              >
+                Check conflicts
+              </PendingSubmitButton>
+            </form>
+          </div>
+          {hasConflicts ? (
+            <ul className="mt-4 grid gap-3">
+              {itinerary.conflicts.map((conflict) => {
+                const tone = severityTone(conflict);
+
+                return (
+                  <li key={conflict.id} className={tone.item}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className={tone.label}>
+                          {severityLabel(conflict)} - {conflict.type.toLocaleLowerCase().replaceAll("_", " ")}
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-zinc-950">
+                          {conflict.message}
+                        </p>
+                        {conflict.recommendation ? (
+                          <p className="mt-2 text-sm leading-6 text-zinc-700">
+                            {conflict.recommendation}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <form action={updateItineraryConflictStatusFormAction}>
+                          <input type="hidden" name="tripId" value={tripId} />
+                          <input
+                            type="hidden"
+                            name="conflictId"
+                            value={conflict.id}
+                          />
+                          <input type="hidden" name="status" value="RESOLVED" />
+                          <PendingSubmitButton
+                            pendingLabel="Resolving..."
+                            className={tone.button}
+                          >
+                            Resolve
+                          </PendingSubmitButton>
+                        </form>
+                        <form action={updateItineraryConflictStatusFormAction}>
+                          <input type="hidden" name="tripId" value={tripId} />
+                          <input
+                            type="hidden"
+                            name="conflictId"
+                            value={conflict.id}
+                          />
+                          <input type="hidden" name="status" value="IGNORED" />
+                          <PendingSubmitButton
+                            pendingLabel="Ignoring..."
+                            className={tone.button}
+                          >
+                            Ignore
+                          </PendingSubmitButton>
+                        </form>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm leading-6 text-zinc-600">
+              No open conflict warnings are stored for this itinerary.
+            </p>
+          )}
+        </section>
 
         {itinerary.days.length > 0 ? (
           <>
@@ -156,6 +326,29 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
                       <p className="mt-1">{money(day)}</p>
                     </div>
                   </div>
+
+                  {(day.timeSlots ?? []).length > 0 ? (
+                    <section className="mt-4">
+                      <h3 className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+                        30-minute timeline
+                      </h3>
+                      <div className="mt-2 grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-6">
+                        {(day.timeSlots ?? []).map((slot) => (
+                          <div
+                            key={slot.startTime}
+                            className={slotClasses(slot)}
+                          >
+                            <p className="text-[11px] font-medium text-zinc-500">
+                              {slotTime(slot.startTime)}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs font-semibold text-zinc-800">
+                              {slotLabel(slot)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
 
                   {day.items.length > 0 ? (
                     <div className="mt-4 grid gap-4">

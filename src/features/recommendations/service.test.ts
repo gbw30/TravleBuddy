@@ -227,6 +227,56 @@ describe("planning recommendation service", () => {
     });
   });
 
+  it("generates recommendations for the selected trip destination", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValue(
+      planningTrip({
+        destinations: [
+          {
+            id: "destination_1",
+            city: "Barcelona",
+            country: "Spain",
+            sortOrder: 0,
+          },
+          {
+            id: "destination_2",
+            city: "Madrid",
+            country: "Spain",
+            sortOrder: 1,
+          },
+        ],
+      }),
+    );
+
+    const result = await generateRecommendations("user_1", "trip_1", {
+      topic: "ACTIVITIES",
+      destinationId: "destination_2",
+      planningDayNumber: 2,
+    });
+
+    expect(result.status).toBe("generated");
+    expect(mocks.tx.placeSuggestion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          destinationId: "destination_2",
+          city: "Madrid",
+          country: "Spain",
+          metadata: expect.objectContaining({
+            destinationId: "destination_2",
+            planningDayNumber: 2,
+          }),
+        }),
+      }),
+    );
+    expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        metadata: expect.objectContaining({
+          destinationId: "destination_2",
+          planningDayNumber: 2,
+        }),
+      }),
+    });
+  });
+
   it("saves user-entered places as selected anchors", async () => {
     mocks.tx.placeSuggestion.create.mockResolvedValue({
       id: "anchor_1",
@@ -245,8 +295,8 @@ describe("planning recommendation service", () => {
       longitude: null,
       rating: null,
       priceLevel: null,
-      estimatedCostAmount: null,
-      estimatedCostCurrency: null,
+      estimatedCostAmount: 65,
+      estimatedCostCurrency: "EUR",
       score: null,
       rawProviderData: null,
       metadata: { topic: "ACTIVITIES" },
@@ -260,6 +310,8 @@ describe("planning recommendation service", () => {
       category: "ATTRACTION",
       city: "Barcelona",
       country: "Spain",
+      estimatedCostAmount: 65,
+      estimatedCostCurrency: "EUR",
     });
 
     expect(result.status).toBe("saved");
@@ -269,6 +321,8 @@ describe("planning recommendation service", () => {
           provider: "USER",
           status: "SELECTED",
           name: "Sagrada Familia",
+          estimatedCostAmount: 65,
+          estimatedCostCurrency: "EUR",
         }),
       }),
     );
@@ -289,6 +343,22 @@ describe("planning recommendation service", () => {
 
     expect(result.status).toBe("invalid_destination");
     expect(mocks.tx.placeSuggestion.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects user-entered place costs that exceed the supported guardrail", async () => {
+    const result = await addUserPlanningPlace("user_1", "trip_1", {
+      topic: "ACTIVITIES",
+      name: "Private island",
+      category: "ATTRACTION",
+      city: "Barcelona",
+      country: "Spain",
+      estimatedCostAmount: 1_000_000_000,
+      estimatedCostCurrency: "EUR",
+    });
+
+    expect(result.status).toBe("invalid_estimated_cost");
+    expect(mocks.tx.placeSuggestion.create).not.toHaveBeenCalled();
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).not.toHaveBeenCalled();
   });
 
   it("selects an owned recommendation and stores feedback", async () => {
@@ -501,5 +571,29 @@ describe("planning recommendation service", () => {
         estimatedCostCurrency: null,
       },
     });
+  });
+
+  it("loads planning workspace transaction queries sequentially", async () => {
+    let placeSuggestionQueryInFlight = false;
+
+    mocks.tx.placeSuggestion.findMany.mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          if (placeSuggestionQueryInFlight) {
+            reject(new Error("concurrent placeSuggestion query"));
+            return;
+          }
+
+          placeSuggestionQueryInFlight = true;
+          queueMicrotask(() => {
+            placeSuggestionQueryInFlight = false;
+            resolve([]);
+          });
+        }),
+    );
+
+    const result = await getPlanningWorkspace("user_1", "trip_1");
+
+    expect(result.status).toBe("ok");
   });
 });

@@ -30,6 +30,9 @@ const mocks = vi.hoisted(() => ({
       updateMany: vi.fn(),
     },
   },
+  itinerary: {
+    rebuildItineraryDraftForTripTx: vi.fn(),
+  },
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -48,6 +51,10 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn((destination: string) => {
     throw new Error(`redirect:${destination}`);
   }),
+}));
+
+vi.mock("@/features/itinerary/builder", () => ({
+  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
 }));
 
 import { createTrip, deleteTrip, updateTrip } from "./actions";
@@ -78,6 +85,24 @@ describe("trip actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
+    mocks.itinerary.rebuildItineraryDraftForTripTx.mockResolvedValue({
+      status: "rebuilt",
+      itinerary: {
+        days: [],
+        totals: {
+          itemCount: 0,
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+        },
+        conflicts: [],
+        conflictSummary: {
+          total: 0,
+          low: 0,
+          medium: 0,
+          high: 0,
+        },
+      },
+    });
   });
 
   it("creates a draft trip for the authenticated user", async () => {
@@ -335,6 +360,10 @@ describe("trip actions", () => {
     if (result.status === "updated") {
       expect(result.trip.status).toBe("PLANNING");
     }
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 
   it("does not delete destination rows when only budget changes from the settings form", async () => {
@@ -379,6 +408,10 @@ describe("trip actions", () => {
     expect(mocks.tx.tripDestination.deleteMany).not.toHaveBeenCalled();
     expect(mocks.tx.tripDestination.create).not.toHaveBeenCalled();
     expect(mocks.tx.placeSuggestion.updateMany).not.toHaveBeenCalled();
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 
   it("detaches place suggestions before replacing changed destination rows", async () => {
@@ -451,6 +484,10 @@ describe("trip actions", () => {
         tripId: "trip_1",
       },
     });
+    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
+      mocks.tx,
+      "trip_1",
+    );
   });
 
   it("returns not_found when deleting a non-owned trip", async () => {

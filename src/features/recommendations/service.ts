@@ -37,6 +37,8 @@ import type {
 
 type PlanningTx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
+const maxCustomPlaceEstimatedCost = 999_999.99;
+
 const preferenceSelect = {
   id: true,
   tripId: true,
@@ -91,6 +93,7 @@ type PlaceSuggestionRecord = Prisma.PlaceSuggestionGetPayload<{
 const placeSuggestionSelect = {
   id: true,
   tripId: true,
+  destinationId: true,
   provider: true,
   providerPlaceId: true,
   category: true,
@@ -191,6 +194,16 @@ function serializeDecimalNumber(
   return typeof value === "number" ? value : Number(value.toString());
 }
 
+function serializeDateOnly(value: Date | string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
 function preferenceSnapshot(
   preference: TripPlanningRecord["preference"],
 ): RecommendationPreferenceSnapshot {
@@ -216,6 +229,7 @@ function toRecommendationDto(record: PlaceSuggestionRecord): RecommendationDto {
   return {
     id: record.id,
     tripId: record.tripId,
+    destinationId: record.destinationId,
     topic:
       record.metadata &&
       !Array.isArray(record.metadata) &&
@@ -516,12 +530,37 @@ function findMatchingDestination(
   );
 }
 
+function findDestinationById(
+  destinations: TripPlanningRecord["destinations"],
+  destinationId?: string | null,
+) {
+  if (!destinationId) {
+    return destinations[0] ?? null;
+  }
+
+  return destinations.find((destination) => destination.id === destinationId) ?? null;
+}
+
+function planningContextMetadata(input: {
+  topic: PlanningTopic;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
+}) {
+  return {
+    topic: input.topic,
+    ...(input.destinationId ? { destinationId: input.destinationId } : {}),
+    ...(input.planningDayNumber ? { planningDayNumber: input.planningDayNumber } : {}),
+  } satisfies Prisma.InputJsonObject;
+}
+
 export async function recordPlanningMessage(
   userId: string,
   tripId: string,
   input: {
     topic: PlanningTopic;
     message: string;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
 ) {
   return db.$transaction(async (tx) => {
@@ -553,7 +592,7 @@ export async function recordPlanningMessage(
         action: "REFINE",
         userNote: input.message,
         metadata: {
-          topic: input.topic,
+          ...planningContextMetadata(input),
           extractedSignals: signals,
         },
       },
@@ -563,7 +602,7 @@ export async function recordPlanningMessage(
       title: "Planning note saved",
       message: input.message,
       metadata: {
-        topic: input.topic,
+        ...planningContextMetadata(input),
         extractedSignals: signals,
       },
     });
@@ -593,6 +632,8 @@ export async function generateRecommendations(
   tripId: string,
   input: {
     topic: PlanningTopic;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
 ) {
   return db.$transaction(async (tx) => {
@@ -621,7 +662,9 @@ export async function generateRecommendations(
       };
     }
 
-    const destination = trip.destinations[0];
+    const destination =
+      findDestinationById(trip.destinations, input.destinationId) ??
+      trip.destinations[0];
     const rejectedFeedback = await getRejectedRecommendationFeedback(tx, tripId);
     const rejectedIds = rejectedProviderPlaceIds(rejectedFeedback);
     const scored = getMockPlacesForCityTopic(
@@ -641,9 +684,11 @@ export async function generateRecommendations(
       .sort((left, right) => right.score - left.score)
       .slice(0, 5);
 
-    const records = await Promise.all(
-      scored.map((item) =>
-        tx.placeSuggestion.upsert({
+    const records: PlaceSuggestionRecord[] = [];
+
+    for (const item of scored) {
+      records.push(
+        await tx.placeSuggestion.upsert({
           where: {
             tripId_provider_providerPlaceId: {
               tripId,
@@ -667,7 +712,11 @@ export async function generateRecommendations(
             estimatedCostCurrency: item.place.estimatedCostCurrency,
             score: item.score,
             metadata: {
-              topic: input.topic,
+              ...planningContextMetadata({
+                topic: input.topic,
+                destinationId: destination.id,
+                planningDayNumber: input.planningDayNumber,
+              }),
               scoreBreakdown: item.breakdown,
               tags: item.place.tags,
             },
@@ -693,15 +742,19 @@ export async function generateRecommendations(
             estimatedCostCurrency: item.place.estimatedCostCurrency,
             score: item.score,
             metadata: {
-              topic: input.topic,
+              ...planningContextMetadata({
+                topic: input.topic,
+                destinationId: destination.id,
+                planningDayNumber: input.planningDayNumber,
+              }),
               scoreBreakdown: item.breakdown,
               tags: item.place.tags,
             },
           },
           select: placeSuggestionSelect,
         }),
-      ),
-    );
+      );
+    }
 
     await tx.planningEvent.create({
       data: {
@@ -709,10 +762,14 @@ export async function generateRecommendations(
         actor: "ENGINE",
         type: "RECOMMENDATION_BATCH",
         title: "Recommendation group generated",
-        message: `Generated ${records.length} ${input.topic.toLocaleLowerCase().replaceAll("_", " ")} recommendations from your current planning preferences.`,
+        message: `Generated ${records.length} ${input.topic.toLocaleLowerCase().replaceAll("_", " ")} recommendations for ${destination.city}, ${destination.country}.`,
         visibleToUser: true,
         metadata: {
-          topic: input.topic,
+          ...planningContextMetadata({
+            topic: input.topic,
+            destinationId: destination.id,
+            planningDayNumber: input.planningDayNumber,
+          }),
           recommendationCount: records.length,
           topScore: records[0] ? serializeDecimalNumber(records[0].score) : null,
         },
@@ -786,6 +843,9 @@ export async function addUserPlanningPlace(
     city?: string | null;
     country?: string | null;
     note?: string | null;
+    estimatedCostAmount?: number | null;
+    estimatedCostCurrency?: string | null;
+    planningDayNumber?: number | null;
   },
 ) {
   return db.$transaction(async (tx) => {
@@ -811,6 +871,21 @@ export async function addUserPlanningPlace(
       };
     }
 
+    const estimatedCostAmount = input.estimatedCostAmount ?? null;
+    const estimatedCostCurrency =
+      estimatedCostAmount !== null
+        ? (input.estimatedCostCurrency ?? trip.budgetCurrency)
+        : null;
+
+    if (
+      estimatedCostAmount !== null &&
+      estimatedCostAmount > maxCustomPlaceEstimatedCost
+    ) {
+      return {
+        status: "invalid_estimated_cost" as const,
+      };
+    }
+
     const record = await tx.placeSuggestion.create({
       data: {
         tripId,
@@ -823,8 +898,14 @@ export async function addUserPlanningPlace(
         explanation: "Added by you as an already-decided place.",
         city: destination.city,
         country: destination.country,
+        estimatedCostAmount,
+        estimatedCostCurrency,
         metadata: {
-          topic: input.topic,
+          ...planningContextMetadata({
+            topic: input.topic,
+            destinationId: destination.id,
+            planningDayNumber: input.planningDayNumber,
+          }),
           source: "user_anchor",
         },
       },
@@ -841,7 +922,11 @@ export async function addUserPlanningPlace(
         action: "SELECT",
         userNote: input.note ?? `Added ${input.name} as an already-decided place.`,
         metadata: {
-          topic: input.topic,
+          ...planningContextMetadata({
+            topic: input.topic,
+            destinationId: destination.id,
+            planningDayNumber: input.planningDayNumber,
+          }),
           source: "user_anchor",
         },
       },
@@ -851,7 +936,11 @@ export async function addUserPlanningPlace(
       title: "Already-decided place added",
       message: `${record.name} was added to the live plan preview.`,
       metadata: {
-        topic: input.topic,
+        ...planningContextMetadata({
+          topic: input.topic,
+          destinationId: destination.id,
+          planningDayNumber: input.planningDayNumber,
+        }),
         placeSuggestionId: record.id,
         source: "user_anchor",
       },
@@ -1111,11 +1200,15 @@ export async function refreshRecommendations(
   input: {
     topic: PlanningTopic;
     note: string;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
 ) {
   const messageResult = await recordPlanningMessage(userId, tripId, {
     topic: input.topic,
     message: input.note,
+    destinationId: input.destinationId,
+    planningDayNumber: input.planningDayNumber,
   });
 
   if (messageResult.status !== "recorded") {
@@ -1124,6 +1217,8 @@ export async function refreshRecommendations(
 
   return generateRecommendations(userId, tripId, {
     topic: input.topic,
+    destinationId: input.destinationId,
+    planningDayNumber: input.planningDayNumber,
   });
 }
 
@@ -1139,46 +1234,37 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
       return { status: "not_found" as const };
     }
 
-    const [
-      selectedPlaces,
-      suggestions,
-      timelineEvents,
-      placeActionLog,
-      itineraryPreview,
-    ] =
-      await Promise.all([
-      getSelectedPlaces(tx, tripId),
-      tx.placeSuggestion.findMany({
-        where: {
-          tripId,
-          status: {
-            not: "REJECTED",
-          },
+    const selectedPlaces = await getSelectedPlaces(tx, tripId);
+    const suggestions = await tx.placeSuggestion.findMany({
+      where: {
+        tripId,
+        status: {
+          not: "REJECTED",
         },
-        select: placeSuggestionSelect,
-        orderBy: [
-          {
-            status: "asc",
-          },
-          {
-            score: "desc",
-          },
-        ],
-      }),
-      tx.planningEvent.findMany({
-        where: {
-          tripId,
-          visibleToUser: true,
+      },
+      select: placeSuggestionSelect,
+      orderBy: [
+        {
+          status: "asc",
         },
-        select: planningEventSelect,
-        orderBy: {
-          createdAt: "desc",
+        {
+          score: "desc",
         },
-        take: 6,
-      }),
-      getPlaceActionLog(tx, tripId),
-      getPersistedItineraryForTripTx(tx, tripId),
-    ]);
+      ],
+    });
+    const timelineEvents = await tx.planningEvent.findMany({
+      where: {
+        tripId,
+        visibleToUser: true,
+      },
+      select: planningEventSelect,
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 6,
+    });
+    const placeActionLog = await getPlaceActionLog(tx, tripId);
+    const itineraryPreview = await getPersistedItineraryForTripTx(tx, tripId);
     const preference = preferenceSnapshot(trip.preference);
 
     return {
@@ -1186,6 +1272,9 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
       trip: {
         id: trip.id,
         title: trip.title,
+        startDate: serializeDateOnly(trip.startDate),
+        endDate: serializeDateOnly(trip.endDate),
+        budgetCurrency: trip.budgetCurrency,
         destinations: trip.destinations,
       },
       preference,
@@ -1200,6 +1289,30 @@ export async function getPlanningWorkspace(userId: string, tripId: string) {
 
 function formString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function formOptionalNumber(value: FormDataEntryValue | null) {
+  const raw = formString(value);
+
+  if (!raw) {
+    return null;
+  }
+
+  const number = Number(raw);
+
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function formOptionalPositiveInteger(value: FormDataEntryValue | null) {
+  const raw = formString(value);
+
+  if (!raw) {
+    return null;
+  }
+
+  const number = Number(raw);
+
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
 function formTopic(value: FormDataEntryValue | null): PlanningTopic {
@@ -1230,6 +1343,35 @@ function planningRedirect(tripId: string, query: string) {
   redirect(`/trips/${tripId}/planning?${query}`);
 }
 
+function planningQuery(input: {
+  topic?: PlanningTopic;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
+  message?: string;
+  error?: string;
+  generated?: string;
+  refreshed?: string;
+}) {
+  const params = new URLSearchParams();
+
+  if (input.topic) params.set("topic", input.topic);
+  if (input.destinationId) params.set("destinationId", input.destinationId);
+  if (input.planningDayNumber) params.set("day", String(input.planningDayNumber));
+  if (input.message) params.set("message", input.message);
+  if (input.error) params.set("error", input.error);
+  if (input.generated) params.set("generated", input.generated);
+  if (input.refreshed) params.set("refreshed", input.refreshed);
+
+  return params.toString();
+}
+
+function planningFormContext(formData: FormData) {
+  return {
+    destinationId: formString(formData.get("destinationId")) || null,
+    planningDayNumber: formOptionalPositiveInteger(formData.get("planningDayNumber")),
+  };
+}
+
 function refreshPlanningMutation(tripId: string) {
   revalidatePath(`/trips/${tripId}/planning`);
   revalidatePath(`/trips/${tripId}/itinerary`);
@@ -1243,20 +1385,29 @@ export async function recordPlanningMessageFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const message = formString(formData.get("message"));
   const topic = formTopic(formData.get("topic"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !message) {
     redirect("/trips?error=invalid-planning-message");
   }
 
-  const result = await recordPlanningMessage(userId, tripId, { topic, message });
+  const result = await recordPlanningMessage(userId, tripId, {
+    topic,
+    message,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
 
   revalidatePath(`/trips/${tripId}/planning`);
   revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&message=recorded`);
+  planningRedirect(tripId, planningQuery({ topic, ...context, message: "recorded" }));
 }
 
 export async function generateRecommendationsFormAction(formData: FormData) {
@@ -1265,22 +1416,33 @@ export async function generateRecommendationsFormAction(formData: FormData) {
   const userId = await requireUser();
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
+  const context = planningFormContext(formData);
 
   if (!tripId) {
     redirect("/trips?error=invalid-trip");
   }
 
-  const result = await generateRecommendations(userId, tripId, { topic });
+  const result = await generateRecommendations(userId, tripId, {
+    topic,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
   if (result.status === "needs_more_context") {
-    planningRedirect(tripId, `topic=${topic}&error=needs-more-context`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "needs-more-context" }),
+    );
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
-  planningRedirect(tripId, `topic=${topic}&generated=1`);
+  planningRedirect(tripId, planningQuery({ topic, ...context, generated: "1" }));
 }
 
 export async function addUserPlanningPlaceFormAction(formData: FormData) {
@@ -1291,6 +1453,7 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
   const topic = formTopic(formData.get("topic"));
   const name = formString(formData.get("name"));
   const category = formString(formData.get("category")) as SuggestionCategory;
+  const context = planningFormContext(formData);
 
   if (!tripId || !name || !category) {
     redirect("/trips?error=invalid-place");
@@ -1303,13 +1466,26 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
     city: formString(formData.get("city")) || null,
     country: formString(formData.get("country")) || null,
     note: formString(formData.get("note")) || null,
+    estimatedCostAmount: formOptionalNumber(formData.get("estimatedCostAmount")),
+    estimatedCostCurrency: formString(formData.get("estimatedCostCurrency")) || null,
+    planningDayNumber: context.planningDayNumber,
   });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
   if (result.status === "invalid_destination") {
-    planningRedirect(tripId, `topic=${topic}&error=invalid-destination`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "invalid-destination" }),
+    );
+  }
+  if (result.status === "invalid_estimated_cost") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "invalid-cost" }));
   }
 
   refreshPlanningMutation(tripId);
@@ -1322,6 +1498,7 @@ export async function selectRecommendationFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
   const suggestionId = formString(formData.get("suggestionId"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !suggestionId) {
     redirect("/trips?error=invalid-suggestion");
@@ -1330,10 +1507,17 @@ export async function selectRecommendationFormAction(formData: FormData) {
   const result = await selectRecommendation(userId, tripId, { suggestionId });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
   if (result.status === "suggestion_not_found") {
-    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1348,6 +1532,7 @@ export async function rejectRecommendationFormAction(formData: FormData) {
   const suggestionId = formString(formData.get("suggestionId"));
   const reason = formRejectReason(formData.get("reason"));
   const note = formString(formData.get("note")) || null;
+  const context = planningFormContext(formData);
 
   if (!tripId || !suggestionId || !reason) {
     redirect("/trips?error=invalid-rejection");
@@ -1360,10 +1545,17 @@ export async function rejectRecommendationFormAction(formData: FormData) {
   });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
   if (result.status === "suggestion_not_found") {
-    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1376,6 +1568,7 @@ export async function deselectRecommendationFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
   const suggestionId = formString(formData.get("suggestionId"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !suggestionId) {
     redirect("/trips?error=invalid-deselect");
@@ -1384,10 +1577,17 @@ export async function deselectRecommendationFormAction(formData: FormData) {
   const result = await deselectRecommendation(userId, tripId, { suggestionId });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
   if (result.status === "suggestion_not_found") {
-    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1400,21 +1600,33 @@ export async function refreshRecommendationsFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
   const note = formString(formData.get("note"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !note) {
     redirect("/trips?error=invalid-refresh");
   }
 
-  const result = await refreshRecommendations(userId, tripId, { topic, note });
+  const result = await refreshRecommendations(userId, tripId, {
+    topic,
+    note,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "archived" }));
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(tripId, planningQuery({ topic, ...context, error: "not-ready" }));
+  }
   if (result.status === "needs_more_context") {
-    planningRedirect(tripId, `topic=${topic}&error=needs-more-context`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "needs-more-context" }),
+    );
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
   revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&refreshed=1`);
+  planningRedirect(tripId, planningQuery({ topic, ...context, refreshed: "1" }));
 }

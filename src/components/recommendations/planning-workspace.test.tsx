@@ -54,7 +54,11 @@ describe("PlanningWorkspace", () => {
       trip: {
         id: "trip_1",
         title: "Barcelona",
-        destinations: [{ city: "Barcelona", country: "Spain" }],
+        budgetCurrency: "EUR",
+        destinations: [
+          { id: "destination_1", city: "Barcelona", country: "Spain" },
+          { id: "destination_2", city: "Madrid", country: "Spain" },
+        ],
       },
       preference: {
         budgetLevel: "MODERATE",
@@ -91,6 +95,7 @@ describe("PlanningWorkspace", () => {
         {
           id: "suggestion_2",
           tripId: "trip_1",
+          destinationId: "destination_1",
           topic: "HOTEL_BASE",
           name: "Barcelona Design Stay",
           category: "HOTEL",
@@ -107,6 +112,7 @@ describe("PlanningWorkspace", () => {
         {
           id: "suggestion_3",
           tripId: "trip_1",
+          destinationId: "destination_1",
           topic: "HOTEL_BASE",
           name: "Rejected Hotel",
           category: "HOTEL",
@@ -159,6 +165,8 @@ describe("PlanningWorkspace", () => {
             itemCount: 1,
             estimatedCostAmount: 300,
             estimatedCostCurrency: "EUR",
+            cityWindows: [],
+            timeSlots: [],
             items: [
               {
                 id: "item_1",
@@ -180,8 +188,17 @@ describe("PlanningWorkspace", () => {
           estimatedCostAmount: 300,
           estimatedCostCurrency: "EUR",
         },
+        conflicts: [],
+        conflictSummary: {
+          total: 0,
+          low: 0,
+          medium: 0,
+          high: 0,
+        },
       },
       activeTopic: "HOTEL_BASE",
+      activeDestinationId: "destination_1",
+      activeDayNumber: 1,
     });
 
     const text = textContent(workspace);
@@ -189,6 +206,8 @@ describe("PlanningWorkspace", () => {
     expect(text).toContain("Reject");
     expect(text).toContain("Remove");
     expect(text).toContain("Planning timeline");
+    expect(text).toContain("Planning context");
+    expect(text).toContain("Madrid");
     expect(text).toContain("Show place log");
     expect(text).toContain("Rejected Hotel");
     expect(text).toContain("Pick again");
@@ -206,7 +225,8 @@ describe("PlanningWorkspace", () => {
       trip: {
         id: "trip_1",
         title: "Tokyo",
-        destinations: [{ city: "Tokyo", country: "Japan" }],
+        budgetCurrency: "JPY",
+        destinations: [{ id: "destination_1", city: "Tokyo", country: "Japan" }],
       },
       preference: {
         budgetLevel: "MODERATE",
@@ -230,6 +250,13 @@ describe("PlanningWorkspace", () => {
           estimatedCostAmount: null,
           estimatedCostCurrency: null,
         },
+        conflicts: [],
+        conflictSummary: {
+          total: 0,
+          low: 0,
+          medium: 0,
+          high: 0,
+        },
       },
       activeTopic: "HOTEL_BASE",
     });
@@ -244,5 +271,59 @@ describe("PlanningWorkspace", () => {
     expect(classNames).toContain(
       "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]",
     );
+  });
+
+  it("shows every trip day from settings even before selected places create itinerary days", () => {
+    const workspace = PlanningWorkspace({
+      trip: {
+        id: "trip_1",
+        title: "USA",
+        budgetCurrency: "USD",
+        startDate: "2026-07-01",
+        endDate: "2026-07-05",
+        destinations: [
+          { id: "destination_1", city: "Los Angeles", country: "United States" },
+          { id: "destination_2", city: "New York", country: "United States" },
+        ],
+      },
+      preference: {
+        budgetLevel: "MODERATE",
+        pace: "BALANCED",
+        interests: [],
+        transportationModes: [],
+        accommodationTypes: [],
+        hotelPriority: null,
+        walkingToleranceKm: null,
+        customPreferences: [],
+        mustAvoid: [],
+      },
+      selectedPlaces: [],
+      recommendations: [],
+      timelineEvents: [],
+      placeActionLog: [],
+      itineraryPreview: {
+        days: [],
+        totals: {
+          itemCount: 0,
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+        },
+        conflicts: [],
+        conflictSummary: {
+          total: 0,
+          low: 0,
+          medium: 0,
+          high: 0,
+        },
+      },
+      activeTopic: "ACTIVITIES",
+      activeDayNumber: 4,
+    });
+
+    const text = textContent(workspace);
+
+    expect(text).toContain("Day 1");
+    expect(text).toContain("Day 4");
+    expect(text).toContain("Day 5");
   });
 });

@@ -79,6 +79,17 @@ function preferenceRedirectPath(
   return `/trips/${tripId}/preferences?${query}`;
 }
 
+function preferenceSuccessRedirectPath(
+  tripId: string,
+  returnTo: FormDataEntryValue | null,
+) {
+  if (returnTo === "settings") {
+    return preferenceRedirectPath(tripId, returnTo, "saved=1");
+  }
+
+  return `/trips/${tripId}/logistics?saved=1`;
+}
+
 export async function saveTripPreference(
   userId: string,
   tripId: string,
@@ -253,7 +264,8 @@ export async function saveTripPreferenceFormAction(formData: FormData) {
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/settings`);
   revalidatePath(`/trips/${tripId}/preferences`);
+  revalidatePath(`/trips/${tripId}/logistics`);
   revalidatePath(`/trips/${tripId}/planning`);
   revalidatePath(`/trips/${tripId}/itinerary`);
-  redirect(preferenceRedirectPath(tripId, returnTo, "saved=1"));
+  redirect(preferenceSuccessRedirectPath(tripId, returnTo));
 }

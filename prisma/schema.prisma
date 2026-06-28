@@ -25,6 +25,25 @@ enum TravelPace {
   PACKED
 }
 
+enum TripLogisticsMode {
+  FLEXIBLE
+  TICKETED
+}
+
+enum TravelSegmentMode {
+  FLIGHT
+  TRAIN
+  BUS
+  CAR
+  FERRY
+  OTHER
+}
+
+enum CityWindowSource {
+  FLEXIBLE
+  TICKETED
+}
+
 enum TransportationMode {
   WALKING
   PUBLIC_TRANSIT
@@ -232,16 +251,19 @@ model Trip {
   endDate               DateTime?  @map("end_date")
   budgetAmount          Decimal?   @map("budget_amount") @db.Decimal(12, 2)
   budgetCurrency        String?    @map("budget_currency") @db.VarChar(3)
+  logisticsMode         TripLogisticsMode @default(FLEXIBLE) @map("logistics_mode")
   createdAt             DateTime   @default(now()) @map("created_at")
   updatedAt             DateTime   @updatedAt @map("updated_at")
 
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   destinations     TripDestination[]
+  travelSegments   TripTravelSegment[]
   preference       TripPreference?
   suggestions      PlaceSuggestion[]
   planningFeedback PlanningFeedback[]
   planningEvents   PlanningEvent[]
   itineraryDays    ItineraryDay[]
+  cityWindows      ItineraryCityWindow[]
   itineraryItems   ItineraryItem[]
   conflicts        Conflict[]
 
@@ -267,11 +289,38 @@ model TripDestination {
 
   trip        Trip              @relation(fields: [tripId], references: [id], onDelete: Cascade)
   suggestions PlaceSuggestion[] @relation("TripDestinationPlaceSuggestions")
+  cityWindows ItineraryCityWindow[] @relation("TripDestinationCityWindows")
 
   @@unique([tripId, id])
   @@index([tripId])
   @@index([tripId, sortOrder])
   @@map("trip_destinations")
+}
+
+model TripTravelSegment {
+  id                 String            @id @default(cuid())
+  tripId             String            @map("trip_id")
+  mode               TravelSegmentMode
+  originCity         String            @map("origin_city")
+  originCountry      String            @map("origin_country")
+  destinationCity    String            @map("destination_city")
+  destinationCountry String            @map("destination_country")
+  departAt           DateTime          @map("depart_at")
+  arriveAt           DateTime          @map("arrive_at")
+  carrier            String?
+  referenceCode      String?           @map("reference_code")
+  sortOrder          Int               @default(0) @map("sort_order")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  trip        Trip                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  cityWindows ItineraryCityWindow[] @relation("TravelSegmentCityWindows")
+
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@index([tripId, sortOrder])
+  @@index([departAt, arriveAt])
+  @@map("trip_travel_segments")
 }
 
 model TripPreference {
@@ -409,12 +458,40 @@ model ItineraryDay {
 
   trip     Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
   items    ItineraryItem[]    @relation("ItineraryDayItems")
+  cityWindows ItineraryCityWindow[] @relation("ItineraryDayCityWindows")
   feedback PlanningFeedback[] @relation("ItineraryDayFeedback")
 
   @@unique([tripId, dayNumber])
   @@unique([tripId, id])
   @@index([tripId])
   @@map("itinerary_days")
+}
+
+model ItineraryCityWindow {
+  id              String           @id @default(cuid())
+  tripId          String           @map("trip_id")
+  dayId           String           @map("day_id")
+  destinationId   String?          @map("destination_id")
+  travelSegmentId String?          @map("travel_segment_id")
+  city            String
+  country         String
+  startTime       DateTime         @map("start_time")
+  endTime         DateTime         @map("end_time")
+  source          CityWindowSource
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  trip          Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  day           ItineraryDay       @relation("ItineraryDayCityWindows", fields: [tripId, dayId], references: [tripId, id], onDelete: Cascade)
+  destination   TripDestination?   @relation("TripDestinationCityWindows", fields: [tripId, destinationId], references: [tripId, id], onDelete: NoAction)
+  travelSegment TripTravelSegment? @relation("TravelSegmentCityWindows", fields: [tripId, travelSegmentId], references: [tripId, id], onDelete: NoAction)
+
+  @@unique([tripId, id])
+  @@index([tripId])
+  @@index([dayId])
+  @@index([destinationId])
+  @@index([travelSegmentId])
+  @@index([startTime, endTime])
+  @@map("itinerary_city_windows")
 }
 
 model ItineraryItem {

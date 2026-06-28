@@ -140,6 +140,7 @@ export type PlaceActionLogEntry = {
 export type RecommendationDto = {
   id: string;
   tripId: string;
+  destinationId: string | null;
   topic: PlanningTopic | null;
   name: string;
   category: SuggestionCategory;

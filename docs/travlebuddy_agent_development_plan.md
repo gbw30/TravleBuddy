@@ -942,15 +942,23 @@ Conflict detection is locked unless the trip is full-planning ready.
 src/features/itinerary/conflict-engine.ts
 ```
 
+- Keep the detector deterministic and persisted:
+  - evaluate existing `ItineraryDay` and `ItineraryItem` rows
+  - write `Conflict` rows with `status = OPEN`
+  - replace only stale `OPEN` conflicts on rerun
+  - preserve `RESOLVED` and `IGNORED` conflict history
+  - write a visible `CONFLICT_SUMMARY` planning event
 - Add conflict checks for:
 
 ```text
 budget conflict
-pace conflict
+schedule density conflict
 time overlap conflict
 missing duration conflict
-long-distance conflict
-closed/unavailable placeholder conflict
+mixed-city/country distance placeholder conflict
+hotel location mismatch conflict
+explicit closed/unavailable placeholder conflict
+missing restaurant coverage warning
 ```
 
 - Add route/action:
@@ -960,7 +968,19 @@ POST  /api/trips/[tripId]/conflicts/check
 PATCH /api/trips/[tripId]/conflicts/[conflictId]/resolve
 ```
 
-- Display conflicts on itinerary page.
+- Keep routes thin:
+  - authenticate
+  - await route params
+  - call the conflict service
+  - return small JSON payloads
+  - revalidate only `/trips/[tripId]/itinerary` after conflict mutations
+- Display conflicts on itinerary page with a manual "check conflicts" action.
+- Refresh deterministic open conflicts automatically when persisted itinerary rows are read or rebuilt, and when trip settings changes affect dates, destinations, budget, or pace.
+- Keep automatic Phase 9 conflict refresh database-local. Future maps, AI, route-duration, hours, or availability checks must move behind explicit checks or async jobs.
+- Let user-entered already-decided places include optional estimated cost in the trip budget currency so budget conflicts include custom anchors.
+- Let users change the planning context by saved destination city and day in the planning workspace. Phase 9 uses this to generate recommendations for the selected city and stores the selected day as planning metadata; exact manual day placement remains a future itinerary-scheduling feature.
+- Deduplicate open conflict warnings before display so rapid rebuilds or repeated checks do not show repeated copies of the same issue.
+- Style conflict warnings by severity using standard visual priority: low/info, medium/warning, high/danger.
 - Add severity levels:
 
 ```text
@@ -969,21 +989,131 @@ medium
 high
 ```
 
+- Selection, rejection, and deselection must stay responsive. Automatic Phase 9 checks may run only as part of the existing persisted itinerary rebuild/read path and must not add external provider latency.
 - Add tests for conflict detection.
 
 ## User Tasks
 
-- Confirm thresholds:
-  - Maximum travel time between places before warning
-  - Maximum estimated daily spend before warning
-  - Maximum number of activities per pace level
+- Confirm production and preview environment parity for database and auth variables.
+- Add QA seed trips for:
+  - no selected places
+  - single-city balanced plan
+  - over-budget plan
+  - mixed-city day
+  - missing-restaurant day
+  - dense packed itinerary
+- Before proximity-based restaurant assignment or route-duration checks:
+  - enable Google Places and Google Routes APIs
+  - configure server-side keys and restrictions
+  - define provider quotas, cache policy, rate-limit behavior, and fallback behavior
+  - provide or approve opening-hours and availability data sources
 
 ## Exit Criteria
 
 - App detects and displays conflicts.
 - Conflicts are stored.
 - User can mark conflicts as resolved or ignored.
-- Tests cover budget, pace, and overlap conflicts.
+- Tests cover budget, density, overlap, missing duration, mixed-city, unavailable metadata, hotel mismatch, missing restaurant coverage, routes, and page display.
+- Documentation records the final vision that restaurants should be assigned to every activity day by proximity and time, while Phase 9 remains warning-only.
+
+---
+
+# Phase 9A - Pre-Places Logistics and Time Grid Foundation
+
+## Goal
+
+Prepare the itinerary system for multi-city timing before Google Places, route durations, or the full scheduler are introduced.
+
+Users should choose one logistics mode before entering the planning loop:
+
+- `TICKETED`: the user already knows transfer/ticket timing, so city windows can be derived automatically.
+- `FLEXIBLE`: the user will decide city timing while planning, so the existing manual city/day selector remains active.
+
+Ticketed trips must support same-day transfers where one itinerary date can contain two cities and a travel block.
+
+## Agent Tasks
+
+- Add logistics mode persistence:
+
+```text
+Trip.logisticsMode
+TripTravelSegment
+ItineraryCityWindow
+```
+
+- Add `/trips/[tripId]/logistics` between preferences and the planning loop.
+- Route normal preference completion to logistics, while keeping direct planning access allowed for existing trips.
+- Add ticketed transfer input:
+  - mode
+  - origin city/country
+  - destination city/country
+  - depart date-time
+  - arrive date-time
+  - optional carrier
+  - optional reference
+- Keep the user on `/trips/[tripId]/logistics` after each ticket save so all known transfers can be entered before planning.
+- Validate ticket timing before writes:
+  - required city/country fields
+  - valid date-times
+  - arrival after departure
+  - depart/arrive inside the trip date range
+- Rebuild the itinerary when logistics mode or ticket timing changes.
+- Derive `ItineraryCityWindow` rows during rebuild for ticketed trips.
+- Split transfer days around travel segments so a single date can contain origin-city context, travel time, and destination-city context.
+- Expose `ItineraryDayDto.cityWindows` and `ItineraryDayDto.timeSlots`.
+- Build 48 read-only 30-minute slots per itinerary day.
+- Show city-window context and travel blocks in the itinerary time grid.
+- Keep selected places without start/end times unscheduled within their day.
+- Keep planning day choices based on the trip's original start/end date range, regardless of ticket count or whether selected places exist yet.
+- Default the planning workspace to the ticket-assigned city for the selected day when city windows exist.
+- Fix itinerary rebuild cleanup so planning feedback tied to generated itinerary days/items/conflicts is retargeted to trip-level feedback before generated child rows are deleted.
+
+## Deferred Scope
+
+- No ticket upload parsing.
+- No PDF/email confirmation parsing.
+- No seat, confirmation, or reservation management.
+- No drag/drop schedule editor.
+- No exact auto-placement of activities into clock times.
+- No route-duration optimization.
+- No opening-hours or availability checks.
+- No chat-controlled scheduler implementation yet.
+
+## Final MVP Scheduling Notes
+
+The final MVP scheduler should let users express limits through chat or guided controls, including:
+
+- maximum restaurants or food stops per day
+- maximum attractions or activities per day
+- preferred visit duration by category
+- meal frequency and meal windows
+- daily start/end limits
+- pacing and rest preferences
+- lighter schedules on transfer days
+
+Future restaurant placement must assign selected restaurants near each day's selected activities by proximity, time windows, and route feasibility.
+
+## User Tasks
+
+- QA ticketed and flexible logistics flows from the home/dashboard flow.
+- Provide QA seed trips with:
+  - no transfer segments
+  - one same-day transfer
+  - multiple-city trips with a day between transfers
+  - invalid reversed transfer times
+  - transfer times outside trip range
+- Before final scheduler work, configure maps/places provider keys, quotas, caching, rate limits, and provider-failure behavior.
+
+## Exit Criteria
+
+- User can choose ticketed or flexible logistics before planning.
+- Ticketed transfer timing is persisted.
+- Flexible mode preserves manual planning context.
+- Ticketed itinerary rebuilds derive city windows.
+- Itinerary days expose 48 read-only half-hour slots.
+- Transfer slots render without moving unscheduled selected places.
+- Settings changes no longer crash from invalid `planning_feedback` retargeting.
+- Documentation records the deferred full scheduler and chat-controlled daily limits.
 
 ---
 
@@ -1336,6 +1466,7 @@ The agent must not implement Phase 16 features unless explicitly instructed afte
 7. Suggestion selection and feedback
 8. Basic itinerary builder
 9. Conflict detection
+9A. Pre-Places logistics and time grid foundation
 10. Google Places integration
 11. Google Routes integration
 12. Gemini integration

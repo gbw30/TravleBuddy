@@ -10,11 +10,15 @@ export const planningTopicSchema = z.enum([
 
 export const generateRecommendationsInputSchema = z.object({
   topic: planningTopicSchema,
+  destinationId: z.string().trim().min(1).optional(),
+  planningDayNumber: z.number().int().positive().optional(),
 });
 
 export const refreshRecommendationsInputSchema = z.object({
   topic: planningTopicSchema,
   note: z.string().trim().min(1),
+  destinationId: z.string().trim().min(1).optional(),
+  planningDayNumber: z.number().int().positive().optional(),
 });
 
 export const rejectRecommendationInputSchema = z.object({

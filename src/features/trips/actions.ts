@@ -18,6 +18,7 @@ import {
   tripWithDetailsSelect,
   type TripWithDetails,
 } from "./queries";
+import { rebuildItineraryDraftForTripTx } from "@/features/itinerary/builder";
 import type { Prisma, UserTravelPreference } from "@/generated/prisma/client";
 
 export type UpdateTripResult =
@@ -309,6 +310,9 @@ export async function updateTrip(
     const destinationsChanged =
       hasDestinationFields &&
       !destinationsAreEqual(getTripDestinations(existingTrip), nextDestinations);
+    const travelStyleChanged =
+      hasTravelStyleField &&
+      (existingTrip.preference?.pace ?? null) !== (parsed.travelStyle ?? null);
 
     if (destinationsChanged) {
       await tx.placeSuggestion.updateMany({
@@ -375,8 +379,18 @@ export async function updateTrip(
       where: buildTripOwnerWhere(userId, tripId),
       select: tripWithDetailsSelect,
     });
+    const tripWithStatus = await refreshTripStatus(tx, updatedTrip);
+    const itineraryInputsChanged =
+      destinationsChanged ||
+      hasDateFields ||
+      hasBudgetFields ||
+      travelStyleChanged;
 
-    return refreshTripStatus(tx, updatedTrip);
+    if (tripWithStatus.status === "PLANNING" && itineraryInputsChanged) {
+      await rebuildItineraryDraftForTripTx(tx, tripId);
+    }
+
+    return tripWithStatus;
   });
 
   if (
@@ -558,6 +572,8 @@ export async function updateTripSettingsFormAction(formData: FormData) {
   revalidatePath("/trips");
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/settings`);
+  revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   redirect(`/trips/${tripId}`);
 }
 
