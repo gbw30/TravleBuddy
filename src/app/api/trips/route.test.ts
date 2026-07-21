@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { UnauthorizedError } from "@/lib/authorization";
 
 const mocks = vi.hoisted(() => ({
@@ -41,6 +49,15 @@ function jsonRequest(body: unknown) {
 }
 
 describe("/api/trips route", () => {
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T12:00:00.000Z"));
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.auth.assertAuthenticatedApiUser.mockResolvedValue("user_1");
@@ -59,7 +76,9 @@ describe("/api/trips route", () => {
   });
 
   it("returns 401 when listing trips without auth", async () => {
-    mocks.auth.assertAuthenticatedApiUser.mockRejectedValue(new UnauthorizedError());
+    mocks.auth.assertAuthenticatedApiUser.mockRejectedValue(
+      new UnauthorizedError(),
+    );
 
     const response = await GET();
 
@@ -67,7 +86,10 @@ describe("/api/trips route", () => {
   });
 
   it("creates a draft trip", async () => {
-    mocks.actions.createTrip.mockResolvedValue({ id: "trip_1", title: "Paris" });
+    mocks.actions.createTrip.mockResolvedValue({
+      id: "trip_1",
+      title: "Paris",
+    });
 
     const response = await POST(jsonRequest({ title: "Paris" }));
 

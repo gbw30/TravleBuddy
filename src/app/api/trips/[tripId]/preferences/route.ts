@@ -1,4 +1,7 @@
-import { assertAuthenticatedApiUser, UnauthorizedError } from "@/lib/authorization";
+import {
+  assertAuthenticatedApiUser,
+  UnauthorizedError,
+} from "@/lib/authorization";
 import { saveTripPreference } from "@/features/preferences/actions";
 import { getTripPreferenceForUser } from "@/features/preferences/queries";
 import { preferenceInputSchema } from "@/features/preferences/schemas";
@@ -91,6 +94,9 @@ export async function PUT(
 
     const result = await saveTripPreference(userId, tripId, parsed.data);
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "saved") {
       if (result.status === "invalid") {
         return apiError("Invalid preference payload.", 400);
@@ -103,7 +109,10 @@ export async function PUT(
       return accessErrorResponse({ status: result.status });
     }
 
-    return Response.json({ preference: result.preference });
+    return Response.json({
+      preference: result.preference,
+      revision: result.revision,
+    });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);

@@ -1,4 +1,7 @@
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { rejectRecommendation } from "@/features/recommendations/service";
 import { rejectRecommendationInputSchema } from "@/features/recommendations/schemas";
 
@@ -65,11 +68,14 @@ export async function POST(request: Request, context: RejectRouteContext) {
       ...parsed.data,
     });
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "rejected") {
       return accessErrorResponse(result);
     }
 
-    return Response.json({ rejected: true });
+    return Response.json({ rejected: true, revision: result.revision });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);

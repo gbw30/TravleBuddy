@@ -15,6 +15,7 @@ import {
 import { saveTripPreferenceFormAction } from "@/features/preferences/actions";
 import { PreferenceForm } from "@/components/preferences/preference-form";
 import { PreferenceSummary } from "@/components/preferences/preference-summary";
+import { TimedAlert } from "@/components/ui/timed-alert";
 
 type TripSettingsPageProps = {
   params: Promise<{
@@ -58,20 +59,29 @@ export default async function TripSettingsPage({
     <main className="flex-1 bg-zinc-50">
       <section className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
         {query?.error === "invalid" ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <TimedAlert
+            role="alert"
+            className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
             Check the trip details. Destination, dates, and budget must be
             provided as complete pairs.
-          </div>
+          </TimedAlert>
         ) : null}
         {query?.error === "confirm-delete" ? (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <TimedAlert
+            role="alert"
+            className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          >
             Confirm deletion before removing this trip.
-          </div>
+          </TimedAlert>
         ) : null}
         {query?.error === "archived" ? (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <TimedAlert
+            role="alert"
+            className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+          >
             Archived trips cannot be edited or deleted in Stage 4.
-          </div>
+          </TimedAlert>
         ) : null}
         <nav className="mb-6 flex flex-wrap gap-3" aria-label="Trip settings">
           <Link

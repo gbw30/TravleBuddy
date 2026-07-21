@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   tx: {
     trip: {
       findFirst: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     tripPreference: {
       findUnique: vi.fn(),
@@ -36,7 +38,8 @@ vi.mock("@/lib/authorization", () => ({
 }));
 
 vi.mock("@/features/itinerary/builder", () => ({
-  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
+  rebuildItineraryDraftForTripTx:
+    mocks.itinerary.rebuildItineraryDraftForTripTx,
 }));
 
 vi.mock("next/cache", () => ({
@@ -87,6 +90,8 @@ describe("preference actions", () => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.tx.trip.findFirst.mockResolvedValue(trip());
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
     mocks.tx.tripPreference.findUnique.mockResolvedValue(null);
     mocks.tx.tripPreference.upsert.mockResolvedValue({
       id: "preference_1",
@@ -113,9 +118,14 @@ describe("preference actions", () => {
   });
 
   it("creates a preference profile for an owned planning-ready trip", async () => {
-    const result = await saveTripPreference("user_1", "trip_1", preferenceInput);
+    const result = await saveTripPreference(
+      "user_1",
+      "trip_1",
+      preferenceInput,
+    );
 
     expect(result.status).toBe("saved");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.tripPreference.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { tripId: "trip_1" },
@@ -136,9 +146,15 @@ describe("preference actions", () => {
   });
 
   it("marks the result as updated when a profile already exists", async () => {
-    mocks.tx.tripPreference.findUnique.mockResolvedValue({ id: "preference_1" });
+    mocks.tx.tripPreference.findUnique.mockResolvedValue({
+      id: "preference_1",
+    });
 
-    const result = await saveTripPreference("user_1", "trip_1", preferenceInput);
+    const result = await saveTripPreference(
+      "user_1",
+      "trip_1",
+      preferenceInput,
+    );
 
     expect(result).toMatchObject({
       status: "saved",
@@ -174,6 +190,7 @@ describe("preference actions", () => {
       status: "not_ready",
       missingRequirements: expect.arrayContaining(["at least one destination"]),
     });
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
   });
 
   it("writes a summary planning event after saving", async () => {
@@ -236,6 +253,10 @@ describe("preference actions", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 });

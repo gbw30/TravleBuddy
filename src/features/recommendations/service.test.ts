@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   tx: {
     trip: {
       findFirst: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     tripPreference: {
       upsert: vi.fn(),
@@ -37,6 +39,10 @@ const mocks = vi.hoisted(() => ({
     planningEvent: {
       create: vi.fn(),
       findMany: vi.fn(),
+    },
+    planningMutation: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
     },
   },
   itinerary: {
@@ -63,8 +69,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/features/itinerary/builder", () => ({
-  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
-  getPersistedItineraryForTripTx: mocks.itinerary.getPersistedItineraryForTripTx,
+  rebuildItineraryDraftForTripTx:
+    mocks.itinerary.rebuildItineraryDraftForTripTx,
+  getPersistedItineraryForTripTx:
+    mocks.itinerary.getPersistedItineraryForTripTx,
 }));
 
 import {
@@ -72,6 +80,7 @@ import {
   getPlanningWorkspace,
   generateRecommendations,
   recordPlanningMessage,
+  refreshRecommendations,
   deselectRecommendation,
   rejectRecommendation,
   selectRecommendation,
@@ -83,6 +92,7 @@ function planningTrip(overrides: Record<string, unknown> = {}) {
     id: "trip_1",
     userId: "user_1",
     status: "PLANNING",
+    planningRevision: 7,
     startDate: new Date("2026-07-01T00:00:00.000Z"),
     endDate: new Date("2026-07-07T00:00:00.000Z"),
     budgetAmount: "1500",
@@ -124,9 +134,13 @@ describe("planning recommendation service", () => {
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.auth.requireUser.mockResolvedValue("user_1");
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip());
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
     mocks.tx.placeSuggestion.findMany.mockResolvedValue([]);
     mocks.tx.planningFeedback.findMany.mockResolvedValue([]);
     mocks.tx.planningEvent.findMany.mockResolvedValue([]);
+    mocks.tx.planningMutation.findUnique.mockResolvedValue(null);
+    mocks.tx.planningMutation.create.mockResolvedValue({ id: "mutation_1" });
     mocks.itinerary.rebuildItineraryDraftForTripTx.mockResolvedValue({
       status: "rebuilt",
       itinerary: {
@@ -164,6 +178,7 @@ describe("planning recommendation service", () => {
     });
 
     expect(result.status).toBe("recorded");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.planningFeedback.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         tripId: "trip_1",
@@ -200,6 +215,10 @@ describe("planning recommendation service", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -213,9 +232,9 @@ describe("planning recommendation service", () => {
       throw new Error("Expected recommendations to be generated.");
     }
     expect(result.recommendations).toHaveLength(5);
-    expect(result.recommendations.every((item) => item.category === "HOTEL")).toBe(
-      true,
-    );
+    expect(
+      result.recommendations.every((item) => item.category === "HOTEL"),
+    ).toBe(true);
     expect(mocks.tx.placeSuggestion.upsert).toHaveBeenCalledTimes(5);
     expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -223,6 +242,57 @@ describe("planning recommendation service", () => {
         actor: "ENGINE",
         type: "RECOMMENDATION_BATCH",
         visibleToUser: true,
+      }),
+    });
+  });
+
+  it("generates recommendations for the selected trip destination", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValue(
+      planningTrip({
+        destinations: [
+          {
+            id: "destination_1",
+            city: "Barcelona",
+            country: "Spain",
+            sortOrder: 0,
+          },
+          {
+            id: "destination_2",
+            city: "Madrid",
+            country: "Spain",
+            sortOrder: 1,
+          },
+        ],
+      }),
+    );
+
+    const result = await generateRecommendations("user_1", "trip_1", {
+      topic: "ACTIVITIES",
+      destinationId: "destination_2",
+      planningDayNumber: 2,
+    });
+
+    expect(result.status).toBe("generated");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
+    expect(mocks.tx.placeSuggestion.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          destinationId: "destination_2",
+          city: "Madrid",
+          country: "Spain",
+          metadata: expect.objectContaining({
+            destinationId: "destination_2",
+            planningDayNumber: 2,
+          }),
+        }),
+      }),
+    );
+    expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        metadata: expect.objectContaining({
+          destinationId: "destination_2",
+          planningDayNumber: 2,
+        }),
       }),
     });
   });
@@ -245,8 +315,8 @@ describe("planning recommendation service", () => {
       longitude: null,
       rating: null,
       priceLevel: null,
-      estimatedCostAmount: null,
-      estimatedCostCurrency: null,
+      estimatedCostAmount: 65,
+      estimatedCostCurrency: "EUR",
       score: null,
       rawProviderData: null,
       metadata: { topic: "ACTIVITIES" },
@@ -260,21 +330,30 @@ describe("planning recommendation service", () => {
       category: "ATTRACTION",
       city: "Barcelona",
       country: "Spain",
+      estimatedCostAmount: 65,
+      estimatedCostCurrency: "EUR",
     });
 
     expect(result.status).toBe("saved");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.placeSuggestion.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           provider: "USER",
           status: "SELECTED",
           name: "Sagrada Familia",
+          estimatedCostAmount: 65,
+          estimatedCostCurrency: "EUR",
         }),
       }),
     );
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -288,7 +367,27 @@ describe("planning recommendation service", () => {
     });
 
     expect(result.status).toBe("invalid_destination");
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
     expect(mocks.tx.placeSuggestion.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects user-entered place costs that exceed the supported guardrail", async () => {
+    const result = await addUserPlanningPlace("user_1", "trip_1", {
+      topic: "ACTIVITIES",
+      name: "Private island",
+      category: "ATTRACTION",
+      city: "Barcelona",
+      country: "Spain",
+      estimatedCostAmount: 1_000_000_000,
+      estimatedCostCurrency: "EUR",
+    });
+
+    expect(result.status).toBe("invalid_estimated_cost");
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
+    expect(mocks.tx.placeSuggestion.create).not.toHaveBeenCalled();
+    expect(
+      mocks.itinerary.rebuildItineraryDraftForTripTx,
+    ).not.toHaveBeenCalled();
   });
 
   it("selects an owned recommendation and stores feedback", async () => {
@@ -304,6 +403,7 @@ describe("planning recommendation service", () => {
     });
 
     expect(result.status).toBe("selected");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.placeSuggestion.updateMany).toHaveBeenCalledWith({
       where: {
         id: "suggestion_1",
@@ -331,6 +431,10 @@ describe("planning recommendation service", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -368,6 +472,7 @@ describe("planning recommendation service", () => {
     });
 
     expect(result.status).toBe("rejected");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.placeSuggestion.updateMany).toHaveBeenCalledWith({
       where: {
         id: "suggestion_1",
@@ -411,6 +516,10 @@ describe("planning recommendation service", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -427,6 +536,7 @@ describe("planning recommendation service", () => {
     });
 
     expect(result.status).toBe("deselected");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.placeSuggestion.updateMany).toHaveBeenCalledWith({
       where: {
         id: "suggestion_1",
@@ -445,7 +555,190 @@ describe("planning recommendation service", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
+  });
+
+  it("records and regenerates a refresh with one finalization", async () => {
+    const result = await refreshRecommendations(
+      "user_1",
+      "trip_1",
+      {
+        topic: "HOTEL_BASE",
+        note: "Show me a different set of hotel options.",
+      },
+      { expectedRevision: 7, operationId: "refresh_operation" },
+    );
+
+    expect(result.status).toBe("generated");
+    expect(mocks.tx.planningFeedback.create).toHaveBeenCalled();
+    expect(mocks.tx.placeSuggestion.upsert).toHaveBeenCalledTimes(5);
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ planningRevision: 7 }),
+      data: { planningRevision: { increment: 1 } },
+    });
+  });
+
+  it("returns a normalized, bounded, Prisma-independent planning snapshot", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValue(
+      planningTrip({
+        preference: {
+          id: "preference_1",
+          budgetLevel: null,
+          pace: null,
+          interests: [],
+          transportationModes: [],
+          accommodationTypes: ["HOTEL"],
+          hotelPriority: null,
+          walkingToleranceKm: null,
+          dietaryRestrictions: [],
+          accessibilityNeeds: [],
+          mustAvoid: [],
+          customNotes: "internal note",
+          metadata: { internal: "hidden" },
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      }),
+    );
+    const recommendation = (id: string, topic = "HOTEL_BASE") => ({
+      id,
+      tripId: "trip_1",
+      destinationId: "destination_1",
+      provider: "MOCK",
+      providerPlaceId: `provider_${id}`,
+      category: "HOTEL",
+      status: "PENDING",
+      name: `Hotel ${id}`,
+      description: "A hotel",
+      explanation: "A compact explanation",
+      city: "Barcelona",
+      country: "Spain",
+      latitude: { toString: () => "41.39" },
+      longitude: { toString: () => "2.17" },
+      score: { toString: () => "92.5" },
+      rating: { toString: () => "4.7" },
+      priceLevel: 3,
+      estimatedCostAmount: { toString: () => "210.75" },
+      estimatedCostCurrency: "EUR",
+      metadata: { topic, providerPayload: "hidden" },
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    mocks.tx.placeSuggestion.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        recommendation("hotel_1"),
+        recommendation("hotel_2"),
+        recommendation("hotel_3"),
+        recommendation("hotel_4"),
+        recommendation("hotel_5"),
+        recommendation("hotel_6"),
+        recommendation("activity_1", "ACTIVITIES"),
+        {
+          ...recommendation("other_destination"),
+          destinationId: "destination_2",
+        },
+      ]);
+    mocks.itinerary.getPersistedItineraryForTripTx.mockResolvedValue({
+      days: [
+        {
+          id: "day_1",
+          dayNumber: 1,
+          date: "2026-07-01",
+          title: null,
+          notes: null,
+          itemCount: 0,
+          estimatedCostAmount: 0,
+          estimatedCostCurrency: "EUR",
+          cityWindows: [
+            {
+              id: "window_1",
+              destinationId: "destination_1",
+              travelSegmentId: null,
+              city: "Barcelona",
+              country: "Spain",
+              startTime: "2026-07-01T08:00:00.000Z",
+              endTime: "2026-07-01T20:00:00.000Z",
+              source: "TRIP_RANGE",
+            },
+          ],
+          timeSlots: [],
+          items: [],
+        },
+      ],
+      totals: {
+        itemCount: 0,
+        estimatedCostAmount: 0,
+        estimatedCostCurrency: "EUR",
+      },
+      conflicts: [
+        {
+          id: "conflict_1",
+          itineraryItemId: null,
+          type: "MISSING_MEAL_COVERAGE",
+          severity: "LOW",
+          status: "OPEN",
+          message: "No restaurant selected.",
+          recommendation: "Add a restaurant.",
+          metadata: { internalRule: "hidden" },
+        },
+      ],
+      conflictSummary: { total: 1, low: 1, medium: 0, high: 0 },
+    });
+
+    const result = await getPlanningWorkspace("user_1", "trip_1", {
+      topic: "HOTEL_BASE",
+      destinationId: "unknown_destination",
+      planningDayNumber: -4,
+    });
+
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") throw new Error("Expected planning workspace.");
+
+    expect(result.snapshot).toMatchObject({
+      revision: 7,
+      conversationId: null,
+      context: {
+        topic: "HOTEL_BASE",
+        destinationId: "destination_1",
+        planningDayNumber: 1,
+      },
+      readiness: {
+        activeTopic: "HOTEL_BASE",
+        isReady: false,
+        missingQuestionKeys: ["hotelPriority"],
+      },
+    });
+    expect(result.snapshot.recommendations.map(({ id }) => id)).toEqual([
+      "hotel_1",
+      "hotel_2",
+      "hotel_3",
+      "hotel_4",
+      "hotel_5",
+    ]);
+    expect(result.snapshot.recommendations[0]).toMatchObject({
+      score: 92.5,
+      rating: 4.7,
+      estimatedCostAmount: 210.75,
+    });
+    expect(result.snapshot.itinerary.days[0]?.date).toBe("2026-07-01");
+    expect(result.snapshot.itinerary.days[0]?.cityWindows[0]?.startTime).toBe(
+      "2026-07-01T08:00:00.000Z",
+    );
+    expect(result.snapshot.itinerary.conflicts[0]).not.toHaveProperty(
+      "metadata",
+    );
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
+    const serialized = JSON.stringify(result.snapshot);
+    expect(serialized).not.toContain("providerPlaceId");
+    expect(serialized).not.toContain("providerPayload");
+    expect(serialized).not.toContain("internal note");
+    expect(serialized).not.toContain("internalRule");
   });
 
   it("returns a place action log for misclick recovery", async () => {
@@ -501,5 +794,29 @@ describe("planning recommendation service", () => {
         estimatedCostCurrency: null,
       },
     });
+  });
+
+  it("loads planning workspace transaction queries sequentially", async () => {
+    let placeSuggestionQueryInFlight = false;
+
+    mocks.tx.placeSuggestion.findMany.mockImplementation(
+      () =>
+        new Promise((resolve, reject) => {
+          if (placeSuggestionQueryInFlight) {
+            reject(new Error("concurrent placeSuggestion query"));
+            return;
+          }
+
+          placeSuggestionQueryInFlight = true;
+          queueMicrotask(() => {
+            placeSuggestionQueryInFlight = false;
+            resolve([]);
+          });
+        }),
+    );
+
+    const result = await getPlanningWorkspace("user_1", "trip_1");
+
+    expect(result.status).toBe("ok");
   });
 });

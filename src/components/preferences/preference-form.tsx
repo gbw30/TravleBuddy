@@ -3,6 +3,7 @@
 import { Save, X } from "lucide-react";
 import { useState } from "react";
 import { BudgetAmountSlider } from "@/components/trips/budget-amount-slider";
+import { TimedAlert } from "@/components/ui/timed-alert";
 import type {
   accommodationTypeOptions,
   budgetLevelOptions,
@@ -242,20 +243,23 @@ export function PreferenceForm({
       </div>
 
       {saved ? (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <TimedAlert className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           <span>Preferences saved.</span>
           <a
-            href={`/trips/${tripId}/planning`}
+            href={`/trips/${tripId}/logistics`}
             className="inline-flex h-9 items-center rounded-md bg-emerald-700 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
           >
-            Go to planning loop
+            Continue to logistics
           </a>
-        </div>
+        </TimedAlert>
       ) : null}
       {error ? (
-        <div className="mt-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <TimedAlert
+          role="alert"
+          className="mt-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
           Check the required preference fields and try again.
-        </div>
+        </TimedAlert>
       ) : null}
 
       <div className="mt-6 grid gap-6">

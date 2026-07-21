@@ -79,7 +79,9 @@ function textContent(node: ReactNode): string {
     return "";
   }
 
-  return textContent((node as { props: { children?: ReactNode } }).props.children);
+  return textContent(
+    (node as { props: { children?: ReactNode } }).props.children,
+  );
 }
 
 describe("PlanningPage", () => {
@@ -91,7 +93,10 @@ describe("PlanningPage", () => {
       trip: {
         id: "trip_1",
         title: "Barcelona",
-        destinations: [{ city: "Barcelona", country: "Spain" }],
+        budgetCurrency: "EUR",
+        destinations: [
+          { id: "destination_1", city: "Barcelona", country: "Spain" },
+        ],
       },
       preference: {
         budgetLevel: "MODERATE",
@@ -115,6 +120,13 @@ describe("PlanningPage", () => {
           estimatedCostAmount: null,
           estimatedCostCurrency: null,
         },
+        conflicts: [],
+        conflictSummary: {
+          total: 0,
+          low: 0,
+          medium: 0,
+          high: 0,
+        },
       },
     });
   });
@@ -122,13 +134,22 @@ describe("PlanningPage", () => {
   it("renders the planning workspace for an owned planning-ready trip", async () => {
     const page = await PlanningPage({
       params: Promise.resolve({ tripId: "trip_1" }),
-      searchParams: Promise.resolve({ topic: "HOTEL_BASE" }),
+      searchParams: Promise.resolve({
+        topic: "HOTEL_BASE",
+        destinationId: "destination_1",
+        day: "2",
+      }),
     });
 
     expect(elementTypes(page)).toContain("planning-workspace");
     expect(mocks.planning.getPlanningWorkspace).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
+      {
+        topic: "HOTEL_BASE",
+        destinationId: "destination_1",
+        planningDayNumber: 2,
+      },
     );
   });
 

@@ -8,11 +8,29 @@ import type {
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/authorization";
+import type {
+  PlanningContext,
+  PlanningItineraryDto,
+  PlanningMutationControl,
+  PlanningReadiness,
+  PlanningSnapshot,
+} from "@/features/planning/types";
+import {
+  createPlanningOperationContext,
+  measurePlanningOperation,
+  type PlanningOperationContext,
+} from "@/features/planning/telemetry";
+import {
+  executePlanningMutation,
+  finalizePlanningMutationTx,
+  getPlanningMutationReplayTx,
+} from "@/features/planning/mutation";
 import { getTripReadiness } from "@/features/trips/readiness";
 import {
   getPersistedItineraryForTripTx,
   rebuildItineraryDraftForTripTx,
 } from "@/features/itinerary/builder";
+import type { ItineraryDto } from "@/features/itinerary/types";
 import {
   extractPreferenceSignals,
   hasTopicRecommendationReadiness,
@@ -37,6 +55,8 @@ import type {
 
 type PlanningTx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
+const maxCustomPlaceEstimatedCost = 999_999.99;
+
 const preferenceSelect = {
   id: true,
   tripId: true,
@@ -58,6 +78,7 @@ const preferenceSelect = {
 
 const tripPlanningSelect = {
   id: true,
+  planningRevision: true,
   title: true,
   status: true,
   startDate: true,
@@ -91,6 +112,7 @@ type PlaceSuggestionRecord = Prisma.PlaceSuggestionGetPayload<{
 const placeSuggestionSelect = {
   id: true,
   tripId: true,
+  destinationId: true,
   provider: true,
   providerPlaceId: true,
   category: true,
@@ -191,6 +213,16 @@ function serializeDecimalNumber(
   return typeof value === "number" ? value : Number(value.toString());
 }
 
+function serializeDateOnly(value: Date | string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
 function preferenceSnapshot(
   preference: TripPlanningRecord["preference"],
 ): RecommendationPreferenceSnapshot {
@@ -216,6 +248,7 @@ function toRecommendationDto(record: PlaceSuggestionRecord): RecommendationDto {
   return {
     id: record.id,
     tripId: record.tripId,
+    destinationId: record.destinationId,
     topic:
       record.metadata &&
       !Array.isArray(record.metadata) &&
@@ -270,7 +303,9 @@ function metadataTopic(metadata: Prisma.JsonValue | null | undefined) {
 }
 
 function timelineEventDto(
-  record: Prisma.PlanningEventGetPayload<{ select: typeof planningEventSelect }>,
+  record: Prisma.PlanningEventGetPayload<{
+    select: typeof planningEventSelect;
+  }>,
 ): PlanningTimelineEvent {
   return {
     id: record.id,
@@ -359,7 +394,10 @@ async function getPlaceActionLog(tx: PlanningTx, tripId: string) {
     .filter((item): item is PlaceActionLogEntry => item !== null);
 }
 
-async function getRejectedRecommendationFeedback(tx: PlanningTx, tripId: string) {
+async function getRejectedRecommendationFeedback(
+  tx: PlanningTx,
+  tripId: string,
+) {
   const records = await tx.planningFeedback.findMany({
     where: {
       tripId,
@@ -423,11 +461,7 @@ function planningAccessFailure(trip: TripPlanningRecord | null) {
   return null;
 }
 
-async function getPlanningTrip(
-  tx: PlanningTx,
-  userId: string,
-  tripId: string,
-) {
+async function getPlanningTrip(tx: PlanningTx, userId: string, tripId: string) {
   return tx.trip.findFirst({
     where: buildTripOwnerWhere(userId, tripId),
     select: tripPlanningSelect,
@@ -516,76 +550,446 @@ function findMatchingDestination(
   );
 }
 
+function findDestinationById(
+  destinations: TripPlanningRecord["destinations"],
+  destinationId?: string | null,
+) {
+  if (!destinationId) {
+    return destinations[0] ?? null;
+  }
+
+  return (
+    destinations.find((destination) => destination.id === destinationId) ?? null
+  );
+}
+
+function planningContextMetadata(input: {
+  topic: PlanningTopic;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
+}) {
+  return {
+    topic: input.topic,
+    ...(input.destinationId ? { destinationId: input.destinationId } : {}),
+    ...(input.planningDayNumber
+      ? { planningDayNumber: input.planningDayNumber }
+      : {}),
+  } satisfies Prisma.InputJsonObject;
+}
+
+const readinessCandidates: Record<PlanningTopic, readonly string[]> = {
+  HOTEL_BASE: [
+    "accommodationTypes",
+    "hotelPriority",
+    "budgetLevel",
+    "pace",
+    "walkingToleranceKm",
+    "selectedPlace",
+    "customPreferences",
+  ],
+  ACTIVITIES: [
+    "interests",
+    "budgetLevel",
+    "pace",
+    "walkingToleranceKm",
+    "selectedPlace",
+    "customPreferences",
+  ],
+  FOOD_NIGHTLIFE: [
+    "interests",
+    "budgetLevel",
+    "pace",
+    "walkingToleranceKm",
+    "selectedPlace",
+    "customPreferences",
+  ],
+  BUDGET_PACE: [
+    "budgetLevel",
+    "pace",
+    "transportationModes",
+    "walkingToleranceKm",
+    "selectedPlace",
+    "customPreferences",
+  ],
+};
+
+function availableReadinessKeys(
+  preference: RecommendationPreferenceSnapshot,
+  selectedPlaceCount: number,
+) {
+  return new Set(
+    [
+      preference.accommodationTypes.length > 0 && "accommodationTypes",
+      preference.hotelPriority !== null && "hotelPriority",
+      preference.budgetLevel && "budgetLevel",
+      preference.pace && "pace",
+      preference.walkingToleranceKm !== null && "walkingToleranceKm",
+      selectedPlaceCount > 0 && "selectedPlace",
+      preference.customPreferences.length > 0 && "customPreferences",
+      preference.interests.length > 0 && "interests",
+      preference.transportationModes.length > 0 && "transportationModes",
+    ].filter((key): key is string => Boolean(key)),
+  );
+}
+
+function planningReadiness(
+  topic: PlanningTopic,
+  preference: RecommendationPreferenceSnapshot,
+  selectedPlaceCount: number,
+): PlanningReadiness {
+  const readiness = hasTopicRecommendationReadiness({
+    topic,
+    preference,
+    selectedPlaceCount,
+  });
+  const available = availableReadinessKeys(preference, selectedPlaceCount);
+
+  return {
+    activeTopic: topic,
+    isReady: readiness.isReady,
+    missingQuestionKeys: readinessCandidates[topic]
+      .filter((key) => !available.has(key))
+      .slice(0, readiness.missingSignalCount),
+  };
+}
+
+function planningItineraryDto(itinerary: ItineraryDto): PlanningItineraryDto {
+  const conflicts = itinerary.conflicts ?? [];
+
+  return {
+    ...itinerary,
+    conflicts: conflicts.map(({ metadata, ...conflict }) => {
+      void metadata;
+      return conflict;
+    }),
+    conflictSummary: itinerary.conflictSummary ?? {
+      total: 0,
+      low: 0,
+      medium: 0,
+      high: 0,
+    },
+  };
+}
+
+function normalizedPlanningContext(
+  trip: TripPlanningRecord,
+  input?: Partial<PlanningContext>,
+): PlanningContext {
+  const topic = input?.topic ?? "HOTEL_BASE";
+  const destinationId = trip.destinations.some(
+    (destination) => destination.id === input?.destinationId,
+  )
+    ? (input?.destinationId ?? null)
+    : (trip.destinations[0]?.id ?? null);
+  const planningDayNumber =
+    Number.isInteger(input?.planningDayNumber) &&
+    (input?.planningDayNumber ?? 0) > 0
+      ? (input?.planningDayNumber ?? null)
+      : 1;
+
+  return { topic, destinationId, planningDayNumber };
+}
+
+function planningSnapshot(input: {
+  trip: TripPlanningRecord;
+  context: PlanningContext;
+  preference: RecommendationPreferenceSnapshot;
+  selectedPlaces: SelectedPlanningPlace[];
+  recommendations: RecommendationDto[];
+  itinerary: ItineraryDto;
+}): PlanningSnapshot {
+  const recommendations = input.recommendations
+    .filter(
+      (recommendation) =>
+        recommendation.topic === input.context.topic &&
+        (!input.context.destinationId ||
+          recommendation.destinationId === input.context.destinationId),
+    )
+    .slice(0, 5);
+
+  return {
+    revision: input.trip.planningRevision ?? 0,
+    conversationId: null,
+    context: input.context,
+    preference: input.preference,
+    readiness: planningReadiness(
+      input.context.topic,
+      input.preference,
+      input.selectedPlaces.length,
+    ),
+    recommendations,
+    selectedPlaces: input.selectedPlaces,
+    itinerary: planningItineraryDto(input.itinerary),
+  };
+}
+
+type PlanningMessageInput = {
+  topic: PlanningTopic;
+  message: string;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
+};
+
+type GenerateRecommendationsInput = {
+  topic: PlanningTopic;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
+};
+
+async function recordPlanningMessageForTripTx(
+  tx: PlanningTx,
+  trip: TripPlanningRecord,
+  input: PlanningMessageInput,
+  operation?: PlanningOperationContext,
+) {
+  const previousPreference = preferenceSnapshot(trip.preference);
+  const signals = extractPreferenceSignals(input.message);
+  const preference = await savePreferenceSignals(
+    tx,
+    trip.id,
+    previousPreference,
+    signals,
+  );
+
+  await tx.planningFeedback.create({
+    data: {
+      tripId: trip.id,
+      targetType: "TRIP",
+      targetId: trip.id,
+      source: "USER",
+      action: "REFINE",
+      userNote: input.message,
+      metadata: {
+        ...planningContextMetadata(input),
+        extractedSignals: signals,
+      },
+    },
+  });
+  await writeUserPlanningEvent(tx, {
+    tripId: trip.id,
+    title: "Planning note saved",
+    message: input.message,
+    metadata: {
+      ...planningContextMetadata(input),
+      extractedSignals: signals,
+    },
+  });
+  if (previousPreference.pace !== preference.pace) {
+    await rebuildItineraryDraftForTripTx(tx, trip.id, operation);
+  }
+
+  const selectedPlaces = await getSelectedPlaces(tx, trip.id);
+  const readiness = hasTopicRecommendationReadiness({
+    topic: input.topic,
+    preference,
+    selectedPlaceCount: selectedPlaces.length,
+  });
+
+  return {
+    status: "recorded" as const,
+    topic: input.topic,
+    signals,
+    preference,
+    readiness,
+  };
+}
+
+async function generateRecommendationsForTripTx(
+  tx: PlanningTx,
+  trip: TripPlanningRecord,
+  input: GenerateRecommendationsInput,
+) {
+  const selectedPlaces = await getSelectedPlaces(tx, trip.id);
+  const preference = preferenceSnapshot(trip.preference);
+  const readiness = hasTopicRecommendationReadiness({
+    topic: input.topic,
+    preference,
+    selectedPlaceCount: selectedPlaces.length,
+  });
+
+  if (!readiness.isReady) {
+    return {
+      status: "needs_more_context" as const,
+      readiness,
+    };
+  }
+
+  const destination =
+    findDestinationById(trip.destinations, input.destinationId) ??
+    trip.destinations[0];
+  const rejectedFeedback = await getRejectedRecommendationFeedback(tx, trip.id);
+  const rejectedIds = rejectedProviderPlaceIds(rejectedFeedback);
+  const scored = getMockPlacesForCityTopic(
+    destination.city,
+    destination.country,
+    input.topic,
+  )
+    .filter((place) => !rejectedIds.has(place.id))
+    .map((place) =>
+      scoreMockPlace(place, {
+        topic: input.topic,
+        preference,
+        selectedPlaces,
+        rejectedFeedback,
+      }),
+    )
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 5);
+  const records: PlaceSuggestionRecord[] = [];
+
+  for (const item of scored) {
+    records.push(
+      await tx.placeSuggestion.upsert({
+        where: {
+          tripId_provider_providerPlaceId: {
+            tripId: trip.id,
+            provider: "MOCK",
+            providerPlaceId: item.place.id,
+          },
+        },
+        update: {
+          category: item.place.category,
+          name: item.place.name,
+          description: item.place.description,
+          explanation: item.explanation,
+          address: item.place.address,
+          city: item.place.city,
+          country: item.place.country,
+          latitude: item.place.latitude,
+          longitude: item.place.longitude,
+          rating: item.place.rating,
+          priceLevel: item.place.priceLevel,
+          estimatedCostAmount: item.place.estimatedCostAmount,
+          estimatedCostCurrency: item.place.estimatedCostCurrency,
+          score: item.score,
+          metadata: {
+            ...planningContextMetadata({
+              topic: input.topic,
+              destinationId: destination.id,
+              planningDayNumber: input.planningDayNumber,
+            }),
+            scoreBreakdown: item.breakdown,
+            tags: item.place.tags,
+          },
+        },
+        create: {
+          tripId: trip.id,
+          destinationId: destination.id,
+          provider: "MOCK",
+          providerPlaceId: item.place.id,
+          category: item.place.category,
+          status: "PENDING",
+          name: item.place.name,
+          description: item.place.description,
+          explanation: item.explanation,
+          address: item.place.address,
+          city: item.place.city,
+          country: item.place.country,
+          latitude: item.place.latitude,
+          longitude: item.place.longitude,
+          rating: item.place.rating,
+          priceLevel: item.place.priceLevel,
+          estimatedCostAmount: item.place.estimatedCostAmount,
+          estimatedCostCurrency: item.place.estimatedCostCurrency,
+          score: item.score,
+          metadata: {
+            ...planningContextMetadata({
+              topic: input.topic,
+              destinationId: destination.id,
+              planningDayNumber: input.planningDayNumber,
+            }),
+            scoreBreakdown: item.breakdown,
+            tags: item.place.tags,
+          },
+        },
+        select: placeSuggestionSelect,
+      }),
+    );
+  }
+
+  await tx.planningEvent.create({
+    data: {
+      tripId: trip.id,
+      actor: "ENGINE",
+      type: "RECOMMENDATION_BATCH",
+      title: "Recommendation group generated",
+      message: `Generated ${records.length} ${input.topic.toLocaleLowerCase().replaceAll("_", " ")} recommendations for ${destination.city}, ${destination.country}.`,
+      visibleToUser: true,
+      metadata: {
+        ...planningContextMetadata({
+          topic: input.topic,
+          destinationId: destination.id,
+          planningDayNumber: input.planningDayNumber,
+        }),
+        recommendationCount: records.length,
+        topScore: records[0] ? serializeDecimalNumber(records[0].score) : null,
+      },
+    },
+  });
+
+  return {
+    status: "generated" as const,
+    topic: input.topic,
+    recommendations: records.map(toRecommendationDto),
+  };
+}
+
 export async function recordPlanningMessage(
   userId: string,
   tripId: string,
   input: {
     topic: PlanningTopic;
     message: string;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
-
-    const previousPreference = preferenceSnapshot(trip.preference);
-    const signals = extractPreferenceSignals(input.message);
-    const preference = await savePreferenceSignals(
-      tx,
-      tripId,
-      previousPreference,
-      signals,
-    );
-
-    await tx.planningFeedback.create({
-      data: {
+  return measurePlanningOperation(
+    "planning_message_persistence",
+    operation,
+    () =>
+      executePlanningMutation({
+        userId,
         tripId,
-        targetType: "TRIP",
-        targetId: tripId,
-        source: "USER",
-        action: "REFINE",
-        userNote: input.message,
-        metadata: {
-          topic: input.topic,
-          extractedSignals: signals,
+        control,
+        transaction: async (tx) => {
+          const trip = await getPlanningTrip(tx, userId, tripId);
+          const accessFailure = planningAccessFailure(trip);
+
+          if (accessFailure) {
+            return accessFailure;
+          }
+          if (!trip) {
+            return { status: "not_found" as const };
+          }
+          const replay = await getPlanningMutationReplayTx(tx, tripId, control);
+
+          if (replay) return replay;
+
+          const result = await recordPlanningMessageForTripTx(
+            tx,
+            trip,
+            input,
+            operation,
+          );
+
+          return finalizePlanningMutationTx(tx, {
+            userId,
+            tripId,
+            kind: "planning_message_save",
+            control,
+            result,
+          });
         },
-      },
-    });
-    await writeUserPlanningEvent(tx, {
-      tripId,
-      title: "Planning note saved",
-      message: input.message,
-      metadata: {
-        topic: input.topic,
-        extractedSignals: signals,
-      },
-    });
-    if (previousPreference.pace !== preference.pace) {
-      await rebuildItineraryDraftForTripTx(tx, tripId);
-    }
-
-    const selectedPlaces = await getSelectedPlaces(tx, tripId);
-    const readiness = hasTopicRecommendationReadiness({
-      topic: input.topic,
-      preference,
-      selectedPlaceCount: selectedPlaces.length,
-    });
-
-    return {
-      status: "recorded" as const,
-      topic: input.topic,
-      signals,
-      preference,
-      readiness,
-    };
-  });
+      }),
+    (result) => ({ status: result.status }),
+  );
 }
 
 export async function generateRecommendations(
@@ -593,138 +997,63 @@ export async function generateRecommendations(
   tripId: string,
   input: {
     topic: PlanningTopic;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
-
-    const selectedPlaces = await getSelectedPlaces(tx, tripId);
-    const preference = preferenceSnapshot(trip.preference);
-    const readiness = hasTopicRecommendationReadiness({
-      topic: input.topic,
-      preference,
-      selectedPlaceCount: selectedPlaces.length,
-    });
-
-    if (!readiness.isReady) {
-      return {
-        status: "needs_more_context" as const,
-        readiness,
-      };
-    }
-
-    const destination = trip.destinations[0];
-    const rejectedFeedback = await getRejectedRecommendationFeedback(tx, tripId);
-    const rejectedIds = rejectedProviderPlaceIds(rejectedFeedback);
-    const scored = getMockPlacesForCityTopic(
-      destination.city,
-      destination.country,
-      input.topic,
-    )
-      .filter((place) => !rejectedIds.has(place.id))
-      .map((place) =>
-        scoreMockPlace(place, {
-          topic: input.topic,
-          preference,
-          selectedPlaces,
-          rejectedFeedback,
-        }),
-      )
-      .sort((left, right) => right.score - left.score)
-      .slice(0, 5);
-
-    const records = await Promise.all(
-      scored.map((item) =>
-        tx.placeSuggestion.upsert({
-          where: {
-            tripId_provider_providerPlaceId: {
-              tripId,
-              provider: "MOCK",
-              providerPlaceId: item.place.id,
-            },
-          },
-          update: {
-            category: item.place.category,
-            name: item.place.name,
-            description: item.place.description,
-            explanation: item.explanation,
-            address: item.place.address,
-            city: item.place.city,
-            country: item.place.country,
-            latitude: item.place.latitude,
-            longitude: item.place.longitude,
-            rating: item.place.rating,
-            priceLevel: item.place.priceLevel,
-            estimatedCostAmount: item.place.estimatedCostAmount,
-            estimatedCostCurrency: item.place.estimatedCostCurrency,
-            score: item.score,
-            metadata: {
-              topic: input.topic,
-              scoreBreakdown: item.breakdown,
-              tags: item.place.tags,
-            },
-          },
-          create: {
-            tripId,
-            destinationId: destination.id,
-            provider: "MOCK",
-            providerPlaceId: item.place.id,
-            category: item.place.category,
-            status: "PENDING",
-            name: item.place.name,
-            description: item.place.description,
-            explanation: item.explanation,
-            address: item.place.address,
-            city: item.place.city,
-            country: item.place.country,
-            latitude: item.place.latitude,
-            longitude: item.place.longitude,
-            rating: item.place.rating,
-            priceLevel: item.place.priceLevel,
-            estimatedCostAmount: item.place.estimatedCostAmount,
-            estimatedCostCurrency: item.place.estimatedCostCurrency,
-            score: item.score,
-            metadata: {
-              topic: input.topic,
-              scoreBreakdown: item.breakdown,
-              tags: item.place.tags,
-            },
-          },
-          select: placeSuggestionSelect,
-        }),
-      ),
-    );
-
-    await tx.planningEvent.create({
-      data: {
+  return measurePlanningOperation(
+    "recommendation_generation",
+    operation,
+    () =>
+      executePlanningMutation({
+        userId,
         tripId,
-        actor: "ENGINE",
-        type: "RECOMMENDATION_BATCH",
-        title: "Recommendation group generated",
-        message: `Generated ${records.length} ${input.topic.toLocaleLowerCase().replaceAll("_", " ")} recommendations from your current planning preferences.`,
-        visibleToUser: true,
-        metadata: {
-          topic: input.topic,
-          recommendationCount: records.length,
-          topScore: records[0] ? serializeDecimalNumber(records[0].score) : null,
-        },
-      },
-    });
+        control,
+        transaction: async (tx) => {
+          const trip = await getPlanningTrip(tx, userId, tripId);
+          const accessFailure = planningAccessFailure(trip);
 
-    return {
-      status: "generated" as const,
-      topic: input.topic,
-      recommendations: records.map(toRecommendationDto),
-    };
-  });
+          if (accessFailure) {
+            return accessFailure;
+          }
+          if (!trip) {
+            return { status: "not_found" as const };
+          }
+          const replay = await getPlanningMutationReplayTx(tx, tripId, control);
+
+          if (replay) return replay;
+
+          const result = await generateRecommendationsForTripTx(
+            tx,
+            trip,
+            input,
+          );
+
+          if (result.status !== "generated") return result;
+
+          return finalizePlanningMutationTx(tx, {
+            userId,
+            tripId,
+            kind: "recommendations_generate",
+            control,
+            result,
+          });
+        },
+      }),
+    (result) => ({
+      status: result.status,
+      selectedPlaceCount:
+        result.status === "generated"
+          ? result.recommendations.length
+          : undefined,
+    }),
+  );
 }
 
 export async function listRecommendations(
@@ -786,82 +1115,135 @@ export async function addUserPlanningPlace(
     city?: string | null;
     country?: string | null;
     note?: string | null;
+    estimatedCostAmount?: number | null;
+    estimatedCostCurrency?: string | null;
+    planningDayNumber?: number | null;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await getPlanningTrip(tx, userId, tripId);
+      const accessFailure = planningAccessFailure(trip);
 
-    const destination = findMatchingDestination(
-      trip.destinations,
-      input.city,
-      input.country,
-    );
+      if (accessFailure) {
+        return accessFailure;
+      }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
+      const replay = await getPlanningMutationReplayTx(tx, tripId, control);
 
-    if (!destination) {
-      return {
-        status: "invalid_destination" as const,
-      };
-    }
+      if (replay) return replay;
 
-    const record = await tx.placeSuggestion.create({
-      data: {
+      const destination = findMatchingDestination(
+        trip.destinations,
+        input.city,
+        input.country,
+      );
+
+      if (!destination) {
+        return {
+          status: "invalid_destination" as const,
+        };
+      }
+
+      const estimatedCostAmount = input.estimatedCostAmount ?? null;
+      const estimatedCostCurrency =
+        estimatedCostAmount !== null
+          ? (input.estimatedCostCurrency ?? trip.budgetCurrency)
+          : null;
+
+      if (
+        estimatedCostAmount !== null &&
+        estimatedCostAmount > maxCustomPlaceEstimatedCost
+      ) {
+        return {
+          status: "invalid_estimated_cost" as const,
+        };
+      }
+
+      const record = await tx.placeSuggestion.create({
+        data: {
+          tripId,
+          destinationId: destination.id,
+          provider: "USER",
+          category: input.category,
+          status: "SELECTED",
+          name: input.name,
+          description: input.note ?? null,
+          explanation: "Added by you as an already-decided place.",
+          city: destination.city,
+          country: destination.country,
+          estimatedCostAmount,
+          estimatedCostCurrency,
+          metadata: {
+            ...planningContextMetadata({
+              topic: input.topic,
+              destinationId: destination.id,
+              planningDayNumber: input.planningDayNumber,
+            }),
+            source: "user_anchor",
+          },
+        },
+        select: placeSuggestionSelect,
+      });
+
+      await tx.planningFeedback.create({
+        data: {
+          tripId,
+          targetType: "PLACE_SUGGESTION",
+          targetId: record.id,
+          placeSuggestionId: record.id,
+          source: "USER",
+          action: "SELECT",
+          userNote:
+            input.note ?? `Added ${input.name} as an already-decided place.`,
+          metadata: {
+            ...planningContextMetadata({
+              topic: input.topic,
+              destinationId: destination.id,
+              planningDayNumber: input.planningDayNumber,
+            }),
+            source: "user_anchor",
+          },
+        },
+      });
+      await writeUserPlanningEvent(tx, {
         tripId,
-        destinationId: destination.id,
-        provider: "USER",
-        category: input.category,
-        status: "SELECTED",
-        name: input.name,
-        description: input.note ?? null,
-        explanation: "Added by you as an already-decided place.",
-        city: destination.city,
-        country: destination.country,
+        title: "Already-decided place added",
+        message: `${record.name} was added to the live plan preview.`,
         metadata: {
-          topic: input.topic,
+          ...planningContextMetadata({
+            topic: input.topic,
+            destinationId: destination.id,
+            planningDayNumber: input.planningDayNumber,
+          }),
+          placeSuggestionId: record.id,
           source: "user_anchor",
         },
-      },
-      select: placeSuggestionSelect,
-    });
+      });
+      await rebuildItineraryDraftForTripTx(tx, tripId, operation);
 
-    await tx.planningFeedback.create({
-      data: {
+      return finalizePlanningMutationTx(tx, {
+        userId,
         tripId,
-        targetType: "PLACE_SUGGESTION",
-        targetId: record.id,
-        placeSuggestionId: record.id,
-        source: "USER",
-        action: "SELECT",
-        userNote: input.note ?? `Added ${input.name} as an already-decided place.`,
-        metadata: {
-          topic: input.topic,
-          source: "user_anchor",
+        kind: "planning_place_add",
+        control,
+        result: {
+          status: "saved" as const,
+          place: toRecommendationDto(record),
         },
-      },
-    });
-    await writeUserPlanningEvent(tx, {
-      tripId,
-      title: "Already-decided place added",
-      message: `${record.name} was added to the live plan preview.`,
-      metadata: {
-        topic: input.topic,
-        placeSuggestionId: record.id,
-        source: "user_anchor",
-      },
-    });
-    await rebuildItineraryDraftForTripTx(tx, tripId);
-
-    return {
-      status: "saved" as const,
-      place: toRecommendationDto(record),
-    };
+      });
+    },
   });
 }
 
@@ -871,75 +1253,99 @@ export async function selectRecommendation(
   input: {
     suggestionId: string;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
-
-    const suggestion = await tx.placeSuggestion.findFirst({
-      where: {
-        id: input.suggestionId,
+  return measurePlanningOperation(
+    "recommendation_select",
+    operation,
+    () =>
+      executePlanningMutation({
+        userId,
         tripId,
-      },
-      select: {
-        id: true,
-        tripId: true,
-        status: true,
-        name: true,
-      },
-    });
+        control,
+        transaction: async (tx) => {
+          const trip = await getPlanningTrip(tx, userId, tripId);
+          const accessFailure = planningAccessFailure(trip);
 
-    if (!suggestion) {
-      return {
-        status: "suggestion_not_found" as const,
-      };
-    }
+          if (accessFailure) {
+            return accessFailure;
+          }
+          if (!trip) {
+            return { status: "not_found" as const };
+          }
+          const replay = await getPlanningMutationReplayTx(tx, tripId, control);
 
-    await tx.placeSuggestion.updateMany({
-      where: {
-        id: input.suggestionId,
-        tripId,
-      },
-      data: {
-        status: "SELECTED",
-      },
-    });
+          if (replay) return replay;
 
-    await tx.planningFeedback.create({
-      data: {
-        tripId,
-        targetType: "PLACE_SUGGESTION",
-        targetId: input.suggestionId,
-        placeSuggestionId: input.suggestionId,
-        source: "USER",
-        action: "SELECT",
-        metadata: {
-          source: "recommendation_pick",
+          const suggestion = await tx.placeSuggestion.findFirst({
+            where: {
+              id: input.suggestionId,
+              tripId,
+            },
+            select: {
+              id: true,
+              tripId: true,
+              status: true,
+              name: true,
+            },
+          });
+
+          if (!suggestion) {
+            return {
+              status: "suggestion_not_found" as const,
+            };
+          }
+
+          await tx.placeSuggestion.updateMany({
+            where: {
+              id: input.suggestionId,
+              tripId,
+            },
+            data: {
+              status: "SELECTED",
+            },
+          });
+
+          await tx.planningFeedback.create({
+            data: {
+              tripId,
+              targetType: "PLACE_SUGGESTION",
+              targetId: input.suggestionId,
+              placeSuggestionId: input.suggestionId,
+              source: "USER",
+              action: "SELECT",
+              metadata: {
+                source: "recommendation_pick",
+              },
+            },
+          });
+          await writeUserPlanningEvent(tx, {
+            tripId,
+            title: "Recommendation selected",
+            message: `${suggestion.name} was added to the live plan preview.`,
+            metadata: {
+              placeSuggestionId: input.suggestionId,
+              source: "recommendation_pick",
+            },
+          });
+          await rebuildItineraryDraftForTripTx(tx, tripId, operation);
+
+          return finalizePlanningMutationTx(tx, {
+            userId,
+            tripId,
+            kind: "recommendation_select",
+            control,
+            result: { status: "selected" as const },
+          });
         },
-      },
-    });
-    await writeUserPlanningEvent(tx, {
-      tripId,
-      title: "Recommendation selected",
-      message: `${suggestion.name} was added to the live plan preview.`,
-      metadata: {
-        placeSuggestionId: input.suggestionId,
-        source: "recommendation_pick",
-      },
-    });
-    await rebuildItineraryDraftForTripTx(tx, tripId);
-
-    return {
-      status: "selected" as const,
-    };
-  });
+      }),
+    (result) => ({ status: result.status }),
+  );
 }
 
 export async function rejectRecommendation(
@@ -950,82 +1356,106 @@ export async function rejectRecommendation(
     reason: FeedbackReason;
     note?: string | null;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
-
-    const suggestion = await tx.placeSuggestion.findFirst({
-      where: {
-        id: input.suggestionId,
+  return measurePlanningOperation(
+    "recommendation_reject",
+    operation,
+    () =>
+      executePlanningMutation({
+        userId,
         tripId,
-      },
-      select: {
-        id: true,
-        tripId: true,
-        status: true,
-        name: true,
-      },
-    });
+        control,
+        transaction: async (tx) => {
+          const trip = await getPlanningTrip(tx, userId, tripId);
+          const accessFailure = planningAccessFailure(trip);
 
-    if (!suggestion) {
-      return {
-        status: "suggestion_not_found" as const,
-      };
-    }
+          if (accessFailure) {
+            return accessFailure;
+          }
+          if (!trip) {
+            return { status: "not_found" as const };
+          }
+          const replay = await getPlanningMutationReplayTx(tx, tripId, control);
 
-    await tx.placeSuggestion.updateMany({
-      where: {
-        id: input.suggestionId,
-        tripId,
-      },
-      data: {
-        status: "REJECTED",
-      },
-    });
+          if (replay) return replay;
 
-    await tx.planningFeedback.create({
-      data: {
-        tripId,
-        targetType: "PLACE_SUGGESTION",
-        targetId: input.suggestionId,
-        placeSuggestionId: input.suggestionId,
-        source: "USER",
-        action: "REJECT",
-        reason: input.reason,
-        userNote: input.note ?? null,
-        metadata: {
-          source: "recommendation_reject",
+          const suggestion = await tx.placeSuggestion.findFirst({
+            where: {
+              id: input.suggestionId,
+              tripId,
+            },
+            select: {
+              id: true,
+              tripId: true,
+              status: true,
+              name: true,
+            },
+          });
+
+          if (!suggestion) {
+            return {
+              status: "suggestion_not_found" as const,
+            };
+          }
+
+          await tx.placeSuggestion.updateMany({
+            where: {
+              id: input.suggestionId,
+              tripId,
+            },
+            data: {
+              status: "REJECTED",
+            },
+          });
+
+          await tx.planningFeedback.create({
+            data: {
+              tripId,
+              targetType: "PLACE_SUGGESTION",
+              targetId: input.suggestionId,
+              placeSuggestionId: input.suggestionId,
+              source: "USER",
+              action: "REJECT",
+              reason: input.reason,
+              userNote: input.note ?? null,
+              metadata: {
+                source: "recommendation_reject",
+              },
+            },
+          });
+          await writeUserPlanningEvent(tx, {
+            tripId,
+            title: "Recommendation rejected",
+            message: input.note
+              ? `${suggestion.name} was rejected: ${input.note}`
+              : `${suggestion.name} was rejected because of ${input.reason.toLocaleLowerCase().replaceAll("_", " ")}.`,
+            metadata: {
+              placeSuggestionId: input.suggestionId,
+              reason: input.reason,
+              source: "recommendation_reject",
+            },
+          });
+          if (suggestion.status === "SELECTED") {
+            await rebuildItineraryDraftForTripTx(tx, tripId, operation);
+          }
+
+          return finalizePlanningMutationTx(tx, {
+            userId,
+            tripId,
+            kind: "recommendation_reject",
+            control,
+            result: { status: "rejected" as const },
+          });
         },
-      },
-    });
-    await writeUserPlanningEvent(tx, {
-      tripId,
-      title: "Recommendation rejected",
-      message: input.note
-        ? `${suggestion.name} was rejected: ${input.note}`
-        : `${suggestion.name} was rejected because of ${input.reason.toLocaleLowerCase().replaceAll("_", " ")}.`,
-      metadata: {
-        placeSuggestionId: input.suggestionId,
-        reason: input.reason,
-        source: "recommendation_reject",
-      },
-    });
-    if (suggestion.status === "SELECTED") {
-      await rebuildItineraryDraftForTripTx(tx, tripId);
-    }
-
-    return {
-      status: "rejected" as const,
-    };
-  });
+      }),
+    (result) => ({ status: result.status }),
+  );
 }
 
 export async function deselectRecommendation(
@@ -1034,75 +1464,99 @@ export async function deselectRecommendation(
   input: {
     suggestionId: string;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
-
-    const suggestion = await tx.placeSuggestion.findFirst({
-      where: {
-        id: input.suggestionId,
+  return measurePlanningOperation(
+    "recommendation_deselect",
+    operation,
+    () =>
+      executePlanningMutation({
+        userId,
         tripId,
-      },
-      select: {
-        id: true,
-        tripId: true,
-        status: true,
-        name: true,
-      },
-    });
+        control,
+        transaction: async (tx) => {
+          const trip = await getPlanningTrip(tx, userId, tripId);
+          const accessFailure = planningAccessFailure(trip);
 
-    if (!suggestion) {
-      return {
-        status: "suggestion_not_found" as const,
-      };
-    }
+          if (accessFailure) {
+            return accessFailure;
+          }
+          if (!trip) {
+            return { status: "not_found" as const };
+          }
+          const replay = await getPlanningMutationReplayTx(tx, tripId, control);
 
-    await tx.placeSuggestion.updateMany({
-      where: {
-        id: input.suggestionId,
-        tripId,
-      },
-      data: {
-        status: "PENDING",
-      },
-    });
+          if (replay) return replay;
 
-    await tx.planningFeedback.create({
-      data: {
-        tripId,
-        targetType: "PLACE_SUGGESTION",
-        targetId: input.suggestionId,
-        placeSuggestionId: input.suggestionId,
-        source: "USER",
-        action: "DESELECT",
-        metadata: {
-          source: "live_plan_remove",
+          const suggestion = await tx.placeSuggestion.findFirst({
+            where: {
+              id: input.suggestionId,
+              tripId,
+            },
+            select: {
+              id: true,
+              tripId: true,
+              status: true,
+              name: true,
+            },
+          });
+
+          if (!suggestion) {
+            return {
+              status: "suggestion_not_found" as const,
+            };
+          }
+
+          await tx.placeSuggestion.updateMany({
+            where: {
+              id: input.suggestionId,
+              tripId,
+            },
+            data: {
+              status: "PENDING",
+            },
+          });
+
+          await tx.planningFeedback.create({
+            data: {
+              tripId,
+              targetType: "PLACE_SUGGESTION",
+              targetId: input.suggestionId,
+              placeSuggestionId: input.suggestionId,
+              source: "USER",
+              action: "DESELECT",
+              metadata: {
+                source: "live_plan_remove",
+              },
+            },
+          });
+          await writeUserPlanningEvent(tx, {
+            tripId,
+            title: "Place removed from plan",
+            message: `${suggestion.name} was removed from the live plan preview.`,
+            metadata: {
+              placeSuggestionId: input.suggestionId,
+              source: "live_plan_remove",
+            },
+          });
+          await rebuildItineraryDraftForTripTx(tx, tripId, operation);
+
+          return finalizePlanningMutationTx(tx, {
+            userId,
+            tripId,
+            kind: "recommendation_deselect",
+            control,
+            result: { status: "deselected" as const },
+          });
         },
-      },
-    });
-    await writeUserPlanningEvent(tx, {
-      tripId,
-      title: "Place removed from plan",
-      message: `${suggestion.name} was removed from the live plan preview.`,
-      metadata: {
-        placeSuggestionId: input.suggestionId,
-        source: "live_plan_remove",
-      },
-    });
-    await rebuildItineraryDraftForTripTx(tx, tripId);
-
-    return {
-      status: "deselected" as const,
-    };
-  });
+      }),
+    (result) => ({ status: result.status }),
+  );
 }
 
 export async function refreshRecommendations(
@@ -1111,95 +1565,199 @@ export async function refreshRecommendations(
   input: {
     topic: PlanningTopic;
     note: string;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
+  control?: PlanningMutationControl,
 ) {
-  const messageResult = await recordPlanningMessage(userId, tripId, {
-    topic: input.topic,
-    message: input.note,
-  });
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-  if (messageResult.status !== "recorded") {
-    return messageResult;
-  }
+  return measurePlanningOperation(
+    "recommendations_refresh",
+    operation,
+    () =>
+      executePlanningMutation({
+        userId,
+        tripId,
+        control,
+        transaction: async (tx) => {
+          const trip = await getPlanningTrip(tx, userId, tripId);
+          const accessFailure = planningAccessFailure(trip);
 
-  return generateRecommendations(userId, tripId, {
-    topic: input.topic,
-  });
+          if (accessFailure) return accessFailure;
+          if (!trip) return { status: "not_found" as const };
+
+          const replay = await getPlanningMutationReplayTx(tx, tripId, control);
+
+          if (replay) return replay;
+
+          await recordPlanningMessageForTripTx(
+            tx,
+            trip,
+            {
+              topic: input.topic,
+              message: input.note,
+              destinationId: input.destinationId,
+              planningDayNumber: input.planningDayNumber,
+            },
+            operation,
+          );
+
+          const updatedTrip = await getPlanningTrip(tx, userId, tripId);
+
+          if (!updatedTrip) return { status: "not_found" as const };
+
+          const result = await generateRecommendationsForTripTx(
+            tx,
+            updatedTrip,
+            {
+              topic: input.topic,
+              destinationId: input.destinationId,
+              planningDayNumber: input.planningDayNumber,
+            },
+          );
+
+          return finalizePlanningMutationTx(tx, {
+            userId,
+            tripId,
+            kind: "recommendations_refresh",
+            control,
+            result,
+          });
+        },
+      }),
+    (result) => ({ status: result.status }),
+  );
 }
 
-export async function getPlanningWorkspace(userId: string, tripId: string) {
-  return db.$transaction(async (tx) => {
-    const trip = await getPlanningTrip(tx, userId, tripId);
-    const accessFailure = planningAccessFailure(trip);
+export async function getPlanningWorkspace(
+  userId: string,
+  tripId: string,
+  requestedContext?: Partial<PlanningContext>,
+) {
+  const operation = createPlanningOperationContext(tripId);
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+  return measurePlanningOperation(
+    "planning_snapshot_query",
+    operation,
+    () =>
+      db.$transaction(async (tx) => {
+        const trip = await getPlanningTrip(tx, userId, tripId);
+        const accessFailure = planningAccessFailure(trip);
 
-    const [
-      selectedPlaces,
-      suggestions,
-      timelineEvents,
-      placeActionLog,
-      itineraryPreview,
-    ] =
-      await Promise.all([
-      getSelectedPlaces(tx, tripId),
-      tx.placeSuggestion.findMany({
-        where: {
+        if (accessFailure) {
+          return accessFailure;
+        }
+        if (!trip) {
+          return { status: "not_found" as const };
+        }
+
+        const selectedPlaces = await getSelectedPlaces(tx, tripId);
+        const suggestions = await tx.placeSuggestion.findMany({
+          where: {
+            tripId,
+            status: {
+              not: "REJECTED",
+            },
+          },
+          select: placeSuggestionSelect,
+          orderBy: [
+            {
+              status: "asc",
+            },
+            {
+              score: "desc",
+            },
+          ],
+        });
+        const timelineEvents = await tx.planningEvent.findMany({
+          where: {
+            tripId,
+            visibleToUser: true,
+          },
+          select: planningEventSelect,
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 6,
+        });
+        const placeActionLog = await getPlaceActionLog(tx, tripId);
+        const itineraryPreview = await getPersistedItineraryForTripTx(
+          tx,
           tripId,
-          status: {
-            not: "REJECTED",
-          },
-        },
-        select: placeSuggestionSelect,
-        orderBy: [
-          {
-            status: "asc",
-          },
-          {
-            score: "desc",
-          },
-        ],
-      }),
-      tx.planningEvent.findMany({
-        where: {
-          tripId,
-          visibleToUser: true,
-        },
-        select: planningEventSelect,
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 6,
-      }),
-      getPlaceActionLog(tx, tripId),
-      getPersistedItineraryForTripTx(tx, tripId),
-    ]);
-    const preference = preferenceSnapshot(trip.preference);
+        );
+        const preference = preferenceSnapshot(trip.preference);
+        const context = normalizedPlanningContext(trip, requestedContext);
+        const recommendations = suggestions.map(toRecommendationDto);
+        const snapshot = planningSnapshot({
+          trip,
+          context,
+          preference,
+          selectedPlaces,
+          recommendations,
+          itinerary: itineraryPreview,
+        });
 
-    return {
-      status: "ok" as const,
-      trip: {
-        id: trip.id,
-        title: trip.title,
-        destinations: trip.destinations,
-      },
-      preference,
-      selectedPlaces,
-      recommendations: suggestions.map(toRecommendationDto),
-      timelineEvents: timelineEvents.map(timelineEventDto),
-      placeActionLog,
-      itineraryPreview,
-    };
-  });
+        return {
+          status: "ok" as const,
+          trip: {
+            id: trip.id,
+            title: trip.title,
+            startDate: serializeDateOnly(trip.startDate),
+            endDate: serializeDateOnly(trip.endDate),
+            budgetCurrency: trip.budgetCurrency,
+            destinations: trip.destinations,
+          },
+          preference,
+          selectedPlaces,
+          recommendations,
+          timelineEvents: timelineEvents.map(timelineEventDto),
+          placeActionLog,
+          itineraryPreview,
+          snapshot,
+        };
+      }),
+    (result) => ({
+      status: result.status,
+      selectedPlaceCount:
+        result.status === "ok" ? result.selectedPlaces.length : undefined,
+      itineraryDayCount:
+        result.status === "ok"
+          ? result.itineraryPreview.days.length
+          : undefined,
+    }),
+  );
 }
 
 function formString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function formOptionalNumber(value: FormDataEntryValue | null) {
+  const raw = formString(value);
+
+  if (!raw) {
+    return null;
+  }
+
+  const number = Number(raw);
+
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function formOptionalPositiveInteger(value: FormDataEntryValue | null) {
+  const raw = formString(value);
+
+  if (!raw) {
+    return null;
+  }
+
+  const number = Number(raw);
+
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
 function formTopic(value: FormDataEntryValue | null): PlanningTopic {
@@ -1217,17 +1775,49 @@ function formTopic(value: FormDataEntryValue | null): PlanningTopic {
   return "HOTEL_BASE";
 }
 
-function formRejectReason(value: FormDataEntryValue | null): FeedbackReason | null {
+function formRejectReason(
+  value: FormDataEntryValue | null,
+): FeedbackReason | null {
   const reason = formString(value);
   const allowedReasons = new Set<string>(recommendationRejectReasons);
 
-  return allowedReasons.has(reason)
-    ? (reason as FeedbackReason)
-    : null;
+  return allowedReasons.has(reason) ? (reason as FeedbackReason) : null;
 }
 
 function planningRedirect(tripId: string, query: string) {
   redirect(`/trips/${tripId}/planning?${query}`);
+}
+
+function planningQuery(input: {
+  topic?: PlanningTopic;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
+  message?: string;
+  error?: string;
+  generated?: string;
+  refreshed?: string;
+}) {
+  const params = new URLSearchParams();
+
+  if (input.topic) params.set("topic", input.topic);
+  if (input.destinationId) params.set("destinationId", input.destinationId);
+  if (input.planningDayNumber)
+    params.set("day", String(input.planningDayNumber));
+  if (input.message) params.set("message", input.message);
+  if (input.error) params.set("error", input.error);
+  if (input.generated) params.set("generated", input.generated);
+  if (input.refreshed) params.set("refreshed", input.refreshed);
+
+  return params.toString();
+}
+
+function planningFormContext(formData: FormData) {
+  return {
+    destinationId: formString(formData.get("destinationId")) || null,
+    planningDayNumber: formOptionalPositiveInteger(
+      formData.get("planningDayNumber"),
+    ),
+  };
 }
 
 function refreshPlanningMutation(tripId: string) {
@@ -1243,20 +1833,38 @@ export async function recordPlanningMessageFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const message = formString(formData.get("message"));
   const topic = formTopic(formData.get("topic"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !message) {
     redirect("/trips?error=invalid-planning-message");
   }
 
-  const result = await recordPlanningMessage(userId, tripId, { topic, message });
+  const result = await recordPlanningMessage(userId, tripId, {
+    topic,
+    message,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
 
   revalidatePath(`/trips/${tripId}/planning`);
   revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&message=recorded`);
+  planningRedirect(
+    tripId,
+    planningQuery({ topic, ...context, message: "recorded" }),
+  );
 }
 
 export async function generateRecommendationsFormAction(formData: FormData) {
@@ -1265,22 +1873,42 @@ export async function generateRecommendationsFormAction(formData: FormData) {
   const userId = await requireUser();
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
+  const context = planningFormContext(formData);
 
   if (!tripId) {
     redirect("/trips?error=invalid-trip");
   }
 
-  const result = await generateRecommendations(userId, tripId, { topic });
+  const result = await generateRecommendations(userId, tripId, {
+    topic,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
   if (result.status === "needs_more_context") {
-    planningRedirect(tripId, `topic=${topic}&error=needs-more-context`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "needs-more-context" }),
+    );
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
-  planningRedirect(tripId, `topic=${topic}&generated=1`);
+  planningRedirect(
+    tripId,
+    planningQuery({ topic, ...context, generated: "1" }),
+  );
 }
 
 export async function addUserPlanningPlaceFormAction(formData: FormData) {
@@ -1291,6 +1919,7 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
   const topic = formTopic(formData.get("topic"));
   const name = formString(formData.get("name"));
   const category = formString(formData.get("category")) as SuggestionCategory;
+  const context = planningFormContext(formData);
 
   if (!tripId || !name || !category) {
     redirect("/trips?error=invalid-place");
@@ -1303,13 +1932,38 @@ export async function addUserPlanningPlaceFormAction(formData: FormData) {
     city: formString(formData.get("city")) || null,
     country: formString(formData.get("country")) || null,
     note: formString(formData.get("note")) || null,
+    estimatedCostAmount: formOptionalNumber(
+      formData.get("estimatedCostAmount"),
+    ),
+    estimatedCostCurrency:
+      formString(formData.get("estimatedCostCurrency")) || null,
+    planningDayNumber: context.planningDayNumber,
   });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
   if (result.status === "invalid_destination") {
-    planningRedirect(tripId, `topic=${topic}&error=invalid-destination`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "invalid-destination" }),
+    );
+  }
+  if (result.status === "invalid_estimated_cost") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "invalid-cost" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1322,6 +1976,7 @@ export async function selectRecommendationFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
   const suggestionId = formString(formData.get("suggestionId"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !suggestionId) {
     redirect("/trips?error=invalid-suggestion");
@@ -1330,10 +1985,23 @@ export async function selectRecommendationFormAction(formData: FormData) {
   const result = await selectRecommendation(userId, tripId, { suggestionId });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
   if (result.status === "suggestion_not_found") {
-    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1348,6 +2016,7 @@ export async function rejectRecommendationFormAction(formData: FormData) {
   const suggestionId = formString(formData.get("suggestionId"));
   const reason = formRejectReason(formData.get("reason"));
   const note = formString(formData.get("note")) || null;
+  const context = planningFormContext(formData);
 
   if (!tripId || !suggestionId || !reason) {
     redirect("/trips?error=invalid-rejection");
@@ -1360,10 +2029,23 @@ export async function rejectRecommendationFormAction(formData: FormData) {
   });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
   if (result.status === "suggestion_not_found") {
-    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1376,6 +2058,7 @@ export async function deselectRecommendationFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
   const suggestionId = formString(formData.get("suggestionId"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !suggestionId) {
     redirect("/trips?error=invalid-deselect");
@@ -1384,10 +2067,23 @@ export async function deselectRecommendationFormAction(formData: FormData) {
   const result = await deselectRecommendation(userId, tripId, { suggestionId });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
   if (result.status === "suggestion_not_found") {
-    planningRedirect(tripId, `topic=${topic}&error=suggestion-not-found`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
   }
 
   refreshPlanningMutation(tripId);
@@ -1400,21 +2096,42 @@ export async function refreshRecommendationsFormAction(formData: FormData) {
   const tripId = formString(formData.get("tripId"));
   const topic = formTopic(formData.get("topic"));
   const note = formString(formData.get("note"));
+  const context = planningFormContext(formData);
 
   if (!tripId || !note) {
     redirect("/trips?error=invalid-refresh");
   }
 
-  const result = await refreshRecommendations(userId, tripId, { topic, note });
+  const result = await refreshRecommendations(userId, tripId, {
+    topic,
+    note,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
-  if (result.status === "archived") planningRedirect(tripId, "error=archived");
-  if (result.status === "not_ready") planningRedirect(tripId, "error=not-ready");
+  if (result.status === "archived") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "archived" }),
+    );
+  }
+  if (result.status === "not_ready") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "not-ready" }),
+    );
+  }
   if (result.status === "needs_more_context") {
-    planningRedirect(tripId, `topic=${topic}&error=needs-more-context`);
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "needs-more-context" }),
+    );
   }
 
   revalidatePath(`/trips/${tripId}/planning`);
   revalidatePath(`/trips/${tripId}/itinerary`);
-  planningRedirect(tripId, `topic=${topic}&refreshed=1`);
+  planningRedirect(
+    tripId,
+    planningQuery({ topic, ...context, refreshed: "1" }),
+  );
 }

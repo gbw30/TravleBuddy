@@ -11,16 +11,28 @@ type PlanningPageProps = {
     tripId: string;
   }>;
   searchParams?: Promise<{
-    topic?: string;
-    message?: string;
-    error?: string;
+    topic?: string | string[];
+    destinationId?: string | string[];
+    day?: string | string[];
+    message?: string | string[];
+    error?: string | string[];
   }>;
 };
 
-function activeTopic(value: string | undefined): PlanningTopic {
+function firstQueryValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function activeTopic(value: string | string[] | undefined): PlanningTopic {
   const parsed = planningTopicSchema.safeParse(value);
 
   return parsed.success ? parsed.data : "HOTEL_BASE";
+}
+
+function activeDayNumber(value: string | string[] | undefined) {
+  const number = Number(firstQueryValue(value));
+
+  return Number.isInteger(number) && number > 0 ? number : 1;
 }
 
 export default async function PlanningPage({
@@ -30,7 +42,14 @@ export default async function PlanningPage({
   const userId = await requireUser();
   const { tripId } = await params;
   const query = await searchParams;
-  const result = await getPlanningWorkspace(userId, tripId);
+  const topic = activeTopic(firstQueryValue(query?.topic));
+  const destinationId = firstQueryValue(query?.destinationId) ?? null;
+  const planningDayNumber = activeDayNumber(query?.day);
+  const result = await getPlanningWorkspace(userId, tripId, {
+    topic,
+    destinationId,
+    planningDayNumber,
+  });
 
   if (result.status === "not_found") {
     notFound();
@@ -83,9 +102,11 @@ export default async function PlanningPage({
       timelineEvents={result.timelineEvents}
       placeActionLog={result.placeActionLog}
       itineraryPreview={result.itineraryPreview}
-      activeTopic={activeTopic(query?.topic)}
-      message={query?.message}
-      error={query?.error}
+      activeTopic={topic}
+      activeDestinationId={destinationId ?? undefined}
+      activeDayNumber={planningDayNumber}
+      message={firstQueryValue(query?.message)}
+      error={firstQueryValue(query?.error)}
     />
   );
 }

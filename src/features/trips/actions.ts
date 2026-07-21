@@ -18,16 +18,29 @@ import {
   tripWithDetailsSelect,
   type TripWithDetails,
 } from "./queries";
+import { rebuildItineraryDraftForTripTx } from "@/features/itinerary/builder";
 import type { Prisma, UserTravelPreference } from "@/generated/prisma/client";
+import type {
+  PlanningMutationControl,
+  StalePlanningMutationResult,
+} from "@/features/planning/types";
+import {
+  executePlanningMutation,
+  finalizePlanningMutationTx,
+  getPlanningMutationReplayTx,
+} from "@/features/planning/mutation";
+import { createPlanningOperationContext } from "@/features/planning/telemetry";
 
 export type UpdateTripResult =
   | {
       status: "updated";
       trip: ReturnType<typeof toTripDto>;
+      revision: number;
     }
   | {
       status: "not_found" | "archived" | "invalid";
-    };
+    }
+  | StalePlanningMutationResult;
 
 export type DeleteTripResult = {
   status: "deleted" | "not_found" | "archived";
@@ -87,7 +100,9 @@ function preferenceForCreate(
       accommodationTypes: profilePreference.accommodationTypes,
       hotelPriority: profilePreference.hotelPriority ?? undefined,
       walkingToleranceKm: profilePreference.walkingToleranceKm ?? undefined,
-      dietaryRestrictions: jsonStringArray(profilePreference.dietaryRestrictions),
+      dietaryRestrictions: jsonStringArray(
+        profilePreference.dietaryRestrictions,
+      ),
       accessibilityNeeds: jsonStringArray(profilePreference.accessibilityNeeds),
       mustAvoid: jsonStringArray(profilePreference.mustAvoid),
       metadata: {
@@ -198,8 +213,12 @@ export async function updateTrip(
   userId: string,
   tripId: string,
   input: unknown,
+  control?: PlanningMutationControl,
 ): Promise<UpdateTripResult> {
-  const parsed = patchTripInputSchema.parse(input);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
   const hasDepartureFields =
     hasOwn(input, "departureCity") || hasOwn(input, "departureCountry");
   const hasDestinationsField = hasOwn(input, "destinations");
@@ -213,184 +232,211 @@ export async function updateTrip(
   const hasTravelStyleField = hasOwn(input, "travelStyle");
 
   // Keep ownership verification, related row edits, and status derivation atomic.
-  const trip = await db.$transaction(async (tx) => {
-    const existingTrip = await tx.trip.findFirst({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: tripWithDetailsSelect,
-    });
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const existingTrip = await tx.trip.findFirst({
+        where: buildTripOwnerWhere(userId, tripId),
+        select: tripWithDetailsSelect,
+      });
 
-    if (!existingTrip) {
-      return {
-        status: "not_found" as const,
-      };
-    }
+      if (!existingTrip) {
+        return {
+          status: "not_found" as const,
+        };
+      }
 
-    if (existingTrip.status === "ARCHIVED") {
-      return {
-        status: "archived" as const,
-      };
-    }
-
-    let merged;
-
-    try {
-      merged = mergeTripPatchForValidation(
-        {
-          title: existingTrip.title,
-          departureCity: existingTrip.departureCity ?? null,
-          departureCountry: existingTrip.departureCountry ?? null,
-          departureTimeZone: existingTrip.departureTimeZone ?? null,
-          destinations: getTripDestinations(existingTrip),
-          destinationCity: existingTrip.destinations[0]?.city ?? null,
-          destinationCountry: existingTrip.destinations[0]?.country ?? null,
-          startDate: existingTrip.startDate,
-          endDate: existingTrip.endDate,
-          budgetAmount: existingTrip.budgetAmount
-            ? Number(existingTrip.budgetAmount.toString())
-            : null,
-          budgetCurrency: existingTrip.budgetCurrency as
-            | "USD"
-            | "EUR"
-            | null,
-          travelStyle: existingTrip.preference?.pace ?? null,
-        },
-        parsed,
+      if (existingTrip.status === "ARCHIVED") {
+        return {
+          status: "archived" as const,
+        };
+      }
+      const replay = await getPlanningMutationReplayTx<UpdateTripResult>(
+        tx,
+        tripId,
+        control,
       );
-    } catch {
-      return {
-        status: "invalid" as const,
-      };
-    }
 
-    const nextDestinations = hasDestinationsField
-      ? (parsed.destinations ?? [])
-      : hasLegacyDestinationFields
-        ? merged.destinationCity && merged.destinationCountry
-          ? [
-              {
-                city: merged.destinationCity,
-                country: merged.destinationCountry,
-              },
-            ]
-          : []
-        : getTripDestinations(existingTrip);
-    const nextDepartureTimeZone =
-      merged.departureCity && merged.departureCountry
-        ? getTripLocationTimeZone(merged.departureCity, merged.departureCountry)
-        : null;
+      if (replay) return replay;
+      const parsed = patchTripInputSchema.parse(input);
 
-    await tx.trip.update({
-      where: {
-        id: tripId,
-      },
-      data: {
-        title: parsed.title ?? undefined,
-        departureCity: hasDepartureFields
-          ? (merged.departureCity ?? null)
-          : undefined,
-        departureCountry: hasDepartureFields
-          ? (merged.departureCountry ?? null)
-          : undefined,
-        departureTimeZone: hasDepartureFields
-          ? nextDepartureTimeZone
-          : undefined,
-        destinationSearchText: hasDestinationFields
-          ? destinationRouteSearchText(nextDestinations)
-          : undefined,
-        startDate: hasDateFields ? (merged.startDate ?? null) : undefined,
-        endDate: hasDateFields ? (merged.endDate ?? null) : undefined,
-        budgetAmount: hasBudgetFields ? (merged.budgetAmount ?? null) : undefined,
-        budgetCurrency: hasBudgetFields
-          ? (merged.budgetCurrency ?? null)
-          : undefined,
-      },
-    });
+      let merged;
 
-    const destinationsChanged =
-      hasDestinationFields &&
-      !destinationsAreEqual(getTripDestinations(existingTrip), nextDestinations);
-
-    if (destinationsChanged) {
-      await tx.placeSuggestion.updateMany({
-        where: {
-          tripId,
-          destinationId: {
-            not: null,
+      try {
+        merged = mergeTripPatchForValidation(
+          {
+            title: existingTrip.title,
+            departureCity: existingTrip.departureCity ?? null,
+            departureCountry: existingTrip.departureCountry ?? null,
+            departureTimeZone: existingTrip.departureTimeZone ?? null,
+            destinations: getTripDestinations(existingTrip),
+            destinationCity: existingTrip.destinations[0]?.city ?? null,
+            destinationCountry: existingTrip.destinations[0]?.country ?? null,
+            startDate: existingTrip.startDate,
+            endDate: existingTrip.endDate,
+            budgetAmount: existingTrip.budgetAmount
+              ? Number(existingTrip.budgetAmount.toString())
+              : null,
+            budgetCurrency: existingTrip.budgetCurrency as "USD" | "EUR" | null,
+            travelStyle: existingTrip.preference?.pace ?? null,
           },
+          parsed,
+        );
+      } catch {
+        return {
+          status: "invalid" as const,
+        };
+      }
+
+      const nextDestinations = hasDestinationsField
+        ? (parsed.destinations ?? [])
+        : hasLegacyDestinationFields
+          ? merged.destinationCity && merged.destinationCountry
+            ? [
+                {
+                  city: merged.destinationCity,
+                  country: merged.destinationCountry,
+                },
+              ]
+            : []
+          : getTripDestinations(existingTrip);
+      const nextDepartureTimeZone =
+        merged.departureCity && merged.departureCountry
+          ? getTripLocationTimeZone(
+              merged.departureCity,
+              merged.departureCountry,
+            )
+          : null;
+
+      await tx.trip.update({
+        where: {
+          id: tripId,
         },
         data: {
-          destinationId: null,
+          title: parsed.title ?? undefined,
+          departureCity: hasDepartureFields
+            ? (merged.departureCity ?? null)
+            : undefined,
+          departureCountry: hasDepartureFields
+            ? (merged.departureCountry ?? null)
+            : undefined,
+          departureTimeZone: hasDepartureFields
+            ? nextDepartureTimeZone
+            : undefined,
+          destinationSearchText: hasDestinationFields
+            ? destinationRouteSearchText(nextDestinations)
+            : undefined,
+          startDate: hasDateFields ? (merged.startDate ?? null) : undefined,
+          endDate: hasDateFields ? (merged.endDate ?? null) : undefined,
+          budgetAmount: hasBudgetFields
+            ? (merged.budgetAmount ?? null)
+            : undefined,
+          budgetCurrency: hasBudgetFields
+            ? (merged.budgetCurrency ?? null)
+            : undefined,
         },
       });
 
-      await tx.tripDestination.deleteMany({
-        where: {
-          tripId,
-        },
-      });
+      const destinationsChanged =
+        hasDestinationFields &&
+        !destinationsAreEqual(
+          getTripDestinations(existingTrip),
+          nextDestinations,
+        );
+      const travelStyleChanged =
+        hasTravelStyleField &&
+        (existingTrip.preference?.pace ?? null) !==
+          (parsed.travelStyle ?? null);
 
-      for (const [index, destination] of nextDestinations.entries()) {
-        await tx.tripDestination.create({
-          data: {
+      if (destinationsChanged) {
+        await tx.placeSuggestion.updateMany({
+          where: {
             tripId,
-            city: destination.city,
-            country: destination.country,
-            sortOrder: index,
-            timeZone: getTripLocationTimeZone(
-              destination.city,
-              destination.country,
-            ),
+            destinationId: {
+              not: null,
+            },
+          },
+          data: {
+            destinationId: null,
+          },
+        });
+
+        await tx.tripDestination.deleteMany({
+          where: {
+            tripId,
+          },
+        });
+
+        for (const [index, destination] of nextDestinations.entries()) {
+          await tx.tripDestination.create({
+            data: {
+              tripId,
+              city: destination.city,
+              country: destination.country,
+              sortOrder: index,
+              timeZone: getTripLocationTimeZone(
+                destination.city,
+                destination.country,
+              ),
+            },
+          });
+        }
+      }
+
+      if (hasTravelStyleField && parsed.travelStyle) {
+        await tx.tripPreference.upsert({
+          where: {
+            tripId,
+          },
+          update: {
+            pace: parsed.travelStyle,
+          },
+          create: {
+            tripId,
+            pace: parsed.travelStyle,
           },
         });
       }
-    }
 
-    if (hasTravelStyleField && parsed.travelStyle) {
-      await tx.tripPreference.upsert({
-        where: {
-          tripId,
-        },
-        update: {
-          pace: parsed.travelStyle,
-        },
-        create: {
-          tripId,
-          pace: parsed.travelStyle,
+      if (hasTravelStyleField && !parsed.travelStyle) {
+        await tx.tripPreference.updateMany({
+          where: {
+            tripId,
+          },
+          data: {
+            pace: null,
+          },
+        });
+      }
+
+      const updatedTrip = await tx.trip.findFirstOrThrow({
+        where: buildTripOwnerWhere(userId, tripId),
+        select: tripWithDetailsSelect,
+      });
+      const tripWithStatus = await refreshTripStatus(tx, updatedTrip);
+      const itineraryInputsChanged =
+        destinationsChanged ||
+        hasDateFields ||
+        hasBudgetFields ||
+        travelStyleChanged;
+
+      if (tripWithStatus.status === "PLANNING" && itineraryInputsChanged) {
+        await rebuildItineraryDraftForTripTx(tx, tripId, operation);
+      }
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "trip_settings_update",
+        control,
+        result: {
+          status: "updated" as const,
+          trip: toTripDto(tripWithStatus),
         },
       });
-    }
-
-    if (hasTravelStyleField && !parsed.travelStyle) {
-      await tx.tripPreference.updateMany({
-        where: {
-          tripId,
-        },
-        data: {
-          pace: null,
-        },
-      });
-    }
-
-    const updatedTrip = await tx.trip.findFirstOrThrow({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: tripWithDetailsSelect,
-    });
-
-    return refreshTripStatus(tx, updatedTrip);
+    },
   });
-
-  if (
-    trip.status === "not_found" ||
-    trip.status === "archived" ||
-    trip.status === "invalid"
-  ) {
-    return trip;
-  }
-
-  return {
-    status: "updated",
-    trip: toTripDto(trip),
-  };
 }
 
 export async function deleteTrip(
@@ -463,11 +509,13 @@ function getTripDetailsInputFromFormData(formData: FormData) {
     intent,
     title: formData.get("title"),
     departureCity:
-      isDraftIntent && !(formString(departureCity).trim() && formString(departureCountry).trim())
+      isDraftIntent &&
+      !(formString(departureCity).trim() && formString(departureCountry).trim())
         ? ""
         : departureCity,
     departureCountry:
-      isDraftIntent && !(formString(departureCity).trim() && formString(departureCountry).trim())
+      isDraftIntent &&
+      !(formString(departureCity).trim() && formString(departureCountry).trim())
         ? ""
         : departureCountry,
     destinations: isDraftIntent
@@ -478,11 +526,13 @@ function getTripDetailsInputFromFormData(formData: FormData) {
         )
       : destinations,
     startDate:
-      isDraftIntent && !(formString(startDate).trim() && formString(endDate).trim())
+      isDraftIntent &&
+      !(formString(startDate).trim() && formString(endDate).trim())
         ? ""
         : startDate,
     endDate:
-      isDraftIntent && !(formString(startDate).trim() && formString(endDate).trim())
+      isDraftIntent &&
+      !(formString(startDate).trim() && formString(endDate).trim())
         ? ""
         : endDate,
     budgetAmount:
@@ -554,10 +604,16 @@ export async function updateTripSettingsFormAction(formData: FormData) {
     redirect(`/trips/${tripId}/settings?error=invalid`);
   }
 
+  if (result.status === "stale_revision") {
+    redirect(`/trips/${tripId}/settings?error=stale`);
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/trips");
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/settings`);
+  revalidatePath(`/trips/${tripId}/planning`);
+  revalidatePath(`/trips/${tripId}/itinerary`);
   redirect(`/trips/${tripId}`);
 }
 
