@@ -1,4 +1,7 @@
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { rebuildItinerary } from "@/features/itinerary/builder";
 
 type ItineraryBuildRouteContext = {
@@ -35,17 +38,24 @@ function accessErrorResponse(
   }
 }
 
-export async function POST(_request: Request, context: ItineraryBuildRouteContext) {
+export async function POST(
+  _request: Request,
+  context: ItineraryBuildRouteContext,
+) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId } = await context.params;
     const result = await rebuildItinerary(userId, tripId);
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status === "no_selected_places") {
       return Response.json({
         rebuilt: false,
         status: "no_selected_places",
         itinerary: result.itinerary,
+        revision: result.revision,
       });
     }
 
@@ -56,6 +66,7 @@ export async function POST(_request: Request, context: ItineraryBuildRouteContex
     return Response.json({
       rebuilt: true,
       itinerary: result.itinerary,
+      revision: result.revision,
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

@@ -9,6 +9,19 @@ import { rebuildItineraryDraftForTripTx } from "@/features/itinerary/builder";
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import { requireUser } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import type {
+  PlanningMutationControl,
+  StalePlanningMutationResult,
+} from "@/features/planning/types";
+import {
+  executePlanningMutation,
+  finalizePlanningMutationTx,
+  getPlanningMutationReplayTx,
+} from "@/features/planning/mutation";
+import {
+  createPlanningOperationContext,
+  type PlanningOperationContext,
+} from "@/features/planning/telemetry";
 
 type TripTx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -85,8 +98,9 @@ type TravelSegmentInput = {
 };
 
 type LogisticsResult =
-  | { status: "saved" }
-  | { status: "not_found" | "archived" | "invalid" };
+  | { status: "saved"; revision: number }
+  | { status: "not_found" | "archived" | "invalid" }
+  | StalePlanningMutationResult;
 
 function dateOnly(value: Date | null) {
   return value ? value.toISOString().slice(0, 10) : null;
@@ -103,13 +117,15 @@ function optionalText(value: unknown) {
 }
 
 function parseLogisticsMode(value: unknown): TripLogisticsMode | null {
-  return typeof value === "string" && logisticsModes.has(value as TripLogisticsMode)
+  return typeof value === "string" &&
+    logisticsModes.has(value as TripLogisticsMode)
     ? (value as TripLogisticsMode)
     : null;
 }
 
 function parseTravelSegmentMode(value: unknown): TravelSegmentMode | null {
-  return typeof value === "string" && travelSegmentModes.has(value as TravelSegmentMode)
+  return typeof value === "string" &&
+    travelSegmentModes.has(value as TravelSegmentMode)
     ? (value as TravelSegmentMode)
     : null;
 }
@@ -136,7 +152,9 @@ function addUtcDays(date: Date, days: number) {
   return next;
 }
 
-function tripDateRange(trip: Pick<LogisticsTripRecord, "startDate" | "endDate">) {
+function tripDateRange(
+  trip: Pick<LogisticsTripRecord, "startDate" | "endDate">,
+) {
   if (!trip.startDate || !trip.endDate) {
     return null;
   }
@@ -228,13 +246,17 @@ async function ownedLogisticsTrip(tx: TripTx, userId: string, tripId: string) {
 async function rebuildPlanningItineraryIfNeeded(
   tx: TripTx,
   trip: Pick<LogisticsTripRecord, "id" | "status">,
+  operation: PlanningOperationContext,
 ) {
   if (trip.status === "PLANNING") {
-    await rebuildItineraryDraftForTripTx(tx, trip.id);
+    await rebuildItineraryDraftForTripTx(tx, trip.id, operation);
   }
 }
 
-export async function getTripLogisticsWorkspace(userId: string, tripId: string) {
+export async function getTripLogisticsWorkspace(
+  userId: string,
+  tripId: string,
+) {
   const trip = await db.trip.findFirst({
     where: buildTripOwnerWhere(userId, tripId),
     select: logisticsTripSelect,
@@ -259,35 +281,58 @@ export async function saveTripLogisticsMode(
   userId: string,
   tripId: string,
   input: { mode: TripLogisticsMode | string },
+  control?: PlanningMutationControl,
 ): Promise<LogisticsResult> {
-  const mode = parseLogisticsMode(input.mode);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-  if (!mode) {
-    return { status: "invalid" };
-  }
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await ownedLogisticsTrip(tx, userId, tripId);
 
-  return db.$transaction(async (tx) => {
-    const trip = await ownedLogisticsTrip(tx, userId, tripId);
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
 
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+      if (trip.status === "ARCHIVED") {
+        return { status: "archived" as const };
+      }
+      const replay = await getPlanningMutationReplayTx<LogisticsResult>(
+        tx,
+        tripId,
+        control,
+      );
 
-    if (trip.status === "ARCHIVED") {
-      return { status: "archived" as const };
-    }
+      if (replay) return replay;
+      const mode = parseLogisticsMode(input.mode);
 
-    await tx.trip.update({
-      where: {
-        id: tripId,
-      },
-      data: {
-        logisticsMode: mode,
-      },
-    });
-    await rebuildPlanningItineraryIfNeeded(tx, trip);
+      if (!mode) {
+        return { status: "invalid" as const };
+      }
 
-    return { status: "saved" as const };
+      await tx.trip.update({
+        where: {
+          id: tripId,
+        },
+        data: {
+          logisticsMode: mode,
+        },
+      });
+      await rebuildPlanningItineraryIfNeeded(tx, trip, operation);
+
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "logistics_mode_save",
+        control,
+        result: { status: "saved" as const },
+      });
+    },
   });
 }
 
@@ -295,59 +340,83 @@ export async function addTripTravelSegment(
   userId: string,
   tripId: string,
   input: TravelSegmentInput,
+  control?: PlanningMutationControl,
 ): Promise<LogisticsResult> {
-  return db.$transaction(async (tx) => {
-    const trip = await ownedLogisticsTrip(tx, userId, tripId);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await ownedLogisticsTrip(tx, userId, tripId);
 
-    if (trip.status === "ARCHIVED") {
-      return { status: "archived" as const };
-    }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
 
-    const segment = validateTravelSegmentInput(trip, input);
+      if (trip.status === "ARCHIVED") {
+        return { status: "archived" as const };
+      }
+      const replay = await getPlanningMutationReplayTx<LogisticsResult>(
+        tx,
+        tripId,
+        control,
+      );
 
-    if (!segment) {
-      return { status: "invalid" as const };
-    }
+      if (replay) return replay;
 
-    const existingSegments =
-      (await tx.tripTravelSegment.findMany({
+      const segment = validateTravelSegmentInput(trip, input);
+
+      if (!segment) {
+        return { status: "invalid" as const };
+      }
+
+      const existingSegments =
+        (await tx.tripTravelSegment.findMany({
+          where: {
+            tripId,
+          },
+          select: {
+            sortOrder: true,
+          },
+          orderBy: {
+            sortOrder: "desc",
+          },
+          take: 1,
+        })) ?? [];
+
+      await tx.trip.update({
         where: {
+          id: tripId,
+        },
+        data: {
+          logisticsMode: "TICKETED",
+        },
+      });
+      await tx.tripTravelSegment.create({
+        data: {
           tripId,
+          ...segment,
+          sortOrder: (existingSegments[0]?.sortOrder ?? -1) + 1,
         },
         select: {
-          sortOrder: true,
+          id: true,
         },
-        orderBy: {
-          sortOrder: "desc",
-        },
-        take: 1,
-      })) ?? [];
+      });
+      await rebuildPlanningItineraryIfNeeded(tx, trip, operation);
 
-    await tx.trip.update({
-      where: {
-        id: tripId,
-      },
-      data: {
-        logisticsMode: "TICKETED",
-      },
-    });
-    await tx.tripTravelSegment.create({
-      data: {
+      return finalizePlanningMutationTx(tx, {
+        userId,
         tripId,
-        ...segment,
-        sortOrder: (existingSegments[0]?.sortOrder ?? -1) + 1,
-      },
-      select: {
-        id: true,
-      },
-    });
-    await rebuildPlanningItineraryIfNeeded(tx, trip);
-
-    return { status: "saved" as const };
+        kind: "travel_segment_add",
+        control,
+        result: { status: "saved" as const },
+      });
+    },
   });
 }
 
@@ -356,39 +425,63 @@ export async function updateTripTravelSegment(
   tripId: string,
   segmentId: string,
   input: TravelSegmentInput,
+  control?: PlanningMutationControl,
 ): Promise<LogisticsResult> {
-  return db.$transaction(async (tx) => {
-    const trip = await ownedLogisticsTrip(tx, userId, tripId);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await ownedLogisticsTrip(tx, userId, tripId);
 
-    if (trip.status === "ARCHIVED") {
-      return { status: "archived" as const };
-    }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
 
-    const segment = validateTravelSegmentInput(trip, input);
-
-    if (!segment || !segmentId) {
-      return { status: "invalid" as const };
-    }
-
-    const updated = await tx.tripTravelSegment.updateMany({
-      where: {
-        id: segmentId,
+      if (trip.status === "ARCHIVED") {
+        return { status: "archived" as const };
+      }
+      const replay = await getPlanningMutationReplayTx<LogisticsResult>(
+        tx,
         tripId,
-      },
-      data: segment,
-    });
+        control,
+      );
 
-    if (updated.count === 0) {
-      return { status: "not_found" as const };
-    }
+      if (replay) return replay;
 
-    await rebuildPlanningItineraryIfNeeded(tx, trip);
+      const segment = validateTravelSegmentInput(trip, input);
 
-    return { status: "saved" as const };
+      if (!segment || !segmentId) {
+        return { status: "invalid" as const };
+      }
+
+      const updated = await tx.tripTravelSegment.updateMany({
+        where: {
+          id: segmentId,
+          tripId,
+        },
+        data: segment,
+      });
+
+      if (updated.count === 0) {
+        return { status: "not_found" as const };
+      }
+
+      await rebuildPlanningItineraryIfNeeded(tx, trip, operation);
+
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "travel_segment_update",
+        control,
+        result: { status: "saved" as const },
+      });
+    },
   });
 }
 
@@ -396,32 +489,56 @@ export async function deleteTripTravelSegment(
   userId: string,
   tripId: string,
   segmentId: string,
+  control?: PlanningMutationControl,
 ): Promise<LogisticsResult> {
-  return db.$transaction(async (tx) => {
-    const trip = await ownedLogisticsTrip(tx, userId, tripId);
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await ownedLogisticsTrip(tx, userId, tripId);
 
-    if (trip.status === "ARCHIVED") {
-      return { status: "archived" as const };
-    }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
 
-    const deleted = await tx.tripTravelSegment.deleteMany({
-      where: {
-        id: segmentId,
+      if (trip.status === "ARCHIVED") {
+        return { status: "archived" as const };
+      }
+      const replay = await getPlanningMutationReplayTx<LogisticsResult>(
+        tx,
         tripId,
-      },
-    });
+        control,
+      );
 
-    if (deleted.count === 0) {
-      return { status: "not_found" as const };
-    }
+      if (replay) return replay;
 
-    await rebuildPlanningItineraryIfNeeded(tx, trip);
+      const deleted = await tx.tripTravelSegment.deleteMany({
+        where: {
+          id: segmentId,
+          tripId,
+        },
+      });
 
-    return { status: "saved" as const };
+      if (deleted.count === 0) {
+        return { status: "not_found" as const };
+      }
+
+      await rebuildPlanningItineraryIfNeeded(tx, trip, operation);
+
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "travel_segment_delete",
+        control,
+        result: { status: "saved" as const },
+      });
+    },
   });
 }
 
@@ -459,6 +576,10 @@ function redirectAfterLogisticsResult(
 
   if (result.status === "invalid") {
     redirect(`/trips/${tripId}/logistics?error=invalid`);
+  }
+
+  if (result.status === "stale_revision") {
+    redirect(`/trips/${tripId}/logistics?error=stale`);
   }
 
   revalidateTripLogisticsPaths(tripId);
@@ -501,7 +622,8 @@ export async function addTripTravelSegmentFormAction(formData: FormData) {
     mode: formString(formData.get("segmentMode")),
     originCity: origin.city || formString(formData.get("originCity")),
     originCountry: origin.country || formString(formData.get("originCountry")),
-    destinationCity: destination.city || formString(formData.get("destinationCity")),
+    destinationCity:
+      destination.city || formString(formData.get("destinationCity")),
     destinationCountry:
       destination.country || formString(formData.get("destinationCountry")),
     departAt: formString(formData.get("departAt")),

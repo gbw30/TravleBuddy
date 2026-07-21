@@ -1,4 +1,7 @@
-import { assertAuthenticatedApiUser, UnauthorizedError } from "@/lib/authorization";
+import {
+  assertAuthenticatedApiUser,
+  UnauthorizedError,
+} from "@/lib/authorization";
 import { deleteTrip, updateTrip } from "@/features/trips/actions";
 import { getTripByIdForUser } from "@/features/trips/queries";
 import { patchTripInputSchema } from "@/features/trips/schemas";
@@ -60,6 +63,9 @@ export async function PATCH(request: Request, context: TripRouteContext) {
 
     const result = await updateTrip(userId, tripId, parsed.data);
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status === "not_found") {
       return apiError("Trip not found.", 404);
     }
@@ -73,7 +79,7 @@ export async function PATCH(request: Request, context: TripRouteContext) {
     }
 
     if (result.status === "updated") {
-      return Response.json({ trip: result.trip });
+      return Response.json({ trip: result.trip, revision: result.revision });
     }
 
     return apiError("Unable to update trip.", 500);

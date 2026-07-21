@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createTripInputSchema,
   deriveTripStatusFromDetails,
@@ -16,6 +16,15 @@ function dateInputFromOffset(days: number) {
 }
 
 describe("trip Stage 4 schemas", () => {
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T12:00:00.000Z"));
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   it("allows title-only draft trip creation", () => {
     const parsed = createTripInputSchema.parse({
       title: "Summer research trip",

@@ -1,5 +1,8 @@
 import { revalidatePath } from "next/cache";
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { updateItineraryConflictStatus } from "@/features/itinerary/conflict-engine";
 
 type ConflictResolveRouteContext = {
@@ -74,6 +77,9 @@ export async function PATCH(
       status,
     });
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "updated") {
       return accessErrorResponse(result);
     }
@@ -83,6 +89,7 @@ export async function PATCH(
     return Response.json({
       updated: true,
       status,
+      revision: result.revision,
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

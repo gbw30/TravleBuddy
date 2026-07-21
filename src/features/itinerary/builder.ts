@@ -6,6 +6,16 @@ import type {
 } from "@/generated/prisma/client";
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import { db } from "@/lib/db";
+import type { PlanningMutationControl } from "@/features/planning/types";
+import {
+  executePlanningMutation,
+  finalizePlanningMutationTx,
+  getPlanningMutationReplayTx,
+} from "@/features/planning/mutation";
+import {
+  createPlanningOperationContext,
+  measurePlanningOperation,
+} from "@/features/planning/telemetry";
 import { getTripReadiness } from "@/features/trips/readiness";
 import type {
   ItineraryDayDto,
@@ -17,6 +27,7 @@ import type {
   ItineraryItemDto,
 } from "./types";
 import {
+  getOpenItineraryConflictsForTripTx,
   refreshItineraryConflictsForTripTx,
   summarizeItineraryConflicts,
 } from "./conflict-engine";
@@ -283,7 +294,8 @@ function sortedNonHotels(places: readonly ItineraryDraftPlace[]) {
   return [...places]
     .filter((place) => place.category !== "HOTEL")
     .sort((left, right) => {
-      const categoryDiff = categoryRank(left.category) - categoryRank(right.category);
+      const categoryDiff =
+        categoryRank(left.category) - categoryRank(right.category);
 
       if (categoryDiff !== 0) {
         return categoryDiff;
@@ -348,7 +360,10 @@ function totalCost(
   };
 }
 
-function draftItem(place: ItineraryDraftPlace, sortOrder: number): ItineraryItemDto {
+function draftItem(
+  place: ItineraryDraftPlace,
+  sortOrder: number,
+): ItineraryItemDto {
   return {
     id: `draft-item-${place.id}`,
     placeSuggestionId: place.id,
@@ -373,7 +388,9 @@ function destinationIdFor(
   country: string,
 ) {
   const match = trip.destinations?.find(
-    (destination) => locationKey(destination.city, destination.country) === locationKey(city, country),
+    (destination) =>
+      locationKey(destination.city, destination.country) ===
+      locationKey(city, country),
   );
 
   return match?.id ?? null;
@@ -427,7 +444,8 @@ function currentTicketedCity(
     : null;
 
   for (const segment of [...(trip.travelSegments ?? [])].sort(
-    (left, right) => new Date(left.arriveAt).getTime() - new Date(right.arriveAt).getTime(),
+    (left, right) =>
+      new Date(left.arriveAt).getTime() - new Date(right.arriveAt).getTime(),
   )) {
     const departAt = validDate(segment.departAt);
     const arriveAt = validDate(segment.arriveAt);
@@ -541,8 +559,8 @@ function timeSlotsForDate(
     return {
       startTime: slotStart.toISOString(),
       endTime: slotEnd.toISOString(),
-      city: travelSegment ? null : cityWindow?.city ?? null,
-      country: travelSegment ? null : cityWindow?.country ?? null,
+      city: travelSegment ? null : (cityWindow?.city ?? null),
+      country: travelSegment ? null : (cityWindow?.country ?? null),
       travelSegmentId: travelSegment?.id ?? null,
       itemIds: [],
     };
@@ -564,14 +582,18 @@ function persistedCityWindowDto(
   };
 }
 
-function isJsonObject(value: Prisma.JsonValue | null): value is Prisma.JsonObject {
+function isJsonObject(
+  value: Prisma.JsonValue | null,
+): value is Prisma.JsonObject {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function detachedFeedbackMetadata(
   feedback: GeneratedFeedbackRecord,
 ): Prisma.InputJsonObject {
-  const existingMetadata: Prisma.InputJsonObject = isJsonObject(feedback.metadata)
+  const existingMetadata: Prisma.InputJsonObject = isJsonObject(
+    feedback.metadata,
+  )
     ? { ...feedback.metadata }
     : feedback.metadata === null
       ? {}
@@ -731,7 +753,7 @@ async function selectedPlaces(tx: ItineraryTx, tripId: string) {
 }
 
 async function persistedItinerary(tx: ItineraryTx, trip: ItineraryTripRecord) {
-  const conflicts = await refreshItineraryConflictsForTripTx(tx, trip);
+  const conflicts = await getOpenItineraryConflictsForTripTx(tx, trip.id);
   const days = await tx.itineraryDay.findMany({
     where: {
       tripId: trip.id,
@@ -936,74 +958,122 @@ async function persistDraft(
 export async function rebuildItineraryDraftForTripTx(
   tx: ItineraryTx,
   tripId: string,
+  operation = createPlanningOperationContext(tripId),
 ) {
-  const trip = await tx.trip.findUnique({
-    where: {
-      id: tripId,
-    },
-    select: itineraryTripSelect,
-  });
+  return measurePlanningOperation(
+    "itinerary_rebuild",
+    operation,
+    async () => {
+      const trip = await tx.trip.findUnique({
+        where: {
+          id: tripId,
+        },
+        select: itineraryTripSelect,
+      });
 
-  if (!trip) {
-    return {
-      status: "not_found" as const,
-    };
-  }
+      if (!trip) {
+        return {
+          status: "not_found" as const,
+        };
+      }
 
-  const places = await selectedPlaces(tx, tripId);
-  const draft = buildItineraryDraft({
-    trip,
-    selectedPlaces: places,
-  });
+      const places = await selectedPlaces(tx, tripId);
+      const draft = buildItineraryDraft({
+        trip,
+        selectedPlaces: places,
+      });
 
-  const itinerary = await persistDraft(tx, trip, draft);
+      const itinerary = await persistDraft(tx, trip, draft);
 
-  if (draft.status === "no_selected_places") {
-    return {
-      status: "no_selected_places" as const,
-      itinerary,
-    };
-  }
+      if (draft.status === "no_selected_places") {
+        return {
+          status: "no_selected_places" as const,
+          itinerary,
+        };
+      }
 
-  return {
-    status: "rebuilt" as const,
-    itinerary,
-  };
-}
-
-export async function rebuildItinerary(userId: string, tripId: string) {
-  return db.$transaction(async (tx) => {
-    const trip = await tx.trip.findFirst({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: itineraryTripSelect,
-    });
-    const accessFailure = planningAccessFailure(trip);
-
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
-
-    const places = await selectedPlaces(tx, tripId);
-    const draft = buildItineraryDraft({
-      trip,
-      selectedPlaces: places,
-    });
-    const itinerary = await persistDraft(tx, trip, draft);
-
-    if (draft.status === "no_selected_places") {
       return {
-        status: "no_selected_places" as const,
+        status: "rebuilt" as const,
         itinerary,
       };
-    }
+    },
+    (result) => ({
+      status: result.status,
+      itineraryDayCount:
+        result.status === "not_found"
+          ? undefined
+          : result.itinerary.days.length,
+    }),
+  );
+}
 
-    return {
-      status: "rebuilt" as const,
-      itinerary,
-    };
+export async function rebuildItinerary(
+  userId: string,
+  tripId: string,
+  control?: PlanningMutationControl,
+) {
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
+
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await tx.trip.findFirst({
+        where: buildTripOwnerWhere(userId, tripId),
+        select: itineraryTripSelect,
+      });
+      const accessFailure = planningAccessFailure(trip);
+
+      if (accessFailure) {
+        return accessFailure;
+      }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
+      const replay = await getPlanningMutationReplayTx(tx, tripId, control);
+
+      if (replay) return replay;
+
+      const places = await selectedPlaces(tx, tripId);
+      const draft = buildItineraryDraft({
+        trip,
+        selectedPlaces: places,
+      });
+      const itinerary = await measurePlanningOperation(
+        "itinerary_rebuild",
+        operation,
+        () => persistDraft(tx, trip, draft),
+        (result) => ({ itineraryDayCount: result.days.length }),
+      );
+
+      if (draft.status === "no_selected_places") {
+        return finalizePlanningMutationTx(tx, {
+          userId,
+          tripId,
+          kind: "itinerary_rebuild",
+          control,
+          result: {
+            status: "no_selected_places" as const,
+            itinerary,
+          },
+        });
+      }
+
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "itinerary_rebuild",
+        control,
+        result: {
+          status: "rebuilt" as const,
+          itinerary,
+        },
+      });
+    },
   });
 }
 

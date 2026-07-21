@@ -1,4 +1,7 @@
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { selectRecommendation } from "@/features/recommendations/service";
 
 type SelectRouteContext = {
@@ -43,11 +46,14 @@ export async function POST(_request: Request, context: SelectRouteContext) {
     const { tripId, suggestionId } = await context.params;
     const result = await selectRecommendation(userId, tripId, { suggestionId });
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "selected") {
       return accessErrorResponse(result);
     }
 
-    return Response.json({ selected: true });
+    return Response.json({ selected: true, revision: result.revision });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);

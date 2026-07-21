@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   tx: {
     trip: {
       findFirst: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     itineraryDay: {
       findMany: vi.fn(),
@@ -58,7 +60,13 @@ function item(
   id: string,
   input: {
     title?: string;
-    category?: "HOTEL" | "ATTRACTION" | "LANDMARK" | "ACTIVITY" | "RESTAURANT" | "ENTERTAINMENT";
+    category?:
+      | "HOTEL"
+      | "ATTRACTION"
+      | "LANDMARK"
+      | "ACTIVITY"
+      | "RESTAURANT"
+      | "ENTERTAINMENT";
     city?: string | null;
     country?: string | null;
     durationMinutes?: number | null;
@@ -192,11 +200,24 @@ describe("detectItineraryConflicts", () => {
 
     expect(conflicts).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: "MISSING_DURATION", itineraryItemId: "museum" }),
+        expect.objectContaining({
+          type: "MISSING_DURATION",
+          itineraryItemId: "museum",
+        }),
         expect.objectContaining({ type: "DISTANCE", severity: "MEDIUM" }),
-        expect.objectContaining({ type: "TIME", severity: "HIGH", itineraryItemId: "market" }),
-        expect.objectContaining({ type: "CLOSED_OR_UNAVAILABLE", itineraryItemId: "closed" }),
-        expect.objectContaining({ type: "HOTEL_LOCATION", itineraryItemId: "hotel" }),
+        expect.objectContaining({
+          type: "TIME",
+          severity: "HIGH",
+          itineraryItemId: "market",
+        }),
+        expect.objectContaining({
+          type: "CLOSED_OR_UNAVAILABLE",
+          itineraryItemId: "closed",
+        }),
+        expect.objectContaining({
+          type: "HOTEL_LOCATION",
+          itineraryItemId: "hotel",
+        }),
         expect.objectContaining({
           type: "SCHEDULE_DENSITY",
           metadata: expect.objectContaining({ rule: "restaurant_coverage" }),
@@ -232,6 +253,8 @@ describe("conflict service", () => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip);
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
     mocks.tx.itineraryDay.findMany.mockResolvedValue([
       day(1, [item("museum", { durationMinutes: null })]),
     ]);
@@ -257,6 +280,7 @@ describe("conflict service", () => {
     const result = await checkItineraryConflicts("user_1", "trip_1");
 
     expect(result.status).toBe("checked");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.conflict.deleteMany).toHaveBeenCalledWith({
       where: {
         tripId: "trip_1",
@@ -282,7 +306,10 @@ describe("conflict service", () => {
 
   it("retries conflict persistence without item links when a rapid rebuild removes referenced items", async () => {
     mocks.tx.conflict.createMany
-      .mockRejectedValueOnce({ code: "P2003", message: "Foreign key constraint violated" })
+      .mockRejectedValueOnce({
+        code: "P2003",
+        message: "Foreign key constraint violated",
+      })
       .mockResolvedValueOnce({ count: 1 });
 
     const result = await checkItineraryConflicts("user_1", "trip_1");
@@ -331,15 +358,8 @@ describe("conflict service", () => {
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.id).toBe("conflict_1");
-    expect(mocks.tx.conflict.deleteMany).toHaveBeenCalledWith({
-      where: {
-        tripId: "trip_1",
-        status: "OPEN",
-        id: {
-          in: ["conflict_2"],
-        },
-      },
-    });
+    expect(mocks.tx.conflict.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
   });
 
   it("marks a conflict ignored or resolved only for an owned trip", async () => {
@@ -348,7 +368,8 @@ describe("conflict service", () => {
       status: "IGNORED",
     });
 
-    expect(result).toEqual({ status: "updated" });
+    expect(result).toEqual({ status: "updated", revision: 1 });
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.conflict.updateMany).toHaveBeenCalledWith({
       where: {
         id: "conflict_1",

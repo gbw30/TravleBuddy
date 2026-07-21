@@ -79,7 +79,9 @@ function textContent(node: ReactNode): string {
     return "";
   }
 
-  return textContent((node as { props: { children?: ReactNode } }).props.children);
+  return textContent(
+    (node as { props: { children?: ReactNode } }).props.children,
+  );
 }
 
 describe("PlanningPage", () => {
@@ -92,7 +94,9 @@ describe("PlanningPage", () => {
         id: "trip_1",
         title: "Barcelona",
         budgetCurrency: "EUR",
-        destinations: [{ id: "destination_1", city: "Barcelona", country: "Spain" }],
+        destinations: [
+          { id: "destination_1", city: "Barcelona", country: "Spain" },
+        ],
       },
       preference: {
         budgetLevel: "MODERATE",
@@ -141,6 +145,11 @@ describe("PlanningPage", () => {
     expect(mocks.planning.getPlanningWorkspace).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
+      {
+        topic: "HOTEL_BASE",
+        destinationId: "destination_1",
+        planningDayNumber: 2,
+      },
     );
   });
 

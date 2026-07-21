@@ -17,11 +17,14 @@ const mocks = vi.hoisted(() => ({
     trip: {
       findFirst: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     tripTravelSegment: {
       create: vi.fn(),
       deleteMany: vi.fn(),
       findMany: vi.fn(),
+      updateMany: vi.fn(),
     },
   },
   itinerary: {
@@ -46,13 +49,16 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/features/itinerary/builder", () => ({
-  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
+  rebuildItineraryDraftForTripTx:
+    mocks.itinerary.rebuildItineraryDraftForTripTx,
 }));
 
 import {
   addTripTravelSegmentFormAction,
   addTripTravelSegment,
+  deleteTripTravelSegment,
   saveTripLogisticsMode,
+  updateTripTravelSegment,
 } from "./logistics";
 
 const planningTrip = {
@@ -82,7 +88,12 @@ describe("trip logistics service", () => {
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.auth.requireUser.mockResolvedValue("user_1");
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip);
-    mocks.tx.trip.update.mockResolvedValue({ ...planningTrip, logisticsMode: "TICKETED" });
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
+    mocks.tx.trip.update.mockResolvedValue({
+      ...planningTrip,
+      logisticsMode: "TICKETED",
+    });
     mocks.tx.tripTravelSegment.create.mockResolvedValue({
       id: "segment_1",
       tripId: "trip_1",
@@ -97,6 +108,8 @@ describe("trip logistics service", () => {
       referenceCode: "DL123",
       sortOrder: 0,
     });
+    mocks.tx.tripTravelSegment.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.tripTravelSegment.deleteMany.mockResolvedValue({ count: 1 });
   });
 
   it("saves logistics mode and rebuilds the itinerary for planning trips", async () => {
@@ -105,6 +118,7 @@ describe("trip logistics service", () => {
     });
 
     expect(result.status).toBe("saved");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.trip.update).toHaveBeenCalledWith({
       where: {
         id: "trip_1",
@@ -116,6 +130,10 @@ describe("trip logistics service", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -133,6 +151,7 @@ describe("trip logistics service", () => {
     });
 
     expect(result.status).toBe("saved");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.tripTravelSegment.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         tripId: "trip_1",
@@ -147,6 +166,10 @@ describe("trip logistics service", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -165,6 +188,39 @@ describe("trip logistics service", () => {
     );
   });
 
+  it("updates one owned segment and finalizes once", async () => {
+    const result = await updateTripTravelSegment(
+      "user_1",
+      "trip_1",
+      "segment_1",
+      {
+        mode: "TRAIN",
+        originCity: "Los Angeles",
+        originCountry: "United States",
+        destinationCity: "New York",
+        destinationCountry: "United States",
+        departAt: "2026-07-02T14:00",
+        arriveAt: "2026-07-02T20:00",
+      },
+    );
+
+    expect(result.status).toBe("saved");
+    expect(mocks.tx.tripTravelSegment.updateMany).toHaveBeenCalledOnce();
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
+  });
+
+  it("deletes one owned segment and finalizes once", async () => {
+    const result = await deleteTripTravelSegment(
+      "user_1",
+      "trip_1",
+      "segment_1",
+    );
+
+    expect(result.status).toBe("saved");
+    expect(mocks.tx.tripTravelSegment.deleteMany).toHaveBeenCalledOnce();
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
+  });
+
   it("rejects travel segments outside the trip date range", async () => {
     const result = await addTripTravelSegment("user_1", "trip_1", {
       mode: "TRAIN",
@@ -177,7 +233,10 @@ describe("trip logistics service", () => {
     });
 
     expect(result.status).toBe("invalid");
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
     expect(mocks.tx.tripTravelSegment.create).not.toHaveBeenCalled();
-    expect(mocks.itinerary.rebuildItineraryDraftForTripTx).not.toHaveBeenCalled();
+    expect(
+      mocks.itinerary.rebuildItineraryDraftForTripTx,
+    ).not.toHaveBeenCalled();
   });
 });

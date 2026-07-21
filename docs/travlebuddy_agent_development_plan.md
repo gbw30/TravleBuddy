@@ -1117,6 +1117,12 @@ Future restaurant placement must assign selected restaurants near each day's sel
 
 ---
 
+# Conversational Planning Roadmap Override
+
+The implementation order from Phase 10 onward is superseded by the standalone conversational planning development pack in [`docs/conversational-planning/README.md`](./conversational-planning/README.md). The original Phase 10-15 sections remain below as historical scope references, but new implementation chats should follow the staged pack so chat persistence, deterministic orchestration, provider integration, scheduling, performance, and caching are introduced behind explicit QA gates.
+
+---
+
 # Phase 10 - Google Places Integration
 
 ## Goal

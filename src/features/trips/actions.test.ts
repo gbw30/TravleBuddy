@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const mocks = vi.hoisted(() => ({
   db: {
@@ -16,6 +24,8 @@ const mocks = vi.hoisted(() => ({
       findFirst: vi.fn(),
       update: vi.fn(),
       findFirstOrThrow: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       deleteMany: vi.fn(),
     },
     tripDestination: {
@@ -54,7 +64,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/features/itinerary/builder", () => ({
-  rebuildItineraryDraftForTripTx: mocks.itinerary.rebuildItineraryDraftForTripTx,
+  rebuildItineraryDraftForTripTx:
+    mocks.itinerary.rebuildItineraryDraftForTripTx,
 }));
 
 import { createTrip, deleteTrip, updateTrip } from "./actions";
@@ -82,9 +93,20 @@ function trip(overrides: Record<string, unknown> = {}) {
 }
 
 describe("trip actions", () => {
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T12:00:00.000Z"));
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
     mocks.itinerary.rebuildItineraryDraftForTripTx.mockResolvedValue({
       status: "rebuilt",
       itinerary: {
@@ -289,6 +311,7 @@ describe("trip actions", () => {
     await expect(
       updateTrip("user_1", "trip_2", { title: "Nope" }),
     ).resolves.toEqual({ status: "not_found" });
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
   });
 
   it("refuses to update archived trips", async () => {
@@ -302,6 +325,7 @@ describe("trip actions", () => {
       updateTrip("user_1", "trip_1", { title: "Revive me" }),
     ).resolves.toEqual({ status: "archived" });
     expect(mocks.tx.trip.update).not.toHaveBeenCalled();
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
   });
 
   it("derives planning status when an owned trip becomes complete", async () => {
@@ -360,9 +384,14 @@ describe("trip actions", () => {
     if (result.status === "updated") {
       expect(result.trip.status).toBe("PLANNING");
     }
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -411,6 +440,10 @@ describe("trip actions", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 
@@ -487,6 +520,10 @@ describe("trip actions", () => {
     expect(mocks.itinerary.rebuildItineraryDraftForTripTx).toHaveBeenCalledWith(
       mocks.tx,
       "trip_1",
+      expect.objectContaining({
+        operationId: expect.any(String),
+        tripId: "trip_1",
+      }),
     );
   });
 

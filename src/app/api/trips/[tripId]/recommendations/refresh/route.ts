@@ -1,4 +1,7 @@
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { refreshRecommendations } from "@/features/recommendations/service";
 import { refreshRecommendationsInputSchema } from "@/features/recommendations/schemas";
 
@@ -66,11 +69,17 @@ export async function POST(request: Request, context: RefreshRouteContext) {
 
     const result = await refreshRecommendations(userId, tripId, parsed.data);
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "generated") {
       return accessErrorResponse(result);
     }
 
-    return Response.json({ recommendations: result.recommendations });
+    return Response.json({
+      recommendations: result.recommendations,
+      revision: result.revision,
+    });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);

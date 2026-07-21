@@ -9,6 +9,17 @@ import type {
 } from "@/generated/prisma/client";
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import { db } from "@/lib/db";
+import type { PlanningMutationControl } from "@/features/planning/types";
+import {
+  executePlanningMutation,
+  finalizePlanningMutationTx,
+  getPlanningMutationReplayTx,
+} from "@/features/planning/mutation";
+import {
+  createPlanningOperationContext,
+  measurePlanningOperation,
+  type PlanningOperationContext,
+} from "@/features/planning/telemetry";
 import { getTripReadiness } from "@/features/trips/readiness";
 import type {
   ItineraryConflictDto,
@@ -193,7 +204,11 @@ function locationKey(item: DetectableItem) {
 }
 
 function isJsonObject(metadata: unknown): metadata is Record<string, unknown> {
-  return Boolean(metadata) && !Array.isArray(metadata) && typeof metadata === "object";
+  return (
+    Boolean(metadata) &&
+    !Array.isArray(metadata) &&
+    typeof metadata === "object"
+  );
 }
 
 function explicitUnavailable(metadata: unknown) {
@@ -239,9 +254,9 @@ function summarizeBySeverity(
   );
 }
 
-function sortedConflicts<T extends Pick<ItineraryConflictDto, "severity" | "type">>(
-  conflicts: T[],
-) {
+function sortedConflicts<
+  T extends Pick<ItineraryConflictDto, "severity" | "type">,
+>(conflicts: T[]) {
   return conflicts.sort(
     (left, right) =>
       severityRank[left.severity] - severityRank[right.severity] ||
@@ -265,16 +280,14 @@ function stableJson(value: unknown): unknown {
   );
 }
 
-function conflictSignature(
-  conflict: {
-    itineraryItemId: string | null;
-    type: ConflictType;
-    severity: ConflictSeverity;
-    message: string;
-    recommendation: string | null;
-    metadata?: unknown;
-  },
-) {
+function conflictSignature(conflict: {
+  itineraryItemId: string | null;
+  type: ConflictType;
+  severity: ConflictSeverity;
+  message: string;
+  recommendation: string | null;
+  metadata?: unknown;
+}) {
   return JSON.stringify({
     itineraryItemId: conflict.itineraryItemId ?? null,
     type: conflict.type,
@@ -484,7 +497,11 @@ function missingDurationConflicts(days: readonly DetectableDay[]) {
 function distanceConflicts(days: readonly DetectableDay[]) {
   return days.flatMap((day) => {
     const locations = Array.from(
-      new Set(day.items.map(locationKey).filter((value): value is string => Boolean(value))),
+      new Set(
+        day.items
+          .map(locationKey)
+          .filter((value): value is string => Boolean(value)),
+      ),
     );
 
     if (locations.length <= 1) {
@@ -515,7 +532,11 @@ function timeConflicts(days: readonly DetectableDay[]) {
     const conflicts: ConflictCandidate[] = [];
 
     for (let leftIndex = 0; leftIndex < day.items.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < day.items.length; rightIndex += 1) {
+      for (
+        let rightIndex = leftIndex + 1;
+        rightIndex < day.items.length;
+        rightIndex += 1
+      ) {
         const left = day.items[leftIndex];
         const right = day.items[rightIndex];
         const leftStart = dateValue(left.startTime);
@@ -581,7 +602,10 @@ function hotelLocationConflicts(days: readonly DetectableDay[]) {
     .map(locationKey)
     .filter((value): value is string => Boolean(value))
     .forEach((location) => {
-      nonHotelLocations.set(location, (nonHotelLocations.get(location) ?? 0) + 1);
+      nonHotelLocations.set(
+        location,
+        (nonHotelLocations.get(location) ?? 0) + 1,
+      );
     });
 
   const majorityLocation = Array.from(nonHotelLocations.entries()).sort(
@@ -594,7 +618,9 @@ function hotelLocationConflicts(days: readonly DetectableDay[]) {
 
   return items
     .filter((item) => category(item) === "HOTEL")
-    .filter((item) => locationKey(item) && locationKey(item) !== majorityLocation)
+    .filter(
+      (item) => locationKey(item) && locationKey(item) !== majorityLocation,
+    )
     .map(
       (item): ConflictCandidate => ({
         itineraryItemId: item.id,
@@ -619,7 +645,9 @@ function restaurantCoverageConflicts(days: readonly DetectableDay[]) {
 
       return itemCategory ? activityCategories.has(itemCategory) : false;
     });
-    const hasRestaurant = day.items.some((item) => category(item) === "RESTAURANT");
+    const hasRestaurant = day.items.some(
+      (item) => category(item) === "RESTAURANT",
+    );
 
     if (!hasActivity || hasRestaurant) {
       return [];
@@ -651,16 +679,18 @@ export function detectItineraryConflicts({
   trip: DetectableTrip;
   days: DetectableDay[];
 }) {
-  return sortedConflicts(uniqueConflictCandidates([
-    ...budgetConflicts({ trip, days }),
-    ...densityConflicts({ trip, days }),
-    ...missingDurationConflicts(days),
-    ...distanceConflicts(days),
-    ...timeConflicts(days),
-    ...unavailableConflicts(days),
-    ...hotelLocationConflicts(days),
-    ...restaurantCoverageConflicts(days),
-  ]));
+  return sortedConflicts(
+    uniqueConflictCandidates([
+      ...budgetConflicts({ trip, days }),
+      ...densityConflicts({ trip, days }),
+      ...missingDurationConflicts(days),
+      ...distanceConflicts(days),
+      ...timeConflicts(days),
+      ...unavailableConflicts(days),
+      ...hotelLocationConflicts(days),
+      ...restaurantCoverageConflicts(days),
+    ]),
+  );
 }
 
 export function conflictDtoFromRecord(
@@ -700,17 +730,8 @@ export async function getOpenItineraryConflictsForTripTx(
     records.map(conflictDtoFromRecord),
   );
 
-  if (duplicateIds.length > 0) {
-    await tx.conflict.deleteMany({
-      where: {
-        tripId,
-        status: "OPEN",
-        id: {
-          in: duplicateIds,
-        },
-      },
-    });
-  }
+  // Reads remain side-effect free. The next explicit refresh replaces duplicates.
+  void duplicateIds;
 
   return sortedConflicts(unique);
 }
@@ -806,70 +827,105 @@ export async function refreshItineraryConflictsForTripTx(
   trip: DetectableTrip,
   options: {
     writeEvent?: boolean;
+    operation?: PlanningOperationContext;
   } = {},
 ) {
-  const days = await conflictDays(tx, trip.id);
-  const detected = detectItineraryConflicts({
-    trip,
-    days: days as ConflictDayRecord[],
-  });
+  const operation =
+    options.operation ?? createPlanningOperationContext(trip.id);
 
-  await tx.conflict.deleteMany({
-    where: {
-      tripId: trip.id,
-      status: "OPEN",
-    },
-  });
+  return measurePlanningOperation(
+    "conflict_refresh",
+    operation,
+    async () => {
+      const days = await conflictDays(tx, trip.id);
+      const detected = detectItineraryConflicts({
+        trip,
+        days: days as ConflictDayRecord[],
+      });
 
-  await createDetectedConflicts(tx, trip.id, detected);
-
-  if (options.writeEvent) {
-    await tx.planningEvent.create({
-      data: {
-        tripId: trip.id,
-        actor: "ENGINE",
-        type: "CONFLICT_SUMMARY",
-        title: "Conflict check completed",
-        message:
-          detected.length === 0
-            ? "No open itinerary conflicts were detected."
-            : `Detected ${detected.length} open itinerary conflict${detected.length === 1 ? "" : "s"}.`,
-        visibleToUser: true,
-        metadata: {
-          conflictCount: detected.length,
-          summary: summarizeBySeverity(detected),
+      await tx.conflict.deleteMany({
+        where: {
+          tripId: trip.id,
+          status: "OPEN",
         },
-      },
-    });
-  }
+      });
 
-  return getOpenItineraryConflictsForTripTx(tx, trip.id);
+      await createDetectedConflicts(tx, trip.id, detected);
+
+      if (options.writeEvent) {
+        await tx.planningEvent.create({
+          data: {
+            tripId: trip.id,
+            actor: "ENGINE",
+            type: "CONFLICT_SUMMARY",
+            title: "Conflict check completed",
+            message:
+              detected.length === 0
+                ? "No open itinerary conflicts were detected."
+                : `Detected ${detected.length} open itinerary conflict${detected.length === 1 ? "" : "s"}.`,
+            visibleToUser: true,
+            metadata: {
+              conflictCount: detected.length,
+              summary: summarizeBySeverity(detected),
+            },
+          },
+        });
+      }
+
+      return getOpenItineraryConflictsForTripTx(tx, trip.id);
+    },
+    () => ({ status: "refreshed" }),
+  );
 }
 
-export async function checkItineraryConflicts(userId: string, tripId: string) {
-  return db.$transaction(async (tx) => {
-    const trip = await tx.trip.findFirst({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: conflictTripSelect,
-    });
-    const accessFailure = planningAccessFailure(trip);
+export async function checkItineraryConflicts(
+  userId: string,
+  tripId: string,
+  control?: PlanningMutationControl,
+) {
+  const operation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await tx.trip.findFirst({
+        where: buildTripOwnerWhere(userId, tripId),
+        select: conflictTripSelect,
+      });
+      const accessFailure = planningAccessFailure(trip);
 
-    const conflicts = await refreshItineraryConflictsForTripTx(tx, trip, {
-      writeEvent: true,
-    });
+      if (accessFailure) {
+        return accessFailure;
+      }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
+      const replay = await getPlanningMutationReplayTx(tx, tripId, control);
 
-    return {
-      status: "checked" as const,
-      conflicts,
-      summary: summarizeBySeverity(conflicts),
-    };
+      if (replay) return replay;
+
+      const conflicts = await refreshItineraryConflictsForTripTx(tx, trip, {
+        writeEvent: true,
+        operation,
+      });
+
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "conflicts_check",
+        control,
+        result: {
+          status: "checked" as const,
+          conflicts,
+          summary: summarizeBySeverity(conflicts),
+        },
+      });
+    },
   });
 }
 
@@ -880,55 +936,68 @@ export async function updateItineraryConflictStatus(
     conflictId: string;
     status: Extract<ConflictStatus, "RESOLVED" | "IGNORED">;
   },
+  control?: PlanningMutationControl,
 ) {
-  return db.$transaction(async (tx) => {
-    const trip = await tx.trip.findFirst({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: conflictTripSelect,
-    });
-    const accessFailure = planningAccessFailure(trip);
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await tx.trip.findFirst({
+        where: buildTripOwnerWhere(userId, tripId),
+        select: conflictTripSelect,
+      });
+      const accessFailure = planningAccessFailure(trip);
 
-    if (accessFailure) {
-      return accessFailure;
-    }
-    if (!trip) {
-      return { status: "not_found" as const };
-    }
+      if (accessFailure) {
+        return accessFailure;
+      }
+      if (!trip) {
+        return { status: "not_found" as const };
+      }
+      const replay = await getPlanningMutationReplayTx(tx, tripId, control);
 
-    const updateResult = await tx.conflict.updateMany({
-      where: {
-        id: input.conflictId,
-        tripId,
-      },
-      data: {
-        status: input.status,
-      },
-    });
+      if (replay) return replay;
 
-    if (updateResult.count === 0) {
-      return { status: "conflict_not_found" as const };
-    }
-
-    const action: FeedbackAction =
-      input.status === "RESOLVED" ? "RESOLVE" : "IGNORE";
-
-    await tx.planningFeedback.create({
-      data: {
-        tripId,
-        targetType: "CONFLICT",
-        targetId: input.conflictId,
-        conflictId: input.conflictId,
-        source: "USER",
-        action,
-        metadata: {
-          source: "conflict_resolution",
+      const updateResult = await tx.conflict.updateMany({
+        where: {
+          id: input.conflictId,
+          tripId,
+        },
+        data: {
           status: input.status,
         },
-      },
-    });
+      });
 
-    return {
-      status: "updated" as const,
-    };
+      if (updateResult.count === 0) {
+        return { status: "conflict_not_found" as const };
+      }
+
+      const action: FeedbackAction =
+        input.status === "RESOLVED" ? "RESOLVE" : "IGNORE";
+
+      await tx.planningFeedback.create({
+        data: {
+          tripId,
+          targetType: "CONFLICT",
+          targetId: input.conflictId,
+          conflictId: input.conflictId,
+          source: "USER",
+          action,
+          metadata: {
+            source: "conflict_resolution",
+            status: input.status,
+          },
+        },
+      });
+
+      return finalizePlanningMutationTx(tx, {
+        userId,
+        tripId,
+        kind: "conflict_status_update",
+        control,
+        result: { status: "updated" as const },
+      });
+    },
   });
 }

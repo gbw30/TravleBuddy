@@ -1,6 +1,5 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
 import { requireUser } from "@/lib/authorization";
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import {
@@ -17,12 +16,23 @@ import {
 import type { TripPreferenceDto } from "./types";
 import { userTravelPreferenceDataFromTripPreference } from "@/features/profile/preferences";
 import { rebuildItineraryDraftForTripTx } from "@/features/itinerary/builder";
+import type {
+  PlanningMutationControl,
+  StalePlanningMutationResult,
+} from "@/features/planning/types";
+import {
+  executePlanningMutation,
+  finalizePlanningMutationTx,
+  getPlanningMutationReplayTx,
+} from "@/features/planning/mutation";
+import { createPlanningOperationContext } from "@/features/planning/telemetry";
 
 export type SaveTripPreferenceResult =
   | {
       status: "saved";
       operation: "created" | "updated";
       preference: TripPreferenceDto;
+      revision: number;
     }
   | {
       status: "not_found" | "archived" | "invalid";
@@ -30,7 +40,8 @@ export type SaveTripPreferenceResult =
   | {
       status: "not_ready";
       missingRequirements: string[];
-    };
+    }
+  | StalePlanningMutationResult;
 
 function preferencePersistenceData(input: ParsedPreferenceInput) {
   return {
@@ -94,134 +105,156 @@ export async function saveTripPreference(
   userId: string,
   tripId: string,
   input: PreferenceInput,
+  control?: PlanningMutationControl,
 ): Promise<SaveTripPreferenceResult> {
-  const parsed = preferenceInputSchema.safeParse(input);
+  const planningOperation = createPlanningOperationContext(
+    tripId,
+    control?.operationId,
+  );
 
-  if (!parsed.success) {
-    return {
-      status: "invalid",
-    };
-  }
-
-  return db.$transaction(async (tx) => {
-    const trip = await tx.trip.findFirst({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        startDate: true,
-        endDate: true,
-        budgetAmount: true,
-        budgetCurrency: true,
-        destinations: {
-          select: {
-            city: true,
-            country: true,
+  return executePlanningMutation({
+    userId,
+    tripId,
+    control,
+    transaction: async (tx) => {
+      const trip = await tx.trip.findFirst({
+        where: buildTripOwnerWhere(userId, tripId),
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          budgetAmount: true,
+          budgetCurrency: true,
+          destinations: {
+            select: {
+              city: true,
+              country: true,
+            },
           },
-        },
-        preference: {
-          select: {
-            pace: true,
+          preference: {
+            select: {
+              pace: true,
+            },
           },
-        },
-      },
-    });
-
-    if (!trip) {
-      return {
-        status: "not_found",
-      };
-    }
-
-    if (trip.status === "ARCHIVED") {
-      return {
-        status: "archived",
-      };
-    }
-
-    const missingRequirements = getPreferenceMissingRequirements(trip);
-
-    if (missingRequirements.length > 0) {
-      return {
-        status: "not_ready",
-        missingRequirements,
-      };
-    }
-
-    const existingPreference = await tx.tripPreference.findUnique({
-      where: {
-        tripId,
-      },
-      select: {
-        id: true,
-      },
-    });
-    const operation = existingPreference ? "updated" : "created";
-    const data = preferencePersistenceData(parsed.data);
-
-    if (parsed.data.budgetAmount !== null) {
-      await tx.trip.update({
-        where: {
-          id: tripId,
-        },
-        data: {
-          budgetAmount: parsed.data.budgetAmount,
         },
       });
-    }
 
-    const preference = await tx.tripPreference.upsert({
-      where: {
-        tripId,
-      },
-      update: data,
-      create: {
-        tripId,
-        ...data,
-      },
-      select: preferenceSelect,
-    });
-    const userTravelPreferenceData = userTravelPreferenceDataFromTripPreference(
-      tripId,
-      parsed.data,
-    );
+      if (!trip) {
+        return {
+          status: "not_found",
+        };
+      }
 
-    await tx.userTravelPreference.upsert({
-      where: {
+      if (trip.status === "ARCHIVED") {
+        return {
+          status: "archived",
+        };
+      }
+      const replay =
+        await getPlanningMutationReplayTx<SaveTripPreferenceResult>(
+          tx,
+          tripId,
+          control,
+        );
+
+      if (replay) return replay;
+      const parsed = preferenceInputSchema.safeParse(input);
+
+      if (!parsed.success) {
+        return {
+          status: "invalid" as const,
+        };
+      }
+
+      const missingRequirements = getPreferenceMissingRequirements(trip);
+
+      if (missingRequirements.length > 0) {
+        return {
+          status: "not_ready",
+          missingRequirements,
+        };
+      }
+
+      const existingPreference = await tx.tripPreference.findUnique({
+        where: {
+          tripId,
+        },
+        select: {
+          id: true,
+        },
+      });
+      const operation = existingPreference ? "updated" : "created";
+      const data = preferencePersistenceData(parsed.data);
+
+      if (parsed.data.budgetAmount !== null) {
+        await tx.trip.update({
+          where: {
+            id: tripId,
+          },
+          data: {
+            budgetAmount: parsed.data.budgetAmount,
+          },
+        });
+      }
+
+      const preference = await tx.tripPreference.upsert({
+        where: {
+          tripId,
+        },
+        update: data,
+        create: {
+          tripId,
+          ...data,
+        },
+        select: preferenceSelect,
+      });
+      const userTravelPreferenceData =
+        userTravelPreferenceDataFromTripPreference(tripId, parsed.data);
+
+      await tx.userTravelPreference.upsert({
+        where: {
+          userId,
+        },
+        update: userTravelPreferenceData,
+        create: {
+          userId,
+          ...userTravelPreferenceData,
+        },
+      });
+
+      await tx.planningEvent.create({
+        data: {
+          tripId,
+          actor: "SYSTEM",
+          type: "SYSTEM_NOTE",
+          title:
+            operation === "created"
+              ? "Preference profile created"
+              : "Preference profile updated",
+          message:
+            "Trip preferences were saved and are available for future recommendation planning.",
+          visibleToUser: true,
+          metadata: planningEventMetadata(operation, parsed.data),
+        },
+      });
+      if ((trip.preference?.pace ?? null) !== parsed.data.pace) {
+        await rebuildItineraryDraftForTripTx(tx, tripId, planningOperation);
+      }
+
+      return finalizePlanningMutationTx(tx, {
         userId,
-      },
-      update: userTravelPreferenceData,
-      create: {
-        userId,
-        ...userTravelPreferenceData,
-      },
-    });
-
-    await tx.planningEvent.create({
-      data: {
         tripId,
-        actor: "SYSTEM",
-        type: "SYSTEM_NOTE",
-        title:
-          operation === "created"
-            ? "Preference profile created"
-            : "Preference profile updated",
-        message:
-          "Trip preferences were saved and are available for future recommendation planning.",
-        visibleToUser: true,
-        metadata: planningEventMetadata(operation, parsed.data),
-      },
-    });
-    if ((trip.preference?.pace ?? null) !== parsed.data.pace) {
-      await rebuildItineraryDraftForTripTx(tx, tripId);
-    }
-
-    return {
-      status: "saved",
-      operation,
-      preference: toPreferenceDto(preference),
-    };
+        kind: "preference_save",
+        control,
+        result: {
+          status: "saved" as const,
+          operation,
+          preference: toPreferenceDto(preference),
+        },
+      });
+    },
   });
 }
 
@@ -252,6 +285,10 @@ export async function saveTripPreferenceFormAction(formData: FormData) {
 
   if (result.status === "not_ready") {
     redirect(preferenceRedirectPath(tripId, returnTo, "error=not-ready"));
+  }
+
+  if (result.status === "stale_revision") {
+    redirect(preferenceRedirectPath(tripId, returnTo, "error=stale"));
   }
 
   if (result.status === "invalid") {

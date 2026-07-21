@@ -42,7 +42,14 @@ export default async function PlanningPage({
   const userId = await requireUser();
   const { tripId } = await params;
   const query = await searchParams;
-  const result = await getPlanningWorkspace(userId, tripId);
+  const topic = activeTopic(firstQueryValue(query?.topic));
+  const destinationId = firstQueryValue(query?.destinationId) ?? null;
+  const planningDayNumber = activeDayNumber(query?.day);
+  const result = await getPlanningWorkspace(userId, tripId, {
+    topic,
+    destinationId,
+    planningDayNumber,
+  });
 
   if (result.status === "not_found") {
     notFound();
@@ -95,9 +102,9 @@ export default async function PlanningPage({
       timelineEvents={result.timelineEvents}
       placeActionLog={result.placeActionLog}
       itineraryPreview={result.itineraryPreview}
-      activeTopic={activeTopic(firstQueryValue(query?.topic))}
-      activeDestinationId={firstQueryValue(query?.destinationId)}
-      activeDayNumber={activeDayNumber(query?.day)}
+      activeTopic={topic}
+      activeDestinationId={destinationId ?? undefined}
+      activeDayNumber={planningDayNumber}
       message={firstQueryValue(query?.message)}
       error={firstQueryValue(query?.error)}
     />

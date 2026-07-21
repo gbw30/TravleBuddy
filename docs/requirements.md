@@ -239,6 +239,10 @@ The MVP feedback loop is structured and persisted, not a full chat system. It st
 
 Preference capture is part of this feedback loop. In the final MVP and product, users should not primarily save preferences through one large static form. The system should ask focused questions, let users choose predefined options or enter custom answers, and save those answers back into the trip-local preference profile.
 
+### Conversational Planning Implementation Pack
+
+The current implementation path for the final conversational planning prototype is documented in [`docs/conversational-planning/README.md`](./conversational-planning/README.md). Its staged documents are the authoritative execution order for conversation persistence, natural-language orchestration, real place data, live 30-minute scheduling, interaction performance, and optional cache/production hardening. Existing phase descriptions in this requirements document remain product requirements and historical context.
+
 ### Stage 6 Conversational Planning Loop
 
 The core product workflow is a conversational planning workspace, not a separate questionnaire, recommendation page, and itinerary page.

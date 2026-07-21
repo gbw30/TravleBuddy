@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
     trip: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
     },
     placeSuggestion: {
       findMany: vi.fn(),
@@ -158,6 +160,8 @@ describe("buildItineraryDraft", () => {
         high: 0,
       },
     });
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
   });
 
   it("creates one day for every trip date and puts hotels first on day one", () => {
@@ -298,6 +302,7 @@ describe("buildItineraryDraft", () => {
     const result = await rebuildItinerary("user_1", "trip_1");
 
     expect(result.status).toBe("rebuilt");
+    expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     if (result.status !== "rebuilt") {
       throw new Error("Expected itinerary rebuild.");
     }

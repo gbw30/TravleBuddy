@@ -164,9 +164,9 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  accounts Account[]
-  sessions Session[]
-  trips    Trip[]
+  accounts         Account[]
+  sessions         Session[]
+  trips            Trip[]
   travelPreference UserTravelPreference?
 
   @@map("users")
@@ -239,33 +239,35 @@ model VerificationToken {
 }
 
 model Trip {
-  id                    String     @id @default(cuid())
-  userId                String     @map("user_id")
+  id                    String            @id @default(cuid())
+  userId                String            @map("user_id")
   title                 String
-  status                TripStatus @default(DRAFT)
-  destinationSearchText String?    @map("destination_search_text")
-  departureCity         String?    @map("departure_city")
-  departureCountry      String?    @map("departure_country")
-  departureTimeZone     String?    @map("departure_time_zone")
-  startDate             DateTime?  @map("start_date")
-  endDate               DateTime?  @map("end_date")
-  budgetAmount          Decimal?   @map("budget_amount") @db.Decimal(12, 2)
-  budgetCurrency        String?    @map("budget_currency") @db.VarChar(3)
+  status                TripStatus        @default(DRAFT)
+  destinationSearchText String?           @map("destination_search_text")
+  departureCity         String?           @map("departure_city")
+  departureCountry      String?           @map("departure_country")
+  departureTimeZone     String?           @map("departure_time_zone")
+  startDate             DateTime?         @map("start_date")
+  endDate               DateTime?         @map("end_date")
+  budgetAmount          Decimal?          @map("budget_amount") @db.Decimal(12, 2)
+  budgetCurrency        String?           @map("budget_currency") @db.VarChar(3)
   logisticsMode         TripLogisticsMode @default(FLEXIBLE) @map("logistics_mode")
-  createdAt             DateTime   @default(now()) @map("created_at")
-  updatedAt             DateTime   @updatedAt @map("updated_at")
+  planningRevision      Int               @default(0) @map("planning_revision")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
 
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  destinations     TripDestination[]
-  travelSegments   TripTravelSegment[]
-  preference       TripPreference?
-  suggestions      PlaceSuggestion[]
-  planningFeedback PlanningFeedback[]
-  planningEvents   PlanningEvent[]
-  itineraryDays    ItineraryDay[]
-  cityWindows      ItineraryCityWindow[]
-  itineraryItems   ItineraryItem[]
-  conflicts        Conflict[]
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destinations      TripDestination[]
+  travelSegments    TripTravelSegment[]
+  preference        TripPreference?
+  suggestions       PlaceSuggestion[]
+  planningFeedback  PlanningFeedback[]
+  planningEvents    PlanningEvent[]
+  itineraryDays     ItineraryDay[]
+  cityWindows       ItineraryCityWindow[]
+  itineraryItems    ItineraryItem[]
+  conflicts         Conflict[]
+  planningMutations PlanningMutation[]
 
   @@index([userId])
   @@index([status])
@@ -287,14 +289,32 @@ model TripDestination {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  trip        Trip              @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  suggestions PlaceSuggestion[] @relation("TripDestinationPlaceSuggestions")
+  trip        Trip                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  suggestions PlaceSuggestion[]     @relation("TripDestinationPlaceSuggestions")
   cityWindows ItineraryCityWindow[] @relation("TripDestinationCityWindows")
 
   @@unique([tripId, id])
   @@index([tripId])
   @@index([tripId, sortOrder])
   @@map("trip_destinations")
+}
+
+model PlanningMutation {
+  id                String   @id @default(cuid())
+  tripId            String   @map("trip_id")
+  operationId       String   @map("operation_id") @db.VarChar(128)
+  kind              String   @db.VarChar(64)
+  requestedRevision Int?     @map("requested_revision")
+  resultingRevision Int      @map("resulting_revision")
+  resultVersion     Int      @default(1) @map("result_version")
+  result            Json
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, operationId])
+  @@index([tripId, createdAt])
+  @@map("planning_mutations")
 }
 
 model TripTravelSegment {
@@ -456,10 +476,10 @@ model ItineraryDay {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  trip     Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  items    ItineraryItem[]    @relation("ItineraryDayItems")
+  trip        Trip                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  items       ItineraryItem[]       @relation("ItineraryDayItems")
   cityWindows ItineraryCityWindow[] @relation("ItineraryDayCityWindows")
-  feedback PlanningFeedback[] @relation("ItineraryDayFeedback")
+  feedback    PlanningFeedback[]    @relation("ItineraryDayFeedback")
 
   @@unique([tripId, dayNumber])
   @@unique([tripId, id])

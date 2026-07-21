@@ -1,4 +1,7 @@
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { deselectRecommendation } from "@/features/recommendations/service";
 
 type DeselectRouteContext = {
@@ -45,11 +48,14 @@ export async function POST(_request: Request, context: DeselectRouteContext) {
       suggestionId,
     });
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "deselected") {
       return accessErrorResponse(result);
     }
 
-    return Response.json({ deselected: true });
+    return Response.json({ deselected: true, revision: result.revision });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);

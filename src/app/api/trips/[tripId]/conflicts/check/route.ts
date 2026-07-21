@@ -1,5 +1,8 @@
 import { revalidatePath } from "next/cache";
-import { UnauthorizedError, assertAuthenticatedApiUser } from "@/lib/authorization";
+import {
+  UnauthorizedError,
+  assertAuthenticatedApiUser,
+} from "@/lib/authorization";
 import { checkItineraryConflicts } from "@/features/itinerary/conflict-engine";
 
 type ConflictCheckRouteContext = {
@@ -45,6 +48,9 @@ export async function POST(
     const { tripId } = await context.params;
     const result = await checkItineraryConflicts(userId, tripId);
 
+    if (result.status === "stale_revision") {
+      return Response.json(result, { status: 409 });
+    }
     if (result.status !== "checked") {
       return accessErrorResponse(result);
     }
@@ -55,6 +61,7 @@ export async function POST(
       checked: true,
       conflicts: result.conflicts,
       summary: result.summary,
+      revision: result.revision,
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
