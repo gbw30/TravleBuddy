@@ -1,0 +1,6 @@
+[agents]
+# The root coordinator occupies one slot, leaving room for at most three QA
+# workers in a wave. Direct children cannot recursively delegate.
+max_threads = 4
+max_depth = 1
+

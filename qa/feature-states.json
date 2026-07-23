@@ -1,0 +1,20 @@
+{
+  "authentication": "required",
+  "profile": "required",
+  "trip-crud": "required",
+  "trip-preferences": "required",
+  "mock-recommendations": "required",
+  "planning-feedback": "required",
+  "itinerary-draft": "required",
+  "conflicts": "required",
+  "logistics": "required",
+  "planning-revision-contracts": "required",
+  "conversation-persistence": "planned",
+  "ai-intent": "planned",
+  "live-scheduling": "planned",
+  "google-places": "planned",
+  "interaction-performance": "planned",
+  "cache-rate-limits": "planned",
+  "maps": "deferred",
+  "export": "deferred"
+}

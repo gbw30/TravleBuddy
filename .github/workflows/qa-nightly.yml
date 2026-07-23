@@ -1,0 +1,179 @@
+name: QA - Nightly
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      active_stage:
+        description: Active development stage recorded in the QA report
+        required: true
+        default: current
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-nightly-preview
+  cancel-in-progress: false
+
+jobs:
+  deterministic:
+    name: Full preview browser matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: qa-preview
+
+    env:
+      CI: "true"
+      AUTH_URL: ${{ vars.QA_BASE_URL }}
+      QA_TARGET: preview
+      QA_BASE_URL: ${{ vars.QA_BASE_URL }}
+      QA_RUN_ID: nightly-${{ github.run_id }}-${{ github.run_attempt }}
+      QA_ALLOW_WRITES: "true"
+      QA_PROVIDER_MODE: mock
+      QA_ACTIVE_STAGE: ${{ inputs.active_stage || 'current' }}
+      QA_RUN_TYPE: nightly
+      QA_PARENT_SANDBOX: read-only
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run deterministic nightly baseline
+        env:
+          DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.QA_DIRECT_URL }}
+          AUTH_SECRET: ${{ secrets.QA_AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
+          QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+        run: npm run qa:gate
+
+      - name: Run full nightly E2E matrix
+        env:
+          DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.QA_DIRECT_URL }}
+          AUTH_SECRET: ${{ secrets.QA_AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
+          QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+        run: npm run qa:e2e:nightly
+
+      - name: Scan dependency advisories
+        run: npm audit --audit-level=high
+
+      - name: Generate full-team QA context
+        if: always()
+        run: npm run qa:context
+
+      - name: Write nightly summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### TravleBuddy nightly QA"
+            echo
+            echo "- Run ID: \`$QA_RUN_ID\`"
+            echo "- Active stage: \`$QA_ACTIVE_STAGE\`"
+            echo "- Result: \`${{ job.status }}\`"
+            echo "- Target class: protected preview"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload nightly QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-nightly-${{ github.run_id }}
+          path: |
+            qa-results/**
+            playwright-report/**
+            test-results/**
+            coverage/**
+          if-no-files-found: warn
+          retention-days: 30
+
+  codex-audit:
+    name: Codex multi-agent nightly audit
+    needs: deterministic
+    if: ${{ always() && needs.deterministic.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: qa-preview
+    env:
+      HAS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download nightly evidence
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: qa-nightly-${{ github.run_id }}
+          path: qa-input
+
+      - name: Block when the protected Codex credential is unavailable
+        if: env.HAS_OPENAI_API_KEY != 'true'
+        shell: bash
+        run: |
+          {
+            echo "### Codex nightly audit"
+            echo
+            echo "VERDICT: BLOCKED"
+            echo "The protected OPENAI_API_KEY prerequisite is not configured."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Run Codex nightly audit
+        id: codex
+        if: env.HAS_OPENAI_API_KEY == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/nightly-qa-audit.md
+          output-file: codex-nightly-audit.md
+          codex-args: '["--ephemeral"]'
+          sandbox: read-only
+          safety-strategy: drop-sudo
+
+      - name: Publish and enforce Codex verdict
+        if: steps.codex.outcome == 'success'
+        shell: bash
+        run: |
+          cat codex-nightly-audit.md >> "$GITHUB_STEP_SUMMARY"
+          verdict="$(sed -n 's/^VERDICT: \(PASS\|FAIL\|BLOCKED\)$/\1/p' codex-nightly-audit.md | head -n 1)"
+          case "$verdict" in
+            PASS) exit 0 ;;
+            FAIL|BLOCKED) exit 1 ;;
+            *) echo "Codex output omitted a valid verdict" >&2; exit 1 ;;
+          esac
+
+      - name: Upload Codex nightly audit
+        if: always() && env.HAS_OPENAI_API_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-nightly-audit-${{ github.run_id }}
+          path: codex-nightly-audit.md
+          if-no-files-found: warn
+          retention-days: 30

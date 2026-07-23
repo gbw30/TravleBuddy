@@ -1,0 +1,207 @@
+name: QA - Production Read-only Smoke
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact default-branch commit deployed to production
+        required: true
+        type: string
+      production_url:
+        description: HTTPS production URL to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-production-readonly
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize production commit
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment == 'production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
+      QA_BASE_URL: ${{ inputs.production_url || github.event.deployment_status.environment_url }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+    steps:
+      - name: Checkout exact production commit without credentials
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate production inputs and commit provenance
+        shell: bash
+        run: |
+          if [[ ! "$QA_BASE_URL" =~ ^https://[^[:space:]]+$ ]]; then
+            echo "production_url must be an HTTPS URL without whitespace" >&2
+            exit 1
+          fi
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "commit_sha must be a full 40-character Git SHA" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD "origin/$DEFAULT_BRANCH"; then
+            echo "Production smoke may only run against a commit reachable from the default branch" >&2
+            exit 1
+          fi
+
+  deterministic:
+    name: Production read-only smoke
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production-readonly
+
+    env:
+      CI: "true"
+      QA_TARGET: production-readonly
+      QA_BASE_URL: ${{ inputs.production_url || github.event.deployment_status.environment_url }}
+      QA_RUN_ID: production-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+      QA_ALLOW_WRITES: "false"
+      QA_RUN_TYPE: production
+      QA_PARENT_SANDBOX: read-only
+
+    steps:
+      - name: Checkout exact production commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate read-only production environment
+        run: npm run qa:doctor
+
+      - name: Validate feature and scenario manifests
+        run: npm run qa:validate
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production read-only smoke
+        env:
+          QA_SYNTHETIC_AUTH_COOKIE: ${{ secrets.QA_SYNTHETIC_AUTH_COOKIE }}
+        run: npm run qa:e2e:production
+
+      - name: Generate production audit context
+        if: always()
+        run: npm run qa:context
+
+      - name: Write production summary
+        if: always()
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
+        run: |
+          {
+            echo "### TravleBuddy production read-only smoke"
+            echo
+            echo "- Run ID: \`$QA_RUN_ID\`"
+            echo "- Commit: \`$COMMIT_SHA\`"
+            echo "- Result: \`${{ job.status }}\`"
+            echo "- Mutations: prohibited by QA_TARGET and browser request guards"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload production smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-production-smoke-${{ github.run_id }}
+          path: |
+            qa-results/**
+            playwright-report/**
+            test-results/**
+          if-no-files-found: warn
+          retention-days: 30
+
+  codex-risk-review:
+    name: Codex production-risk review
+    needs: deterministic
+    if: ${{ always() && needs.deterministic.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production-readonly
+    env:
+      HAS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
+
+    steps:
+      - name: Checkout exact production commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download production smoke evidence
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: qa-production-smoke-${{ github.run_id }}
+          path: qa-input
+
+      - name: Block when the protected Codex credential is unavailable
+        if: env.HAS_OPENAI_API_KEY != 'true'
+        shell: bash
+        run: |
+          {
+            echo "### Codex production-risk review"
+            echo
+            echo "VERDICT: BLOCKED"
+            echo "The protected OPENAI_API_KEY prerequisite is not configured."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Run Codex production-risk review
+        id: codex
+        if: env.HAS_OPENAI_API_KEY == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/production-risk-review.md
+          output-file: codex-production-risk-review.md
+          codex-args: '["--ephemeral"]'
+          sandbox: read-only
+          safety-strategy: drop-sudo
+
+      - name: Publish and enforce Codex verdict
+        if: steps.codex.outcome == 'success'
+        shell: bash
+        run: |
+          cat codex-production-risk-review.md >> "$GITHUB_STEP_SUMMARY"
+          verdict="$(sed -n 's/^VERDICT: \(PASS\|FAIL\|BLOCKED\)$/\1/p' codex-production-risk-review.md | head -n 1)"
+          case "$verdict" in
+            PASS) exit 0 ;;
+            FAIL|BLOCKED) exit 1 ;;
+            *) echo "Codex output omitted a valid verdict" >&2; exit 1 ;;
+          esac
+
+      - name: Upload Codex production-risk review
+        if: always() && env.HAS_OPENAI_API_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-production-risk-review-${{ github.run_id }}
+          path: codex-production-risk-review.md
+          if-no-files-found: warn
+          retention-days: 30

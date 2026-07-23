@@ -1,0 +1,254 @@
+name: QA - Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact commit SHA deployed to the preview under test
+        required: true
+        type: string
+      preview_url:
+        description: HTTPS preview URL for that exact commit
+        required: true
+        type: string
+      active_stage:
+        description: Active stage being promoted
+        required: true
+        default: current
+        type: string
+      google_oauth_evidence:
+        description: URL or durable reference for the manual Google OAuth callback smoke check
+        required: true
+        type: string
+      run_live_provider_smoke:
+        description: Run tagged live-provider contract checks within configured quotas
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-release-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize release commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      QA_BASE_URL: ${{ inputs.preview_url }}
+      GOOGLE_OAUTH_EVIDENCE: ${{ inputs.google_oauth_evidence }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+    steps:
+      - name: Checkout exact preview commit without credentials
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release inputs and commit provenance
+        shell: bash
+        run: |
+          if [[ ! "$QA_BASE_URL" =~ ^https://[^[:space:]]+$ ]]; then
+            echo "preview_url must be an HTTPS URL without whitespace" >&2
+            exit 1
+          fi
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "commit_sha must be a full 40-character Git SHA" >&2
+            exit 1
+          fi
+          if [[ -z "$GOOGLE_OAUTH_EVIDENCE" ]]; then
+            echo "Manual Google OAuth evidence is required" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD "origin/$DEFAULT_BRANCH"; then
+            echo "Release QA may only use a commit reachable from the default branch" >&2
+            exit 1
+          fi
+
+  deterministic:
+    name: Protected release gate
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: qa-release
+
+    env:
+      CI: "true"
+      AUTH_URL: ${{ inputs.preview_url }}
+      QA_TARGET: preview
+      QA_BASE_URL: ${{ inputs.preview_url }}
+      QA_RUN_ID: release-${{ github.run_id }}-${{ github.run_attempt }}
+      QA_ALLOW_WRITES: "true"
+      QA_PROVIDER_MODE: mock
+      QA_ACTIVE_STAGE: ${{ inputs.active_stage }}
+      QA_RUN_TYPE: release
+      QA_PARENT_SANDBOX: read-only
+
+    steps:
+      - name: Checkout exact preview commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run deterministic release gate
+        env:
+          DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.QA_DIRECT_URL }}
+          AUTH_SECRET: ${{ secrets.QA_AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
+          QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+        run: npm run qa:gate
+
+      - name: Run full release browser matrix
+        env:
+          DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.QA_DIRECT_URL }}
+          AUTH_SECRET: ${{ secrets.QA_AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
+          QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+        run: npm run qa:e2e:nightly
+
+      - name: Run live-provider contract smoke
+        if: inputs.run_live_provider_smoke
+        env:
+          DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.QA_DIRECT_URL }}
+          AUTH_SECRET: ${{ secrets.QA_AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
+          QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+          QA_PROVIDER_MODE: live
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+          GOOGLE_ROUTES_API_KEY: ${{ secrets.GOOGLE_ROUTES_API_KEY }}
+        run: npx playwright test --grep @live-provider --project=chromium
+
+      - name: Generate full-team QA context
+        if: always()
+        run: npm run qa:context
+
+      - name: Write release summary
+        if: always()
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          GOOGLE_OAUTH_EVIDENCE: ${{ inputs.google_oauth_evidence }}
+          LIVE_PROVIDER_SMOKE: ${{ inputs.run_live_provider_smoke }}
+        run: |
+          {
+            echo "### TravleBuddy release QA"
+            echo
+            echo "- Run ID: \`$QA_RUN_ID\`"
+            echo "- Preview commit: \`$COMMIT_SHA\`"
+            echo "- Active stage: \`$QA_ACTIVE_STAGE\`"
+            echo "- Result: \`${{ job.status }}\`"
+            echo "- Live-provider smoke requested: \`$LIVE_PROVIDER_SMOKE\`"
+            echo "- Manual Google OAuth evidence: $GOOGLE_OAUTH_EVIDENCE"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-release-${{ github.run_id }}
+          path: |
+            qa-results/**
+            playwright-report/**
+            test-results/**
+            coverage/**
+          if-no-files-found: warn
+          retention-days: 90
+
+  codex-audit:
+    name: Codex release auditor
+    needs: deterministic
+    if: ${{ always() && needs.deterministic.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: qa-release
+    env:
+      HAS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
+
+    steps:
+      - name: Checkout exact preview commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download release evidence
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: qa-release-${{ github.run_id }}
+          path: qa-input
+
+      - name: Block when the protected Codex credential is unavailable
+        if: env.HAS_OPENAI_API_KEY != 'true'
+        shell: bash
+        run: |
+          {
+            echo "### Codex release audit"
+            echo
+            echo "VERDICT: BLOCKED"
+            echo "The protected OPENAI_API_KEY prerequisite is not configured."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Run Codex release audit
+        id: codex
+        if: env.HAS_OPENAI_API_KEY == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/release-qa-audit.md
+          output-file: codex-release-audit.md
+          codex-args: '["--ephemeral"]'
+          sandbox: read-only
+          safety-strategy: drop-sudo
+
+      - name: Publish and enforce Codex verdict
+        if: steps.codex.outcome == 'success'
+        shell: bash
+        run: |
+          cat codex-release-audit.md >> "$GITHUB_STEP_SUMMARY"
+          verdict="$(sed -n 's/^VERDICT: \(PASS\|FAIL\|BLOCKED\)$/\1/p' codex-release-audit.md | head -n 1)"
+          case "$verdict" in
+            PASS) exit 0 ;;
+            FAIL|BLOCKED) exit 1 ;;
+            *) echo "Codex output omitted a valid verdict" >&2; exit 1 ;;
+          esac
+
+      - name: Upload Codex release audit
+        if: always() && env.HAS_OPENAI_API_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-release-audit-${{ github.run_id }}
+          path: codex-release-audit.md
+          if-no-files-found: warn
+          retention-days: 90
