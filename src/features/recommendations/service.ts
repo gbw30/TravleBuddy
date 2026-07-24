@@ -203,6 +203,23 @@ function getMetadataStringArray(
   return toStringArray(metadata[key]);
 }
 
+function getMetadataValue(
+  metadata: Prisma.JsonValue | null | undefined,
+  key: string,
+) {
+  if (!metadata || Array.isArray(metadata) || typeof metadata !== "object") {
+    return undefined;
+  }
+
+  return metadata[key];
+}
+
+function normalizedDecisionText(value: string | null | undefined) {
+  const normalized = value?.trim().toLocaleLowerCase();
+
+  return normalized || null;
+}
+
 function serializeDecimalNumber(
   value: { toString: () => string } | number | null,
 ) {
@@ -1171,6 +1188,45 @@ export async function addUserPlanningPlace(
         };
       }
 
+      const existingUserPlaces = await tx.placeSuggestion.findMany({
+        where: {
+          tripId,
+          destinationId: destination.id,
+          provider: "USER",
+          category: input.category,
+          status: "SELECTED",
+        },
+        select: placeSuggestionSelect,
+      });
+      const identicalPlace = existingUserPlaces.find((place) => {
+        const existingDay = getMetadataValue(
+          place.metadata,
+          "planningDayNumber",
+        );
+
+        return (
+          normalizedDecisionText(place.name) ===
+            normalizedDecisionText(input.name) &&
+          normalizedDecisionText(place.description) ===
+            normalizedDecisionText(input.note) &&
+          serializeDecimalNumber(place.estimatedCostAmount) ===
+            estimatedCostAmount &&
+          normalizedDecisionText(place.estimatedCostCurrency) ===
+            normalizedDecisionText(estimatedCostCurrency) &&
+          getMetadataValue(place.metadata, "topic") === input.topic &&
+          (typeof existingDay === "number" ? existingDay : null) ===
+            (input.planningDayNumber ?? null)
+        );
+      });
+
+      if (identicalPlace) {
+        return {
+          status: "saved" as const,
+          place: toRecommendationDto(identicalPlace),
+          revision: trip.planningRevision,
+        };
+      }
+
       const record = await tx.placeSuggestion.create({
         data: {
           tripId,
@@ -1298,6 +1354,13 @@ export async function selectRecommendation(
           if (!suggestion) {
             return {
               status: "suggestion_not_found" as const,
+            };
+          }
+
+          if (suggestion.status === "SELECTED") {
+            return {
+              status: "selected" as const,
+              revision: trip.planningRevision,
             };
           }
 

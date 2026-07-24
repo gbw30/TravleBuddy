@@ -184,6 +184,7 @@ export async function createTrip(userId: string, input: CreateTripInput) {
           endDate: parsed.endDate,
           budgetAmount: parsed.budgetAmount,
           budgetCurrency: parsed.budgetCurrency,
+          travelStyle: parsed.travelStyle,
           destinations,
         })
       : "DRAFT";

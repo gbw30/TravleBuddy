@@ -25,7 +25,11 @@
     "qa:e2e:production": "tsx qa/cli/run-e2e.ts production",
     "qa:coverage": "vitest run --coverage --passWithNoTests",
     "qa:gate": "tsx qa/cli/deterministic-gate.ts",
-    "qa:stage": "tsx qa/cli/stage.ts"
+    "qa:stage": "tsx qa/cli/stage.ts",
+    "qa:migrate:preflight": "tsx qa/cli/migration-safety.ts preflight",
+    "qa:migrate:postflight": "tsx qa/cli/migration-safety.ts postflight",
+    "qa:migrate:diff": "prisma migrate diff --exit-code --from-config-datasource --to-schema prisma/schema.prisma",
+    "qa:sanitize-log": "tsx qa/cli/sanitize-log.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

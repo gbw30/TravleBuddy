@@ -36,6 +36,18 @@ Additional commands:
 - `npm run qa:e2e:production`: mutation-blocked production smoke.
 - `npm run qa:stage -- <feature> <state> [--report path] [--apply]`: validate or apply a feature-state transition.
 
+## Protected QA migrations
+
+QA verification never applies migrations. Use only the manual `QA - Protected Migrations` workflow, protected by the `qa-migrations` GitHub environment. Configure environment secrets `QA_DATABASE_URL` and `QA_DIRECT_URL` for the same disposable Neon QA database, plus `PRODUCTION_DATABASE_FINGERPRINT` as a deny-list guard.
+
+The authorized origin is `https://travle-buddy-git-qa-gbw30s-projects.vercel.app` and the credential-free QA fingerprint is `e6d10d0c10e8212e11f6c88d6e4747fd281edf273a592283bad6ae6a8f380586`. Dispatch with the full commit, its exact remote branch head, the current migration head `20260723120000_stage0_planning_mutation_fingerprint`, and this exact typed form:
+
+```text
+MIGRATE QA <database_fingerprint> TO <migration_head>
+```
+
+Preflight normalizes pooled/direct Neon hosts, proves both URLs name the same database, rejects configured production fingerprints, and permits a first deploy only for a database with no application tables and no Prisma ledger. The sole mutation is `prisma migrate deploy`. Postflight requires clean status, an empty database-to-schema diff, and a clean ledger receipt at the expected head. Sanitized artifacts are retained; failure stops without automatic rollback.
+
 ## Artifacts
 
 All generated content is gitignored under `qa-results/<QA_RUN_ID>/`:
@@ -54,6 +66,10 @@ final/report.md
 ```
 
 Full logs and browser media remain artifacts. Agent handoffs contain compact summaries and relative evidence paths. Token counters are nullable and must never be estimated when the runner does not expose authoritative usage.
+
+`sourcePaths` cite reviewed repository or supplied-input files. `evidencePaths` contain only produced artifacts beneath the reporting worker's own output directory. Validation rejects timestamp inversion, run/agent/commit mismatch, incomplete assigned-scenario results, changed tracked-state fingerprints, source/evidence conflation, and evidence outside its owner.
+
+Stage 0 evidence records exact commit/migration/fixture identity, operation and mutation fingerprints, request ordering, revisions, and durable ledger/state deltas. A performance budget is validated only with cold runs excluded, at least 20 warm samples, a named percentile method, p50/p95/max, query-count p95, payload-bytes p95, and provider latency separated.
 
 ## Verdicts and safety
 

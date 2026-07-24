@@ -201,6 +201,35 @@ Manual QA for flexible planning, ticketed planning, same-day transfer, budget ov
 
 At least 20 warm samples per operation, excluding the first cold run, are still required before the Stage 0 exit criteria can be marked complete.
 
+## QA Remediation Record - 2026-07-23
+
+### Delivered
+
+- Bound public planning mutation retries to the mutation kind and a canonical SHA-256 fingerprint of validated input.
+- Required `expectedRevision` and a UUID `operationId` on all public planning mutation routes. Invalid controls return `422`; stale revisions and conflicting operation-ID reuse return `409`.
+- Added owner-gated replay/stale preflight while retaining the final compare-and-swap revision guard.
+- Made travel pace/style part of planning readiness and normalized all free-text preference lists with trim plus case-insensitive deduplication.
+- Added complete proposed-chain validation for travel-segment add, update, and delete operations.
+- Made identical custom-place decisions and already-selected recommendations semantic no-ops without feedback, event, rebuild, or revision writes.
+- Preserved pace-overflow selections as explicit unscheduled DTO items and added aggregate unscheduled and mixed-currency conflicts.
+- Added explicit cost-completeness fields so mixed-currency totals cannot appear complete.
+- Added protected QA migration automation, exact database/commit/migration identity checks, stricter QA report/evidence validation, Stage 0 evidence contracts, and explicit server-startup environment validation.
+
+### Local Automated Evidence
+
+| Check | Result |
+| --- | --- |
+| Vitest | Pass: 59 files, 288 tests |
+| TypeScript | Pass |
+| ESLint | Pass |
+| Prisma schema | Pass |
+| QA harness validation | Pass: 6 agents, 6 workflows, 28 scenarios |
+| V8 coverage | Pass: 71% statements, 61.2% branches, 79.23% functions, 72.27% lines |
+| Production build | Pass |
+| QA environment doctor | Pass for the protected preview origin and configured QA database fingerprint |
+
+The Neon `travlebuddy_qa` database was confirmed empty with no Prisma migration ledger before first deployment. Applying migrations, redeploying the exact QA commit, authenticated/manual QA, two-user ownership isolation, browser evidence, and the required warm latency samples remain pending. Stage 0 is not complete until those protected-environment checks pass.
+
 ## Fresh-Chat Handoff Prompt
 
 ```text

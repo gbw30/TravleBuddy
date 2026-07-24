@@ -39,6 +39,18 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000009",
+};
+
+function mutationRequest() {
+  return new Request("http://localhost", {
+    method: "POST",
+    body: JSON.stringify(mutationControl),
+  });
+}
+
 describe("/api/trips/[tripId]/conflicts/check route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,12 +77,17 @@ describe("/api/trips/[tripId]/conflicts/check route", () => {
       },
     });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(200);
     expect(mocks.conflicts.checkItineraryConflicts).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "conflicts_check",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
     expect(mocks.cache.revalidatePath).toHaveBeenCalledWith(
       "/trips/trip_1/itinerary",
@@ -100,7 +117,7 @@ describe("/api/trips/[tripId]/conflicts/check route", () => {
     mocks.auth.assertAuthenticatedApiUser.mockRejectedValueOnce(
       new UnauthorizedError(),
     );
-    expect((await POST(new Request("http://localhost"), context)).status).toBe(
+    expect((await POST(mutationRequest(), context)).status).toBe(
       401,
     );
 
@@ -108,7 +125,7 @@ describe("/api/trips/[tripId]/conflicts/check route", () => {
     mocks.conflicts.checkItineraryConflicts.mockResolvedValueOnce({
       status: "not_found",
     });
-    expect((await POST(new Request("http://localhost"), context)).status).toBe(
+    expect((await POST(mutationRequest(), context)).status).toBe(
       404,
     );
 
@@ -116,7 +133,7 @@ describe("/api/trips/[tripId]/conflicts/check route", () => {
       status: "not_ready",
       missingRequirements: ["valid date range"],
     });
-    expect((await POST(new Request("http://localhost"), context)).status).toBe(
+    expect((await POST(mutationRequest(), context)).status).toBe(
       409,
     );
   });

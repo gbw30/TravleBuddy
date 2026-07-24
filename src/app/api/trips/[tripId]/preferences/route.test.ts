@@ -74,6 +74,11 @@ const completePreferencePayload = {
   customPreferences: ["quiet mornings"],
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000002",
+};
+
 describe("/api/trips/[tripId]/preferences route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -124,7 +129,7 @@ describe("/api/trips/[tripId]/preferences route", () => {
     });
 
     const response = await PUT(
-      jsonRequest(completePreferencePayload),
+      jsonRequest({ ...completePreferencePayload, ...mutationControl }),
       context,
     );
 
@@ -137,29 +142,49 @@ describe("/api/trips/[tripId]/preferences route", () => {
         pace: "BALANCED",
         customPreferences: ["quiet mornings"],
       }),
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "preference_save",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
   it("maps PUT validation and access failures", async () => {
-    expect((await PUT(jsonRequest({}), context)).status).toBe(400);
+    expect((await PUT(jsonRequest(mutationControl), context)).status).toBe(400);
 
     mocks.auth.assertAuthenticatedApiUser.mockRejectedValueOnce(
       new UnauthorizedError(),
     );
-    expect((await PUT(jsonRequest(completePreferencePayload), context)).status).toBe(
-      401,
-    );
+    expect(
+      (
+        await PUT(
+          jsonRequest({ ...completePreferencePayload, ...mutationControl }),
+          context,
+        )
+      ).status,
+    ).toBe(401);
 
     mocks.actions.saveTripPreference.mockResolvedValueOnce({ status: "not_found" });
     expect(
-      (await PUT(jsonRequest(completePreferencePayload), context)).status,
+      (
+        await PUT(
+          jsonRequest({ ...completePreferencePayload, ...mutationControl }),
+          context,
+        )
+      ).status,
     ).toBe(404);
 
     mocks.actions.saveTripPreference.mockResolvedValueOnce({
       status: "archived",
     });
     expect(
-      (await PUT(jsonRequest(completePreferencePayload), context)).status,
+      (
+        await PUT(
+          jsonRequest({ ...completePreferencePayload, ...mutationControl }),
+          context,
+        )
+      ).status,
     ).toBe(409);
 
     mocks.actions.saveTripPreference.mockResolvedValueOnce({
@@ -167,7 +192,12 @@ describe("/api/trips/[tripId]/preferences route", () => {
       missingRequirements: ["valid date range"],
     });
     expect(
-      (await PUT(jsonRequest(completePreferencePayload), context)).status,
+      (
+        await PUT(
+          jsonRequest({ ...completePreferencePayload, ...mutationControl }),
+          context,
+        )
+      ).status,
     ).toBe(409);
   });
 });

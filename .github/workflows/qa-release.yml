@@ -119,6 +119,7 @@ jobs:
           AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
           AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
           QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npm run qa:gate
 
       - name: Run full release browser matrix
@@ -129,6 +130,7 @@ jobs:
           AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
           AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
           QA_DATABASE_FINGERPRINT: ${{ secrets.QA_DATABASE_FINGERPRINT }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npm run qa:e2e:nightly
 
       - name: Run live-provider contract smoke
@@ -145,6 +147,7 @@ jobs:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
           GOOGLE_ROUTES_API_KEY: ${{ secrets.GOOGLE_ROUTES_API_KEY }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npx playwright test --grep @live-provider --project=chromium
 
       - name: Generate full-team QA context

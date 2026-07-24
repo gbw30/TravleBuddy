@@ -312,6 +312,11 @@ const entries = [
       "Concurrent duplicate operations commit at most once.",
       "A stale client revision is rejected before any state changes.",
     ],
+    requiredEvidence: [
+      "Exact commit, current migration head, database fingerprint, and fixture alias.",
+      "Operation ID, mutation fingerprint, request ordering, expected/observed revisions, response status, and durable ledger/state delta.",
+      "Sequential replay, bounded concurrent replay, stale revision, and operation-ID reuse with a different mutation fingerprint.",
+    ],
   },
   {
     id: "REV-P0-CONCURRENCY",
@@ -329,6 +334,11 @@ const entries = [
       "Two tabs editing one trip do not overwrite a newer accepted revision.",
       "Rapid selection changes preserve one internally consistent snapshot.",
       "Simultaneous conflict refreshes do not duplicate or lose conflict history.",
+    ],
+    requiredEvidence: [
+      "Exact commit, current migration head, fixture alias, browser contexts, and action ordering.",
+      "Pre/post planning revisions plus persisted state after both contexts reload.",
+      "Bounded request timing and sanitized response/state artifacts.",
     ],
   },
   {
@@ -438,6 +448,11 @@ const entries = [
       "Planning snapshots and query counts stay within documented limits.",
       "Read paths do not mutate data or broadly refresh the page.",
     ],
+    requiredEvidence: [
+      "Exact commit, migration head, stable fixture identity, preview environment, and provider mode.",
+      "Cold samples excluded and at least 20 warm samples per claimed operation.",
+      "Percentile method, p50/p95/max, query-count p95, payload-bytes p95, and separately reported provider latency.",
+    ],
   },
   {
     id: "CACHE-P0-RESILIENCE",
@@ -520,4 +535,3 @@ export const scenarioCatalog = Object.freeze(
 export function validateScenarioCatalog(input: unknown) {
   return scenarioCatalogSchema.parse(input);
 }
-

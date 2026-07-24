@@ -31,6 +31,11 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000003",
+};
+
 function jsonRequest(body: unknown) {
   return new Request(
     "http://localhost/api/trips/trip_1/recommendations/generate",
@@ -53,13 +58,21 @@ describe("/api/trips/[tripId]/recommendations/generate route", () => {
       recommendations: [{ id: "suggestion_1" }],
     });
 
-    const response = await POST(jsonRequest({ topic: "HOTEL_BASE" }), context);
+    const response = await POST(
+      jsonRequest({ topic: "HOTEL_BASE", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(200);
     expect(mocks.service.generateRecommendations).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
       { topic: "HOTEL_BASE" },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "recommendations_generate",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
@@ -73,7 +86,10 @@ describe("/api/trips/[tripId]/recommendations/generate route", () => {
       },
     });
 
-    const response = await POST(jsonRequest({ topic: "HOTEL_BASE" }), context);
+    const response = await POST(
+      jsonRequest({ topic: "HOTEL_BASE", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toEqual({
@@ -89,7 +105,10 @@ describe("/api/trips/[tripId]/recommendations/generate route", () => {
   });
 
   it("returns 400 for invalid payloads", async () => {
-    const response = await POST(jsonRequest({ topic: "UNKNOWN" }), context);
+    const response = await POST(
+      jsonRequest({ topic: "UNKNOWN", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(400);
   });

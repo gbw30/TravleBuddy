@@ -36,6 +36,20 @@ describe("QA environment guard", () => {
     );
   });
 
+  test("normalizes Neon pooled and direct endpoints to one identity", () => {
+    const pooled =
+      "postgresql://user:pass@ep-frosty-river-pooler.us-east-2.aws.neon.tech/travlebuddy_qa?sslmode=require";
+    const direct =
+      "postgresql://user:pass@ep-frosty-river.us-east-2.aws.neon.tech/travlebuddy_qa?sslmode=require";
+
+    expect(canonicalDatabaseIdentity(pooled)).toBe(
+      canonicalDatabaseIdentity(direct),
+    );
+    expect(fingerprintDatabaseUrl(pooled)).toBe(
+      fingerprintDatabaseUrl(direct),
+    );
+  });
+
   test("accepts an explicitly authorized preview database", () => {
     expect(assertQaWritesAllowed(writableEnvironment())).toMatchObject({
       target: "preview",
@@ -54,6 +68,30 @@ describe("QA environment guard", () => {
         writableEnvironment({ QA_DATABASE_FINGERPRINT: "0".repeat(64) }),
       ),
     ).toThrow("fingerprint does not match");
+  });
+
+  test("rejects pooled and direct URLs for different databases", () => {
+    expect(() =>
+      assertQaWritesAllowed(
+        writableEnvironment({
+          DIRECT_URL:
+            "postgresql://qa-user:secret@qa.example.test:5433/other_qa",
+        }),
+      ),
+    ).toThrow("must target the same PostgreSQL database");
+  });
+
+  test.each([
+    "QA_FORBIDDEN_DATABASE_FINGERPRINT",
+    "QA_PRODUCTION_DATABASE_FINGERPRINT",
+  ])("rejects a configured forbidden fingerprint from %s", (key) => {
+    expect(() =>
+      assertQaWritesAllowed(
+        writableEnvironment({
+          [key]: fingerprintDatabaseUrl(databaseUrl),
+        }),
+      ),
+    ).toThrow("forbidden or production");
   });
 
   test("always rejects writes to production", () => {

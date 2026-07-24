@@ -51,6 +51,8 @@ export type PlanningTurnResult<TMessage = never, TWarning = never> = {
 export type PlanningMutationControl = {
   expectedRevision?: number;
   operationId?: string;
+  mutationKind?: PlanningMutationKind;
+  requestFingerprint?: string;
 };
 
 export type PlanningMutationKind =
@@ -72,6 +74,8 @@ export type PlanningMutationKind =
   | "conflict_status_update";
 
 export type PlanningMutationReplay = {
+  kind: string;
+  requestFingerprint: string | null;
   result: unknown;
   resultingRevision: number;
 };

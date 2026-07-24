@@ -19,15 +19,15 @@ For this project:
 - Deployment: Vercel
 - Protected app area: dashboard, trips, profile, itinerary, export, recommendation actions
 
-The project currently has `next-auth` v4 installed. The current Auth.js documentation uses `next-auth@beta` with the v5-style API.
+The project uses the Auth.js v5-style API through `next-auth@5.0.0-beta.31`.
 
-Recommended path:
+The installed package set is:
 
 ```bash
-npm install next-auth@beta @auth/prisma-adapter @prisma/client
+npm install next-auth@5.0.0-beta.31 @auth/prisma-adapter @prisma/client
 ```
 
-If you intentionally stay on `next-auth` v4, use `@next-auth/prisma-adapter` instead of `@auth/prisma-adapter`, and keep the `NEXTAUTH_*` environment variable names.
+Legacy aliases remain local migration aids; new deployments should use `AUTH_*`.
 
 ---
 
@@ -391,6 +391,8 @@ npm run dev
 
 The app validates auth environment variables at server startup through Zod. If `AUTH_SECRET`, `AUTH_GOOGLE_ID`, or `AUTH_GOOGLE_SECRET` is missing, startup should fail with the variable name and validation message. `AUTH_URL` is optional because Auth.js can infer the active deployment host.
 
+Next.js calls `src/instrumentation.ts` once per server instance. On Node.js it explicitly invokes `validateServerEnv()` before readiness; importing the lazy environment proxy alone does not validate startup. Keep every secret server-only and without a `NEXT_PUBLIC_` prefix.
+
 Open:
 
 ```text
@@ -425,3 +427,5 @@ Before deploying production database changes:
 ```bash
 npm run db:deploy
 ```
+
+For QA, do not run this command from report-only verification. Use the protected `QA - Protected Migrations` workflow documented in `qa/README.md`; it validates exact Git/database/migration identity and never auto-rolls back. For deployment-protected Vercel QA, store `VERCEL_AUTOMATION_BYPASS_SECRET` in the protected GitHub environment. Playwright sends it only as Vercel protection headers and does not log it.

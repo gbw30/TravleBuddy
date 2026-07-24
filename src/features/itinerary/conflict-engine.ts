@@ -42,10 +42,15 @@ type DetectableTrip = {
   preference: {
     pace: TravelPace | null;
   } | null;
+  selectedPlaces?: {
+    id: string;
+    name: string;
+  }[];
 };
 
 type DetectableItem = {
   id: string;
+  placeSuggestionId?: string | null;
   title: string;
   startTime: Date | string | null;
   endTime: Date | string | null;
@@ -126,6 +131,7 @@ const conflictDaySelect = {
   items: {
     select: {
       id: true,
+      placeSuggestionId: true,
       title: true,
       startTime: true,
       endTime: true,
@@ -381,21 +387,50 @@ function budgetConflicts({
     return [];
   }
 
-  const total = days
-    .flatMap((day) => day.items)
-    .reduce((sum, item) => {
+  const items = days.flatMap((day) => day.items);
+  const total = items.reduce((sum, item) => {
       if (item.estimatedCostCurrency !== trip.budgetCurrency) {
         return sum;
       }
 
       return sum + (numberValue(item.estimatedCostAmount) ?? 0);
     }, 0);
+  const excludedCostCurrencies = [
+    ...new Set(
+      items
+        .filter(
+          (item) =>
+            numberValue(item.estimatedCostAmount) !== null &&
+            item.estimatedCostCurrency &&
+            item.estimatedCostCurrency !== trip.budgetCurrency,
+        )
+        .map((item) => item.estimatedCostCurrency as string),
+    ),
+  ].sort();
+  const conflicts: ConflictCandidate[] =
+    excludedCostCurrencies.length > 0
+      ? [
+          {
+            itineraryItemId: null,
+            type: "BUDGET",
+            severity: "MEDIUM",
+            message: `The ${trip.budgetCurrency} itinerary estimate is partial because selected costs in ${excludedCostCurrencies.join(", ")} are excluded.`,
+            recommendation:
+              "Review the excluded currencies separately before comparing the partial estimate with the trip budget.",
+            metadata: conflictMetadata({
+              rule: "mixed_currency_cost_exclusions",
+              currency: trip.budgetCurrency,
+              excludedCostCurrencies,
+            }),
+          },
+        ]
+      : [];
 
   if (total <= budgetAmount) {
-    return [];
+    return conflicts;
   }
 
-  return [
+  conflicts.push(
     {
       itineraryItemId: null,
       type: "BUDGET",
@@ -408,6 +443,47 @@ function budgetConflicts({
         budgetAmount,
         estimatedAmount: total,
         currency: trip.budgetCurrency,
+      }),
+    },
+  );
+
+  return conflicts;
+}
+
+function unscheduledOverflowConflicts({
+  trip,
+  days,
+}: {
+  trip: DetectableTrip;
+  days: readonly DetectableDay[];
+}): ConflictCandidate[] {
+  const scheduledPlaceIds = new Set(
+    days.flatMap((day) =>
+      day.items.flatMap((item) =>
+        item.placeSuggestionId ? [item.placeSuggestionId] : [],
+      ),
+    ),
+  );
+  const unscheduled = (trip.selectedPlaces ?? []).filter(
+    (place) => !scheduledPlaceIds.has(place.id),
+  );
+
+  if (unscheduled.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      itineraryItemId: null,
+      type: "SCHEDULE_DENSITY",
+      severity: "LOW",
+      message: `${unscheduled.length} selected place${unscheduled.length === 1 ? " is" : "s are"} kept as unscheduled because the current itinerary pace has no remaining capacity.`,
+      recommendation:
+        "Keep these selections for review; a future scheduling step can place them after dates, pace, or priorities change.",
+      metadata: conflictMetadata({
+        rule: "unscheduled_selected_overflow",
+        unscheduledCount: unscheduled.length,
+        placeSuggestionIds: unscheduled.map((place) => place.id),
       }),
     },
   ];
@@ -682,6 +758,7 @@ export function detectItineraryConflicts({
   return sortedConflicts(
     uniqueConflictCandidates([
       ...budgetConflicts({ trip, days }),
+      ...unscheduledOverflowConflicts({ trip, days }),
       ...densityConflicts({ trip, days }),
       ...missingDurationConflicts(days),
       ...distanceConflicts(days),
@@ -838,8 +915,21 @@ export async function refreshItineraryConflictsForTripTx(
     operation,
     async () => {
       const days = await conflictDays(tx, trip.id);
+      const selectedPlaces = await tx.placeSuggestion.findMany({
+        where: {
+          tripId: trip.id,
+          status: "SELECTED",
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
       const detected = detectItineraryConflicts({
-        trip,
+        trip: {
+          ...trip,
+          selectedPlaces,
+        },
         days: days as ConflictDayRecord[],
       });
 

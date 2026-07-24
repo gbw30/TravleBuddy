@@ -95,6 +95,8 @@ export type ItineraryDayDto = {
   itemCount: number;
   estimatedCostAmount: number | null;
   estimatedCostCurrency: string | null;
+  costIsComplete: boolean;
+  excludedCostCurrencies: string[];
   cityWindows: ItineraryCityWindowDto[];
   timeSlots: ItineraryTimeSlotDto[];
   items: ItineraryItemDto[];
@@ -104,6 +106,13 @@ export type ItineraryTotalsDto = {
   itemCount: number;
   estimatedCostAmount: number | null;
   estimatedCostCurrency: string | null;
+  costIsComplete: boolean;
+  excludedCostCurrencies: string[];
+};
+
+export type UnscheduledItineraryItemDto = ItineraryItemDto & {
+  reason: "PACE_CAPACITY_EXCEEDED" | "NO_AVAILABLE_DAY";
+  reasonMessage: string;
 };
 
 export type ItineraryConflictDto = {
@@ -126,6 +135,7 @@ export type ItineraryConflictSummaryDto = {
 
 export type ItineraryDto = {
   days: ItineraryDayDto[];
+  unscheduledItems: UnscheduledItineraryItemDto[];
   totals: ItineraryTotalsDto;
   conflicts: ItineraryConflictDto[];
   conflictSummary: ItineraryConflictSummaryDto;

@@ -32,6 +32,18 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000008",
+};
+
+function mutationRequest() {
+  return new Request("http://localhost", {
+    method: "POST",
+    body: JSON.stringify(mutationControl),
+  });
+}
+
 describe("/api/trips/[tripId]/itinerary/build route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,12 +59,17 @@ describe("/api/trips/[tripId]/itinerary/build route", () => {
       },
     });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(200);
     expect(mocks.itinerary.rebuildItinerary).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "itinerary_rebuild",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
     await expect(response.json()).resolves.toEqual({
       rebuilt: true,
@@ -76,7 +93,7 @@ describe("/api/trips/[tripId]/itinerary/build route", () => {
       },
     });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -97,7 +114,7 @@ describe("/api/trips/[tripId]/itinerary/build route", () => {
     mocks.auth.assertAuthenticatedApiUser.mockRejectedValueOnce(
       new UnauthorizedError(),
     );
-    expect((await POST(new Request("http://localhost"), context)).status).toBe(
+    expect((await POST(mutationRequest(), context)).status).toBe(
       401,
     );
 
@@ -105,7 +122,7 @@ describe("/api/trips/[tripId]/itinerary/build route", () => {
     mocks.itinerary.rebuildItinerary.mockResolvedValueOnce({
       status: "archived",
     });
-    expect((await POST(new Request("http://localhost"), context)).status).toBe(
+    expect((await POST(mutationRequest(), context)).status).toBe(
       409,
     );
   });

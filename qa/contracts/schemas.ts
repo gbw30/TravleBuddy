@@ -44,6 +44,27 @@ export const executionKindSchema = z.enum([
   "manual",
   "agent",
 ]);
+export const fixtureProfileSchema = z.enum([
+  "anonymous",
+  "owner-and-intruder",
+  "qa-owner",
+  "qa-owner-empty-profile",
+  "qa-owner-ephemeral",
+  "qa-owner-ready-trip",
+  "qa-owner-multicity-trip",
+  "qa-owner-recommendation-trip",
+  "qa-owner-selected-places",
+  "qa-owner-conflicting-trip",
+  "qa-owner-ready-trip-two-tabs",
+  "qa-owner-complete-trip",
+  "qa-owner-conversation-trip",
+  "qa-owner-dense-multicity-trip",
+  "qa-owner-provider-trip",
+  "stable-preview-baseline",
+  "preprovisioned-readonly-synthetic-user",
+  "qa-owner-map-trip",
+  "qa-owner-large-special-character-trip",
+]);
 export const qaAgentSchema = z.enum([
   "qa_baseline",
   "qa_journeys",
@@ -62,6 +83,9 @@ export const qaWorkerAgentSchema = z.enum([
 export const qaReasoningEffortSchema = z.enum(["medium", "high"]);
 export const qaParentSandboxSchema = z.enum(["workspace-write", "read-only"]);
 export const qaOutputModeSchema = z.enum(["artifacts", "final-response"]);
+export const trackedStateFingerprintSchema = z
+  .string()
+  .regex(/^[a-f0-9]{64}$/);
 
 export const featureDefinitionSchema = z
   .object({
@@ -109,10 +133,11 @@ export const scenarioSchema = z
     environments: z.array(qaEnvironmentSchema).min(1),
     executionKind: executionKindSchema,
     destructive: z.boolean(),
-    fixtureProfile: z.string().trim().min(1),
+    fixtureProfile: fixtureProfileSchema,
     owningAgent: qaAgentSchema,
     tags: z.array(z.string().trim().min(1)).min(1),
     expectedInvariants: z.array(z.string().trim().min(1)).min(1),
+    requiredEvidence: z.array(z.string().trim().min(1)).optional(),
   })
   .strict()
   .superRefine((scenario, context) => {
@@ -331,12 +356,58 @@ export const qaUsageMetricSchema = z
   })
   .strict();
 
+export const qaPerformanceEvidenceSchema = z
+  .object({
+    scenarioId: scenarioSchema.shape.id,
+    operationName: z.string().trim().min(1),
+    environment: qaEnvironmentSchema,
+    providerMode: z.enum(["disabled", "mock", "live", "not-applicable"]),
+    fixtureProfile: fixtureProfileSchema,
+    coldSamplesExcluded: z.boolean(),
+    coldSampleCount: z.number().int().nonnegative(),
+    warmSampleCount: z.number().int().nonnegative(),
+    percentileMethod: z.string().trim().min(1),
+    p50Ms: z.number().nonnegative(),
+    p95Ms: z.number().nonnegative(),
+    maxMs: z.number().nonnegative(),
+    queryCountP95: z.number().nonnegative().nullable(),
+    payloadBytesP95: z.number().nonnegative().nullable(),
+    providerLatencyP95Ms: z.number().nonnegative().nullable(),
+    status: z.enum(["validated", "diagnostic", "blocked"]),
+    evidencePaths: z.array(z.string().trim().min(1)),
+  })
+  .strict()
+  .superRefine((evidence, context) => {
+    if (evidence.p50Ms > evidence.p95Ms || evidence.p95Ms > evidence.maxMs) {
+      context.addIssue({
+        code: "custom",
+        path: ["p95Ms"],
+        message: "Performance percentiles must satisfy p50 <= p95 <= max",
+      });
+    }
+    if (
+      evidence.status === "validated" &&
+      (!evidence.coldSamplesExcluded ||
+        evidence.warmSampleCount < 20 ||
+        evidence.queryCountP95 === null ||
+        evidence.payloadBytesP95 === null ||
+        evidence.evidencePaths.length === 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Validated performance evidence requires cold-run exclusion, 20 warm samples, query/payload metrics, and evidence",
+      });
+    }
+  });
+
 export const qaAgentContextSchema = z
   .object({
     contractVersion: z.literal(1),
     runId: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$/),
     generatedAt: z.string().datetime({ offset: true }),
     commitSha: z.string().regex(/^[a-fA-F0-9]{7,40}$/),
+    trackedStateFingerprint: trackedStateFingerprintSchema,
     activeStage: z.string().trim().min(1),
     runType: qaRunTypeSchema,
     targetKind: qaEnvironmentSchema,
@@ -370,6 +441,7 @@ export const qaContextManifestSchema = z
     runId: qaAgentContextSchema.shape.runId,
     generatedAt: qaAgentContextSchema.shape.generatedAt,
     commitSha: qaAgentContextSchema.shape.commitSha,
+    trackedStateFingerprint: trackedStateFingerprintSchema,
     activeStage: qaAgentContextSchema.shape.activeStage,
     runType: qaRunTypeSchema,
     targetKind: qaEnvironmentSchema,
@@ -407,7 +479,9 @@ export const qaWorkerReportSchema = z
     flakyScenarioIds: z.array(scenarioSchema.shape.id),
     sourcePaths: z.array(z.string().trim().min(1)),
     evidencePaths: z.array(z.string().trim().min(1)),
+    performanceEvidence: z.array(qaPerformanceEvidenceSchema).default([]),
     redactionConfirmed: z.boolean(),
+    trackedStateFingerprint: trackedStateFingerprintSchema,
     usage: qaUsageMetricSchema.optional(),
   })
   .strict();

@@ -76,6 +76,7 @@ function place(
     | "ENTERTAINMENT",
   score: number,
   estimatedCostAmount: number | null = null,
+  estimatedCostCurrency = "EUR",
 ) {
   return {
     id,
@@ -85,7 +86,8 @@ function place(
     description: null,
     score,
     estimatedCostAmount,
-    estimatedCostCurrency: estimatedCostAmount === null ? null : "EUR",
+    estimatedCostCurrency:
+      estimatedCostAmount === null ? null : estimatedCostCurrency,
   };
 }
 
@@ -147,10 +149,13 @@ describe("buildItineraryDraft", () => {
     ).toEqual({
       status: "no_selected_places",
       days: [],
+      unscheduledItems: [],
       totals: {
         itemCount: 0,
         estimatedCostAmount: null,
         estimatedCostCurrency: null,
+        costIsComplete: true,
+        excludedCostCurrencies: [],
       },
       conflicts: [],
       conflictSummary: {
@@ -216,6 +221,54 @@ describe("buildItineraryDraft", () => {
 
     expect(result.status).toBe("built");
     expect(result.days.map((day) => day.itemCount)).toEqual([3, 1, 0]);
+  });
+
+  it("preserves selected pace overflow as explicit unscheduled items", () => {
+    const result = buildItineraryDraft({
+      trip: {
+        ...baseTrip,
+        endDate: baseTrip.startDate,
+        preference: {
+          pace: "RELAXED" as const,
+        },
+      },
+      selectedPlaces: [
+        place("a", "ATTRACTION", 90),
+        place("b", "ATTRACTION", 80),
+        place("c", "ACTIVITY", 70),
+        place("overflow", "RESTAURANT", 60),
+      ],
+    });
+
+    expect(result.status).toBe("built");
+    expect(result.days[0]?.itemCount).toBe(3);
+    expect(result.unscheduledItems).toEqual([
+      expect.objectContaining({
+        placeSuggestionId: "overflow",
+        title: "RESTAURANT overflow",
+        reason: "PACE_CAPACITY_EXCEEDED",
+        reasonMessage: expect.stringContaining("pace capacity"),
+      }),
+    ]);
+  });
+
+  it("marks mixed-currency itinerary totals as partial and exposes exclusions", () => {
+    const result = buildItineraryDraft({
+      trip: baseTrip,
+      selectedPlaces: [
+        place("eur", "ATTRACTION", 90, 100, "EUR"),
+        place("usd", "RESTAURANT", 80, 75, "USD"),
+        place("gbp", "ACTIVITY", 70, 50, "GBP"),
+        place("usd-2", "LANDMARK", 60, 25, "USD"),
+      ],
+    });
+
+    expect(result.totals).toMatchObject({
+      estimatedCostAmount: 100,
+      estimatedCostCurrency: "EUR",
+      costIsComplete: false,
+      excludedCostCurrencies: ["GBP", "USD"],
+    });
   });
 
   it("orders categories deterministically before score within each category", () => {

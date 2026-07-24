@@ -337,6 +337,7 @@ describe("trip actions", () => {
         endDate: new Date("2026-07-07T00:00:00.000Z"),
         budgetAmount: "1500",
         budgetCurrency: "USD",
+        preference: { pace: "BALANCED" },
         destinations: [
           {
             id: "destination_1",
@@ -378,6 +379,7 @@ describe("trip actions", () => {
       endDate: "2026-07-07",
       budgetAmount: "1500",
       budgetCurrency: "USD",
+      travelStyle: "BALANCED",
     });
 
     expect(result.status).toBe("updated");

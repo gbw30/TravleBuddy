@@ -102,13 +102,22 @@ function money(recommendation: RecommendationDto) {
 }
 
 function itineraryMoney(
-  value: { estimatedCostAmount: number | null; estimatedCostCurrency: string | null },
+  value: {
+    estimatedCostAmount: number | null;
+    estimatedCostCurrency: string | null;
+    costIsComplete?: boolean;
+    excludedCostCurrencies?: string[];
+  },
 ) {
   if (!value.estimatedCostAmount || !value.estimatedCostCurrency) {
     return "Cost not estimated";
   }
 
-  return `${value.estimatedCostCurrency} ${value.estimatedCostAmount}`;
+  const estimate = `${value.estimatedCostCurrency} ${value.estimatedCostAmount}`;
+
+  return value.costIsComplete === false
+    ? `${estimate} (partial; excludes ${(value.excludedCostCurrencies ?? []).join(", ")})`
+    : estimate;
 }
 
 function actionLabel(action: PlaceActionLogEntry["action"]) {
@@ -843,6 +852,37 @@ export function PlanningWorkspace({
                       </li>
                     ))}
                   </ol>
+                  {(itineraryPreview.unscheduledItems ?? []).length > 0 ? (
+                    <section
+                      aria-labelledby="planning-unscheduled-title"
+                      className="mt-4 rounded-md border border-sky-200 bg-sky-50 p-4"
+                    >
+                      <h3
+                        id="planning-unscheduled-title"
+                        className="text-sm font-semibold text-zinc-950"
+                      >
+                        Selected but unscheduled
+                      </h3>
+                      <p className="mt-1 text-sm leading-6 text-zinc-600">
+                        These selections are preserved for review and are not
+                        placed into a live schedule.
+                      </p>
+                      <ul className="mt-3 grid gap-2">
+                        {(itineraryPreview.unscheduledItems ?? []).map(
+                          (item) => (
+                            <li key={item.id} className="text-sm text-zinc-700">
+                              <span className="font-medium text-zinc-950">
+                                {item.title}
+                              </span>
+                              <span className="block text-xs leading-5 text-zinc-600">
+                                {item.reasonMessage}
+                              </span>
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </section>
+                  ) : null}
                 </>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-zinc-600">

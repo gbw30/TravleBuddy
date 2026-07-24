@@ -300,15 +300,16 @@ model TripDestination {
 }
 
 model PlanningMutation {
-  id                String   @id @default(cuid())
-  tripId            String   @map("trip_id")
-  operationId       String   @map("operation_id") @db.VarChar(128)
-  kind              String   @db.VarChar(64)
-  requestedRevision Int?     @map("requested_revision")
-  resultingRevision Int      @map("resulting_revision")
-  resultVersion     Int      @default(1) @map("result_version")
-  result            Json
-  createdAt         DateTime @default(now()) @map("created_at")
+  id                 String   @id @default(cuid())
+  tripId             String   @map("trip_id")
+  operationId        String   @map("operation_id") @db.VarChar(128)
+  kind               String   @db.VarChar(64)
+  requestFingerprint String?  @map("request_fingerprint") @db.Char(64)
+  requestedRevision  Int?     @map("requested_revision")
+  resultingRevision  Int      @map("resulting_revision")
+  resultVersion      Int      @default(1) @map("result_version")
+  result             Json
+  createdAt          DateTime @default(now()) @map("created_at")
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 

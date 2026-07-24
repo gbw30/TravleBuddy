@@ -25,6 +25,7 @@ import type {
   ItineraryDraftTravelSegment,
   ItineraryDto,
   ItineraryItemDto,
+  UnscheduledItineraryItemDto,
 } from "./types";
 import {
   getOpenItineraryConflictsForTripTx,
@@ -54,7 +55,10 @@ const emptyItinerary = {
     itemCount: 0,
     estimatedCostAmount: null,
     estimatedCostCurrency: null,
+    costIsComplete: true,
+    excludedCostCurrencies: [],
   },
+  unscheduledItems: [],
   conflicts: [],
   conflictSummary: {
     total: 0,
@@ -330,16 +334,35 @@ function totalCost(
   >[],
   preferredCurrency: string | null,
 ) {
+  const pricedItems = items.filter(
+    (item) => item.estimatedCostAmount !== null,
+  );
   const currency =
     preferredCurrency ??
-    items.find((item) => item.estimatedCostAmount !== null)
+    pricedItems.find((item) => item.estimatedCostCurrency)
       ?.estimatedCostCurrency ??
     null;
+  const excludedCostCurrencies = [
+    ...new Set(
+      pricedItems
+        .filter(
+          (item) =>
+            item.estimatedCostCurrency &&
+            item.estimatedCostCurrency !== currency,
+        )
+        .map((item) => item.estimatedCostCurrency as string),
+    ),
+  ].sort();
+  const costIsComplete = pricedItems.every(
+    (item) => item.estimatedCostCurrency === currency,
+  );
 
   if (!currency) {
     return {
       estimatedCostAmount: null,
       estimatedCostCurrency: null,
+      costIsComplete,
+      excludedCostCurrencies,
     };
   }
 
@@ -357,6 +380,8 @@ function totalCost(
   return {
     estimatedCostAmount: amount > 0 ? amount : null,
     estimatedCostCurrency: amount > 0 ? currency : null,
+    costIsComplete,
+    excludedCostCurrencies,
   };
 }
 
@@ -375,6 +400,22 @@ function draftItem(
     sortOrder,
     estimatedCostAmount: numberValue(place.estimatedCostAmount),
     estimatedCostCurrency: place.estimatedCostCurrency,
+  };
+}
+
+function unscheduledDraftItem(
+  place: ItineraryDraftPlace,
+  sortOrder: number,
+  reason: UnscheduledItineraryItemDto["reason"],
+): UnscheduledItineraryItemDto {
+  return {
+    ...draftItem(place, sortOrder),
+    id: `unscheduled-item-${place.id}`,
+    reason,
+    reasonMessage:
+      reason === "NO_AVAILABLE_DAY"
+        ? "No trip day is available for this selected place."
+        : "This selected place exceeds the trip's current pace capacity.",
   };
 }
 
@@ -653,6 +694,7 @@ function dayRecordDto(
   );
   const cityWindows = record.cityWindows.map(persistedCityWindowDto);
   const date = isoDate(record.date);
+  const cost = totalCost(items, trip.budgetCurrency);
 
   return {
     id: record.id,
@@ -661,8 +703,7 @@ function dayRecordDto(
     title: record.title,
     notes: record.notes,
     itemCount: items.length,
-    estimatedCostAmount: numberValue(record.estimatedCostAmount),
-    estimatedCostCurrency: record.estimatedCostCurrency,
+    ...cost,
     cityWindows,
     timeSlots: date ? timeSlotsForDate(trip, date, cityWindows) : [],
     items,
@@ -673,12 +714,14 @@ function itineraryDtoFromDays(
   days: ItineraryDayDto[],
   currency: string | null,
   conflicts: ItineraryDto["conflicts"] = [],
+  unscheduledItems: ItineraryDto["unscheduledItems"] = [],
 ) {
   const items = days.flatMap((day) => day.items);
   const cost = totalCost(items, currency);
 
   return {
     days,
+    unscheduledItems,
     totals: {
       itemCount: items.length,
       ...cost,
@@ -735,10 +778,31 @@ export function buildItineraryDraft({
       items,
     };
   });
+  const scheduledPlaceIds = new Set(
+    days.flatMap((day) =>
+      day.items.flatMap((item) =>
+        item.placeSuggestionId ? [item.placeSuggestionId] : [],
+      ),
+    ),
+  );
+  const unscheduledItems = selectedPlaces
+    .filter((place) => !scheduledPlaceIds.has(place.id))
+    .map((place, index) =>
+      unscheduledDraftItem(
+        place,
+        index,
+        dates.length === 0 ? "NO_AVAILABLE_DAY" : "PACE_CAPACITY_EXCEEDED",
+      ),
+    );
 
   return {
     status: "built",
-    ...itineraryDtoFromDays(days, trip.budgetCurrency),
+    ...itineraryDtoFromDays(
+      days,
+      trip.budgetCurrency,
+      [],
+      unscheduledItems,
+    ),
   };
 }
 
@@ -763,11 +827,26 @@ async function persistedItinerary(tx: ItineraryTx, trip: ItineraryTripRecord) {
       dayNumber: "asc",
     },
   });
+  const places = await selectedPlaces(tx, trip.id);
+  const dayDtos = days.map((day) => dayRecordDto(day, trip));
+  const scheduledPlaceIds = new Set(
+    dayDtos.flatMap((day) =>
+      day.items.flatMap((item) =>
+        item.placeSuggestionId ? [item.placeSuggestionId] : [],
+      ),
+    ),
+  );
+  const unscheduledItems = places
+    .filter((place) => !scheduledPlaceIds.has(place.id))
+    .map((place, index) =>
+      unscheduledDraftItem(place, index, "PACE_CAPACITY_EXCEEDED"),
+    );
 
   return itineraryDtoFromDays(
-    days.map((day) => dayRecordDto(day, trip)),
+    dayDtos,
     trip.budgetCurrency,
     conflicts,
+    unscheduledItems,
   );
 }
 
@@ -952,7 +1031,12 @@ async function persistDraft(
 
   const conflicts = await refreshItineraryConflictsForTripTx(tx, trip);
 
-  return itineraryDtoFromDays(days, trip.budgetCurrency, conflicts);
+  return itineraryDtoFromDays(
+    days,
+    trip.budgetCurrency,
+    conflicts,
+    draft.unscheduledItems,
+  );
 }
 
 export async function rebuildItineraryDraftForTripTx(

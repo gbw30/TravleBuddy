@@ -41,6 +41,11 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000001",
+};
+
 function jsonRequest(body: unknown) {
   return new Request("http://localhost/api/trips/trip_1", {
     method: "PATCH",
@@ -88,24 +93,47 @@ describe("/api/trips/[tripId] route", () => {
       trip: { id: "trip_1", budgetAmount: "900" },
     });
 
-    const response = await PATCH(jsonRequest({ budgetAmount: "900" }), context);
+    const response = await PATCH(
+      jsonRequest({ budgetAmount: "900", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(200);
-    expect(mocks.actions.updateTrip).toHaveBeenCalledWith("user_1", "trip_1", {
-      budgetAmount: 900,
-    });
+    expect(mocks.actions.updateTrip).toHaveBeenCalledWith(
+      "user_1",
+      "trip_1",
+      { budgetAmount: 900 },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "trip_settings_update",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    );
   });
 
   it("returns 400 for empty PATCH payloads", async () => {
-    const response = await PATCH(jsonRequest({}), context);
+    const response = await PATCH(jsonRequest(mutationControl), context);
 
     expect(response.status).toBe(400);
+  });
+
+  it("returns 422 without invoking the mutation for malformed controls", async () => {
+    const response = await PATCH(
+      jsonRequest({ title: "New title", operationId: "not-a-uuid" }),
+      context,
+    );
+
+    expect(response.status).toBe(422);
+    expect(mocks.actions.updateTrip).not.toHaveBeenCalled();
   });
 
   it("returns 404 when PATCH targets a non-owned trip", async () => {
     mocks.actions.updateTrip.mockResolvedValue({ status: "not_found" });
 
-    const response = await PATCH(jsonRequest({ title: "New title" }), context);
+    const response = await PATCH(
+      jsonRequest({ title: "New title", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(404);
   });
@@ -113,7 +141,10 @@ describe("/api/trips/[tripId] route", () => {
   it("returns 409 when PATCH targets an archived trip", async () => {
     mocks.actions.updateTrip.mockResolvedValue({ status: "archived" });
 
-    const response = await PATCH(jsonRequest({ title: "New title" }), context);
+    const response = await PATCH(
+      jsonRequest({ title: "New title", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(409);
   });

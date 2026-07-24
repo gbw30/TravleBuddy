@@ -4,6 +4,15 @@ import {
 } from "@/lib/authorization";
 import { refreshRecommendations } from "@/features/recommendations/service";
 import { refreshRecommendationsInputSchema } from "@/features/recommendations/schemas";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type RefreshRouteContext = {
   params: Promise<{
@@ -16,14 +25,6 @@ function apiError(message: string, status: number, details?: unknown) {
     details ? { error: message, details } : { error: message },
     { status },
   );
-}
-
-async function readJson(request: Request) {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
 }
 
 function accessErrorResponse(
@@ -57,9 +58,14 @@ export async function POST(request: Request, context: RefreshRouteContext) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId } = await context.params;
-    const parsed = refreshRecommendationsInputSchema.safeParse(
-      await readJson(request),
-    );
+    const body = await readPlanningMutationJson(request);
+    const parsedControl = parsePlanningMutationControl(body);
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
+    const parsed = refreshRecommendationsInputSchema.safeParse(body);
 
     if (!parsed.success) {
       return apiError("Invalid refresh payload.", 400, {
@@ -67,7 +73,17 @@ export async function POST(request: Request, context: RefreshRouteContext) {
       });
     }
 
-    const result = await refreshRecommendations(userId, tripId, parsed.data);
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "recommendations_refresh",
+      parsed.data,
+    );
+    const result = await refreshRecommendations(
+      userId,
+      tripId,
+      parsed.data,
+      control,
+    );
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -84,6 +100,9 @@ export async function POST(request: Request, context: RefreshRouteContext) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to refresh recommendations.", 500);
   }

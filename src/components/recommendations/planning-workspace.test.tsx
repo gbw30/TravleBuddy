@@ -165,6 +165,8 @@ describe("PlanningWorkspace", () => {
             itemCount: 1,
             estimatedCostAmount: 300,
             estimatedCostCurrency: "EUR",
+            costIsComplete: false,
+            excludedCostCurrencies: ["USD"],
             cityWindows: [],
             timeSlots: [],
             items: [
@@ -183,10 +185,29 @@ describe("PlanningWorkspace", () => {
             ],
           },
         ],
+        unscheduledItems: [
+          {
+            id: "unscheduled-item-suggestion_4",
+            placeSuggestionId: "suggestion_4",
+            title: "Late-night jazz club",
+            description: null,
+            category: "ENTERTAINMENT",
+            city: "Barcelona",
+            country: "Spain",
+            sortOrder: 0,
+            estimatedCostAmount: 40,
+            estimatedCostCurrency: "USD",
+            reason: "PACE_CAPACITY_EXCEEDED",
+            reasonMessage:
+              "This selected place exceeds the trip's current pace capacity.",
+          },
+        ],
         totals: {
           itemCount: 1,
           estimatedCostAmount: 300,
           estimatedCostCurrency: "EUR",
+          costIsComplete: false,
+          excludedCostCurrencies: ["USD"],
         },
         conflicts: [],
         conflictSummary: {
@@ -218,6 +239,9 @@ describe("PlanningWorkspace", () => {
     expect(text).toContain("Barcelona, Spain");
     expect(text).toContain("Madrid, Spain");
     expect(text).toContain("Recommendation rejected");
+    expect(text).toContain("Selected but unscheduled");
+    expect(text).toContain("Late-night jazz club");
+    expect(text).toContain("partial; excludes USD");
   });
 
   it("keeps the planning columns aligned to the top to avoid stretched cards", () => {
@@ -245,10 +269,13 @@ describe("PlanningWorkspace", () => {
       placeActionLog: [],
       itineraryPreview: {
         days: [],
+        unscheduledItems: [],
         totals: {
           itemCount: 0,
           estimatedCostAmount: null,
           estimatedCostCurrency: null,
+          costIsComplete: true,
+          excludedCostCurrencies: [],
         },
         conflicts: [],
         conflictSummary: {
@@ -303,10 +330,13 @@ describe("PlanningWorkspace", () => {
       placeActionLog: [],
       itineraryPreview: {
         days: [],
+        unscheduledItems: [],
         totals: {
           itemCount: 0,
           estimatedCostAmount: null,
           estimatedCostCurrency: null,
+          costIsComplete: true,
+          excludedCostCurrencies: [],
         },
         conflicts: [],
         conflictSummary: {
