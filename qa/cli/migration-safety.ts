@@ -2,9 +2,15 @@ import { spawnSync } from "node:child_process";
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Client } from "pg";
-import { assertQaWritesAllowed, readQaEnvironment } from "../runtime/environment";
-
-type Phase = "preflight" | "postflight";
+import {
+  assertQaWritesAllowed,
+  readQaEnvironment,
+} from "../runtime/environment";
+import {
+  parseMigrationPhase,
+  sanitizeMigrationError,
+  writeMigrationFailureReceipt,
+} from "../runtime/migration-evidence";
 
 const fullSha = /^[a-f0-9]{40}$/;
 const migrationName = /^\d{14}_[a-z0-9_]+$/;
@@ -21,15 +27,19 @@ function git(...args: string[]) {
     encoding: "utf8",
   });
   if (result.status !== 0) {
-    throw new Error(`Unable to verify Git identity with: git ${args.join(" ")}`);
+    throw new Error(
+      `Unable to verify Git identity with: git ${args.join(" ")}`,
+    );
   }
   return result.stdout.trim();
 }
 
 async function migrationDirectories() {
-  return (await readdir(path.resolve("prisma", "migrations"), {
-    withFileTypes: true,
-  }))
+  return (
+    await readdir(path.resolve("prisma", "migrations"), {
+      withFileTypes: true,
+    })
+  )
     .filter((entry) => entry.isDirectory() && migrationName.test(entry.name))
     .map((entry) => entry.name)
     .sort();
@@ -91,8 +101,8 @@ async function inspectDatabase(client: Client, expectedHead: string) {
 }
 
 async function main() {
-  const phase = process.argv[2] as Phase | undefined;
-  if (phase !== "preflight" && phase !== "postflight") {
+  const phase = parseMigrationPhase(process.argv[2]);
+  if (!phase) {
     throw new Error(
       "Usage: tsx qa/cli/migration-safety.ts <preflight|postflight>",
     );
@@ -122,7 +132,9 @@ async function main() {
     );
   }
   if (!fullSha.test(commitSha)) {
-    throw new Error("QA_MIGRATION_COMMIT_SHA must be a full lowercase Git SHA.");
+    throw new Error(
+      "QA_MIGRATION_COMMIT_SHA must be a full lowercase Git SHA.",
+    );
   }
   if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.includes("..")) {
     throw new Error("QA_MIGRATION_BRANCH is invalid.");
@@ -226,9 +238,17 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  process.stderr.write(
-    `${error instanceof Error ? error.message : String(error)}\n`,
-  );
+main().catch(async (error) => {
+  const phase = parseMigrationPhase(process.argv[2]);
+  let sanitizedError = sanitizeMigrationError(error);
+  try {
+    const evidence = await writeMigrationFailureReceipt({ phase, error });
+    sanitizedError = evidence.error;
+  } catch (receiptError) {
+    process.stderr.write(
+      `Unable to write sanitized migration failure receipt: ${sanitizeMigrationError(receiptError)}\n`,
+    );
+  }
+  process.stderr.write(`${sanitizedError}\n`);
   process.exitCode = 1;
 });

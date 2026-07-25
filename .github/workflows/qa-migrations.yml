@@ -61,16 +61,16 @@ jobs:
 
     steps:
       - name: Checkout exact requested commit without credentials
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install locked dependencies
@@ -145,11 +145,11 @@ jobs:
 
       - name: Publish sanitized migration receipt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-migration-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             qa-results/qa-migration/*.json
             qa-results/qa-migration/*.log
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 90

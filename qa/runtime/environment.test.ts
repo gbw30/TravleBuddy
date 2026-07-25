@@ -45,9 +45,7 @@ describe("QA environment guard", () => {
     expect(canonicalDatabaseIdentity(pooled)).toBe(
       canonicalDatabaseIdentity(direct),
     );
-    expect(fingerprintDatabaseUrl(pooled)).toBe(
-      fingerprintDatabaseUrl(direct),
-    );
+    expect(fingerprintDatabaseUrl(pooled)).toBe(fingerprintDatabaseUrl(direct));
   });
 
   test("accepts an explicitly authorized preview database", () => {
@@ -59,9 +57,7 @@ describe("QA environment guard", () => {
 
   test("rejects missing authorization and fingerprint mismatches", () => {
     expect(() =>
-      assertQaWritesAllowed(
-        writableEnvironment({ QA_ALLOW_WRITES: "false" }),
-      ),
+      assertQaWritesAllowed(writableEnvironment({ QA_ALLOW_WRITES: "false" })),
     ).toThrow("QA_ALLOW_WRITES=true");
     expect(() =>
       assertQaWritesAllowed(
@@ -92,6 +88,30 @@ describe("QA environment guard", () => {
         }),
       ),
     ).toThrow("forbidden or production");
+  });
+
+  test.each([
+    "QA_FORBIDDEN_DATABASE_FINGERPRINT",
+    "QA_PRODUCTION_DATABASE_FINGERPRINT",
+  ])("treats an empty optional fingerprint from %s as absent", (key) => {
+    expect(() =>
+      assertQaWritesAllowed(
+        writableEnvironment({
+          [key]: "",
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  test.each([
+    "QA_FORBIDDEN_DATABASE_FINGERPRINT",
+    "QA_PRODUCTION_DATABASE_FINGERPRINT",
+  ])("rejects a malformed non-empty fingerprint from %s", (key) => {
+    expect(() =>
+      writableEnvironment({
+        [key]: "not-a-fingerprint",
+      }),
+    ).toThrow(`Invalid QA environment: ${key}`);
   });
 
   test("always rejects writes to production", () => {

@@ -53,16 +53,16 @@ jobs:
 
     steps:
       - name: Checkout pull request merge commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -106,7 +106,7 @@ jobs:
 
       - name: Upload deterministic QA evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
           path: |
@@ -129,14 +129,14 @@ jobs:
 
     steps:
       - name: Checkout pull request merge commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download deterministic QA evidence
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: qa-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
@@ -180,7 +180,7 @@ jobs:
 
       - name: Upload Codex review
         if: always() && env.HAS_OPENAI_API_KEY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codex-pr-risk-review-${{ github.run_id }}
           path: codex-pr-risk-review.md

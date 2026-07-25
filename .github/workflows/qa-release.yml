@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout exact preview commit without credentials
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
@@ -93,16 +93,16 @@ jobs:
 
     steps:
       - name: Checkout exact preview commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload release QA evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-release-${{ github.run_id }}
           path: |
@@ -198,14 +198,14 @@ jobs:
 
     steps:
       - name: Checkout exact preview commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download release evidence
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: qa-release-${{ github.run_id }}
@@ -249,7 +249,7 @@ jobs:
 
       - name: Upload Codex release audit
         if: always() && env.HAS_OPENAI_API_KEY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codex-release-audit-${{ github.run_id }}
           path: codex-release-audit.md

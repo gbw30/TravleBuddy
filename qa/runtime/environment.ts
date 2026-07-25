@@ -1,22 +1,32 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-export const qaTargetSchema = z.enum(["local", "preview", "production-readonly"]);
+export const qaTargetSchema = z.enum([
+  "local",
+  "preview",
+  "production-readonly",
+]);
+
+const optionalDatabaseFingerprintSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+);
 
 const qaEnvironmentSchema = z.object({
   QA_TARGET: qaTargetSchema,
   QA_BASE_URL: z.url(),
-  QA_RUN_ID: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$/),
+  QA_RUN_ID: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$/),
   QA_ALLOW_WRITES: z.enum(["true", "false"]).default("false"),
-  QA_DATABASE_FINGERPRINT: z.string().regex(/^[a-f0-9]{64}$/).optional(),
-  QA_FORBIDDEN_DATABASE_FINGERPRINT: z
-    .string()
-    .regex(/^[a-f0-9]{64}$/)
-    .optional(),
-  QA_PRODUCTION_DATABASE_FINGERPRINT: z
-    .string()
-    .regex(/^[a-f0-9]{64}$/)
-    .optional(),
+  QA_DATABASE_FINGERPRINT: optionalDatabaseFingerprintSchema,
+  QA_FORBIDDEN_DATABASE_FINGERPRINT: optionalDatabaseFingerprintSchema,
+  QA_PRODUCTION_DATABASE_FINGERPRINT: optionalDatabaseFingerprintSchema,
   DATABASE_URL: z.string().optional(),
   DIRECT_URL: z.string().optional(),
 });
@@ -86,8 +96,7 @@ export function readQaEnvironment(
     databaseUrl: parsed.data.DIRECT_URL ?? parsed.data.DATABASE_URL ?? null,
     pooledDatabaseUrl: parsed.data.DATABASE_URL ?? null,
     directDatabaseUrl: parsed.data.DIRECT_URL ?? null,
-    expectedDatabaseFingerprint:
-      parsed.data.QA_DATABASE_FINGERPRINT ?? null,
+    expectedDatabaseFingerprint: parsed.data.QA_DATABASE_FINGERPRINT ?? null,
     forbiddenDatabaseFingerprints: [
       parsed.data.QA_FORBIDDEN_DATABASE_FINGERPRINT,
       parsed.data.QA_PRODUCTION_DATABASE_FINGERPRINT,
@@ -139,7 +148,9 @@ export function assertQaWritesAllowed(environment: QaEnvironment) {
   const actual = fingerprintDatabaseUrl(environment.databaseUrl);
 
   if (!fingerprintsMatch(actual, environment.expectedDatabaseFingerprint)) {
-    throw new Error("QA database fingerprint does not match the configured target.");
+    throw new Error(
+      "QA database fingerprint does not match the configured target.",
+    );
   }
 
   if (
@@ -168,7 +179,9 @@ export function assertQaWritesAllowed(environment: QaEnvironment) {
 
 export function assertProductionReadOnly(environment: QaEnvironment) {
   if (environment.target !== "production-readonly") {
-    throw new Error("Production smoke checks require QA_TARGET=production-readonly.");
+    throw new Error(
+      "Production smoke checks require QA_TARGET=production-readonly.",
+    );
   }
 
   if (environment.allowWrites) {
