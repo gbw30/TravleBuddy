@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       branch:
-        description: Remote branch whose head must equal commit_sha
+        description: Remote branch whose head must equal commit_sha and Use workflow from
         required: true
         default: qa
         type: string
@@ -56,6 +56,7 @@ jobs:
       QA_MIGRATION_EXPECTED_DATABASE_FINGERPRINT: e6d10d0c10e8212e11f6c88d6e4747fd281edf273a592283bad6ae6a8f380586
       QA_MIGRATION_COMMIT_SHA: ${{ inputs.commit_sha }}
       QA_MIGRATION_BRANCH: ${{ inputs.branch }}
+      QA_MIGRATION_WORKFLOW_BRANCH: ${{ github.ref_name }}
       QA_MIGRATION_HEAD: ${{ inputs.migration_head }}
       QA_MIGRATION_CONFIRMATION: ${{ inputs.confirmation }}
 

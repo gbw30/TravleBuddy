@@ -11,6 +11,11 @@ import {
   sanitizeMigrationError,
   writeMigrationFailureReceipt,
 } from "../runtime/migration-evidence";
+import {
+  assertMigrationPreflightState,
+  assertMigrationWorkflowBranch,
+  type MigrationDatabaseState,
+} from "../runtime/migration-state";
 
 const fullSha = /^[a-f0-9]{40}$/;
 const migrationName = /^\d{14}_[a-z0-9_]+$/;
@@ -46,6 +51,24 @@ async function migrationDirectories() {
 }
 
 async function inspectDatabase(client: Client, expectedHead: string) {
+  const privilegeResult = await client.query<{
+    database_role: string;
+    schema_owner: string;
+    has_schema_usage: boolean;
+    has_schema_create: boolean;
+  }>(
+    `SELECT current_user AS database_role,
+            pg_get_userbyid(nspowner) AS schema_owner,
+            has_schema_privilege(current_user, 'public', 'USAGE') AS has_schema_usage,
+            has_schema_privilege(current_user, 'public', 'CREATE') AS has_schema_create
+       FROM pg_namespace
+      WHERE nspname = 'public'`,
+  );
+  const privileges = privilegeResult.rows[0];
+  if (!privileges) {
+    throw new Error("QA database does not contain the public schema.");
+  }
+
   const ledgerResult = await client.query<{
     ledger: string | null;
   }>("SELECT to_regclass('public._prisma_migrations')::text AS ledger");
@@ -67,6 +90,10 @@ async function inspectDatabase(client: Client, expectedHead: string) {
       failedMigrationCount: 0,
       expectedHeadApplied: false,
       latestAppliedMigration: null,
+      databaseRole: privileges.database_role,
+      schemaOwner: privileges.schema_owner,
+      hasSchemaUsage: privileges.has_schema_usage,
+      hasSchemaCreate: privileges.has_schema_create,
     };
   }
 
@@ -97,6 +124,10 @@ async function inspectDatabase(client: Client, expectedHead: string) {
       (migration) => migration.migration_name === expectedHead,
     ),
     latestAppliedMigration: applied.at(-1)?.migration_name ?? null,
+    databaseRole: privileges.database_role,
+    schemaOwner: privileges.schema_owner,
+    hasSchemaUsage: privileges.has_schema_usage,
+    hasSchemaCreate: privileges.has_schema_create,
   };
 }
 
@@ -121,6 +152,7 @@ async function main() {
 
   const commitSha = required("QA_MIGRATION_COMMIT_SHA").toLocaleLowerCase();
   const branch = required("QA_MIGRATION_BRANCH");
+  const workflowBranch = required("QA_MIGRATION_WORKFLOW_BRANCH");
   const expectedHead = required("QA_MIGRATION_HEAD");
   const confirmation = required("QA_MIGRATION_CONFIRMATION");
   const protectedFingerprint = required(
@@ -139,6 +171,7 @@ async function main() {
   if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.includes("..")) {
     throw new Error("QA_MIGRATION_BRANCH is invalid.");
   }
+  assertMigrationWorkflowBranch(workflowBranch, branch);
   if (!migrationName.test(expectedHead)) {
     throw new Error("QA_MIGRATION_HEAD is not a migration directory name.");
   }
@@ -181,7 +214,7 @@ async function main() {
     application_name: `travlebuddy_qa_migration_${phase}`,
   });
   await client.connect();
-  let databaseState: Awaited<ReturnType<typeof inspectDatabase>>;
+  let databaseState: MigrationDatabaseState;
   try {
     databaseState = await inspectDatabase(client, expectedHead);
   } finally {
@@ -189,16 +222,7 @@ async function main() {
   }
 
   if (phase === "preflight") {
-    if (!databaseState.hasLedger && databaseState.appTableCount > 0) {
-      throw new Error(
-        "Refusing first deploy: the database has application tables but no Prisma migration ledger.",
-      );
-    }
-    if (databaseState.failedMigrationCount > 0) {
-      throw new Error(
-        "Refusing deploy: the Prisma migration ledger contains an unfinished migration.",
-      );
-    }
+    assertMigrationPreflightState(databaseState);
   } else {
     if (
       !databaseState.hasLedger ||
