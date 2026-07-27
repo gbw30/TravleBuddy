@@ -139,6 +139,9 @@ export async function finalizePlanningMutationTx<T extends object>(
       planningRevision: {
         increment: 1,
       },
+      tripVersion: {
+        increment: 1,
+      },
     },
   });
 

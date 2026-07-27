@@ -4,18 +4,29 @@ on:
   pull_request:
     branches:
       - main
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to verify
+        required: true
+        type: number
+      base_sha:
+        description: Optional base commit for selective QA routing
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: qa-pr-${{ github.event.pull_request.number }}
+  group: qa-pr-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: true
 
 jobs:
   deterministic:
     name: Deterministic QA gate
+    if: ${{ github.event.action != 'labeled' || github.event.label.name == 'qa-required' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -44,18 +55,18 @@ jobs:
       AUTH_GOOGLE_SECRET: qa-google-client-secret
       QA_TARGET: local
       QA_BASE_URL: http://127.0.0.1:3000
-      QA_RUN_ID: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+      QA_RUN_ID: pr-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.run_id }}-${{ github.run_attempt }}
       QA_ALLOW_WRITES: "true"
       QA_PROVIDER_MODE: mock
       QA_RUN_TYPE: pr
-      QA_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      QA_BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
       QA_PARENT_SANDBOX: read-only
 
     steps:
       - name: Checkout pull request merge commit
         uses: actions/checkout@v6
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          ref: refs/pull/${{ github.event.pull_request.number || inputs.pr_number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
@@ -108,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: qa-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          name: qa-pr-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.run_id }}
           path: |
             qa-results/**
             playwright-report/**
@@ -120,7 +131,7 @@ jobs:
   codex-risk-review:
     name: Codex read-only change-risk review
     needs: deterministic
-    if: ${{ always() && needs.deterministic.result != 'cancelled' }}
+    if: ${{ always() && needs.deterministic.result != 'cancelled' && (github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'qa-required')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: qa-pr-agent
@@ -131,7 +142,7 @@ jobs:
       - name: Checkout pull request merge commit
         uses: actions/checkout@v6
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          ref: refs/pull/${{ github.event.pull_request.number || inputs.pr_number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
@@ -139,7 +150,7 @@ jobs:
         uses: actions/download-artifact@v8
         continue-on-error: true
         with:
-          name: qa-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          name: qa-pr-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.run_id }}
           path: qa-input
 
       - name: Block when the protected Codex credential is unavailable

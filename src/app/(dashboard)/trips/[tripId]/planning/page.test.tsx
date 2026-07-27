@@ -114,11 +114,15 @@ describe("PlanningPage", () => {
       timelineEvents: [],
       placeActionLog: [],
       itineraryPreview: {
+        version: null,
         days: [],
+        unscheduledItems: [],
         totals: {
           itemCount: 0,
           estimatedCostAmount: null,
           estimatedCostCurrency: null,
+          costIsComplete: true,
+          excludedCostCurrencies: [],
         },
         conflicts: [],
         conflictSummary: {
@@ -127,6 +131,11 @@ describe("PlanningPage", () => {
           medium: 0,
           high: 0,
         },
+      },
+      activeJobs: [],
+      itineraryVersions: [],
+      snapshot: {
+        revision: 0,
       },
     });
   });

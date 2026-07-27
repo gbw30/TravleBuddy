@@ -1,5 +1,11 @@
 # TravleBuddy Agent-Friendly Development Plan
 
+> Historical plan. The canonical product direction is
+> [product-vision.md](./product-vision.md), and the active delivery sequence is
+> [roadmap.md](./roadmap.md). Retain this file only as implementation history;
+> conflicting conversation-, map-, export-, or static-itinerary priorities are
+> superseded.
+
 ## Purpose
 
 TravleBuddy is a travel-planning web app that helps users create personalized trip itineraries. Users create a trip, answer preference questions, receive place suggestions, select places, and generate an itinerary that accounts for budget, pacing, location, and travel-time conflicts.
@@ -1506,12 +1512,15 @@ At the end of each phase, the agent should report:
 
 ```md
 ## Completed
+
 - ...
 
 ## Files Changed
+
 - ...
 
 ## Validation
+
 - [ ] npm run lint
 - [ ] npm run typecheck
 - [ ] npm run test
@@ -1519,12 +1528,15 @@ At the end of each phase, the agent should report:
 - [ ] npm run dev
 
 ## User Action Needed
+
 - ...
 
 ## Known Issues / Deferred Work
+
 - ...
 
 ## Next Recommended Phase
+
 - ...
 ```
 

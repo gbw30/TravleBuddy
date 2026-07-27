@@ -155,6 +155,72 @@ enum ConflictStatus {
   IGNORED
 }
 
+enum PreferenceSignalSource {
+  EXPLICIT
+  INFERRED
+  DEFAULT
+}
+
+enum FeedbackProcessingStatus {
+  RECORDED
+  QUEUED
+  PROCESSING
+  PROCESSED
+  FAILED
+  SUPERSEDED
+}
+
+enum ItineraryVersionStatus {
+  DRAFT
+  ACTIVE
+  SUPERSEDED
+  FAILED
+}
+
+enum ItineraryChangeScope {
+  INITIAL
+  ITEM
+  DAY
+  FULL
+  MIGRATED
+}
+
+enum GenerationJobType {
+  PROCESS_FEEDBACK_EVENT
+}
+
+enum GenerationJobStatus {
+  PENDING
+  RUNNING
+  RETRYING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTERED
+  SUPERSEDED
+}
+
+enum JobAttemptStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  ABANDONED
+  SUPERSEDED
+}
+
+enum JobEventType {
+  RECEIVED
+  CLAIMED
+  UPDATING_PREFERENCES
+  FINDING_REPLACEMENT
+  VALIDATING_ITINERARY
+  RETRY_SCHEDULED
+  COMPLETED
+  FAILED
+  DEAD_LETTERED
+  SUPERSEDED
+  RECOVERED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -168,6 +234,7 @@ model User {
   sessions         Session[]
   trips            Trip[]
   travelPreference UserTravelPreference?
+  planningFeedback PlanningFeedback[]
 
   @@map("users")
 }
@@ -253,6 +320,9 @@ model Trip {
   budgetCurrency        String?           @map("budget_currency") @db.VarChar(3)
   logisticsMode         TripLogisticsMode @default(FLEXIBLE) @map("logistics_mode")
   planningRevision      Int               @default(0) @map("planning_revision")
+  tripVersion           Int               @default(1) @map("trip_version")
+  activePreferenceProfileVersionId String? @map("active_preference_profile_version_id")
+  activeItineraryVersionId         String? @map("active_itinerary_version_id")
   createdAt             DateTime          @default(now()) @map("created_at")
   updatedAt             DateTime          @updatedAt @map("updated_at")
 
@@ -268,10 +338,17 @@ model Trip {
   itineraryItems    ItineraryItem[]
   conflicts         Conflict[]
   planningMutations PlanningMutation[]
+  preferenceProfileVersions PreferenceProfileVersion[] @relation("TripPreferenceProfileVersions")
+  itineraryVersions         ItineraryVersion[]         @relation("TripItineraryVersions")
+  generationJobs            GenerationJob[]
+  activePreferenceProfileVersion PreferenceProfileVersion? @relation("ActivePreferenceProfileVersion", fields: [id, activePreferenceProfileVersionId], references: [tripId, id], onDelete: NoAction)
+  activeItineraryVersion         ItineraryVersion?         @relation("ActiveItineraryVersion", fields: [id, activeItineraryVersionId], references: [tripId, id], onDelete: NoAction)
 
   @@index([userId])
   @@index([status])
   @@index([startDate, endDate])
+  @@index([activePreferenceProfileVersionId])
+  @@index([activeItineraryVersionId])
   @@map("trips")
 }
 
@@ -425,6 +502,13 @@ model PlanningFeedback {
   itineraryDayId    String?            @map("itinerary_day_id")
   itineraryItemId   String?            @map("itinerary_item_id")
   conflictId        String?            @map("conflict_id")
+  eventKey          String?            @map("event_key") @db.VarChar(128)
+  userId            String?            @map("user_id")
+  capturedTripVersion Int?             @map("captured_trip_version")
+  capturedPreferenceProfileVersionId String? @map("captured_preference_profile_version_id")
+  capturedItineraryVersionId String?   @map("captured_itinerary_version_id")
+  processingStatus  FeedbackProcessingStatus @default(RECORDED) @map("processing_status")
+  processedAt       DateTime?          @map("processed_at")
   createdAt         DateTime           @default(now()) @map("created_at")
 
   trip            Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
@@ -433,7 +517,14 @@ model PlanningFeedback {
   itineraryDay    ItineraryDay?    @relation("ItineraryDayFeedback", fields: [tripId, itineraryDayId], references: [tripId, id], onDelete: NoAction)
   itineraryItem   ItineraryItem?   @relation("ItineraryItemFeedback", fields: [tripId, itineraryItemId], references: [tripId, id], onDelete: NoAction)
   conflict        Conflict?        @relation("ConflictFeedback", fields: [tripId, conflictId], references: [tripId, id], onDelete: NoAction)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  preferenceUpdate PreferenceProfileVersion? @relation("FeedbackPreferenceUpdate")
+  capturedPreferenceProfileVersion PreferenceProfileVersion? @relation("FeedbackCapturedPreferenceProfileVersion", fields: [tripId, capturedPreferenceProfileVersionId], references: [tripId, id], onDelete: NoAction)
+  capturedItineraryVersion ItineraryVersion? @relation("FeedbackCapturedItineraryVersion", fields: [tripId, capturedItineraryVersionId], references: [tripId, id], onDelete: NoAction)
+  generationJobs   GenerationJob[]
 
+  @@unique([tripId, id])
+  @@unique([tripId, eventKey])
   @@index([tripId])
   @@index([targetType])
   @@index([targetType, targetId])
@@ -442,7 +533,147 @@ model PlanningFeedback {
   @@index([itineraryDayId])
   @@index([itineraryItemId])
   @@index([conflictId])
+  @@index([userId])
+  @@index([processingStatus])
   @@map("planning_feedback")
+}
+
+model PreferenceProfileVersion {
+  id               String   @id @default(cuid())
+  tripId           String   @map("trip_id")
+  version          Int
+  parentVersionId  String?  @map("parent_version_id")
+  sourceFeedbackId String?  @map("source_feedback_id")
+  snapshot         Json
+  delta            Json?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  trip           Trip                      @relation("TripPreferenceProfileVersions", fields: [tripId], references: [id], onDelete: Cascade)
+  activeForTrips Trip[]                    @relation("ActivePreferenceProfileVersion")
+  parent         PreferenceProfileVersion? @relation("PreferenceProfileVersionParent", fields: [tripId, parentVersionId], references: [tripId, id], onDelete: NoAction)
+  children       PreferenceProfileVersion[] @relation("PreferenceProfileVersionParent")
+  sourceFeedback PlanningFeedback?         @relation("FeedbackPreferenceUpdate", fields: [tripId, sourceFeedbackId], references: [tripId, id], onDelete: NoAction)
+  capturedByFeedback PlanningFeedback[]    @relation("FeedbackCapturedPreferenceProfileVersion")
+  itineraryVersions ItineraryVersion[]
+  generationJobs GenerationJob[] @relation("JobPreferenceProfileVersion")
+
+  @@unique([tripId, id])
+  @@unique([tripId, version])
+  @@unique([tripId, sourceFeedbackId])
+  @@index([tripId, createdAt])
+  @@index([parentVersionId])
+  @@map("preference_profile_versions")
+}
+
+model ItineraryVersion {
+  id                         String                 @id @default(cuid())
+  tripId                     String                 @map("trip_id")
+  version                    Int
+  parentVersionId            String?                @map("parent_version_id")
+  preferenceProfileVersionId String?                @map("preference_profile_version_id")
+  sourceJobId                String?                @map("source_job_id")
+  status                     ItineraryVersionStatus @default(DRAFT)
+  changeScope                ItineraryChangeScope   @default(FULL) @map("change_scope")
+  changeSummary              Json?                  @map("change_summary")
+  activatedAt                DateTime?              @map("activated_at")
+  createdAt                  DateTime               @default(now()) @map("created_at")
+
+  trip                     Trip                      @relation("TripItineraryVersions", fields: [tripId], references: [id], onDelete: Cascade)
+  activeForTrips           Trip[]                    @relation("ActiveItineraryVersion")
+  parent                   ItineraryVersion?         @relation("ItineraryVersionParent", fields: [tripId, parentVersionId], references: [tripId, id], onDelete: NoAction)
+  children                 ItineraryVersion[]        @relation("ItineraryVersionParent")
+  preferenceProfileVersion PreferenceProfileVersion? @relation(fields: [tripId, preferenceProfileVersionId], references: [tripId, id], onDelete: NoAction)
+  sourceJob                GenerationJob?            @relation("JobProducedItineraryVersion", fields: [tripId, sourceJobId], references: [tripId, id], onDelete: NoAction)
+  capturedByFeedback       PlanningFeedback[]        @relation("FeedbackCapturedItineraryVersion")
+  days                     ItineraryDay[]
+  conflicts                Conflict[]
+  generationJobs           GenerationJob[] @relation("JobParentItineraryVersion")
+
+  @@unique([tripId, id])
+  @@unique([tripId, version])
+  @@unique([tripId, sourceJobId])
+  @@index([tripId, status, createdAt])
+  @@index([parentVersionId])
+  @@index([preferenceProfileVersionId])
+  @@map("itinerary_versions")
+}
+
+model GenerationJob {
+  id                         String              @id @default(cuid())
+  tripId                     String              @map("trip_id")
+  feedbackId                 String?             @map("feedback_id")
+  type                       GenerationJobType
+  status                     GenerationJobStatus @default(PENDING)
+  idempotencyKey             String              @map("idempotency_key") @db.VarChar(128)
+  tripVersion                Int                 @map("trip_version")
+  preferenceProfileVersionId String?             @map("preference_profile_version_id")
+  parentItineraryVersionId   String?             @map("parent_itinerary_version_id")
+  payload                    Json
+  result                     Json?
+  progress                   Int                 @default(0)
+  progressMessage            String?             @map("progress_message") @db.VarChar(240)
+  attemptCount               Int                 @default(0) @map("attempt_count")
+  maxAttempts                Int                 @default(3) @map("max_attempts")
+  availableAt                DateTime            @default(now()) @map("available_at")
+  claimedAt                  DateTime?           @map("claimed_at")
+  heartbeatAt                DateTime?           @map("heartbeat_at")
+  leaseExpiresAt             DateTime?           @map("lease_expires_at")
+  workerId                   String?             @map("worker_id") @db.VarChar(128)
+  completedAt                DateTime?           @map("completed_at")
+  errorCode                  String?             @map("error_code") @db.VarChar(64)
+  errorMessage               String?             @map("error_message") @db.VarChar(500)
+  createdAt                  DateTime            @default(now()) @map("created_at")
+  updatedAt                  DateTime            @updatedAt @map("updated_at")
+
+  trip                     Trip                      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  feedback                 PlanningFeedback?         @relation(fields: [tripId, feedbackId], references: [tripId, id], onDelete: NoAction)
+  preferenceProfileVersion PreferenceProfileVersion? @relation("JobPreferenceProfileVersion", fields: [tripId, preferenceProfileVersionId], references: [tripId, id], onDelete: NoAction)
+  parentItineraryVersion   ItineraryVersion?         @relation("JobParentItineraryVersion", fields: [tripId, parentItineraryVersionId], references: [tripId, id], onDelete: NoAction)
+  producedItineraryVersion ItineraryVersion?         @relation("JobProducedItineraryVersion")
+  attempts                 JobAttempt[]
+  events                   JobEvent[]
+
+  @@unique([tripId, id])
+  @@unique([tripId, idempotencyKey])
+  @@index([status, availableAt])
+  @@index([status, leaseExpiresAt])
+  @@index([tripId, createdAt])
+  @@index([feedbackId])
+  @@map("generation_jobs")
+}
+
+model JobAttempt {
+  id          String           @id @default(cuid())
+  jobId       String           @map("job_id")
+  attempt     Int
+  status      JobAttemptStatus @default(RUNNING)
+  workerId    String           @map("worker_id") @db.VarChar(128)
+  startedAt   DateTime         @default(now()) @map("started_at")
+  heartbeatAt DateTime?        @map("heartbeat_at")
+  completedAt DateTime?        @map("completed_at")
+  errorCode   String?          @map("error_code") @db.VarChar(64)
+  errorMessage String?         @map("error_message") @db.VarChar(500)
+
+  job GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, attempt])
+  @@index([jobId, startedAt])
+  @@map("job_attempts")
+}
+
+model JobEvent {
+  id        String       @id @default(cuid())
+  jobId     String       @map("job_id")
+  type      JobEventType
+  progress  Int?
+  message   String?      @db.VarChar(240)
+  metadata  Json?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  job GenerationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+  @@map("job_events")
 }
 
 model PlanningEvent {
@@ -468,6 +699,7 @@ model PlanningEvent {
 model ItineraryDay {
   id                    String    @id @default(cuid())
   tripId                String    @map("trip_id")
+  itineraryVersionId    String    @map("itinerary_version_id")
   dayNumber             Int       @map("day_number")
   date                  DateTime?
   title                 String?
@@ -478,13 +710,15 @@ model ItineraryDay {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   trip        Trip                  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  itineraryVersion ItineraryVersion @relation(fields: [tripId, itineraryVersionId], references: [tripId, id], onDelete: Cascade)
   items       ItineraryItem[]       @relation("ItineraryDayItems")
   cityWindows ItineraryCityWindow[] @relation("ItineraryDayCityWindows")
   feedback    PlanningFeedback[]    @relation("ItineraryDayFeedback")
 
-  @@unique([tripId, dayNumber])
+  @@unique([itineraryVersionId, dayNumber])
   @@unique([tripId, id])
   @@index([tripId])
+  @@index([itineraryVersionId])
   @@map("itinerary_days")
 }
 
@@ -550,6 +784,7 @@ model Conflict {
   id              String           @id @default(cuid())
   tripId          String           @map("trip_id")
   itineraryItemId String?          @map("itinerary_item_id")
+  itineraryVersionId String        @map("itinerary_version_id")
   type            ConflictType
   severity        ConflictSeverity
   status          ConflictStatus   @default(OPEN)
@@ -560,12 +795,14 @@ model Conflict {
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
   trip          Trip               @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  itineraryVersion ItineraryVersion @relation(fields: [tripId, itineraryVersionId], references: [tripId, id], onDelete: NoAction)
   itineraryItem ItineraryItem?     @relation("ItineraryItemConflicts", fields: [tripId, itineraryItemId], references: [tripId, id], onDelete: NoAction)
   feedback      PlanningFeedback[] @relation("ConflictFeedback")
 
   @@unique([tripId, id])
   @@index([tripId])
   @@index([itineraryItemId])
+  @@index([itineraryVersionId])
   @@index([type])
   @@index([severity])
   @@index([status])

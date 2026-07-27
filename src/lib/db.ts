@@ -1,10 +1,10 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { getServerEnv } from "@/lib/env";
+import { getDatabaseEnv } from "@/lib/env";
 
 const createPrismaClient = () =>
   new PrismaClient({
-    adapter: new PrismaPg(getServerEnv().DATABASE_URL),
+    adapter: new PrismaPg(getDatabaseEnv().DATABASE_URL),
   });
 
 type AppPrismaClient = ReturnType<typeof createPrismaClient>;

@@ -3,6 +3,8 @@ import type {
   ConflictStatus,
   ConflictType,
   CityWindowSource,
+  ItineraryChangeScope,
+  ItineraryVersionStatus,
   Prisma,
   SuggestionCategory,
   TripLogisticsMode,
@@ -133,7 +135,20 @@ export type ItineraryConflictSummaryDto = {
   high: number;
 };
 
+export type ItineraryVersionDto = {
+  id: string;
+  version: number;
+  parentVersionId: string | null;
+  preferenceProfileVersionId: string | null;
+  status: ItineraryVersionStatus;
+  changeScope: ItineraryChangeScope;
+  changeSummary: Prisma.JsonValue | null;
+  createdAt: string;
+  activatedAt: string | null;
+};
+
 export type ItineraryDto = {
+  version: ItineraryVersionDto | null;
   days: ItineraryDayDto[];
   unscheduledItems: UnscheduledItineraryItemDto[];
   totals: ItineraryTotalsDto;

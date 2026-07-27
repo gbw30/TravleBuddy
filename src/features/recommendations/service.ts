@@ -30,6 +30,7 @@ import {
   getPersistedItineraryForTripTx,
   rebuildItineraryDraftForTripTx,
 } from "@/features/itinerary/builder";
+import { createExplicitPreferenceProfileVersionTx } from "@/features/adaptation/persistence";
 import type { ItineraryDto } from "@/features/itinerary/types";
 import {
   extractPreferenceSignals,
@@ -508,7 +509,7 @@ async function savePreferenceSignals(
 ) {
   const merged = mergePreferenceSignals(currentPreference, signals);
 
-  await tx.tripPreference.upsert({
+  const projection = await tx.tripPreference.upsert({
     where: {
       tripId,
     },
@@ -537,6 +538,15 @@ async function savePreferenceSignals(
         customPreferences: merged.customPreferences,
       },
     },
+    select: {
+      interests: true,
+      pace: true,
+      updatedAt: true,
+    },
+  });
+  await createExplicitPreferenceProfileVersionTx(tx, {
+    tripId,
+    projection,
   });
 
   return merged;
@@ -714,6 +724,8 @@ function planningSnapshot(input: {
   selectedPlaces: SelectedPlanningPlace[];
   recommendations: RecommendationDto[];
   itinerary: ItineraryDto;
+  activeJobs: PlanningSnapshot["activeJobs"];
+  itineraryVersions: PlanningSnapshot["itineraryVersions"];
 }): PlanningSnapshot {
   const recommendations = input.recommendations
     .filter(
@@ -737,6 +749,8 @@ function planningSnapshot(input: {
     recommendations,
     selectedPlaces: input.selectedPlaces,
     itinerary: planningItineraryDto(input.itinerary),
+    activeJobs: input.activeJobs,
+    itineraryVersions: input.itineraryVersions,
   };
 }
 
@@ -1752,6 +1766,58 @@ export async function getPlanningWorkspace(
           tx,
           tripId,
         );
+        const activeJobs = (
+          await tx.generationJob.findMany({
+            where: {
+              tripId,
+              status: {
+                in: ["PENDING", "RUNNING", "RETRYING"],
+              },
+            },
+            select: {
+              id: true,
+              type: true,
+              status: true,
+              progress: true,
+              progressMessage: true,
+              attemptCount: true,
+              errorCode: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 5,
+          })
+        ).map((job) => ({
+          ...job,
+          createdAt: job.createdAt.toISOString(),
+          updatedAt: job.updatedAt.toISOString(),
+        }));
+        const itineraryVersions = (
+          await tx.itineraryVersion.findMany({
+            where: {
+              tripId,
+            },
+            select: {
+              id: true,
+              version: true,
+              status: true,
+              changeScope: true,
+              createdAt: true,
+              activatedAt: true,
+            },
+            orderBy: {
+              version: "desc",
+            },
+            take: 10,
+          })
+        ).map((version) => ({
+          ...version,
+          createdAt: version.createdAt.toISOString(),
+          activatedAt: version.activatedAt?.toISOString() ?? null,
+        }));
         const preference = preferenceSnapshot(trip.preference);
         const context = normalizedPlanningContext(trip, requestedContext);
         const recommendations = suggestions.map(toRecommendationDto);
@@ -1762,6 +1828,8 @@ export async function getPlanningWorkspace(
           selectedPlaces,
           recommendations,
           itinerary: itineraryPreview,
+          activeJobs,
+          itineraryVersions,
         });
 
         return {
@@ -1780,6 +1848,8 @@ export async function getPlanningWorkspace(
           timelineEvents: timelineEvents.map(timelineEventDto),
           placeActionLog,
           itineraryPreview,
+          activeJobs,
+          itineraryVersions,
           snapshot,
         };
       }),

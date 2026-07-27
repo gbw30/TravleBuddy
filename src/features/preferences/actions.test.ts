@@ -5,14 +5,20 @@ const mocks = vi.hoisted(() => ({
     $transaction: vi.fn(),
   },
   tx: {
+    $queryRawUnsafe: vi.fn(),
     trip: {
       findFirst: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
     },
     tripPreference: {
       findUnique: vi.fn(),
       upsert: vi.fn(),
+    },
+    preferenceProfileVersion: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
     },
     planningEvent: {
       create: vi.fn(),
@@ -92,6 +98,12 @@ describe("preference actions", () => {
     mocks.tx.trip.findFirst.mockResolvedValue(trip());
     mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
     mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
+    mocks.tx.trip.update.mockResolvedValue({ id: "trip_1" });
+    mocks.tx.preferenceProfileVersion.findFirst.mockResolvedValue(null);
+    mocks.tx.preferenceProfileVersion.create.mockResolvedValue({
+      id: "preference_version_1",
+      version: 1,
+    });
     mocks.tx.tripPreference.findUnique.mockResolvedValue(null);
     mocks.tx.tripPreference.upsert.mockResolvedValue({
       id: "preference_1",

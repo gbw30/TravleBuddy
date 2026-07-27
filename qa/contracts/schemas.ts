@@ -18,6 +18,8 @@ export const featureIdSchema = z.enum([
   "conflicts",
   "logistics",
   "planning-revision-contracts",
+  "adaptive-planning",
+  "durable-planning-jobs",
   "conversation-persistence",
   "ai-intent",
   "live-scheduling",
@@ -83,9 +85,7 @@ export const qaWorkerAgentSchema = z.enum([
 export const qaReasoningEffortSchema = z.enum(["medium", "high"]);
 export const qaParentSandboxSchema = z.enum(["workspace-write", "read-only"]);
 export const qaOutputModeSchema = z.enum(["artifacts", "final-response"]);
-export const trackedStateFingerprintSchema = z
-  .string()
-  .regex(/^[a-f0-9]{64}$/);
+export const trackedStateFingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/);
 
 export const featureDefinitionSchema = z
   .object({
@@ -201,7 +201,10 @@ export const findingSchema = z
     affectedSurface: z.string().trim().min(1),
     productionImpact: z.string().trim().min(1),
     workaround: z.string().trim().min(1).nullable(),
-    duplicateOf: z.string().regex(/^FIND-[A-Z0-9-]+$/).nullable(),
+    duplicateOf: z
+      .string()
+      .regex(/^FIND-[A-Z0-9-]+$/)
+      .nullable(),
   })
   .strict()
   .superRefine((finding, context) => {
@@ -270,10 +273,7 @@ export const coverageSummarySchema = z
   .strict()
   .superRefine((coverage, context) => {
     const resultTotal =
-      coverage.passed +
-      coverage.failed +
-      coverage.blocked +
-      coverage.skipped;
+      coverage.passed + coverage.failed + coverage.blocked + coverage.skipped;
     if (coverage.total !== resultTotal) {
       context.addIssue({
         code: "custom",
@@ -317,7 +317,8 @@ export const quarantineSchema = z
       context.addIssue({
         code: "custom",
         path: ["expiresAt"],
-        message: "A quarantine must expire after creation and within seven days",
+        message:
+          "A quarantine must expire after creation and within seven days",
       });
     }
   });
@@ -326,7 +327,10 @@ export const qaTargetSchema = z
   .object({
     kind: qaEnvironmentSchema,
     baseUrl: z.string().url(),
-    databaseFingerprint: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+    databaseFingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
     writesAllowed: z.boolean(),
     safetyVerified: z.boolean(),
   })
@@ -445,16 +449,16 @@ export const qaContextManifestSchema = z
     activeStage: qaAgentContextSchema.shape.activeStage,
     runType: qaRunTypeSchema,
     targetKind: qaEnvironmentSchema,
-    baseSha: z.string().regex(/^[a-fA-F0-9]{7,40}$/).nullable(),
+    baseSha: z
+      .string()
+      .regex(/^[a-fA-F0-9]{7,40}$/)
+      .nullable(),
     changedPaths: z.array(z.string()).nullable(),
     selectedAgents: z.array(qaAgentSchema).min(1),
     selectionReasons: z.array(z.string().trim().min(1)).min(1),
     forcedAgents: z.array(qaAgentSchema),
     deterministicReportPath: z.string().trim().min(1),
-    agentBundlePaths: z.partialRecord(
-      qaAgentSchema,
-      z.string().trim().min(1),
-    ),
+    agentBundlePaths: z.partialRecord(qaAgentSchema, z.string().trim().min(1)),
     contextBytesByAgent: z.partialRecord(
       qaAgentSchema,
       z.number().int().positive(),

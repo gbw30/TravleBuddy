@@ -50,6 +50,7 @@ const categoryPriority: Partial<Record<SuggestionCategory, number>> = {
 };
 
 const emptyItinerary = {
+  version: null,
   days: [],
   totals: {
     itemCount: 0,
@@ -70,6 +71,8 @@ const emptyItinerary = {
 
 const itineraryTripSelect = {
   id: true,
+  activeItineraryVersionId: true,
+  activePreferenceProfileVersionId: true,
   title: true,
   status: true,
   startDate: true,
@@ -115,6 +118,18 @@ const itineraryTripSelect = {
     },
   },
 } satisfies Prisma.TripSelect;
+
+const itineraryVersionSelect = {
+  id: true,
+  version: true,
+  parentVersionId: true,
+  preferenceProfileVersionId: true,
+  status: true,
+  changeScope: true,
+  changeSummary: true,
+  createdAt: true,
+  activatedAt: true,
+} satisfies Prisma.ItineraryVersionSelect;
 
 const selectedPlaceSelect = {
   id: true,
@@ -177,26 +192,12 @@ const itineraryDaySelect = {
   },
 } satisfies Prisma.ItineraryDaySelect;
 
-const generatedFeedbackSelect = {
-  id: true,
-  targetType: true,
-  targetId: true,
-  itineraryDayId: true,
-  itineraryItemId: true,
-  conflictId: true,
-  metadata: true,
-} satisfies Prisma.PlanningFeedbackSelect;
-
 type ItineraryTripRecord = Prisma.TripGetPayload<{
   select: typeof itineraryTripSelect;
 }>;
 
 type ItineraryDayRecord = Prisma.ItineraryDayGetPayload<{
   select: typeof itineraryDaySelect;
-}>;
-
-type GeneratedFeedbackRecord = Prisma.PlanningFeedbackGetPayload<{
-  select: typeof generatedFeedbackSelect;
 }>;
 
 type DatedTravelSegment = ItineraryDraftTravelSegment & {
@@ -334,9 +335,7 @@ function totalCost(
   >[],
   preferredCurrency: string | null,
 ) {
-  const pricedItems = items.filter(
-    (item) => item.estimatedCostAmount !== null,
-  );
+  const pricedItems = items.filter((item) => item.estimatedCostAmount !== null);
   const currency =
     preferredCurrency ??
     pricedItems.find((item) => item.estimatedCostCurrency)
@@ -623,36 +622,6 @@ function persistedCityWindowDto(
   };
 }
 
-function isJsonObject(
-  value: Prisma.JsonValue | null,
-): value is Prisma.JsonObject {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function detachedFeedbackMetadata(
-  feedback: GeneratedFeedbackRecord,
-): Prisma.InputJsonObject {
-  const existingMetadata: Prisma.InputJsonObject = isJsonObject(
-    feedback.metadata,
-  )
-    ? { ...feedback.metadata }
-    : feedback.metadata === null
-      ? {}
-      : { previousMetadata: feedback.metadata };
-
-  return {
-    ...existingMetadata,
-    detachedBy: "itinerary_rebuild",
-    originalTarget: {
-      targetType: feedback.targetType,
-      targetId: feedback.targetId,
-      itineraryDayId: feedback.itineraryDayId,
-      itineraryItemId: feedback.itineraryItemId,
-      conflictId: feedback.conflictId,
-    },
-  };
-}
-
 function planningAccessFailure(trip: ItineraryTripRecord | null) {
   if (!trip) {
     return { status: "not_found" as const };
@@ -715,11 +684,13 @@ function itineraryDtoFromDays(
   currency: string | null,
   conflicts: ItineraryDto["conflicts"] = [],
   unscheduledItems: ItineraryDto["unscheduledItems"] = [],
+  version: ItineraryDto["version"] = null,
 ) {
   const items = days.flatMap((day) => day.items);
   const cost = totalCost(items, currency);
 
   return {
+    version,
     days,
     unscheduledItems,
     totals: {
@@ -729,6 +700,28 @@ function itineraryDtoFromDays(
     conflicts,
     conflictSummary: summarizeItineraryConflicts(conflicts),
   } satisfies ItineraryDto;
+}
+
+function itineraryVersionDto(
+  record: Prisma.ItineraryVersionGetPayload<{
+    select: typeof itineraryVersionSelect;
+  }> | null,
+): ItineraryDto["version"] {
+  if (!record) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    version: record.version,
+    parentVersionId: record.parentVersionId,
+    preferenceProfileVersionId: record.preferenceProfileVersionId,
+    status: record.status,
+    changeScope: record.changeScope,
+    changeSummary: record.changeSummary,
+    createdAt: record.createdAt.toISOString(),
+    activatedAt: record.activatedAt?.toISOString() ?? null,
+  };
 }
 
 export function buildItineraryDraft({
@@ -797,12 +790,7 @@ export function buildItineraryDraft({
 
   return {
     status: "built",
-    ...itineraryDtoFromDays(
-      days,
-      trip.budgetCurrency,
-      [],
-      unscheduledItems,
-    ),
+    ...itineraryDtoFromDays(days, trip.budgetCurrency, [], unscheduledItems),
   };
 }
 
@@ -816,18 +804,50 @@ async function selectedPlaces(tx: ItineraryTx, tripId: string) {
   });
 }
 
-async function persistedItinerary(tx: ItineraryTx, trip: ItineraryTripRecord) {
-  const conflicts = await getOpenItineraryConflictsForTripTx(tx, trip.id);
+async function persistedItinerary(
+  tx: ItineraryTx,
+  trip: ItineraryTripRecord,
+  requestedVersion?: number,
+): Promise<ItineraryDto | null> {
+  if (requestedVersion === undefined && !trip.activeItineraryVersionId) {
+    return emptyItinerary;
+  }
+
+  const version = await tx.itineraryVersion.findFirst({
+    where:
+      requestedVersion === undefined
+        ? {
+            id: trip.activeItineraryVersionId ?? "",
+            tripId: trip.id,
+          }
+        : {
+            tripId: trip.id,
+            version: requestedVersion,
+          },
+    select: itineraryVersionSelect,
+  });
+  if (!version) {
+    return requestedVersion === undefined ? emptyItinerary : null;
+  }
+  const conflicts = await getOpenItineraryConflictsForTripTx(
+    tx,
+    trip.id,
+    version.id,
+  );
   const days = await tx.itineraryDay.findMany({
     where: {
       tripId: trip.id,
+      itineraryVersionId: version.id,
     },
     select: itineraryDaySelect,
     orderBy: {
       dayNumber: "asc",
     },
   });
-  const places = await selectedPlaces(tx, trip.id);
+  const places =
+    version.id === trip.activeItineraryVersionId
+      ? await selectedPlaces(tx, trip.id)
+      : [];
   const dayDtos = days.map((day) => dayRecordDto(day, trip));
   const scheduledPlaceIds = new Set(
     dayDtos.flatMap((day) =>
@@ -847,6 +867,7 @@ async function persistedItinerary(tx: ItineraryTx, trip: ItineraryTripRecord) {
     trip.budgetCurrency,
     conflicts,
     unscheduledItems,
+    itineraryVersionDto(version),
   );
 }
 
@@ -865,73 +886,7 @@ export async function getPersistedItineraryForTripTx(
     return emptyItinerary;
   }
 
-  return persistedItinerary(tx, trip);
-}
-
-async function clearGeneratedItinerary(tx: ItineraryTx, tripId: string) {
-  const generatedFeedback = await tx.planningFeedback.findMany({
-    where: {
-      tripId,
-      OR: [
-        { targetType: "ITINERARY_DAY" },
-        { targetType: "ITINERARY_ITEM" },
-        { targetType: "CONFLICT" },
-      ],
-    },
-    select: generatedFeedbackSelect,
-  });
-
-  // Rebuilds delete generated children, so detach feedback while keeping its original target trace.
-  for (const feedback of generatedFeedback) {
-    await tx.planningFeedback.update({
-      where: {
-        id: feedback.id,
-      },
-      data: {
-        targetType: "TRIP",
-        targetId: tripId,
-        itineraryDayId: null,
-        itineraryItemId: null,
-        conflictId: null,
-        metadata: detachedFeedbackMetadata(feedback),
-      },
-    });
-  }
-  await tx.conflict.updateMany({
-    where: {
-      tripId,
-      status: {
-        not: "OPEN",
-      },
-      itineraryItemId: {
-        not: null,
-      },
-    },
-    data: {
-      itineraryItemId: null,
-    },
-  });
-  await tx.conflict.deleteMany({
-    where: {
-      tripId,
-      status: "OPEN",
-    },
-  });
-  await tx.itineraryItem.deleteMany({
-    where: {
-      tripId,
-    },
-  });
-  await tx.itineraryCityWindow.deleteMany({
-    where: {
-      tripId,
-    },
-  });
-  await tx.itineraryDay.deleteMany({
-    where: {
-      tripId,
-    },
-  });
+  return (await persistedItinerary(tx, trip)) ?? emptyItinerary;
 }
 
 async function persistDraft(
@@ -939,18 +894,40 @@ async function persistDraft(
   trip: ItineraryTripRecord,
   draft: ItineraryDraft,
 ) {
-  await clearGeneratedItinerary(tx, trip.id);
-
-  if (draft.status === "no_selected_places") {
-    return emptyItinerary;
-  }
+  const latestVersion = await tx.itineraryVersion.findFirst({
+    where: {
+      tripId: trip.id,
+    },
+    select: {
+      version: true,
+    },
+    orderBy: {
+      version: "desc",
+    },
+  });
+  const createdVersion = await tx.itineraryVersion.create({
+    data: {
+      tripId: trip.id,
+      version: (latestVersion?.version ?? 0) + 1,
+      parentVersionId: trip.activeItineraryVersionId,
+      preferenceProfileVersionId: trip.activePreferenceProfileVersionId,
+      status: "DRAFT",
+      changeScope: trip.activeItineraryVersionId ? "FULL" : "INITIAL",
+      changeSummary: {
+        reason: "selected_places_rebuild",
+        itemCount: draft.totals.itemCount,
+      },
+    },
+    select: itineraryVersionSelect,
+  });
 
   const days: ItineraryDayDto[] = [];
 
-  for (const day of draft.days) {
+  for (const day of draft.status === "built" ? draft.days : []) {
     const createdDay = await tx.itineraryDay.create({
       data: {
         tripId: trip.id,
+        itineraryVersionId: createdVersion.id,
         dayNumber: day.dayNumber,
         date: day.date ? new Date(`${day.date}T00:00:00.000Z`) : null,
         title: day.title,
@@ -1013,29 +990,68 @@ async function persistDraft(
     });
   }
 
+  if (trip.activeItineraryVersionId) {
+    await tx.itineraryVersion.updateMany({
+      where: {
+        id: trip.activeItineraryVersionId,
+        tripId: trip.id,
+        status: "ACTIVE",
+      },
+      data: {
+        status: "SUPERSEDED",
+      },
+    });
+  }
+  const activatedAt = new Date();
+  const activeVersion = await tx.itineraryVersion.update({
+    where: {
+      id: createdVersion.id,
+    },
+    data: {
+      status: "ACTIVE",
+      activatedAt,
+    },
+    select: itineraryVersionSelect,
+  });
+  await tx.trip.update({
+    where: {
+      id: trip.id,
+    },
+    data: {
+      activeItineraryVersionId: createdVersion.id,
+    },
+  });
+
   await tx.planningEvent.create({
     data: {
       tripId: trip.id,
       actor: "ENGINE",
       type: "ITINERARY_PROPOSAL",
       title: "Itinerary draft rebuilt",
-      message: `Built ${days.length} day-by-day itinerary draft from ${draft.totals.itemCount} selected places.`,
+      message:
+        draft.status === "no_selected_places"
+          ? "Created an empty itinerary version after all selected places were removed."
+          : `Built ${days.length} day-by-day itinerary draft from ${draft.totals.itemCount} selected places.`,
       visibleToUser: true,
       metadata: {
         dayCount: days.length,
         itemCount: draft.totals.itemCount,
         pace: trip.preference?.pace ?? "BALANCED",
+        itineraryVersion: activeVersion.version,
       },
     },
   });
 
-  const conflicts = await refreshItineraryConflictsForTripTx(tx, trip);
+  const conflicts = await refreshItineraryConflictsForTripTx(tx, trip, {
+    itineraryVersionId: activeVersion.id,
+  });
 
   return itineraryDtoFromDays(
     days,
     trip.budgetCurrency,
     conflicts,
     draft.unscheduledItems,
+    itineraryVersionDto(activeVersion),
   );
 }
 
@@ -1161,7 +1177,18 @@ export async function rebuildItinerary(
   });
 }
 
-export async function getItinerary(userId: string, tripId: string) {
+export async function getItinerary(
+  userId: string,
+  tripId: string,
+  version?: number,
+) {
+  if (
+    version !== undefined &&
+    (!Number.isInteger(version) || version <= 0 || version > 2_147_483_647)
+  ) {
+    return { status: "invalid_version" as const };
+  }
+
   return db.$transaction(async (tx) => {
     const trip = await tx.trip.findFirst({
       where: buildTripOwnerWhere(userId, tripId),
@@ -1176,9 +1203,14 @@ export async function getItinerary(userId: string, tripId: string) {
       return { status: "not_found" as const };
     }
 
+    const itinerary = await persistedItinerary(tx, trip, version);
+    if (!itinerary) {
+      return { status: "version_not_found" as const };
+    }
+
     return {
       status: "ok" as const,
-      itinerary: await persistedItinerary(tx, trip),
+      itinerary,
     };
   });
 }

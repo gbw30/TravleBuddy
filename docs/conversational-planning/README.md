@@ -1,8 +1,14 @@
 # Conversational Planning Development Pack
 
-Status: approved planning baseline  
+Status: historical/deferred planning pack
 Purpose: standalone context for implementing the conversational planning prototype  
 Primary route: `/trips/[tripId]/planning`
+
+> Conversational planning is no longer the active delivery baseline. Use
+> [the canonical product vision](../product-vision.md) and
+> [active roadmap](../roadmap.md). These documents remain as future design
+> context only; chat persistence, AI Gateway/Gemini, Redis, and conversational
+> controller work are deferred.
 
 ## Product Outcome
 

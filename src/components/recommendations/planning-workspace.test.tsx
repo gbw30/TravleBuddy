@@ -26,7 +26,9 @@ function textContent(node: ReactNode): string {
     return "";
   }
 
-  return textContent((node as { props: { children?: ReactNode } }).props.children);
+  return textContent(
+    (node as { props: { children?: ReactNode } }).props.children,
+  );
 }
 
 function walk(
@@ -133,7 +135,8 @@ describe("PlanningWorkspace", () => {
           actor: "USER",
           type: "USER_FEEDBACK",
           title: "Recommendation rejected",
-          message: "Rejected Barcelona Design Stay because it was too expensive.",
+          message:
+            "Rejected Barcelona Design Stay because it was too expensive.",
           createdAt: "2026-05-31T12:00:00.000Z",
         },
       ],
@@ -155,6 +158,7 @@ describe("PlanningWorkspace", () => {
         },
       ],
       itineraryPreview: {
+        version: null,
         days: [
           {
             id: "day_1",
@@ -250,7 +254,9 @@ describe("PlanningWorkspace", () => {
         id: "trip_1",
         title: "Tokyo",
         budgetCurrency: "JPY",
-        destinations: [{ id: "destination_1", city: "Tokyo", country: "Japan" }],
+        destinations: [
+          { id: "destination_1", city: "Tokyo", country: "Japan" },
+        ],
       },
       preference: {
         budgetLevel: "MODERATE",
@@ -268,6 +274,7 @@ describe("PlanningWorkspace", () => {
       timelineEvents: [],
       placeActionLog: [],
       itineraryPreview: {
+        version: null,
         days: [],
         unscheduledItems: [],
         totals: {
@@ -309,7 +316,11 @@ describe("PlanningWorkspace", () => {
         startDate: "2026-07-01",
         endDate: "2026-07-05",
         destinations: [
-          { id: "destination_1", city: "Los Angeles", country: "United States" },
+          {
+            id: "destination_1",
+            city: "Los Angeles",
+            country: "United States",
+          },
           { id: "destination_2", city: "New York", country: "United States" },
         ],
       },
@@ -329,6 +340,7 @@ describe("PlanningWorkspace", () => {
       timelineEvents: [],
       placeActionLog: [],
       itineraryPreview: {
+        version: null,
         days: [],
         unscheduledItems: [],
         totals: {

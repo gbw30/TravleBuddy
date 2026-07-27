@@ -100,7 +100,10 @@ describe("planning mutation finalizer", () => {
         userId: "user_1",
         planningRevision: 3,
       }),
-      data: { planningRevision: { increment: 1 } },
+      data: {
+        planningRevision: { increment: 1 },
+        tripVersion: { increment: 1 },
+      },
     });
     expect(mocks.tx.planningMutation.create).toHaveBeenCalledWith({
       data: {

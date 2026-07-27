@@ -1,5 +1,10 @@
 # TravleBuddy
+
 ## AI-Powered Travel Planning Platform
+
+> Historical pre-MVP requirements. The current source of truth is
+> [product-vision.md](./product-vision.md), with delivery status in
+> [roadmap.md](./roadmap.md). Conflicts are resolved in favor of those files.
 
 Version: 0.1 (Pre-MVP Requirements & System Design)
 Status: Planning Phase
@@ -579,12 +584,14 @@ Daily itinerary.
 Example:
 
 Day 1
+
 - Hotel Check-In
 - Museum
 - Lunch
 - Walking Tour
 
 Day 2
+
 - Beach
 - Restaurant
 - Night Market

@@ -31,6 +31,11 @@ import { hasTopicRecommendationReadiness } from "@/features/recommendations/extr
 import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 import { AlreadyDecidedPlaceForm } from "./already-decided-place-form";
 import { TimedAlert } from "@/components/ui/timed-alert";
+import { AdaptiveItineraryPanel } from "./adaptive-itinerary-panel";
+import type {
+  PlanningItineraryVersionSummary,
+  PlanningJobSummary,
+} from "@/features/planning/types";
 
 const topicOptions = [
   {
@@ -51,7 +56,8 @@ const topicOptions = [
   {
     value: "BUDGET_PACE",
     label: "Budget/pace",
-    prompt: "What balance of comfort, cost, and daily energy should guide this?",
+    prompt:
+      "What balance of comfort, cost, and daily energy should guide this?",
   },
 ] as const satisfies readonly {
   value: PlanningTopic;
@@ -73,7 +79,9 @@ function chipList(values: readonly string[]) {
 }
 
 function topicLabel(topic: PlanningTopic) {
-  return topicOptions.find((option) => option.value === topic)?.label ?? "Hotel/base";
+  return (
+    topicOptions.find((option) => option.value === topic)?.label ?? "Hotel/base"
+  );
 }
 
 function currentRecommendations(
@@ -94,21 +102,22 @@ function currentRecommendations(
 }
 
 function money(recommendation: RecommendationDto) {
-  if (!recommendation.estimatedCostAmount || !recommendation.estimatedCostCurrency) {
+  if (
+    !recommendation.estimatedCostAmount ||
+    !recommendation.estimatedCostCurrency
+  ) {
     return "Cost not estimated";
   }
 
   return `${recommendation.estimatedCostCurrency} ${recommendation.estimatedCostAmount}`;
 }
 
-function itineraryMoney(
-  value: {
-    estimatedCostAmount: number | null;
-    estimatedCostCurrency: string | null;
-    costIsComplete?: boolean;
-    excludedCostCurrencies?: string[];
-  },
-) {
+function itineraryMoney(value: {
+  estimatedCostAmount: number | null;
+  estimatedCostCurrency: string | null;
+  costIsComplete?: boolean;
+  excludedCostCurrencies?: string[];
+}) {
   if (!value.estimatedCostAmount || !value.estimatedCostCurrency) {
     return "Cost not estimated";
   }
@@ -142,9 +151,9 @@ function locationLabel(place: {
   return place.city ?? place.country ?? "Location not set";
 }
 
-function groupByLocation<T extends { city?: string | null; country?: string | null }>(
-  places: readonly T[],
-) {
+function groupByLocation<
+  T extends { city?: string | null; country?: string | null },
+>(places: readonly T[]) {
   const groups = new Map<string, { label: string; places: T[] }>();
 
   places.forEach((place) => {
@@ -181,7 +190,11 @@ function tripDayOptions(startDate?: string | null, endDate?: string | null) {
   const start = new Date(`${startDate}T00:00:00.000Z`);
   const end = new Date(`${endDate}T00:00:00.000Z`);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    end < start
+  ) {
     return [];
   }
 
@@ -207,6 +220,9 @@ export function PlanningWorkspace({
   timelineEvents,
   placeActionLog,
   itineraryPreview,
+  planningRevision = 0,
+  activeJobs = [],
+  itineraryVersions = [],
   activeDestinationId,
   activeDayNumber,
 }: {
@@ -216,7 +232,12 @@ export function PlanningWorkspace({
     startDate?: string | null;
     endDate?: string | null;
     budgetCurrency: string | null;
-    destinations: { id: string; city: string; country: string; sortOrder?: number }[];
+    destinations: {
+      id: string;
+      city: string;
+      country: string;
+      sortOrder?: number;
+    }[];
   };
   preference: RecommendationPreferenceSnapshot;
   selectedPlaces: SelectedPlanningPlace[];
@@ -224,6 +245,9 @@ export function PlanningWorkspace({
   timelineEvents: PlanningTimelineEvent[];
   placeActionLog: PlaceActionLogEntry[];
   itineraryPreview: ItineraryDto;
+  planningRevision?: number;
+  activeJobs?: PlanningJobSummary[];
+  itineraryVersions?: PlanningItineraryVersionSummary[];
   activeTopic: PlanningTopic;
   activeDestinationId?: string | null;
   activeDayNumber?: number | null;
@@ -240,7 +264,7 @@ export function PlanningWorkspace({
   const selectedDayNumber =
     activeDayNumber && dayOptions.includes(activeDayNumber)
       ? activeDayNumber
-      : dayOptions[0] ?? 1;
+      : (dayOptions[0] ?? 1);
   const selectedDay = itineraryPreview.days.find(
     (day) => day.dayNumber === selectedDayNumber,
   );
@@ -249,12 +273,18 @@ export function PlanningWorkspace({
     selectedDayCityWindows.find((window) => window.destinationId)
       ?.destinationId ?? null;
   const activeDestination =
-    trip.destinations.find((destination) => destination.id === activeDestinationId) ??
-    trip.destinations.find((destination) => destination.id === ticketedDestinationId) ??
+    trip.destinations.find(
+      (destination) => destination.id === activeDestinationId,
+    ) ??
+    trip.destinations.find(
+      (destination) => destination.id === ticketedDestinationId,
+    ) ??
     trip.destinations[0] ??
     null;
   const cityWindowLabels = selectedDayCityWindows.map((window) =>
-    window.city && window.country ? `${window.city}, ${window.country}` : window.city,
+    window.city && window.country
+      ? `${window.city}, ${window.country}`
+      : window.city,
   );
   const contextHref = ({
     topic = activeTopic,
@@ -273,9 +303,9 @@ export function PlanningWorkspace({
 
     return `/trips/${trip.id}/planning?${params.toString()}`;
   };
-  const activeTopicOption = topicOptions.find(
-    (option) => option.value === activeTopic,
-  ) ?? topicOptions[0];
+  const activeTopicOption =
+    topicOptions.find((option) => option.value === activeTopic) ??
+    topicOptions[0];
   const readiness = hasTopicRecommendationReadiness({
     topic: activeTopic,
     preference,
@@ -332,7 +362,8 @@ export function PlanningWorkspace({
             className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
             That city is not saved for the selected country on this trip. Choose
-            a saved trip city; the matching country will be filled automatically.
+            a saved trip city; the matching country will be filled
+            automatically.
           </TimedAlert>
         ) : null}
         {error === "invalid-cost" ? (
@@ -367,7 +398,9 @@ export function PlanningWorkspace({
             </div>
 
             <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-zinc-500">Planning context</p>
+              <p className="text-sm font-medium text-zinc-500">
+                Planning context
+              </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
@@ -420,12 +453,18 @@ export function PlanningWorkspace({
 
             <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2">
-                <MessageSquareText aria-hidden="true" className="size-5 text-zinc-500" />
+                <MessageSquareText
+                  aria-hidden="true"
+                  className="size-5 text-zinc-500"
+                />
                 <h2 className="text-base font-semibold text-zinc-950">
                   {activeTopicOption.prompt}
                 </h2>
               </div>
-              <form action={recordPlanningMessageFormAction} className="mt-4 grid gap-3">
+              <form
+                action={recordPlanningMessageFormAction}
+                className="mt-4 grid gap-3"
+              >
                 <input type="hidden" name="tripId" value={trip.id} />
                 <input type="hidden" name="topic" value={activeTopic} />
                 <input
@@ -538,8 +577,16 @@ export function PlanningWorkspace({
                           </span>
                         ) : (
                           <form action={selectRecommendationFormAction}>
-                            <input type="hidden" name="tripId" value={trip.id} />
-                            <input type="hidden" name="topic" value={activeTopic} />
+                            <input
+                              type="hidden"
+                              name="tripId"
+                              value={trip.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="topic"
+                              value={activeTopic}
+                            />
                             <input
                               type="hidden"
                               name="destinationId"
@@ -621,7 +668,10 @@ export function PlanningWorkspace({
                   No recommendations for this priority yet.
                 </p>
               )}
-              <form action={refreshRecommendationsFormAction} className="mt-4 grid gap-3">
+              <form
+                action={refreshRecommendationsFormAction}
+                className="mt-4 grid gap-3"
+              >
                 <input type="hidden" name="tripId" value={trip.id} />
                 <input type="hidden" name="topic" value={activeTopic} />
                 <input
@@ -684,6 +734,14 @@ export function PlanningWorkspace({
                 </div>
               </dl>
             </section>
+
+            <AdaptiveItineraryPanel
+              tripId={trip.id}
+              initialRevision={planningRevision}
+              days={itineraryPreview.days}
+              initialJobs={activeJobs}
+              itineraryVersions={itineraryVersions}
+            />
 
             <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-zinc-950">
@@ -751,7 +809,10 @@ export function PlanningWorkspace({
                                     pendingLabel="Removing..."
                                     className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-300 px-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
                                   >
-                                    <X aria-hidden="true" className="size-3.5" />
+                                    <X
+                                      aria-hidden="true"
+                                      className="size-3.5"
+                                    />
                                     Remove
                                   </PendingSubmitButton>
                                 </form>
@@ -765,8 +826,8 @@ export function PlanningWorkspace({
                 </>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-zinc-600">
-                  Picked recommendations and anchors will appear here. Select
-                  at least one place to prepare the itinerary handoff.
+                  Picked recommendations and anchors will appear here. Select at
+                  least one place to prepare the itinerary handoff.
                 </p>
               )}
             </section>
@@ -774,7 +835,10 @@ export function PlanningWorkspace({
             <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <CalendarDays aria-hidden="true" className="size-5 text-zinc-500" />
+                  <CalendarDays
+                    aria-hidden="true"
+                    className="size-5 text-zinc-500"
+                  />
                   <h2 className="text-base font-semibold text-zinc-950">
                     Itinerary draft
                   </h2>
@@ -959,7 +1023,11 @@ export function PlanningWorkspace({
                               </span>
                             ) : (
                               <form action={selectRecommendationFormAction}>
-                                <input type="hidden" name="tripId" value={trip.id} />
+                                <input
+                                  type="hidden"
+                                  name="tripId"
+                                  value={trip.id}
+                                />
                                 <input
                                   type="hidden"
                                   name="topic"

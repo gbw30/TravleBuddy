@@ -17,13 +17,25 @@ const mocks = vi.hoisted(() => ({
     }),
   },
   tx: {
+    $queryRawUnsafe: vi.fn(),
     trip: {
       findFirst: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
     },
     tripPreference: {
       upsert: vi.fn(),
+    },
+    preferenceProfileVersion: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
+    generationJob: {
+      findMany: vi.fn(),
+    },
+    itineraryVersion: {
+      findMany: vi.fn(),
     },
     placeSuggestion: {
       findMany: vi.fn(),
@@ -136,6 +148,19 @@ describe("planning recommendation service", () => {
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip());
     mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
     mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
+    mocks.tx.trip.update.mockResolvedValue({ id: "trip_1" });
+    mocks.tx.tripPreference.upsert.mockResolvedValue({
+      interests: ["MUSEUMS", "FOOD"],
+      pace: "RELAXED",
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    mocks.tx.preferenceProfileVersion.findFirst.mockResolvedValue(null);
+    mocks.tx.preferenceProfileVersion.create.mockResolvedValue({
+      id: "preference_version_1",
+      version: 1,
+    });
+    mocks.tx.generationJob.findMany.mockResolvedValue([]);
+    mocks.tx.itineraryVersion.findMany.mockResolvedValue([]);
     mocks.tx.placeSuggestion.findMany.mockResolvedValue([]);
     mocks.tx.planningFeedback.findMany.mockResolvedValue([]);
     mocks.tx.planningEvent.findMany.mockResolvedValue([]);
@@ -656,7 +681,10 @@ describe("planning recommendation service", () => {
     expect(mocks.tx.trip.updateMany).toHaveBeenCalledOnce();
     expect(mocks.tx.trip.updateMany).toHaveBeenCalledWith({
       where: expect.objectContaining({ planningRevision: 7 }),
-      data: { planningRevision: { increment: 1 } },
+      data: {
+        planningRevision: { increment: 1 },
+        tripVersion: { increment: 1 },
+      },
     });
   });
 

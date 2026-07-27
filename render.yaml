@@ -1,0 +1,19 @@
+services:
+  - type: worker
+    name: travlebuddy-planning-worker
+    runtime: node
+    plan: starter
+    numInstances: 1
+    autoDeployTrigger: checksPass
+    buildCommand: npm ci && npm run prisma:generate
+    startCommand: npm run worker:start
+    maxShutdownDelaySeconds: 90
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: PLACE_PROVIDER_MODE
+        value: google
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false

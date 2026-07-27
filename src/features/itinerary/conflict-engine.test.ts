@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   tx: {
     trip: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
     },
@@ -47,6 +48,7 @@ import {
 
 const planningTrip = {
   id: "trip_1",
+  activeItineraryVersionId: "itinerary_version_1",
   title: "Barcelona",
   status: "PLANNING" as const,
   startDate: new Date("2026-07-01T00:00:00.000Z"),
@@ -313,6 +315,9 @@ describe("conflict service", () => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip);
+    mocks.tx.trip.findUnique.mockResolvedValue({
+      activeItineraryVersionId: "itinerary_version_1",
+    });
     mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
     mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
     mocks.tx.itineraryDay.findMany.mockResolvedValue([
@@ -345,6 +350,7 @@ describe("conflict service", () => {
     expect(mocks.tx.conflict.deleteMany).toHaveBeenCalledWith({
       where: {
         tripId: "trip_1",
+        itineraryVersionId: "itinerary_version_1",
         status: "OPEN",
       },
     });
@@ -352,6 +358,7 @@ describe("conflict service", () => {
       data: expect.arrayContaining([
         expect.objectContaining({
           tripId: "trip_1",
+          itineraryVersionId: "itinerary_version_1",
           status: "OPEN",
         }),
       ]),
@@ -381,6 +388,7 @@ describe("conflict service", () => {
       data: expect.arrayContaining([
         expect.objectContaining({
           tripId: "trip_1",
+          itineraryVersionId: "itinerary_version_1",
           itineraryItemId: null,
           status: "OPEN",
         }),

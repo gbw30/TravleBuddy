@@ -26,6 +26,7 @@ import {
   getPlanningMutationReplayTx,
 } from "@/features/planning/mutation";
 import { createPlanningOperationContext } from "@/features/planning/telemetry";
+import { createExplicitPreferenceProfileVersionTx } from "@/features/adaptation/persistence";
 
 export type SaveTripPreferenceResult =
   | {
@@ -209,6 +210,14 @@ export async function saveTripPreference(
           ...data,
         },
         select: preferenceSelect,
+      });
+      await createExplicitPreferenceProfileVersionTx(tx, {
+        tripId,
+        projection: {
+          interests: preference.interests,
+          pace: preference.pace,
+          updatedAt: preference.updatedAt,
+        },
       });
       const userTravelPreferenceData =
         userTravelPreferenceDataFromTripPreference(tripId, parsed.data);
