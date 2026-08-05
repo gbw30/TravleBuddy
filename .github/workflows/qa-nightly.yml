@@ -1,8 +1,6 @@
-name: QA - Nightly
+name: QA - Extended Manual
 
 on:
-  schedule:
-    - cron: "17 6 * * *"
   workflow_dispatch:
     inputs:
       active_stage:
@@ -10,6 +8,11 @@ on:
         required: true
         default: current
         type: string
+      run_codex_audit:
+        description: Run the optional Codex evidence audit
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -41,6 +44,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: qa
           fetch-depth: 0
           persist-credentials: false
 
@@ -60,6 +64,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.QA_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.QA_DIRECT_URL }}
+          ADAPTATION_TEST_DATABASE_URL: ${{ secrets.QA_DIRECT_URL }}
           AUTH_SECRET: ${{ secrets.QA_AUTH_SECRET }}
           AUTH_GOOGLE_ID: ${{ secrets.QA_AUTH_GOOGLE_ID }}
           AUTH_GOOGLE_SECRET: ${{ secrets.QA_AUTH_GOOGLE_SECRET }}
@@ -78,11 +83,8 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npm run qa:e2e:nightly
 
-      - name: Scan dependency advisories
-        run: npm audit --audit-level=high
-
       - name: Generate full-team QA context
-        if: always()
+        if: always() && inputs.run_codex_audit
         run: npm run qa:context
 
       - name: Write nightly summary
@@ -112,9 +114,12 @@ jobs:
           retention-days: 30
 
   codex-audit:
-    name: Codex multi-agent nightly audit
+    name: Codex optional extended audit
     needs: deterministic
-    if: ${{ always() && needs.deterministic.result != 'cancelled' }}
+    if: >-
+      always() &&
+      inputs.run_codex_audit &&
+      needs.deterministic.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: qa-preview
@@ -125,6 +130,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: qa
           fetch-depth: 0
           persist-credentials: false
 

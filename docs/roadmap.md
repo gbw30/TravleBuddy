@@ -1,12 +1,18 @@
 # Accelerated Adaptive-Planning Roadmap
 
 Status: active roadmap  
-Updated: 2026-07-26
+Updated: 2026-08-04
 
 This roadmap replaces the conversation-first sequence as the active delivery
 order. Status describes repository implementation, not deployment
 certification. External credentials, cloud resources, database migrations, and
 production releases remain operator-owned.
+
+All stages must follow the fixed topology in
+[operating-constraints.md](./operating-constraints.md): reuse `qa` and `main`,
+the current QA/production databases, and the current Vercel QA/production
+targets. Do not create additional branches, databases, or previews merely to
+advance a stage.
 
 ## Current delivery status
 
@@ -39,7 +45,9 @@ schema.
 
 ### Gate 2: Isolated database proof
 
-Use a disposable or explicitly approved QA PostgreSQL database:
+Use the existing explicitly approved QA PostgreSQL database. If it is
+unavailable or cannot be proven separate from production, stop and report the
+blocker rather than creating another database:
 
 - Record the database fingerprint and prove it differs from production.
 - Apply all migrations through the protected workflow.

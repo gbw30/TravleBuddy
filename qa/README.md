@@ -38,7 +38,12 @@ Additional commands:
 
 ## Protected QA migrations
 
-QA verification never applies migrations. Use only the manual `QA - Protected Migrations` workflow, protected by the `qa-migrations` GitHub environment. Configure environment secrets `QA_DATABASE_URL` and `QA_DIRECT_URL` for the same disposable Neon QA database, plus `PRODUCTION_DATABASE_FINGERPRINT` as a deny-list guard.
+QA verification never applies migrations. Use only the manual `QA - Protected Migrations` workflow, protected by the `qa-migrations` GitHub environment. Configure environment secrets `QA_DATABASE_URL` and `QA_DIRECT_URL` for the existing authorized Neon QA database, plus `PRODUCTION_DATABASE_FINGERPRINT` as a deny-list guard. Do not create an additional database for a QA run.
+
+Automatic development checks are limited to `CI` and the focused `QA - Pull
+Request` workflow. `QA - Extended Manual`, `QA - Release`, `QA - Production
+Read-only Smoke`, protected migrations, and every Codex audit are manual or
+explicitly opt-in.
 
 The authorized origin is `https://travle-buddy-git-qa-gbw30s-projects.vercel.app` and the credential-free QA fingerprint is `e6d10d0c10e8212e11f6c88d6e4747fd281edf273a592283bad6ae6a8f380586`. Dispatch with the full commit, its exact remote branch head, the current migration head `20260727090000_adaptive_planning_foundation`, and this exact typed form:
 

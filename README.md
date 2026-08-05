@@ -67,6 +67,18 @@ See [the product vision](docs/product-vision.md), [active
 roadmap](docs/roadmap.md), and [architecture decisions](docs/architecture/) for
 the design rationale.
 
+## Fixed development topology
+
+This project deliberately reuses its existing `qa` and `main` branches,
+existing QA and production databases, and existing Vercel QA/production
+targets. Do not create additional branches, worktrees, persistent databases,
+Vercel projects, or preview environments unless the developer explicitly
+approves the specific addition. Existing CI's temporary PostgreSQL service is
+part of the current topology and remains allowed.
+
+See [the standing operating constraints](docs/operating-constraints.md) before
+changing development or deployment topology.
+
 ## Guarantees
 
 - Feedback and its initial job/event are committed in the same transaction.
@@ -115,7 +127,8 @@ The web application also requires the Auth.js variables documented in
 `.env.example`. The standalone worker requires only `DATABASE_URL`, optional
 worker identity, and optional provider configuration.
 
-Validate and apply migrations only to a disposable local database:
+Validate and apply migrations only to the currently authorized non-production
+database. Do not create another database for this step:
 
 ```powershell
 npm run prisma:validate
@@ -167,12 +180,19 @@ npm run qa:context
 
 Mock provider mode is mandatory for automated tests and normal QA.
 
+GitHub Actions keeps ordinary development lean: `CI` handles source integrity,
+and `QA - Pull Request` handles the existing temporary PostgreSQL service,
+focused integration tests, and critical Chromium journeys. Extended QA,
+protected migrations, release QA, production smoke, and Codex audits run only
+when manually requested or explicitly opted in.
+
 The real PostgreSQL claim/recovery and existing-trip migration tests are opt-in
-and refuse to run without an explicit disposable database URL. The migration
-test uses and removes a uniquely named run-owned schema:
+and refuse to run without the explicit URL of the existing authorized QA
+database. The migration test uses and removes a uniquely named run-owned schema
+inside that database:
 
 ```powershell
-$env:ADAPTATION_TEST_DATABASE_URL = "postgresql://DISPOSABLE_MIGRATED_DATABASE"
+$env:ADAPTATION_TEST_DATABASE_URL = "postgresql://EXISTING_AUTHORIZED_QA_DATABASE"
 npm run test -- src/features/jobs/postgres-store.integration.test.ts prisma/adaptive-planning-migration.integration.test.ts
 ```
 

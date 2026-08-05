@@ -25,8 +25,10 @@ concurrency:
 
 jobs:
   deterministic:
-    name: Deterministic QA gate
-    if: ${{ github.event.action != 'labeled' || github.event.label.name == 'qa-required' }}
+    name: Focused PostgreSQL and Chromium QA
+    if: >-
+      (github.event_name == 'workflow_dispatch' || github.head_ref == 'qa') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'qa-required')
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -49,6 +51,7 @@ jobs:
       CI: "true"
       DATABASE_URL: postgresql://travlebuddy:travlebuddy_ci@127.0.0.1:5432/travlebuddy_qa
       DIRECT_URL: postgresql://travlebuddy:travlebuddy_ci@127.0.0.1:5432/travlebuddy_qa
+      ADAPTATION_TEST_DATABASE_URL: postgresql://travlebuddy:travlebuddy_ci@127.0.0.1:5432/travlebuddy_qa
       AUTH_SECRET: travlebuddy-ci-auth-secret-at-least-32-characters
       AUTH_URL: http://127.0.0.1:3000
       AUTH_GOOGLE_ID: qa-google-client-id
@@ -58,6 +61,7 @@ jobs:
       QA_RUN_ID: pr-${{ github.event.pull_request.number || inputs.pr_number }}-${{ github.run_id }}-${{ github.run_attempt }}
       QA_ALLOW_WRITES: "true"
       QA_PROVIDER_MODE: mock
+      PLACE_PROVIDER_MODE: mock
       QA_RUN_TYPE: pr
       QA_BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
       QA_PARENT_SANDBOX: read-only
@@ -92,14 +96,38 @@ jobs:
       - name: Provision disposable database schema
         run: npm run db:deploy
 
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run deterministic PR gate
+      - name: Validate QA safety and manifests
+        run: |
+          npm run qa:doctor
+          npm run qa:validate
+
+      - name: Run PostgreSQL integration tests
+        run: >-
+          npm test --
+          src/features/jobs/postgres-store.integration.test.ts
+          prisma/adaptive-planning-migration.integration.test.ts
+
+      - name: Run critical Chromium journeys
+        run: npm run qa:e2e:critical
+
+      - name: Run full evidence gate for optional Codex review
+        if: >-
+          always() &&
+          (github.event_name == 'workflow_dispatch' ||
+          contains(github.event.pull_request.labels.*.name, 'qa-required'))
         run: npm run qa:gate
 
       - name: Generate risk-routed QA context
-        if: always()
+        if: >-
+          always() &&
+          (github.event_name == 'workflow_dispatch' ||
+          contains(github.event.pull_request.labels.*.name, 'qa-required'))
         run: npm run qa:context
 
       - name: Write deterministic summary
@@ -107,7 +135,7 @@ jobs:
         shell: bash
         run: |
           {
-            echo "### TravleBuddy deterministic PR QA"
+            echo "### TravleBuddy focused PR QA"
             echo
             echo "- Run ID: \`$QA_RUN_ID\`"
             echo "- Target: \`$QA_TARGET\`"
@@ -131,7 +159,12 @@ jobs:
   codex-risk-review:
     name: Codex read-only change-risk review
     needs: deterministic
-    if: ${{ always() && needs.deterministic.result != 'cancelled' && (github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'qa-required')) }}
+    if: >-
+      always() &&
+      needs.deterministic.result != 'cancelled' &&
+      needs.deterministic.result != 'skipped' &&
+      (github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'qa-required'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: qa-pr-agent

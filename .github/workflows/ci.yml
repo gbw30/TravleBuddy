@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,18 +22,14 @@ jobs:
     timeout-minutes: 15
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      DATABASE_URL: postgresql://travlebuddy:ci-only@127.0.0.1:5432/travlebuddy_ci
+      DIRECT_URL: postgresql://travlebuddy:ci-only@127.0.0.1:5432/travlebuddy_ci
+      AUTH_SECRET: travlebuddy-ci-auth-secret-at-least-32-characters
       AUTH_URL: http://localhost:3000
-      AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
-      AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
-      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      AUTH_GOOGLE_ID: ci-google-client-id
+      AUTH_GOOGLE_SECRET: ci-google-client-secret
+      NEXTAUTH_SECRET: travlebuddy-ci-auth-secret-at-least-32-characters
       NEXTAUTH_URL: http://localhost:3000
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-      GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
-      GOOGLE_ROUTES_API_KEY: ${{ secrets.GOOGLE_ROUTES_API_KEY }}
       PLACE_PROVIDER_MODE: mock
       QA_PROVIDER_MODE: mock
 

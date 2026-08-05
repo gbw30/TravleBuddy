@@ -4,6 +4,34 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Standing environment and branch constraint
+
+The developer has chosen a fixed, minimal project topology. This is a standing
+instruction for every Codex session working in this repository:
+
+- Use the existing `qa` branch for active integration work and the existing
+  `main` branch for stable/release work. Do not create another Git branch or
+  worktree, including a `codex/*` branch, unless the developer explicitly asks
+  for that specific branch.
+- Reuse the currently configured QA and production databases. Do not create a
+  Neon branch, database clone, disposable cloud database, or additional
+  persistent database. The PostgreSQL service already defined inside the
+  existing PR workflow is allowed; do not add another database topology.
+- Reuse the existing Vercel project, its current QA preview target, and its
+  current production target. Do not create another Vercel project, preview
+  branch, preview environment, or parallel deployment topology. Redeploying the
+  existing targets is allowed.
+- Reuse existing GitHub environments and workflows. Prefer changing code and
+  verification within the current topology over adding deployment lanes.
+- Do not delete or consolidate existing branches, databases, or deployments
+  without an explicit developer request. The constraint prevents additions; it
+  does not authorize cleanup.
+- If a requested task genuinely cannot proceed without increasing any of these
+  resources, stop and request explicit approval. Do not infer approval from a
+  request to develop, test, deploy, or accelerate the project.
+
+The canonical explanation is `docs/operating-constraints.md`.
+
 ## TravleBuddy QA routing
 
 “Stage-gate QA”, “full QA”, and “release QA” invoke the report-only QA system. Read `qa/context/shared-policy.md` and the generated bundle under `qa-results/<QA_RUN_ID>/context/agents/` before delegating. The operator guide is `qa/README.md`; architecture and context decisions are under `qa/docs/`.

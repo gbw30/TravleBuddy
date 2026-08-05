@@ -43,7 +43,11 @@ Deleting the line later is not enough, because Git keeps old commits. Once a rea
 
 GitHub Actions and Vercel run in different environments.
 
-GitHub Actions needs secrets for CI checks. For example, the CI workflow may need `DATABASE_URL` so Prisma can validate or generate against the expected setup.
+Ordinary GitHub CI uses non-secret placeholder configuration because Prisma
+validation, client generation, linting, type checking, unit tests, and the
+production build do not connect to a live database. Database secrets belong
+only in the existing protected QA, migration, release, and production
+environments that actually need them.
 
 Vercel needs secrets when it builds and runs the deployed app. For example, production Server Actions, API routes, auth, and database calls need runtime access to the real production credentials.
 

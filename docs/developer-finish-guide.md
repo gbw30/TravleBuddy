@@ -11,6 +11,22 @@ Current migration head:
 20260727090000_adaptive_planning_foundation
 ```
 
+## Fixed topology for this guide
+
+Follow [the standing operating constraints](./operating-constraints.md).
+Specifically:
+
+- Use the existing `qa` branch and promote it to the existing `main` branch.
+- Use the existing authorized QA and production databases; do not create a new
+  Neon branch, database, or clone.
+- Use the existing Vercel project, QA preview target, and production target; do
+  not create another preview or project.
+- Existing CI's temporary PostgreSQL service may continue to run as currently
+  configured.
+
+If an existing resource is unavailable or unsafe, stop and request direction.
+Do not create a replacement as an implicit workaround.
+
 ## 0. Freeze one release candidate
 
 From the repository root:
@@ -50,8 +66,9 @@ Record these values in the release evidence template under `docs/demo/`.
 
 ## 1. Prepare and migrate the isolated QA database
 
-1. Create or select a disposable PostgreSQL/Neon QA database that is not a
-   production branch and contains no production data.
+1. Select the existing authorized PostgreSQL/Neon QA database. Confirm that it
+   is not production and contains no production data. If it is unavailable or
+   cannot be proven isolated, stop; do not create another database.
 2. Obtain its pooled and direct URLs. Set `DATABASE_URL` to the pooled URL and
    `DIRECT_URL` to the direct URL.
 3. Set the QA safety variables locally without committing them:
@@ -203,8 +220,9 @@ must never run migrations.
 
 ## 4. Configure and deploy Vercel
 
-1. In Vercel, create separate Preview and Production variable sets. At minimum,
-   configure:
+1. In the existing Vercel project, update the existing QA Preview and
+   Production variable sets. Do not create another project, preview branch, or
+   preview environment. At minimum, configure:
 
    ```text
    DATABASE_URL
@@ -232,10 +250,9 @@ must never run migrations.
    https://<production-origin>/api/auth/callback/google
    ```
 
-5. Create a targeted Vercel deployment from the full `$ReleaseCommit`, not from
-   an unpinned moving branch. Vercel supports targeted deployments from a Git
-   SHA; see [deploying Git
-   repositories](https://vercel.com/docs/git#creating-a-deployment-from-a-git-reference).
+5. Redeploy the existing QA preview target from the full `$ReleaseCommit`; do
+   not create a parallel preview target. Pin and record the exact Git SHA; see
+   [deploying Git repositories](https://vercel.com/docs/git#creating-a-deployment-from-a-git-reference).
 6. Confirm the deployment details show `$ReleaseCommit`, then run an OAuth smoke
    and an ownership-negative API smoke.
 7. Confirm the Vercel and Render deployments use the same commit and database
@@ -339,7 +356,7 @@ in the unstyled semantic UI.
    preview_url=<exact preview URL>
    active_stage=current
    google_oauth_evidence=<durable evidence reference>
-   run_live_provider_smoke=false
+   run_codex_audit=false
    ```
 
 8. Promote only the exact preview commit that received a passing auditor

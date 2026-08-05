@@ -1572,10 +1572,14 @@ Preferred deployment path:
 
 Deployment behavior:
 
-- Pull requests should create Vercel preview deployments.
+- The existing `qa` branch should update the existing Vercel QA preview target;
+  pull requests must not create additional preview branches or environments.
 - Merges to `main` should deploy to production after CI passes.
 - Production deployments should use Vercel environment variables, not committed `.env` files.
 - Database migrations should be applied through `prisma migrate deploy` before or during production deployment once migrations exist.
+- The fixed branch, database, and deployment topology is defined in
+  [operating-constraints.md](./operating-constraints.md) and must not expand
+  without explicit developer approval.
 
 ---
 
