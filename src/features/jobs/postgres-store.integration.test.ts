@@ -108,7 +108,9 @@ describeWithPostgres("PostgresGenerationJobStore integration", () => {
     });
 
     expect(claimed).not.toBeNull();
-    await client!.$queryRawUnsafe("SELECT pg_sleep(0.01)");
+    await client!.$queryRawUnsafe(
+      "SELECT pg_sleep(0.01)::text AS slept",
+    );
     await expect(store.recoverExpiredClaims()).resolves.toMatchObject({
       recovered: 1,
       deadLettered: 0,

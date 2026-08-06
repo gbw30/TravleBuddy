@@ -167,7 +167,7 @@ describeWithPostgres("adaptive-planning existing-trip migration", () => {
         'conflict_trip_only',
         'trip_conflict_only',
         NULL,
-        'LOGISTICS',
+        'HOTEL_LOCATION',
         'MEDIUM',
         'OPEN',
         'Legacy trip-level warning',

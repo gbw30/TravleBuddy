@@ -242,12 +242,14 @@ Deliberately deferred:
   booking/cancellation, job cancellation, advanced inferred-preference rules,
   and broad day/full-trip adaptation policies.
 
-Dependency note (2026-07-26): `npm audit --omit=dev` reports one remaining
-upstream advisory chain (`next` -> optional `sharp`, surfaced as three high
-entries). The repository is on the latest available Next.js 16.2 patch and does
-not use `next/image` or the Image Optimization API. Do not force an unsupported
-`sharp` 0.35 override; update to the first official patched Next.js release and
-rerun the full gate before deployment.
+Dependency decision (2026-08-06): the developer temporarily accepts and tracks
+the current `npm audit --omit=dev` findings in two upstream chains: Prisma via
+`fast-uri`, and Next.js via optional `sharp`. The installed dependency graph
+reports no available fix. TravleBuddy does not use `next/image` or the Image
+Optimization API. Do not force unsupported transitive overrides or replace
+Prisma/Next.js solely to silence the audit; review official patched releases,
+update through supported versions, and rerun the full gate before production
+promotion.
 
 Follow [the developer finish guide](docs/developer-finish-guide.md) for the
 credentialed steps that remain.

@@ -323,13 +323,14 @@ in the unstyled semantic UI.
    npm run qa:context
    ```
 
-   At repository handoff on 2026-07-26, the production audit has one unresolved
-   upstream chain: the latest Next.js 16.2 patch depends on the optional
-   `sharp` 0.34 line (reported as the `next`, `next-auth`, and `sharp` high
-   entries). TravleBuddy does not use `next/image` or the Image Optimization
-   API. Before release, install the first official patched Next.js version,
-   rerun this entire section, and retain the audit output. Do not force an
-   unsupported `sharp` major override.
+   On 2026-08-06, the developer temporarily accepted and chose to track two
+   upstream audit chains in the installed dependency graph: Prisma via
+   `fast-uri`, and Next.js via optional `sharp`. `npm audit --omit=dev` reports
+   no available fix for either chain. TravleBuddy does not use `next/image` or
+   the Image Optimization API. Before production promotion, check for official
+   patched Prisma and Next.js releases, update only through supported versions,
+   rerun this entire section, and retain the audit output. Do not force
+   unsupported transitive overrides.
 
 3. From `qa-results/$env:QA_RUN_ID/context/agents/`, give each direct QA agent
    only its generated context bundle and `qa/context/shared-policy.md`.
