@@ -168,7 +168,7 @@ SELECT
           'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
         )
       )
-    )
+    END
   ),
   jsonb_build_object('kind', 'MIGRATED'),
   p."updated_at"
