@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       branch:
-        description: Remote branch whose head must equal commit_sha and Use workflow from
+        description: Remote branch whose head must equal commit_sha; select the same branch under Use workflow from
         required: true
         default: qa
         type: string
@@ -152,5 +152,5 @@ jobs:
           path: |
             qa-results/qa-migration/*.json
             qa-results/qa-migration/*.log
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 90

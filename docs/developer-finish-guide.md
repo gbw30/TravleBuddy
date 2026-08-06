@@ -69,8 +69,10 @@ Record these values in the release evidence template under `docs/demo/`.
 1. Select the existing authorized PostgreSQL/Neon QA database. Confirm that it
    is not production and contains no production data. If it is unavailable or
    cannot be proven isolated, stop; do not create another database.
-2. Obtain its pooled and direct URLs. Set `DATABASE_URL` to the pooled URL and
-   `DIRECT_URL` to the direct URL.
+2. Obtain its pooled and direct URLs. Keep them in the protected local names
+   `QA_DATABASE_URL` and `QA_DIRECT_URL`. For a local Prisma command, map those
+   values into the runtime names `DATABASE_URL` and `DIRECT_URL`; the GitHub
+   workflows perform the same mapping from environment secrets.
 3. Set the QA safety variables locally without committing them:
 
    ```powershell
@@ -78,8 +80,8 @@ Record these values in the release evidence template under `docs/demo/`.
    $env:QA_ALLOW_WRITES = "true"
    $env:QA_BASE_URL = "https://YOUR-QA-PREVIEW.example"
    $env:QA_RUN_ID = "migration-preflight-$ReleaseCommit"
-   $env:DATABASE_URL = "YOUR_QA_POOLED_URL"
-   $env:DIRECT_URL = "YOUR_QA_DIRECT_URL"
+   $env:DATABASE_URL = $env:QA_DATABASE_URL
+   $env:DIRECT_URL = $env:QA_DIRECT_URL
    ```
 
 4. Generate the credential-free fingerprint:

@@ -13,7 +13,7 @@ Only required and candidate scenarios block a gate. Promote a candidate to requi
 
 ## Prerequisites
 
-Writable local/preview QA requires `QA_TARGET`, `QA_BASE_URL`, `QA_RUN_ID`, `QA_DATABASE_FINGERPRINT`, and `QA_ALLOW_WRITES=true`. The database must be disposable and isolated from production. Production uses `QA_TARGET=production-readonly` and `QA_ALLOW_WRITES=false`.
+Writable local/preview QA requires `QA_TARGET`, `QA_BASE_URL`, `QA_RUN_ID`, `QA_DATABASE_FINGERPRINT`, and `QA_ALLOW_WRITES=true`. Reuse the existing authorized QA database and prove that it is isolated from production; do not create a database for an individual run. Production uses `QA_TARGET=production-readonly` and `QA_ALLOW_WRITES=false`.
 
 Set `QA_RUN_TYPE` to `pr`, `nightly`, `release`, or `production`. PR routing uses `QA_BASE_SHA`; if it is absent or cannot be diffed, the full team is selected. `QA_FORCE_AGENTS` can add diagnostic PR reviewers but cannot remove automatically selected roles or weaken full/release/production policy.
 
