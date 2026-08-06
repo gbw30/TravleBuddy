@@ -82,7 +82,7 @@ jobs:
     needs: authorize
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: qa-release
+    environment: qa-preview
 
     env:
       CI: "true"
@@ -184,7 +184,7 @@ jobs:
       needs.deterministic.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: qa-release
+    environment: qa-preview
     env:
       HAS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY != '' }}
 

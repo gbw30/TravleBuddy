@@ -196,7 +196,7 @@ describeWithPostgres("adaptive-planning existing-trip migration", () => {
         'REJECT',
         'OTHER',
         '{"legacy":true}'::jsonb,
-        'day_legacy',
+        NULL,
         'item_legacy',
         '2026-07-04T12:00:00.000Z'
       );

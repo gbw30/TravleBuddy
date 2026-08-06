@@ -323,6 +323,9 @@ in the unstyled semantic UI.
    npm run qa:context
    ```
 
+   The manual release workflow reuses the existing `qa-preview` GitHub
+   environment; do not create a separate `qa-release` environment.
+
    On 2026-08-06, the developer temporarily accepted and chose to track two
    upstream audit chains in the installed dependency graph: Prisma via
    `fast-uri`, and Next.js via optional `sharp`. `npm audit --omit=dev` reports
