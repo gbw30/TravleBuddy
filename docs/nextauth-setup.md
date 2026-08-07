@@ -133,7 +133,7 @@ Add these models to `prisma/schema.prisma` before creating migrations:
 
 ```prisma
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id @default(dbgenerated("(gen_random_uuid())::text"))
   userId            String  @map("user_id")
   type              String
   provider          String
@@ -153,7 +153,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(dbgenerated("(gen_random_uuid())::text"))
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
@@ -164,7 +164,7 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(dbgenerated("(gen_random_uuid())::text"))
   name          String?
   email         String?   @unique
   emailVerified DateTime? @map("email_verified")
@@ -193,7 +193,7 @@ When the `Trip` model is added, relate it to `User`:
 
 ```prisma
 model Trip {
-  id          String   @id @default(cuid())
+  id          String   @id @default(dbgenerated("(gen_random_uuid())::text"))
   userId      String   @map("user_id")
   destination String
   startDate   DateTime @map("start_date")

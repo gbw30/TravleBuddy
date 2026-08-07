@@ -112,8 +112,8 @@ Record these values in the release evidence template under `docs/demo/`.
    branch:              <ReleaseBranch>
    qa_origin:           <exact protected QA origin>
    database_fingerprint:<QaFingerprint>
-   migration_head:      20260727090000_adaptive_planning_foundation
-   confirmation:        MIGRATE QA <QaFingerprint> TO 20260727090000_adaptive_planning_foundation
+   migration_head:      20260806070000_database_generated_uuid_defaults
+   confirmation:        MIGRATE QA <QaFingerprint> TO 20260806070000_database_generated_uuid_defaults
    ```
 
    Equivalent GitHub CLI invocation:
@@ -124,8 +124,8 @@ Record these values in the release evidence template under `docs/demo/`.
      -f branch=$ReleaseBranch `
      -f qa_origin=$env:QA_BASE_URL `
      -f database_fingerprint=$QaFingerprint `
-     -f migration_head=20260727090000_adaptive_planning_foundation `
-     -f "confirmation=MIGRATE QA $QaFingerprint TO 20260727090000_adaptive_planning_foundation"
+     -f migration_head=20260806070000_database_generated_uuid_defaults `
+     -f "confirmation=MIGRATE QA $QaFingerprint TO 20260806070000_database_generated_uuid_defaults"
    ```
 
 8. Approve the protected environment only after reviewing all inputs.

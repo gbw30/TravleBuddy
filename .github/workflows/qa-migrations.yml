@@ -25,7 +25,7 @@ on:
       migration_head:
         description: Exact final migration directory expected at repository HEAD
         required: true
-        default: 20260727090000_adaptive_planning_foundation
+        default: 20260806070000_database_generated_uuid_defaults
         type: string
       confirmation:
         description: Type MIGRATE QA <database_fingerprint> TO <migration_head>

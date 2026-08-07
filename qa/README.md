@@ -45,7 +45,7 @@ Request` workflow. `QA - Extended Manual`, `QA - Release`, `QA - Production
 Read-only Smoke`, protected migrations, and every Codex audit are manual or
 explicitly opt-in.
 
-The authorized origin is `https://travle-buddy-git-qa-gbw30s-projects.vercel.app` and the credential-free QA fingerprint is `e6d10d0c10e8212e11f6c88d6e4747fd281edf273a592283bad6ae6a8f380586`. Dispatch with the full commit, its exact remote branch head, the current migration head `20260727090000_adaptive_planning_foundation`, and this exact typed form:
+The authorized origin is `https://travle-buddy-git-qa-gbw30s-projects.vercel.app` and the credential-free QA fingerprint is `e6d10d0c10e8212e11f6c88d6e4747fd281edf273a592283bad6ae6a8f380586`. Dispatch with the full commit, its exact remote branch head, the current migration head `20260806070000_database_generated_uuid_defaults`, and this exact typed form:
 
 ```text
 MIGRATE QA <database_fingerprint> TO <migration_head>

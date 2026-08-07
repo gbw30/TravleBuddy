@@ -13,6 +13,33 @@ const client = integrationDatabaseUrl
     })
   : null;
 
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const databaseGeneratedIdTables = [
+  "accounts",
+  "conflicts",
+  "generation_jobs",
+  "itinerary_city_windows",
+  "itinerary_days",
+  "itinerary_items",
+  "itinerary_versions",
+  "job_attempts",
+  "job_events",
+  "place_suggestions",
+  "planning_events",
+  "planning_feedback",
+  "planning_mutations",
+  "preference_profile_versions",
+  "sessions",
+  "trip_destinations",
+  "trip_preferences",
+  "trip_travel_segments",
+  "trips",
+  "user_travel_preferences",
+  "users",
+] as const;
+
 describeWithPostgres("PostgresGenerationJobStore integration", () => {
   let userId = "";
   let tripId = "";
@@ -71,6 +98,63 @@ describeWithPostgres("PostgresGenerationJobStore integration", () => {
       },
     });
   }
+
+  it("keeps database UUID defaults on every generated primary key", async () => {
+    const rows = await client!.$queryRaw<
+      Array<{ column_default: string | null; table_name: string }>
+    >`
+      SELECT table_name, column_default
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND column_name = 'id'
+        AND table_name <> '_prisma_migrations'
+      ORDER BY table_name
+    `;
+
+    expect(rows.map((row) => row.table_name)).toEqual(
+      [...databaseGeneratedIdTables].sort(),
+    );
+    expect(
+      rows.every((row) => row.column_default?.includes("gen_random_uuid()")),
+    ).toBe(true);
+  });
+
+  it("returns database-generated IDs from a nested create", async () => {
+    const email = `generated_${randomUUID()}@example.invalid`;
+    const created = await client!.user.create({
+      data: {
+        email,
+        trips: {
+          create: {
+            destinations: {
+              create: {
+                city: "Paris",
+                country: "France",
+              },
+            },
+            title: "Database-generated ID trip",
+          },
+        },
+      },
+      select: {
+        id: true,
+        trips: {
+          select: {
+            destinations: { select: { id: true } },
+            id: true,
+          },
+        },
+      },
+    });
+
+    try {
+      expect(created.id).toMatch(uuidPattern);
+      expect(created.trips[0]?.id).toMatch(uuidPattern);
+      expect(created.trips[0]?.destinations[0]?.id).toMatch(uuidPattern);
+    } finally {
+      await client!.user.delete({ where: { id: created.id } });
+    }
+  });
 
   it("lets two atomic claimers take different jobs", async () => {
     await Promise.all([createPendingJob(1), createPendingJob(2)]);
