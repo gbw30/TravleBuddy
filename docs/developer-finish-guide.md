@@ -8,7 +8,7 @@ has been proven isolated from production.
 Current migration head:
 
 ```text
-20260727090000_adaptive_planning_foundation
+20260806070000_database_generated_uuid_defaults
 ```
 
 ## Fixed topology for this guide
@@ -60,7 +60,7 @@ Stop unless:
 - `$ReleaseCommit` is a full 40-character SHA.
 - `$RemoteCommit` equals `$ReleaseCommit`.
 - `$MigrationHead` equals
-  `20260727090000_adaptive_planning_foundation`.
+  `20260806070000_database_generated_uuid_defaults`.
 
 Record these values in the release evidence template under `docs/demo/`.
 

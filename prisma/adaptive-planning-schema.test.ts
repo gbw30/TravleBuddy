@@ -14,6 +14,23 @@ const migration = readFileSync(
   "utf8",
 );
 
+const deployedCompositeConstraintNames = [
+  "conflicts_itinerary_version_id_fkey",
+  "generation_jobs_feedback_id_fkey",
+  "generation_jobs_parent_itinerary_version_id_fkey",
+  "generation_jobs_preference_profile_version_id_fkey",
+  "itinerary_days_itinerary_version_id_fkey",
+  "itinerary_versions_parent_version_id_fkey",
+  "itinerary_versions_preference_profile_version_id_fkey",
+  "itinerary_versions_source_job_id_fkey",
+  "planning_feedback_captured_itinerary_version_id_fkey",
+  "planning_feedback_captured_preference_profile_version_id_fkey",
+  "preference_profile_versions_parent_version_id_fkey",
+  "preference_profile_versions_source_feedback_id_fkey",
+  "trips_active_itinerary_version_id_fkey",
+  "trips_active_preference_profile_version_id_fkey",
+] as const;
+
 describe("adaptive-planning migration safety", () => {
   it("is additive and never deletes existing product data", () => {
     expect(migration).not.toMatch(/\bDELETE\s+FROM\b/i);
@@ -112,5 +129,12 @@ describe("adaptive-planning migration safety", () => {
     expect(schema).toContain(
       "fields: [tripId, itineraryVersionId], references: [tripId, id]",
     );
+  });
+
+  it("maps composite relations to their deployed constraint names", () => {
+    for (const constraintName of deployedCompositeConstraintNames) {
+      expect(migration).toContain(`ADD CONSTRAINT "${constraintName}"`);
+      expect(schema).toContain(`map: "${constraintName}"`);
+    }
   });
 });

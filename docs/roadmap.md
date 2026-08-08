@@ -1,7 +1,7 @@
 # Accelerated Adaptive-Planning Roadmap
 
 Status: active roadmap  
-Updated: 2026-08-04
+Updated: 2026-08-08
 
 This roadmap replaces the conversation-first sequence as the active delivery
 order. Status describes repository implementation, not deployment
@@ -18,7 +18,7 @@ advance a stage.
 
 | Stage                     | Repository outcome                                                                                         | Status                                              | Exit gate                                                                                                         |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 0. Baseline and migration | Additive Prisma migration and backfill for versioned state and jobs                                        | Implemented; isolated-database execution pending    | Protected preflight, deploy, postflight, and existing-trip verification pass on a non-production database         |
+| 0. Baseline and migration | Additive Prisma migration and backfill for versioned state and jobs                                        | Applied to isolated QA; final schema-diff rerun pending | Protected preflight, deploy, postflight, and existing-trip verification pass on a non-production database      |
 | 1. Versioned domain       | Append-only preference/itinerary versions, active pointers, immutable feedback context                     | Implemented                                         | Existing and new trips load through active pointers; former versions remain readable                              |
 | 2. Adaptive item loop     | Source precedence, `TOO_EXPENSIVE` policy, deterministic ranking, copy-on-write replacement/no-replacement | Implemented                                         | Replay creates at most one preference/itinerary effect; unrelated content remains unchanged                       |
 | 3. Durable processing     | PostgreSQL claims, attempts, leases, heartbeats, retries, recovery, worker runtime, Render blueprint       | Implemented; deployed worker pending                | Browser/API termination does not lose work; forced worker loss recovers without duplication                       |

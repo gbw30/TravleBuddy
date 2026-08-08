@@ -233,7 +233,7 @@ Not configured by this repository:
 
 - A Google Cloud project, billing, quota alerts, or API key.
 - Vercel or Render environment variables and deployments.
-- Protected QA/production migration execution.
+- Production migration execution and final QA migration certification.
 - Final Figma styling and environment-backed release evidence.
 
 Deliberately deferred:
