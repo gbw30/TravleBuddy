@@ -127,9 +127,14 @@ describe("captureItineraryItemFeedback", () => {
     });
 
     expect(mocks.db.$transaction).toHaveBeenCalledOnce();
+    const feedbackData = mocks.tx.planningFeedback.create.mock.calls[0]?.[0]
+      .data as Record<string, unknown>;
     expect(mocks.tx.planningFeedback.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         eventKey: control.operationId,
+        targetType: "ITINERARY_ITEM",
+        targetId: "item_1",
+        itineraryItemId: "item_1",
         capturedTripVersion: 5,
         capturedPreferenceProfileVersionId: "preference_version_1",
         capturedItineraryVersionId: "itinerary_version_1",
@@ -141,6 +146,9 @@ describe("captureItineraryItemFeedback", () => {
         id: true,
       },
     });
+    expect(feedbackData).not.toHaveProperty("tripPreferenceId");
+    expect(feedbackData).not.toHaveProperty("placeSuggestionId");
+    expect(feedbackData).not.toHaveProperty("itineraryDayId");
     expect(mocks.tx.generationJob.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         feedbackId: "feedback_1",

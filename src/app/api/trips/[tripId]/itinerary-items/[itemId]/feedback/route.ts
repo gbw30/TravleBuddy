@@ -28,6 +28,27 @@ function apiError(message: string, status: number, details?: unknown) {
   );
 }
 
+function stableErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return "UNKNOWN";
+
+  const candidate = error as { code?: unknown; name?: unknown };
+  if (typeof candidate.code === "string") return candidate.code.slice(0, 64);
+  if (typeof candidate.name === "string") return candidate.name.slice(0, 64);
+
+  return "UNKNOWN";
+}
+
+function logFeedbackFailure(request: Request, error: unknown) {
+  console.error(
+    JSON.stringify({
+      event: "itinerary_feedback_failed",
+      route: "/api/trips/[tripId]/itinerary-items/[itemId]/feedback",
+      requestId: request.headers.get("x-vercel-id"),
+      errorCode: stableErrorCode(error),
+    }),
+  );
+}
+
 function feedbackPayload(body: unknown) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return {};
@@ -115,6 +136,7 @@ export async function POST(request: Request, context: FeedbackRouteContext) {
       return conflict;
     }
 
+    logFeedbackFailure(request, error);
     return apiError("Unable to record itinerary feedback.", 500);
   }
 }

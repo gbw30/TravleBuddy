@@ -62,11 +62,6 @@ export async function captureItineraryItemFeedback(
           tripVersion: true,
           activePreferenceProfileVersionId: true,
           activeItineraryVersionId: true,
-          preference: {
-            select: {
-              id: true,
-            },
-          },
         },
       });
 
@@ -100,8 +95,6 @@ export async function captureItineraryItemFeedback(
         select: {
           id: true,
           title: true,
-          placeSuggestionId: true,
-          dayId: true,
           day: {
             select: {
               dayNumber: true,
@@ -124,6 +117,8 @@ export async function captureItineraryItemFeedback(
         },
       );
       const capturedTripVersion = trip.tripVersion + 1;
+      // The feedback consistency constraint permits exactly one typed target.
+      // The worker derives the item's day and place suggestion from this link.
       const feedback = await tx.planningFeedback.create({
         data: {
           tripId,
@@ -135,9 +130,6 @@ export async function captureItineraryItemFeedback(
           action: parsedInput.data.action,
           reason: parsedInput.data.reason,
           userNote: parsedInput.data.userNote ?? null,
-          tripPreferenceId: trip.preference?.id ?? null,
-          placeSuggestionId: item.placeSuggestionId,
-          itineraryDayId: item.dayId,
           itineraryItemId: item.id,
           capturedTripVersion,
           capturedPreferenceProfileVersionId: preferenceVersion.id,

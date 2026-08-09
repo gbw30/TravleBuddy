@@ -209,4 +209,48 @@ describe("/api/trips/[tripId]/itinerary-items/[itemId]/feedback", () => {
     );
     expect(response.status).toBe(401);
   });
+
+  it("logs a bounded diagnostic code without exposing the database error", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const databaseError = Object.assign(
+      new Error("sensitive database constraint details"),
+      { code: "P2004" },
+    );
+    mocks.adaptation.captureItineraryItemFeedback.mockRejectedValueOnce(
+      databaseError,
+    );
+
+    const response = await POST(
+      new Request(
+        "http://localhost/api/trips/trip_1/itinerary-items/item_1/feedback",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-vercel-id": "iad1::request_1",
+          },
+          body: JSON.stringify({
+            action: "REJECT",
+            reason: "NOT_INTERESTED",
+            ...mutationControl,
+          }),
+        },
+      ),
+      context,
+    );
+
+    expect(response.status).toBe(500);
+    expect(log).toHaveBeenCalledWith(
+      JSON.stringify({
+        event: "itinerary_feedback_failed",
+        route: "/api/trips/[tripId]/itinerary-items/[itemId]/feedback",
+        requestId: "iad1::request_1",
+        errorCode: "P2004",
+      }),
+    );
+    expect(log.mock.calls.flat().join(" ")).not.toContain(
+      "sensitive database constraint details",
+    );
+    log.mockRestore();
+  });
 });
