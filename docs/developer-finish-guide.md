@@ -21,6 +21,9 @@ Specifically:
   Neon branch, database, or clone.
 - Use the existing Vercel project, QA preview target, and production target; do
   not create another preview or project.
+- Run the standalone worker locally for adaptive-planning QA and portfolio
+  demonstrations. Do not provision Render or another worker host for this
+  milestone.
 - Existing CI's temporary PostgreSQL service may continue to run as currently
   configured.
 
@@ -143,7 +146,11 @@ Record these values in the release evidence template under `docs/demo/`.
 The workflow is the sole authorized migration writer. QA agents and the worker
 must never run migrations.
 
-## 2. Configure Google Cloud Places
+## 2. Optionally configure Google Cloud Places
+
+This section is deferred for the free-first mock demonstration. It is not a
+release blocker and must not be performed merely to complete the portfolio
+milestone.
 
 1. Open the Google Cloud project intended for TravleBuddy.
 2. Confirm a billing account is attached, then enable **Places API (New)**.
@@ -151,7 +158,7 @@ must never run migrations.
    [Google's Places setup guide](https://developers.google.com/maps/documentation/places/web-service/get-api-key).
 3. Create a dedicated server API key; do not reuse a browser Maps key.
 4. Under API restrictions, restrict the key to **Places API (New)**. Apply an
-   application/IP restriction only if the chosen Vercel and Render plans provide
+   application/IP restriction only if the chosen host provides
    known static egress IPs; do not use an HTTP-referrer restriction for this
    server-side key.
 5. Configure a conservative quota and Cloud Billing budget alerts before the
@@ -160,65 +167,68 @@ must never run migrations.
    billing](https://developers.google.com/maps/documentation/places/web-service/usage-and-billing).
 6. Store the key in a password manager. Never paste it into source, logs,
    screenshots, job payloads, or committed environment files.
-7. Add the key separately to Vercel and Render as
-   `GOOGLE_PLACES_API_KEY`. Set `PLACE_PROVIDER_MODE=google` only in an
-   environment where live calls and billing are intended.
+7. Add the key to the explicitly authorized server environment as
+   `GOOGLE_PLACES_API_KEY`. Set `PLACE_PROVIDER_MODE=google` only where live
+   calls and billing are intended.
 8. Keep `PLACE_PROVIDER_MODE=mock` and `QA_PROVIDER_MODE=mock` for automated
    tests and normal QA. Run a live-provider smoke only as an explicitly
    authorized, quota-bounded release step.
 
-## 3. Create the Render background worker
+## 3. Run the free-first standalone worker
 
-1. In Render, choose **New → Blueprint** and connect the repository/branch
-   containing `$ReleaseCommit`.
-2. Select the root `render.yaml`. Confirm it creates one service of type
-   `worker`, with no public endpoint:
+The active QA/demo topology uses no hosted background-worker service. Vercel
+creates durable jobs in the existing Neon QA database, and the repository's
+standalone worker consumes them locally during the demonstration.
 
-   ```text
-   build: npm ci && npm run prisma:generate
-   start: npm run worker:start
-   instances: 1
+1. Check out the exact `$ReleaseCommit` on the existing `qa` branch and confirm
+   the worktree is clean.
+2. Open a fresh PowerShell terminal at the repository root. Do not edit or load
+   the production-oriented local `.env` for this step.
+3. Set session-only worker variables, entering the pooled QA `qa_app` URL via
+   `Read-Host` so it is not stored in command history:
+
+   ```powershell
+   $env:DATABASE_URL = Read-Host "Pooled qa_app QA URL"
+   $env:NODE_ENV = "production"
+   $env:PLACE_PROVIDER_MODE = "mock"
+   $env:QA_PROVIDER_MODE = "mock"
+   $env:PLANNING_WORKER_ID = "travlebuddy-local-demo-worker"
+   npm run worker:start
    ```
 
-3. Supply every `sync: false` secret during initial Blueprint creation:
+4. Keep the terminal open during the adaptive journey. Inspect sanitized
+   structured logs for `STARTED`, claim/recovery activity, `JOB_FINISHED`, and
+   `STOPPED`; never enable query logging or record database URLs.
+5. To demonstrate durability, stop the worker, submit feedback through Vercel,
+   show the persisted `PENDING` job, then restart the worker and show it claim
+   and complete that job.
+6. After the demonstration, stop with `Ctrl+C` and clear the session:
 
-   ```text
-   DATABASE_URL=<pooled URL for the same database used by the web deployment>
-   GOOGLE_PLACES_API_KEY=<server-only key, when google mode is enabled>
+   ```powershell
+   Remove-Item Env:DATABASE_URL
+   Remove-Item Env:NODE_ENV
+   Remove-Item Env:PLACE_PROVIDER_MODE
+   Remove-Item Env:QA_PROVIDER_MODE
+   Remove-Item Env:PLANNING_WORKER_ID
    ```
 
-   Render intentionally prompts for `sync: false` values only during initial
-   Blueprint creation; later secret additions must be made in the service
-   Environment page. See the [Blueprint
-   reference](https://render.com/docs/blueprint-spec) and [environment-variable
-   guide](https://render.com/docs/configure-environment-variables).
+7. Use the existing PostgreSQL integration tests for deterministic two-claimer
+   and expired-lease evidence. Do not add a scheduled GitHub workflow or a fake
+   free HTTP worker.
+8. Never run migrations or seeds from worker startup.
 
-4. Confirm:
+## Appendix: Optional paid Render background worker
 
-   ```text
-   NODE_ENV=production
-   PLACE_PROVIDER_MODE=mock   # first QA deployment
-   QA_PROVIDER_MODE=mock      # explicit visible QA authorization for mock data
-   PLANNING_WORKER_ID=<optional stable label>
-   ```
+This is not part of the active milestone. Do not perform these steps unless the
+developer later makes an explicit paid-hosting decision. The root `render.yaml`
+is retained only so that hosting the portable worker later requires no redesign.
 
-5. Do not add `npm run db:deploy`, `prisma migrate deploy`, seeding, or any
-   pre-deploy migration command to worker startup.
-6. Deploy and verify the Render service reports the exact `$ReleaseCommit`.
-   Compare it with the Vercel deployment SHA before testing.
-7. Inspect sanitized structured logs for `STARTED`, claim/recovery activity,
-   `JOB_FINISHED`, and `STOPPED`. Never enable query logging with full payloads
-   or database URLs.
-8. Submit a mock feedback job and confirm:
-   - A claim appears.
-   - Heartbeats keep the 30-second lease current.
-   - Progress events advance.
-   - The job completes and the web UI reloads the new version.
-
-9. For the concurrency demonstration only, temporarily scale the worker to two
-   instances. Submit multiple isolated QA jobs, record claim distribution, and
-   confirm no job is processed by both workers concurrently.
-10. Scale back to one instance immediately after capturing evidence.
+If this decision is later reversed, revalidate the provider mode, branch,
+instance plan, region, shutdown behavior, environment contract, and current
+platform pricing before using the template. Supply only a pooled application
+role URL, never start migrations from the worker, and deploy the same exact
+commit as the web application. Those choices are intentionally not active or
+decision-complete today.
 
 ## 4. Configure and deploy Vercel
 
@@ -228,7 +238,6 @@ must never run migrations.
 
    ```text
    DATABASE_URL
-   DIRECT_URL
    AUTH_SECRET
    AUTH_GOOGLE_ID
    AUTH_GOOGLE_SECRET
@@ -257,8 +266,10 @@ must never run migrations.
    [deploying Git repositories](https://vercel.com/docs/git#creating-a-deployment-from-a-git-reference).
 6. Confirm the deployment details show `$ReleaseCommit`, then run an OAuth smoke
    and an ownership-negative API smoke.
-7. Confirm the Vercel and Render deployments use the same commit and database
-   environment before submitting feedback.
+7. Confirm the Vercel deployment and local worker use the same exact commit and
+   QA database before submitting feedback. `DIRECT_URL` is not required by the
+   running Vercel application; keep it only for protected migration and
+   integration commands.
 8. Keep the preview deployed for release QA. Do not promote it to production
    yet.
 
@@ -396,7 +407,7 @@ Use `docs/demo/adaptive-planning-demo.md` and
    execution time:   p50 / p95 / max
    recovery time:    observed lease expiry to new claim
    sample count:     at least 20 warm samples for percentile claims
-   worker count:     1 and 2
+   worker count:     recorded local process count
    provider mode:    mock or explicitly authorized live
    exact commit:     <ReleaseCommit>
    ```
@@ -412,9 +423,10 @@ The external handoff is complete only when:
 
 - QA and production database identities are proven distinct.
 - The protected migration receipt is clean at the exact migration head.
-- Vercel and Render deploy the same passing commit.
+- Vercel deploys the passing commit and the local worker runs that exact commit.
 - OAuth and Places configuration are restricted and secret.
-- One-worker, two-worker, recovery, and stale-result demonstrations pass.
+- The local-worker journey, durable pending/restart behavior, real-PostgreSQL
+  recovery/concurrency tests, and stale-result demonstration pass.
 - Figma changes preserve behavior and accessibility.
 - The release auditor returns `PASS`.
 - Portfolio evidence names the exact commit and contains no invented metrics.

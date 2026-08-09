@@ -33,8 +33,10 @@ Store work in PostgreSQL and process it in an independent Node worker:
   `SUPERSEDED`.
 - `SIGTERM`/`SIGINT` stop new claims and allow the current claim to finish.
   Abrupt process loss is handled by lease expiry and recovery.
-- `render.yaml` defines one background worker, but provisioning, secrets, and
-  deployment remain operator tasks. Worker startup never applies migrations.
+- The executable is deployment-portable. The active free-first QA/demo topology
+  runs it locally against the existing Neon QA database; `render.yaml` remains
+  an optional future paid-hosting template. Worker startup never applies
+  migrations.
 
 ## Consequences
 
@@ -45,10 +47,14 @@ Benefits:
 - Claims scale safely to multiple worker instances.
 - Attempts and progress are directly queryable for debugging and evidence.
 - Local and QA environments can exercise the production queue semantics.
+- The Vercel web process and local worker remain independently deployable and
+  communicate only through persisted PostgreSQL state.
 
 Costs and constraints:
 
 - Queue traffic consumes PostgreSQL connections and write capacity.
+- Jobs remain pending while no worker process is running; an always-on worker
+  host is an explicit later operational decision.
 - Claim, lease, and recovery behavior requires real PostgreSQL integration and
   concurrency tests; mocked unit tests are not sufficient release evidence.
 - Long-running or high-volume workloads may eventually justify a dedicated

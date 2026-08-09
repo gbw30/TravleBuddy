@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 ## Standing environment and branch constraint
@@ -23,6 +25,11 @@ instruction for every Codex session working in this repository:
   existing targets is allowed.
 - Reuse existing GitHub environments and workflows. Prefer changing code and
   verification within the current topology over adding deployment lanes.
+- Use the free-first adaptive-planning topology: the existing Vercel QA preview
+  writes durable jobs to the existing Neon QA database, and the standalone
+  worker runs locally for demonstrations. Do not provision Render or another
+  always-on worker host unless the developer explicitly reverses this decision.
+  Keep `render.yaml` only as an optional future paid-hosting template.
 - Do not delete or consolidate existing branches, databases, or deployments
   without an explicit developer request. The constraint prevents additions; it
   does not authorize cleanup.

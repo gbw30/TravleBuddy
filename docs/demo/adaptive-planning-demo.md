@@ -18,8 +18,30 @@ termination, fixtures, or migrations at production.
 - [The evidence template](./evidence-template.md) is open for recording IDs and
   timestamps as they occur.
 
+The active free-first topology uses the existing Vercel QA preview for the web
+and API, the existing Neon QA database for durable state, and a local worker
+from the same commit. Always-on worker hosting is not required.
+
 Never record database URLs, OAuth tokens, cookies, API keys, raw provider
 payloads, or another user's data.
+
+## Start the local demonstration worker
+
+In a fresh PowerShell terminal at the repository root:
+
+```powershell
+$env:DATABASE_URL = Read-Host "Pooled qa_app QA URL"
+$env:NODE_ENV = "production"
+$env:PLACE_PROVIDER_MODE = "mock"
+$env:QA_PROVIDER_MODE = "mock"
+$env:PLANNING_WORKER_ID = "travlebuddy-local-demo-worker"
+npm run worker:start
+```
+
+Keep this terminal open for Scenario 1. To show durable queuing, stop it, submit
+feedback through Vercel, record the persisted pending state, and restart the
+same command. After all scenarios, stop the worker and remove every variable
+set above with `Remove-Item Env:<NAME>`.
 
 ## Scenario 1: Normal targeted replacement
 
@@ -85,6 +107,11 @@ If graceful shutdown schedules the retry before lease expiry, record that as the
 graceful-shutdown path and repeat with an abrupt termination only in the
 isolated environment to demonstrate lease recovery.
 
+If the adaptive handler finishes too quickly for a safe manual interruption,
+do not add artificial production delay or repeatedly race-kill processes. Use
+the existing real-PostgreSQL expired-lease integration test as deterministic
+recovery evidence and label it separately from the live UI journey.
+
 ## Scenario 3: Stale-job supersession
 
 1. Stop the isolated worker so jobs remain queued.
@@ -111,6 +138,10 @@ In 60-90 seconds, show:
 4. Version history and preserved unrelated content.
 5. A concise terminal `RECOVERED` or `SUPERSEDED` record.
 6. The architecture diagram/README and measured evidence.
+
+State the execution topology plainly: the preview is deployed on Vercel, queue
+state is durable in Neon, and the independently runnable worker was local for
+the recorded QA demonstration.
 
 Describe guarantees precisely. Say "demonstrated in the recorded QA
 environment," not "production-proven," unless production-safe evidence exists.

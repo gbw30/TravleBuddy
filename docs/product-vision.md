@@ -1,7 +1,7 @@
 # TravleBuddy Product Vision
 
 Status: canonical product direction  
-Updated: 2026-07-26
+Updated: 2026-08-08
 
 ## Purpose
 
@@ -101,6 +101,12 @@ descending, provider place ID ascending, then name ascending.
 PostgreSQL is authoritative for trips, preferences, feedback, candidates,
 itinerary versions, jobs, attempts, and progress events. The web process accepts
 and displays work; an independent worker performs adaptation.
+
+For the active free-first portfolio milestone, Vercel hosts the web/API, the
+existing Neon QA database holds the durable queue, and the standalone worker
+runs locally during demonstrations. This preserves process separation and
+failure semantics without claiming an always-on production worker. Hosted
+worker provisioning remains an optional later deployment decision.
 
 `planningRevision` protects browser/API mutations. `tripVersion` invalidates
 outdated background work. Jobs additionally capture the active preference

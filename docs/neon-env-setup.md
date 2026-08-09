@@ -113,32 +113,36 @@ Production should use the production Neon branch:
 
 ```text
 DATABASE_URL=production pooled URL
-DIRECT_URL=production direct URL
 NEXTAUTH_URL=https://your-production-domain.com
 ```
+
+Keep the production direct URL outside the running application and supply it
+only to protected Prisma/migration commands when required.
 
 Preview should use a preview or dev Neon branch:
 
 ```text
 DATABASE_URL=preview/dev pooled URL
-DIRECT_URL=preview/dev direct URL
 NEXTAUTH_URL=https://your-preview-url-or-vercel-generated-url
 ```
+
+For this repository, "preview" means the one existing QA database and `qa`
+Vercel target. `DIRECT_URL` is optional in Vercel and is retained in the
+protected GitHub QA environments for migration/integration commands.
 
 Development can use the dev Neon branch if you use `vercel dev` or `vercel env pull`.
 
 ---
 
-# 6. Vercel + Neon Integration Option
+# 6. Fixed Vercel + Neon topology
 
-Neon offers Vercel integrations that can inject database environment variables into Vercel and support preview branching.
+TravleBuddy intentionally reuses its existing QA and production databases and
+Vercel targets.
 
-Use this if you want Vercel preview deployments to get isolated Neon database branches automatically.
-
-Manual setup is also fine:
-
-- Add `DATABASE_URL` and `DIRECT_URL` yourself in Vercel.
-- Use one shared dev database for previews until you need stronger isolation.
+- Add only the appropriate pooled `DATABASE_URL` to each running Vercel target.
+- Keep direct URLs in protected migration/integration environments.
+- Do not enable automatic preview database branching or create another Neon
+  branch without an explicit developer decision.
 
 ---
 

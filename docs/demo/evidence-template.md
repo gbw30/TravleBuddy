@@ -16,7 +16,7 @@ production data.
 | Database fingerprint receipt | `[PATH OR SAFE ID]`              |
 | Migration head               | `[RECORD]`                       |
 | Web deployment/version       | `[RECORD]`                       |
-| Worker deployment/version    | `[RECORD]`                       |
+| Worker execution/version     | `local + commit: [RECORD]`       |
 | Worker count                 | `[RECORD]`                       |
 | Provider mode                | `mock / google / auto: [RECORD]` |
 | QA run ID                    | `[RECORD]`                       |
@@ -24,7 +24,7 @@ production data.
 External-service configuration status:
 
 - Google Places enabled/configured: `[YES / NO / NOT USED]`
-- Render worker provisioned: `[YES / NO / LOCAL WORKER]`
+- Worker execution: `[LOCAL WORKER / OPTIONAL HOSTED]`
 - Vercel preview/production configured: `[YES / NO / LOCAL WEB]`
 - Figma styling applied: `[YES / NO / NOT REQUIRED]`
 

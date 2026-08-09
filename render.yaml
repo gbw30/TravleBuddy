@@ -1,3 +1,5 @@
+# Optional paid-hosting template. The active QA/demo topology runs this worker
+# locally; see docs/operating-constraints.md before provisioning this service.
 services:
   - type: worker
     name: travlebuddy-planning-worker

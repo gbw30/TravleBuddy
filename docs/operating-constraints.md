@@ -49,6 +49,23 @@ environments.
   parallel domain, or temporary preview deployment topology without explicit
   approval.
 
+### Adaptive-planning worker
+
+- The active portfolio/QA topology is free-first: Vercel hosts the web/API,
+  Neon PostgreSQL stores the durable queue, and the standalone worker runs on
+  the developer machine only while a demonstration or controlled QA exercise
+  is active.
+- Existing GitHub Actions and their disposable PostgreSQL service provide
+  recorded concurrency and lease-recovery evidence; do not add a scheduled or
+  continuously running workflow for queue consumption.
+- Do not provision Render, disguise the worker as a free HTTP service, or add a
+  different cloud worker platform by default. `render.yaml` is a dormant,
+  optional paid-hosting template.
+- An always-on hosted worker is deferred until the developer explicitly accepts
+  its operational cost. The deployed preview may therefore leave jobs pending
+  whenever the local worker is offline; this is an intentional milestone
+  limitation, not a production-readiness claim.
+
 ## Decision rule for Codex
 
 Codex must treat this document and the matching rule in `AGENTS.md` as a
@@ -74,7 +91,9 @@ When a proposed step conflicts with this topology:
    QA database.
 6. Redeploy the existing QA Vercel target when environment-backed validation is
    needed.
-7. Run release and production smoke workflows manually against exact commits.
-8. Promote the verified code to `main` and the existing production target.
+7. Run `npm run worker:start` locally against the verified QA database for the
+   adaptive-planning demonstration, then remove its session-only credentials.
+8. Run release and production smoke workflows manually against exact commits.
+9. Promote the verified code to `main` and the existing production target.
 
 This policy can be changed only by a later explicit developer instruction.

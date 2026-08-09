@@ -127,6 +127,33 @@ The web application also requires the Auth.js variables documented in
 `.env.example`. The standalone worker requires only `DATABASE_URL`, optional
 worker identity, and optional provider configuration.
 
+### Free-first preview topology
+
+The active portfolio milestone does not provision an always-on cloud worker.
+The existing Vercel QA preview writes jobs to the existing Neon QA database,
+and a standalone worker runs locally during demonstrations:
+
+```text
+Browser -> Vercel web/API -> Neon PostgreSQL queue <- local worker
+```
+
+Use the pooled QA `qa_app` connection only as a session variable; do not replace
+the production-oriented local `.env`:
+
+```powershell
+$env:DATABASE_URL = Read-Host "Pooled qa_app QA URL"
+$env:NODE_ENV = "production"
+$env:PLACE_PROVIDER_MODE = "mock"
+$env:QA_PROVIDER_MODE = "mock"
+$env:PLANNING_WORKER_ID = "travlebuddy-local-demo-worker"
+npm run worker:start
+```
+
+After stopping the worker with `Ctrl+C`, remove those session variables. Jobs
+submitted while it is offline remain pending and are processed after it starts,
+which demonstrates durable process separation. Always-on worker hosting and the
+root `render.yaml` template are optional deferred infrastructure.
+
 Validate and apply migrations only to the currently authorized non-production
 database. Do not create another database for this step:
 
@@ -227,12 +254,15 @@ npm run test -- src/features/jobs/postgres-store.integration.test.ts prisma/adap
 Implemented in this repository:
 
 - Schema, migration, backfill, services, routes, worker, mock provider, Google
-  provider adapter, progress UI, tests, CI rules, Render blueprint, and runbooks.
+  provider adapter, progress UI, tests, CI rules, an optional Render template,
+  and free-first local-worker runbooks.
 
 Not configured by this repository:
 
 - A Google Cloud project, billing, quota alerts, or API key.
-- Vercel or Render environment variables and deployments.
+- Vercel environment variables and deployment verification.
+- An always-on hosted worker; the active milestone uses the local standalone
+  worker during demonstrations.
 - Production migration execution and final QA migration certification.
 - Final Figma styling and environment-backed release evidence.
 
