@@ -1,5 +1,10 @@
 # Developer Finish Guide
 
+Status: operational
+Authority: Ordered credentialed deployment, migration, and evidence handoff procedure
+Related: [Knowledge map](README.md), [current implementation](status/current-implementation.md), [operating constraints](operating-constraints.md), [active roadmap](roadmap.md)
+Last reviewed: 2026-08-09
+
 This guide contains the credentialed and environment-backed work that Codex did
 not perform. Complete the sections in order. Do not deploy different commits to
 the web and worker, and do not run a migration until the database fingerprint
@@ -10,6 +15,11 @@ Current migration head:
 ```text
 20260806070000_database_generated_uuid_defaults
 ```
+
+Protected QA migration certification completed successfully for commit
+`e6e74c65fe3c2d5377eeeee1a67c90675d21ad60`. Keep the protected procedure below
+as the reusable exact-commit release process; do not describe that certification
+as pending. Later schema-changing commits require their own authorized run.
 
 ## Fixed topology for this guide
 

@@ -6,6 +6,29 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 <!-- END:nextjs-agent-rules -->
 
+## Project knowledge map
+
+Start with `docs/README.md`. TravleBuddy documentation separates:
+
+- `docs/requirements.md`: sole canonical target-product specification.
+- `docs/status/current-implementation.md`: evidence-backed implementation summary; confirm claims in code, schema, migrations, and tests.
+- `docs/roadmap.md`: active milestone order.
+- `docs/architecture/README.md`: system boundaries and ADR index.
+- `docs/history/`: non-authoritative implementation history.
+
+Never infer current implementation from a target requirement, permanent product scope from a staged limitation, or present authority from a historical file. Operational safety rules in this file and `docs/operating-constraints.md` remain binding.
+
+| Task                      | Required context                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| Product feature           | Knowledge map → target requirements → current status → relevant code/tests               |
+| Architecture change       | Target → architecture index → relevant ADR → current code                                |
+| Conversational planning   | Target → current status → conversational README → current stage                          |
+| Recommendations/providers | Target recommendation section → Stages 1B/2B → provider/recommendation code → QA state   |
+| Scheduling/timezones      | Target logistics/time section → current limitation → Stage 2A → itinerary/logistics code |
+| Adaptive planning/jobs    | Current status → ADRs 001–004 → adaptive demo → jobs/adaptation code                     |
+| QA/full/release           | QA routing below and generated context bundles                                           |
+| Infrastructure/deployment | Operating constraints → developer finish/setup guide                                     |
+
 ## Standing environment and branch constraint
 
 The developer has chosen a fixed, minimal project topology. This is a standing

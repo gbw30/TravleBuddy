@@ -1,6 +1,11 @@
 # NextAuth Setup for TravleBuddy
 
-TravleBuddy's requirements specify Auth.js / NextAuth with Google OAuth for the MVP.
+Status: operational
+Authority: Google OAuth and Auth.js configuration guidance
+Related: [Knowledge map](README.md), [operating constraints](operating-constraints.md), [developer finish guide](developer-finish-guide.md)
+Last reviewed: 2026-08-09
+
+TravleBuddy currently uses Auth.js / NextAuth with Google OAuth.
 
 Email and password auth is intentionally deferred because it requires password hashing, password reset, email verification, abuse protection, and extra security work.
 

@@ -1,12 +1,13 @@
 # Stage 1A - Conversation Persistence and UI Shell
 
-Status: not started  
-Depends on: Stage 0  
-Estimated effort: 2-3 working days
+Status: stage-plan
+Authority: Durable conversation and single-workspace implementation intent
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [preceding stage](01-foundation-and-contracts.md)
+Last reviewed: 2026-08-09
 
 ## Goal
 
-Create a persisted, deterministic conversation experience with a live itinerary panel. This stage proves routing, storage, optimistic interaction, and component boundaries before model behavior is introduced.
+Create a persisted, deterministic conversation experience with a prominent live itinerary in the same workspace. This stage proves routing, storage, optimistic interaction, and component boundaries before model behavior is introduced. Existing preference and logistics forms remain functional fallback paths.
 
 ## Architecture Decisions
 
@@ -153,7 +154,7 @@ Create:
 - `LiveItineraryPanel`: read-only compact itinerary
 - `PlanningDetailsPanel`: collapsed legacy/manual controls
 
-Desktop uses conversation as the main column and itinerary as the stable side column. Mobile uses a segmented Conversation/Itinerary view while preserving component state.
+The default conceptual order places the live itinerary above the conversation so committed state is immediately visible. Components remain layout-independent: wide screens may use a coordinated multi-panel arrangement, while narrow screens may stack or segment views without losing state, semantics, or keyboard access.
 
 ### Step 6: Add optimistic and recovery behavior
 
@@ -180,7 +181,7 @@ Purpose: remove perceived delay without compromising persistence.
 
 ## Developer Actions
 
-- Apply the new migration to development and QA.
+- Create and validate the migration locally, then apply it through the protected existing-QA workflow after explicit authorization.
 - QA two tabs editing the same trip.
 - Verify refresh/back navigation restores the same conversation.
 

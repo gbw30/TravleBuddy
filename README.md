@@ -1,5 +1,10 @@
 # TravleBuddy
 
+Status: current-state
+Authority: Repository overview, setup, and implemented adaptive-slice entry point
+Related: [Knowledge map](docs/README.md), [canonical target](docs/requirements.md), [current implementation](docs/status/current-implementation.md), [active roadmap](docs/roadmap.md)
+Last reviewed: 2026-08-09
+
 TravleBuddy is an adaptive travel planner. A user can build a structured
 itinerary, reject an item with a reason, and watch a durable background job
 update a versioned preference profile and replace only the affected activity.
@@ -10,6 +15,11 @@ It is designed as a portfolio project that demonstrates product engineering,
 transactional state management, background processing, concurrency control, and
 provider isolation without pretending that credentialed cloud infrastructure is
 already configured.
+
+The target product is broader: one persistent conversational workspace with a
+live itinerary, focused discovery, three-card recommendation batches,
+deterministic scheduling, and eventually learned preferences and complete
+timezone handling. Target behavior must not be mistaken for current behavior.
 
 ## Adaptive planning loop
 
@@ -63,9 +73,11 @@ src/components/recommendations behavior and presentational planning UI
 prisma/migrations/             additive schema and data-preserving backfills
 ```
 
-See [the product vision](docs/product-vision.md), [active
-roadmap](docs/roadmap.md), and [architecture decisions](docs/architecture/) for
-the design rationale.
+Start with [the documentation knowledge map](docs/README.md). See the
+[canonical target](docs/requirements.md), [evidence-backed current
+implementation](docs/status/current-implementation.md), [active
+roadmap](docs/roadmap.md), and [architecture index](docs/architecture/README.md)
+for the target/current/plan split.
 
 ## Fixed development topology
 
@@ -263,14 +275,17 @@ Not configured by this repository:
 - Vercel environment variables and deployment verification.
 - An always-on hosted worker; the active milestone uses the local standalone
   worker during demonstrations.
-- Production migration execution and final QA migration certification.
+- Production migration execution. Protected QA migration certification has
+  succeeded for commit `e6e74c65fe3c2d5377eeeee1a67c90675d21ad60`.
 - Final Figma styling and environment-backed release evidence.
 
-Deliberately deferred:
+Not part of the current adaptive slice:
 
-- Routes API, Gemini planning, Redis, chat persistence, WebSockets/SSE, maps,
-  booking/cancellation, job cancellation, advanced inferred-preference rules,
-  and broad day/full-trip adaptation policies.
+- Conversation persistence, validated AI intent, live activity scheduling,
+  primary-flow Google discovery, long-term preference learning, full timezone
+  correctness, optional cache activation, Routes, WebSockets/SSE, maps,
+  booking/cancellation, job cancellation, and broad adaptation policies. The
+  active roadmap begins conversational work after adaptive evidence is complete.
 
 Dependency decision (2026-08-06): the developer temporarily accepts and tracks
 the current `npm audit --omit=dev` findings in two upstream chains: Prisma via

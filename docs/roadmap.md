@@ -1,128 +1,83 @@
-# Accelerated Adaptive-Planning Roadmap
+# TravleBuddy Active Roadmap
 
-Status: active roadmap  
-Updated: 2026-08-08 (free-first worker decision)
+Status: active-roadmap
+Authority: Ordered delivery milestones from current implementation to target product
+Related: [Target requirements](requirements.md), [current implementation](status/current-implementation.md), [conversational stages](conversational-planning/README.md)
+Last reviewed: 2026-08-09
 
-This roadmap replaces the conversation-first sequence as the active delivery
-order. Status describes repository implementation, not deployment
-certification. External credentials, cloud resources, database migrations, and
-production releases remain operator-owned.
+This roadmap is one delivery path, not a choice between an adaptive product and a conversational product. The adaptive system is the proven engineering foundation; the conversational workspace is the intended product direction.
 
-All stages must follow the fixed topology in
-[operating-constraints.md](./operating-constraints.md): reuse `qa` and `main`,
-the current QA/production databases, and the current Vercel QA/production
-targets. Do not create additional branches, databases, or previews merely to
-advance a stage.
+## Working constraints
 
-The active demonstration topology is Vercel web/API + Neon PostgreSQL + a local
-standalone worker. Always-on worker hosting is not a portfolio milestone
-requirement. `render.yaml` is retained only as an optional future paid-hosting
-template.
+- Use only the existing `qa` and `main` branches, Neon QA/production databases, and Vercel targets.
+- Use the local worker for the adaptive demonstration; do not require Render or another paid background-worker service.
+- Keep deterministic mock providers available throughout development and QA.
+- Do not begin the next milestone until the preceding exit evidence is recorded.
+- Preserve authentication, ownership, validation, idempotency, stale-write protection, and migration isolation at every stage.
 
-## Current delivery status
+## Milestone 0 — Documentation knowledge base
 
-| Stage                     | Repository outcome                                                                                         | Status                                                             | Exit gate                                                                                                         |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| 0. Baseline and migration | Additive Prisma migration and backfill for versioned state and jobs                                        | Certified on prior code commit; exact-current-commit rerun pending | Protected preflight, deploy, postflight, and existing-trip verification pass on a non-production database         |
-| 1. Versioned domain       | Append-only preference/itinerary versions, active pointers, immutable feedback context                     | Implemented                                                        | Existing and new trips load through active pointers; former versions remain readable                              |
-| 2. Adaptive item loop     | Source precedence, `TOO_EXPENSIVE` policy, deterministic ranking, copy-on-write replacement/no-replacement | Implemented                                                        | Replay creates at most one preference/itinerary effect; unrelated content remains unchanged                       |
-| 3. Durable processing     | PostgreSQL claims, attempts, leases, heartbeats, retries, recovery, portable worker runtime                | Implemented; local demonstration pending                           | Browser/API termination does not lose work; forced worker loss recovers without duplication                       |
-| 4. Concurrency protection | Captured version tuple, atomic final compare-and-swap, supersession, source-event/job uniqueness           | Implemented; disposable-PostgreSQL CI evidence passing             | Older work cannot overwrite newer trip, preference, or itinerary state                                            |
-| 5. Place retrieval        | Mock and Google Places adapters, validation, normalization, bounded metadata, timeout/retry, stable upsert | Implemented; live Google configuration pending                     | Mock journey passes; configured live provider returns persisted source-backed candidates without exposing its key |
-| 6. Explainability and UI  | Progress API, adaptive controls, preference/replacement result, version history, resilient polling         | Implemented                                                        | Reload resumes active status; terminal, failure, retry, no-replacement, and superseded states are understandable  |
-| 7. Release evidence       | Integrated gates, failure demonstrations, metrics, screenshots, video, audited preview                     | Pending                                                            | Exact preview commit passes release QA and all published claims point to saved evidence                           |
+Establish the target/current/plan split, archive historical records, repair retrieval routes, and verify documentation consistency without changing application behavior.
 
-## Fastest path to a portfolio release
+Exit evidence:
 
-### Gate 1: Repository integrity
+- One canonical target specification.
+- Evidence-backed current-state matrix.
+- Architecture and history indexes.
+- Passing link, formatting, QA-context, and documentation-scope checks.
 
-Run the complete local gate against the final source state:
+## Milestone 1 — Complete adaptive portfolio evidence
 
-- Prisma validation and client generation.
-- ESLint and TypeScript.
-- Full Vitest suite.
-- Production build.
-- Migration safety/static checks.
-- Focused route, ownership, adaptation, worker, and provider tests.
+Finish the already-implemented adaptive milestone before building conversation features.
 
-Do not advance while tracked generated artifacts or migrations disagree with the
-schema.
+1. Confirm the existing Vercel QA target runs the certified commit and points only to the existing Neon QA database.
+2. Run the worker locally against QA with deterministic mock Places configuration.
+3. Demonstrate `TOO_EXPENSIVE` targeted replacement, persisted job progress, preference and itinerary version creation, and unchanged unrelated days.
+4. Replay the same operation ID and confirm no duplicate versions.
+5. Run real-PostgreSQL lease recovery and two-claimer integration tests.
+6. Demonstrate stale-job supersession without adding infrastructure.
+7. Complete the evidence template and capture a 60–90 second portfolio recording.
 
-### Gate 2: Isolated database proof
+Exit evidence: [adaptive demo acceptance criteria](demo/adaptive-planning-demo.md) and a completed evidence record. The protected QA migration certification for commit `e6e74c65fe3c2d5377eeeee1a67c90675d21ad60` is already complete; a later code commit requires exact-commit recertification only when schema/migration policy requires it.
 
-Use the existing explicitly approved QA PostgreSQL database. If it is
-unavailable or cannot be proven separate from production, stop and report the
-blocker rather than creating another database:
+## Milestone 2 — Conversation persistence and workspace UI
 
-- Record the database fingerprint and prove it differs from production.
-- Apply all migrations through the protected workflow.
-- Verify backfilled preference and itinerary version `1` records.
-- Exercise real `FOR UPDATE SKIP LOCKED` claims with two workers.
-- Verify lease expiry, retry scheduling, dead-lettering, replay, and source
-  uniqueness against PostgreSQL rather than mocks.
-- Save preflight/postflight receipts and sanitized evidence.
+Implement [Stage 1A](conversational-planning/02-conversation-persistence-ui.md): durable conversations/messages, turn and replay contracts, bounded history, and a single responsive workspace. Keep existing forms as fallback paths. Make the live itinerary prominent in the same workspace, conceptually above the conversation by default.
 
-Core authentication, ownership isolation, payload validation, secret handling,
-idempotency, and stale-write protection remain mandatory. Faster delivery comes
-from running heavy QA at milestone and release gates, not from removing these
-controls.
+Exit evidence: reload-safe messages, owner isolation, accessible structured answers, revision/replay tests, and critical browser coverage.
 
-### Gate 3: Deterministic end-to-end journey
+## Milestone 3 — Conversational intelligence and three-card batches
 
-Run the web app and worker from the same commit with
-`PLACE_PROVIDER_MODE=mock`:
+Implement [Stage 1B](conversational-planning/03-conversational-intelligence.md): validated structured intent, focused question selection, bounded dispatch, deterministic fallback, one rebuild per turn, and exactly three visible recommendation cards. This stage updates trip preferences only; it does not claim learned cross-trip tendencies.
 
-1. Build or open a persisted itinerary.
-2. Mark one activity `TOO_EXPENSIVE`.
-3. Observe `202`, durable progress, preference version advancement, targeted
-   replacement, and itinerary history.
-4. Repeat the operation ID to prove replay.
-5. Exercise no-replacement, retry, worker recovery, and stale supersession.
-6. Confirm an unrelated user receives the non-disclosing not-found response.
+Exit evidence: schema-invalid AI output cannot mutate state; fallback works without AI; cards support select/reject/refine; messages and planning changes commit coherently.
 
-For preview evidence, deploy the web/API to the existing Vercel QA target and
-run `npm run worker:start` locally with a session-only pooled `qa_app` URL. Stop
-the worker after the demonstration and clear its environment variables. Jobs
-remaining `PENDING` while it is offline are expected and demonstrate that queue
-state is durable rather than request-bound.
+## Milestone 4 — Live scheduling
 
-### Gate 4: Optional live-provider proof
+Implement [Stage 2A](conversational-planning/04-live-itinerary-scheduling.md): deterministic activity assignment, selected-but-unscheduled preservation, ticketed/flexible logistics, multi-city windows, travel blocks, and conflict recovery. Retain the prototype's documented UTC limitation until final timezone work.
 
-After the operator configures restricted Google credentials:
+Exit evidence: deterministic scheduling tests, preserved fixed commitments, multi-city boundary coverage, and responsive live-itinerary updates.
 
-- Run the same journey in `google` mode.
-- Capture provider provenance and bounded persisted metadata.
-- Verify timeout, malformed response, quota, and authentication failures leave
-  the active itinerary safe.
-- Confirm mock fallback is visibly labelled and is not enabled in production.
+## Milestone 5 — Primary place-provider integration
 
-The project remains functionally demonstrable in mock mode; live Google evidence
-strengthens the portfolio but does not replace deterministic tests.
+Implement [Stage 2B](conversational-planning/05-real-place-recommendations.md): reuse and extend the existing Google/mock adapter into the main recommendation pipeline. Fetch and rank a bounded candidate pool, then show exactly three cards. Keep mock mode authoritative for automated QA and provide explicit provider-unavailable states.
 
-### Gate 5: Preview and portfolio evidence
+Exit evidence: normalization, timeout/retry, stable upsert/ranking, raw metadata privacy, persisted-candidate reuse, fallback, and quota-safe tests.
 
-- Deploy the web/API to the existing Vercel QA target and run the local worker
-  from the same exact commit.
-- Run the repository's release QA routing and obtain a `PASS`.
-- Record the normal, worker-recovery, and stale-supersession scenarios from
-  [the demo script](./demo/adaptive-planning-demo.md).
-- Complete [the evidence template](./demo/evidence-template.md).
-- Publish only measured queue, execution, and recovery values.
-- Capture accessible desktop/mobile screenshots and a 60-90 second demo video.
+## Milestone 6 — Measured interaction performance and hardening
 
-## Post-portfolio roadmap
+Complete [Stage 3A](conversational-planning/06-interaction-performance.md) before [Stage 3B](conversational-planning/07-cache-production-hardening.md). Measure complete planning turns, reduce snapshot/query cost, bound history, and add observability. Introduce optional caching, streaming, or rate-limit infrastructure only when evidence justifies it and the developer explicitly approves any topology change.
 
-Prioritize only after the adaptive release passes:
+Exit evidence: recorded baselines and targets, no broad invalidation in normal turns, bounded failure behavior, and production-style QA on the existing topology.
 
-1. Route-aware day scheduling, live opening hours, and travel buffers.
-2. Additional explicit, testable inferred-preference policies.
-3. Manual retry/cancellation and operational job administration.
-4. Performance work driven by measured bottlenecks.
-5. Optional richer synchronization if polling measurements justify it.
-6. Conversational planning through the same domain services.
-7. Optional always-on worker hosting after the developer accepts a paid or
-   otherwise sustainable compute plan.
+## Milestone 7 — Long-term preference learning and timezone completion
 
-Deferred unless a later product decision promotes them: Gemini, Redis, chat
-persistence, WebSockets/SSE, maps, booking, export, collaborative trips, and
-cross-trip learning.
+Add general user-level learned tendencies with inspectable confidence and reversible evidence. Explicit trip preferences must always win. Select the learning algorithm only after requirements and privacy behavior are reviewed.
+
+Complete production-grade IANA timezone behavior across origin/destination display, storage, scheduling, daylight-saving transitions, overnight travel, and multi-timezone boundaries.
+
+Exit evidence: cross-trip isolation and precedence tests, confidence provenance, user correction/reset behavior, and timezone boundary suites.
+
+## Later product expansion
+
+Maps, booking/cancellation, rich export, group collaboration, and other expansions require separate product decisions. They do not block the conversational-planning target defined above.

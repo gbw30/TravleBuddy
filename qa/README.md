@@ -1,8 +1,18 @@
 # TravleBuddy QA Operator Guide
 
+Status: operational
+Authority: QA operation, routing, evidence, and report-only verification
+Related: [Canonical product requirements](../docs/requirements.md), [current implementation](../docs/status/current-implementation.md), [knowledge map](../docs/README.md)
+Last reviewed: 2026-08-09
+
 TravleBuddy uses deterministic checks for reproducible failures and scoped Codex agents for evidence-backed exploration. Verification is report-only: defects are documented, not repaired.
 
 ## Sources of truth
+
+Product intent comes from `docs/requirements.md`; repository reality must be
+checked against code and `docs/status/current-implementation.md`. QA feature
+classification and verification behavior remain controlled by the sources
+below and are not changed by documentation status labels.
 
 - `feature-states.json` contains the active `required`, `candidate`, `planned`, and `deferred` states. `contracts/features.ts` adds feature metadata and enforces transitions.
 - `scenarios/catalog.ts` owns scenario priority, environment, fixture, agent, tags, and invariants.

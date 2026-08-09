@@ -1,8 +1,9 @@
 # Stage 2A - Live Itinerary Scheduling
 
-Status: not started  
-Depends on: Stage 1B and the Phase 9A time-grid foundation; Google Places is not required  
-Estimated effort: 3-5 working days
+Status: stage-plan
+Authority: Deterministic live-scheduling implementation intent
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [preceding stage](03-conversational-intelligence.md)
+Last reviewed: 2026-08-09
 
 ## Goal
 
@@ -144,7 +145,7 @@ Purpose: fulfill the documented requirement that activity days receive restauran
 
 ## Time Semantics
 
-For this prototype, retain the current UTC-anchored itinerary-day slot convention and display it as trip timeline wall-clock labels. Ticketed travel blocks remain authoritative. Full IANA time-zone normalization is required before production-grade international scheduling and is explicitly deferred.
+For this stage, retain the current UTC-anchored itinerary-day slot convention and clearly label it as a prototype limitation. Ticketed travel blocks remain authoritative. The canonical product still requires complete IANA origin/destination local-time handling; that later milestone must cover storage, display, daylight-saving transitions, overnight travel, and cross-timezone boundaries rather than treating UTC labels as final behavior.
 
 ## Test Requirements
 
