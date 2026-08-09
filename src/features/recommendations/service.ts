@@ -1322,6 +1322,8 @@ export async function selectRecommendation(
   tripId: string,
   input: {
     suggestionId: string;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
   control?: PlanningMutationControl,
 ) {
@@ -1360,14 +1362,60 @@ export async function selectRecommendation(
             select: {
               id: true,
               tripId: true,
+              destinationId: true,
               status: true,
               name: true,
+              metadata: true,
             },
           });
 
           if (!suggestion) {
             return {
               status: "suggestion_not_found" as const,
+            };
+          }
+
+          const requestedDestinationId =
+            input.destinationId ?? suggestion.destinationId;
+          const destinationIsValid =
+            !requestedDestinationId ||
+            trip.destinations.some(
+              (destination) => destination.id === requestedDestinationId,
+            );
+          const destinationMatchesSuggestion =
+            !input.destinationId ||
+            !suggestion.destinationId ||
+            input.destinationId === suggestion.destinationId;
+          const generatedPlanningDayNumber = getMetadataValue(
+            suggestion.metadata,
+            "planningDayNumber",
+          );
+          const requestedPlanningDayNumber =
+            input.planningDayNumber ??
+            (typeof generatedPlanningDayNumber === "number"
+              ? generatedPlanningDayNumber
+              : null);
+          const tripStart = trip.startDate?.getTime() ?? Number.NaN;
+          const tripEnd = trip.endDate?.getTime() ?? Number.NaN;
+          const tripDayCount =
+            Number.isFinite(tripStart) &&
+            Number.isFinite(tripEnd) &&
+            tripEnd >= tripStart
+              ? Math.floor((tripEnd - tripStart) / 86_400_000) + 1
+              : 0;
+          const planningDayIsValid =
+            requestedPlanningDayNumber === null ||
+            (Number.isInteger(requestedPlanningDayNumber) &&
+              requestedPlanningDayNumber > 0 &&
+              requestedPlanningDayNumber <= tripDayCount);
+
+          if (
+            !destinationIsValid ||
+            !destinationMatchesSuggestion ||
+            !planningDayIsValid
+          ) {
+            return {
+              status: "invalid_context" as const,
             };
           }
 
@@ -1397,6 +1445,12 @@ export async function selectRecommendation(
               source: "USER",
               action: "SELECT",
               metadata: {
+                ...(requestedDestinationId
+                  ? { destinationId: requestedDestinationId }
+                  : {}),
+                ...(requestedPlanningDayNumber
+                  ? { planningDayNumber: requestedPlanningDayNumber }
+                  : {}),
                 source: "recommendation_pick",
               },
             },
@@ -1407,6 +1461,12 @@ export async function selectRecommendation(
             message: `${suggestion.name} was added to the live plan preview.`,
             metadata: {
               placeSuggestionId: input.suggestionId,
+              ...(requestedDestinationId
+                ? { destinationId: requestedDestinationId }
+                : {}),
+              ...(requestedPlanningDayNumber
+                ? { planningDayNumber: requestedPlanningDayNumber }
+                : {}),
               source: "recommendation_pick",
             },
           });
@@ -2115,7 +2175,10 @@ export async function selectRecommendationFormAction(formData: FormData) {
     redirect("/trips?error=invalid-suggestion");
   }
 
-  const result = await selectRecommendation(userId, tripId, { suggestionId });
+  const result = await selectRecommendation(userId, tripId, {
+    suggestionId,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
   if (result.status === "archived") {
@@ -2134,6 +2197,12 @@ export async function selectRecommendationFormAction(formData: FormData) {
     planningRedirect(
       tripId,
       planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
+  }
+  if (result.status === "invalid_context") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "invalid-planning-context" }),
     );
   }
 

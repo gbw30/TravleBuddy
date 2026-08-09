@@ -75,4 +75,17 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/select route", () =
 
     expect(response.status).toBe(404);
   });
+
+  it("returns 422 when the stored recommendation context is invalid", async () => {
+    mocks.service.selectRecommendation.mockResolvedValue({
+      status: "invalid_context",
+    });
+
+    const response = await POST(mutationRequest(), context);
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: "Suggestion does not match a valid trip day and destination.",
+    });
+  });
 });

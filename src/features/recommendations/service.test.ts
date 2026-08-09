@@ -473,12 +473,19 @@ describe("planning recommendation service", () => {
     mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
       id: "suggestion_1",
       tripId: "trip_1",
+      destinationId: "destination_1",
       status: "PENDING",
       name: "Barcelona Gallery Quarter Hotel",
+      metadata: {
+        topic: "HOTEL_BASE",
+        planningDayNumber: 1,
+      },
     });
 
     const result = await selectRecommendation("user_1", "trip_1", {
       suggestionId: "suggestion_1",
+      destinationId: "destination_1",
+      planningDayNumber: 2,
     });
 
     expect(result.status).toBe("selected");
@@ -497,6 +504,10 @@ describe("planning recommendation service", () => {
         targetType: "PLACE_SUGGESTION",
         placeSuggestionId: "suggestion_1",
         action: "SELECT",
+        metadata: expect.objectContaining({
+          destinationId: "destination_1",
+          planningDayNumber: 2,
+        }),
       }),
     });
     expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
@@ -544,19 +555,55 @@ describe("planning recommendation service", () => {
     mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
       id: "suggestion_1",
       tripId: "trip_1",
+      destinationId: "destination_1",
       status: "PENDING",
       name: "Barcelona Gallery Quarter Hotel",
+      metadata: { topic: "HOTEL_BASE", planningDayNumber: 1 },
     });
     const formData = new FormData();
 
     formData.set("tripId", "trip_1");
     formData.set("topic", "HOTEL_BASE");
     formData.set("suggestionId", "suggestion_1");
+    formData.set("destinationId", "destination_1");
+    formData.set("planningDayNumber", "2");
 
     await selectRecommendationFormAction(formData);
 
     expect(mocks.nextCache.refresh).toHaveBeenCalledOnce();
     expect(mocks.nextNavigation.redirect).not.toHaveBeenCalled();
+    expect(mocks.tx.planningFeedback.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        metadata: expect.objectContaining({
+          destinationId: "destination_1",
+          planningDayNumber: 2,
+        }),
+      }),
+    });
+  });
+
+  it("rejects a recommendation selection with a mismatched city context", async () => {
+    mocks.tx.placeSuggestion.findFirst.mockResolvedValue({
+      id: "suggestion_1",
+      tripId: "trip_1",
+      destinationId: "destination_1",
+      status: "PENDING",
+      name: "Barcelona Gallery Quarter Hotel",
+      metadata: { topic: "HOTEL_BASE", planningDayNumber: 1 },
+    });
+
+    const result = await selectRecommendation("user_1", "trip_1", {
+      suggestionId: "suggestion_1",
+      destinationId: "destination_2",
+      planningDayNumber: 2,
+    });
+
+    expect(result.status).toBe("invalid_context");
+    expect(mocks.tx.placeSuggestion.updateMany).not.toHaveBeenCalled();
+    expect(mocks.tx.planningFeedback.create).not.toHaveBeenCalled();
+    expect(
+      mocks.itinerary.rebuildItineraryDraftForTripTx,
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects an owned recommendation with a reason and timeline event", async () => {

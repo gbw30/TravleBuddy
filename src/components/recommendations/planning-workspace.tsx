@@ -366,6 +366,15 @@ export function PlanningWorkspace({
             automatically.
           </TimedAlert>
         ) : null}
+        {error === "invalid-planning-context" ? (
+          <TimedAlert
+            role="alert"
+            className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            That recommendation does not match the selected trip day and city.
+            Choose the intended day and city, then try again.
+          </TimedAlert>
+        ) : null}
         {error === "invalid-cost" ? (
           <TimedAlert
             role="alert"

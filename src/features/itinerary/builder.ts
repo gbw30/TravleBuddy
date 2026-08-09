@@ -134,6 +134,7 @@ const itineraryVersionSelect = {
 const selectedPlaceSelect = {
   id: true,
   tripId: true,
+  destinationId: true,
   category: true,
   name: true,
   description: true,
@@ -142,6 +143,19 @@ const selectedPlaceSelect = {
   score: true,
   estimatedCostAmount: true,
   estimatedCostCurrency: true,
+  metadata: true,
+  feedback: {
+    where: {
+      action: "SELECT",
+    },
+    select: {
+      metadata: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 1,
+  },
 } satisfies Prisma.PlaceSuggestionSelect;
 
 const itineraryDaySelect = {
@@ -326,6 +340,59 @@ function selectedHotels(places: readonly ItineraryDraftPlace[]) {
 
       return scoreDiff || left.name.localeCompare(right.name);
     });
+}
+
+function metadataPlanningDayNumber(
+  metadata: Prisma.JsonValue | null | undefined,
+) {
+  if (!metadata || Array.isArray(metadata) || typeof metadata !== "object") {
+    return null;
+  }
+
+  const value = metadata.planningDayNumber;
+
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : null;
+}
+
+function placeMatchesCityWindow(
+  place: ItineraryDraftPlace,
+  window: ItineraryDayDto["cityWindows"][number],
+) {
+  if (place.destinationId && window.destinationId === place.destinationId) {
+    return true;
+  }
+
+  return Boolean(
+    place.city &&
+    place.country &&
+    locationKey(place.city, place.country) ===
+      locationKey(window.city, window.country),
+  );
+}
+
+function candidateDayIndexes(
+  place: ItineraryDraftPlace,
+  days: readonly Pick<ItineraryDayDto, "dayNumber" | "cityWindows">[],
+) {
+  const requestedDayIndex = place.planningDayNumber
+    ? days.findIndex((day) => day.dayNumber === place.planningDayNumber)
+    : -1;
+
+  if (requestedDayIndex >= 0) {
+    return [requestedDayIndex];
+  }
+
+  const matchingCityIndexes = days.flatMap((day, index) =>
+    day.cityWindows.some((window) => placeMatchesCityWindow(place, window))
+      ? [index]
+      : [],
+  );
+
+  return matchingCityIndexes.length > 0
+    ? matchingCityIndexes
+    : days.map((_, index) => index);
 }
 
 function totalCost(
@@ -742,21 +809,33 @@ export function buildItineraryDraft({
   const capacity = paceCapacity[trip.preference?.pace ?? "BALANCED"];
   const nonHotels = sortedNonHotels(selectedPlaces);
   const hotels = selectedHotels(selectedPlaces);
+  const dayContexts = dates.map((date, index) => ({
+    dayNumber: index + 1,
+    date,
+    cityWindows: cityWindowsForDate(trip, date, index + 1),
+  }));
+  const assignedNonHotels = dayContexts.map(() => [] as ItineraryDraftPlace[]);
 
-  const days = dates.map((date, index): ItineraryDayDto => {
-    const dayNumber = index + 1;
+  for (const place of nonHotels) {
+    const dayIndex = candidateDayIndexes(place, dayContexts).find(
+      (index) => assignedNonHotels[index].length < capacity,
+    );
+
+    if (dayIndex !== undefined) {
+      assignedNonHotels[dayIndex].push(place);
+    }
+  }
+
+  const days = dayContexts.map((dayContext, index): ItineraryDayDto => {
+    const { date, dayNumber, cityWindows } = dayContext;
     const dayPlaces =
       dayNumber === 1
-        ? [
-            ...hotels,
-            ...nonHotels.slice(index * capacity, (index + 1) * capacity),
-          ]
-        : nonHotels.slice(index * capacity, (index + 1) * capacity);
+        ? [...hotels, ...assignedNonHotels[index]]
+        : assignedNonHotels[index];
     const items = dayPlaces.map((place, sortOrder) =>
       draftItem(place, sortOrder),
     );
     const cost = totalCost(items, trip.budgetCurrency);
-    const cityWindows = cityWindowsForDate(trip, date, dayNumber);
 
     return {
       id: `draft-day-${dayNumber}`,
@@ -795,13 +874,20 @@ export function buildItineraryDraft({
 }
 
 async function selectedPlaces(tx: ItineraryTx, tripId: string) {
-  return tx.placeSuggestion.findMany({
+  const records = await tx.placeSuggestion.findMany({
     where: {
       tripId,
       status: "SELECTED",
     },
     select: selectedPlaceSelect,
   });
+
+  return records.map(({ feedback, metadata, ...record }) => ({
+    ...record,
+    planningDayNumber:
+      metadataPlanningDayNumber(feedback?.[0]?.metadata) ??
+      metadataPlanningDayNumber(metadata),
+  }));
 }
 
 async function persistedItinerary(

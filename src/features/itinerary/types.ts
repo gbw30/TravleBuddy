@@ -45,6 +45,8 @@ export type ItineraryDraftTrip = {
 export type ItineraryDraftPlace = {
   id: string;
   tripId: string;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
   category: SuggestionCategory;
   name: string;
   description: string | null;
