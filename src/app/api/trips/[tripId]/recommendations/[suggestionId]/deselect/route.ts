@@ -3,6 +3,15 @@ import {
   assertAuthenticatedApiUser,
 } from "@/lib/authorization";
 import { deselectRecommendation } from "@/features/recommendations/service";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type DeselectRouteContext = {
   params: Promise<{
@@ -40,13 +49,30 @@ function accessErrorResponse(
   }
 }
 
-export async function POST(_request: Request, context: DeselectRouteContext) {
+export async function POST(request: Request, context: DeselectRouteContext) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId, suggestionId } = await context.params;
-    const result = await deselectRecommendation(userId, tripId, {
-      suggestionId,
-    });
+    const parsedControl = parsePlanningMutationControl(
+      await readPlanningMutationJson(request),
+    );
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
+    const input = { suggestionId };
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "recommendation_deselect",
+      input,
+    );
+    const result = await deselectRecommendation(
+      userId,
+      tripId,
+      input,
+      control,
+    );
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -60,6 +86,9 @@ export async function POST(_request: Request, context: DeselectRouteContext) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to remove selected place.", 500);
   }

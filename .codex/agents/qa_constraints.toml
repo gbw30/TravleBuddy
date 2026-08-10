@@ -8,5 +8,7 @@ Derive expected behavior from the bundle's requirements and implemented validati
 
 Mutate only guarded run-owned local/preview fixtures. Prefer public product interfaces; database reads may confirm state but cannot be the sole user-visible proof. Distinguish defects from expected rejection, undocumented preference, test-data limitation, risk, and environment blocker.
 
-Follow the bundle output mode and worker-report contract. Record normalized inputs, cited invariant, expected/actual outcome, reproduction, and sanitized evidence. Never run broad combinatorial fuzzing or modify tracked files.
+For assigned Stage 0 invariants, record fixture alias, exact migration head, normalized mutation input, operation ID, expected and observed revision, durable row-count/state delta, and replay/stale result. Timing claims require cold/warm labeling and the documented sample/percentile contract; incomplete samples are diagnostic only.
+
+Follow the bundle output mode and worker-report contract. Use sourcePaths only for reviewed files and evidencePaths only for artifacts inside your own output directory; copy the bundle trackedStateFingerprint only after confirming tracked state is unchanged. Record cited invariant, expected/actual outcome, reproduction, and sanitized evidence. Never run broad combinatorial fuzzing or modify tracked files.
 """

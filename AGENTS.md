@@ -1,8 +1,66 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
+
+## Project knowledge map
+
+Start with `docs/README.md`. TravleBuddy documentation separates:
+
+- `docs/requirements.md`: sole canonical target-product specification.
+- `docs/status/current-implementation.md`: evidence-backed implementation summary; confirm claims in code, schema, migrations, and tests.
+- `docs/roadmap.md`: active milestone order.
+- `docs/architecture/README.md`: system boundaries and ADR index.
+- `docs/history/`: non-authoritative implementation history.
+
+Never infer current implementation from a target requirement, permanent product scope from a staged limitation, or present authority from a historical file. Operational safety rules in this file and `docs/operating-constraints.md` remain binding.
+
+| Task                      | Required context                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| Product feature           | Knowledge map → target requirements → current status → relevant code/tests               |
+| Architecture change       | Target → architecture index → relevant ADR → current code                                |
+| Conversational planning   | Target → current status → conversational README → current stage                          |
+| Recommendations/providers | Target recommendation section → Stages 1B/2B → provider/recommendation code → QA state   |
+| Scheduling/timezones      | Target logistics/time section → current limitation → Stage 2A → itinerary/logistics code |
+| Adaptive planning/jobs    | Current status → ADRs 001–004 → adaptive demo → jobs/adaptation code                     |
+| QA/full/release           | QA routing below and generated context bundles                                           |
+| Infrastructure/deployment | Operating constraints → developer finish/setup guide                                     |
+
+## Standing environment and branch constraint
+
+The developer has chosen a fixed, minimal project topology. This is a standing
+instruction for every Codex session working in this repository:
+
+- Use the existing `qa` branch for active integration work and the existing
+  `main` branch for stable/release work. Do not create another Git branch or
+  worktree, including a `codex/*` branch, unless the developer explicitly asks
+  for that specific branch.
+- Reuse the currently configured QA and production databases. Do not create a
+  Neon branch, database clone, disposable cloud database, or additional
+  persistent database. The PostgreSQL service already defined inside the
+  existing PR workflow is allowed; do not add another database topology.
+- Reuse the existing Vercel project, its current QA preview target, and its
+  current production target. Do not create another Vercel project, preview
+  branch, preview environment, or parallel deployment topology. Redeploying the
+  existing targets is allowed.
+- Reuse existing GitHub environments and workflows. Prefer changing code and
+  verification within the current topology over adding deployment lanes.
+- Use the free-first adaptive-planning topology: the existing Vercel QA preview
+  writes durable jobs to the existing Neon QA database, and the standalone
+  worker runs locally for demonstrations. Do not provision Render or another
+  always-on worker host unless the developer explicitly reverses this decision.
+  Keep `render.yaml` only as an optional future paid-hosting template.
+- Do not delete or consolidate existing branches, databases, or deployments
+  without an explicit developer request. The constraint prevents additions; it
+  does not authorize cleanup.
+- If a requested task genuinely cannot proceed without increasing any of these
+  resources, stop and request explicit approval. Do not infer approval from a
+  request to develop, test, deploy, or accelerate the project.
+
+The canonical explanation is `docs/operating-constraints.md`.
 
 ## TravleBuddy QA routing
 

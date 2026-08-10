@@ -9,6 +9,13 @@ const ephemeralPrefix = "qa-run-";
 const baselineOwnerId = "qa-baseline-owner";
 const baselineTripId = "qa-baseline-trip";
 
+export const qaFixtureAliases = Object.freeze({
+  owner: "qa-owner",
+  intruder: "qa-intruder",
+  ownerTrip: "qa-owner-ready-trip",
+  intruderTrip: "qa-intruder-draft-trip",
+} as const);
+
 export type QaFixtureUser = {
   id: string;
   email: string;
@@ -21,6 +28,7 @@ export type QaFixtureManifest = {
   target: "local" | "preview";
   createdAt: string;
   retainUntil: string;
+  aliases: typeof qaFixtureAliases;
   owner: QaFixtureUser;
   attacker: QaFixtureUser;
   ownerTripId: string;
@@ -201,6 +209,7 @@ export async function seedQaFixtures(environment: QaEnvironment) {
     target,
     createdAt: now.toISOString(),
     retainUntil: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    aliases: qaFixtureAliases,
     owner: { id: owner.id, email: owner.email, name: owner.name },
     attacker: {
       id: attacker.id,

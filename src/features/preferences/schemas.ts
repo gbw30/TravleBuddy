@@ -88,26 +88,29 @@ function optionalArrayValue(value: unknown) {
 
 export function parsePreferenceTextList(value: unknown) {
   const values = Array.isArray(value) ? value : [value];
+  const seen = new Set<string>();
 
   return values
     .flatMap((item) => (typeof item === "string" ? item.split(/[,\n]/) : []))
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter((item) => {
+      if (!item) {
+        return false;
+      }
+
+      const key = item.toLocaleLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
 }
 
 export function parseCustomPreferences(value: unknown) {
-  const seen = new Set<string>();
-
-  return parsePreferenceTextList(value).filter((item) => {
-    const key = item.toLocaleLowerCase();
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
+  return parsePreferenceTextList(value);
 }
 
 export function searchCustomPreferenceSuggestions(query: string) {

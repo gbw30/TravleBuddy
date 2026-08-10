@@ -1,5 +1,12 @@
 # Phase 2 Documentation
 
+Status: historical
+Authority: Preserved Phase 2 implementation evidence only
+Related: [Canonical target](../../requirements.md), [current implementation](../../status/current-implementation.md), [active roadmap](../../roadmap.md)
+Last reviewed: 2026-08-09
+
+> **Historical document:** Do not use this document as current product requirements or implementation order. Phase-specific decisions and measurements describe their original implementation period.
+
 This document records Phase 2 implementation decisions and validation results.
 
 It must not include secrets, API keys, database URLs, OAuth credentials, `.env` values, or sensitive terminal output.

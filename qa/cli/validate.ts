@@ -2,7 +2,10 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { parseDocument } from "yaml";
-import { buildAgentContext, serializeBoundedContext } from "../agent-system/context";
+import {
+  buildAgentContext,
+  serializeBoundedContext,
+} from "../agent-system/context";
 import {
   agentInstructionsMaxBytes,
   agentRegistry,
@@ -46,7 +49,8 @@ async function validateAgentFiles() {
     const raw = await readFile(path.join(agentDirectory, fileName), "utf8");
     const parsed = parseToml(raw) as Record<string, unknown>;
     const definition = agentRegistryByName.get(agentName);
-    if (!definition) throw new Error(`Missing typed agent definition: ${agentName}`);
+    if (!definition)
+      throw new Error(`Missing typed agent definition: ${agentName}`);
     if (parsed.name !== agentName) {
       throw new Error(`${fileName} must declare name = "${agentName}".`);
     }
@@ -56,7 +60,9 @@ async function validateAgentFiles() {
       }
     }
     if (parsed.model !== undefined || parsed.sandbox_mode !== undefined) {
-      throw new Error(`${fileName} must inherit model and sandbox from its parent.`);
+      throw new Error(
+        `${fileName} must inherit model and sandbox from its parent.`,
+      );
     }
     if (parsed.model_reasoning_effort !== definition.reasoningEffort) {
       throw new Error(
@@ -100,7 +106,9 @@ async function validateCodexConfiguration() {
     !agents.includes("<!-- BEGIN:nextjs-agent-rules -->") ||
     !agents.includes("node_modules/next/dist/docs/")
   ) {
-    throw new Error("AGENTS.md must preserve the bundled Next.js guidance rule.");
+    throw new Error(
+      "AGENTS.md must preserve the bundled Next.js guidance rule.",
+    );
   }
 }
 
@@ -150,14 +158,44 @@ async function validateWorkflows() {
       );
     }
 
+    if (
+      raw.includes("actions/checkout@") &&
+      !raw.includes("actions/checkout@v6")
+    ) {
+      throw new Error(`${file} must use the Node.js 24 checkout action.`);
+    }
+    if (
+      raw.includes("actions/setup-node@") &&
+      (!raw.includes("actions/setup-node@v7") ||
+        !/node-version:\s*(?:["']?24["']?)/.test(raw))
+    ) {
+      throw new Error(`${file} must use setup-node@v7 with Node.js 24.`);
+    }
+    if (
+      raw.includes("actions/upload-artifact@") &&
+      !raw.includes("actions/upload-artifact@v7")
+    ) {
+      throw new Error(
+        `${file} must use the Node.js 24 upload-artifact action.`,
+      );
+    }
+    if (
+      raw.includes("actions/download-artifact@") &&
+      !raw.includes("actions/download-artifact@v8")
+    ) {
+      throw new Error(
+        `${file} must use the Node.js 24 download-artifact action.`,
+      );
+    }
+
     if (raw.includes("openai/codex-action@v1")) {
       if (!raw.includes("sandbox: read-only")) {
         throw new Error(`${file} must run Codex with sandbox: read-only.`);
       }
-      if (!raw.includes("permissions:\n  contents: read")) {
+      if (!/permissions:\r?\n {2}contents:\s*read(?:\r?\n|$)/.test(raw)) {
         throw new Error(`${file} must grant repository-read permissions only.`);
       }
-      if (!raw.includes("actions/upload-artifact@v4")) {
+      if (!raw.includes("actions/upload-artifact@v7")) {
         throw new Error(`${file} must upload the Codex result as an artifact.`);
       }
       const promptPaths = [...raw.matchAll(/prompt-file:\s*([^\s#]+)/g)].map(
@@ -222,6 +260,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

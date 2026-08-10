@@ -153,7 +153,8 @@ const entries = [
   },
   {
     id: "PREF-P1-COMBINATIONS",
-    title: "Custom and conflicting preference combinations remain deterministic",
+    title:
+      "Custom and conflicting preference combinations remain deterministic",
     feature: "trip-preferences",
     documentedStage: "existing foundation",
     priority: "P1",
@@ -162,7 +163,13 @@ const entries = [
     destructive: true,
     fixtureProfile: "qa-owner-ready-trip",
     owningAgent: "qa_constraints",
-    tags: ["preferences", "deduplication", "dietary", "accessibility", "override"],
+    tags: [
+      "preferences",
+      "deduplication",
+      "dietary",
+      "accessibility",
+      "override",
+    ],
     expectedInvariants: [
       "Comma and newline input is trimmed and deduplicated case-insensitively.",
       "Dietary, accessibility, avoidance, and custom-interest combinations persist without loss.",
@@ -312,6 +319,11 @@ const entries = [
       "Concurrent duplicate operations commit at most once.",
       "A stale client revision is rejected before any state changes.",
     ],
+    requiredEvidence: [
+      "Exact commit, current migration head, database fingerprint, and fixture alias.",
+      "Operation ID, mutation fingerprint, request ordering, expected/observed revisions, response status, and durable ledger/state delta.",
+      "Sequential replay, bounded concurrent replay, stale revision, and operation-ID reuse with a different mutation fingerprint.",
+    ],
   },
   {
     id: "REV-P0-CONCURRENCY",
@@ -329,6 +341,132 @@ const entries = [
       "Two tabs editing one trip do not overwrite a newer accepted revision.",
       "Rapid selection changes preserve one internally consistent snapshot.",
       "Simultaneous conflict refreshes do not duplicate or lose conflict history.",
+    ],
+    requiredEvidence: [
+      "Exact commit, current migration head, fixture alias, browser contexts, and action ordering.",
+      "Pre/post planning revisions plus persisted state after both contexts reload.",
+      "Bounded request timing and sanitized response/state artifacts.",
+    ],
+  },
+  {
+    id: "ADAPT-P0-VERSIONED-REPLACEMENT",
+    title: "Item feedback creates an explainable copy-on-write replacement",
+    feature: "adaptive-planning",
+    documentedStage: "Adaptive planning vertical slice",
+    priority: "P0",
+    environments: localAndPreview,
+    executionKind: "integration",
+    destructive: true,
+    fixtureProfile: "qa-owner-selected-places",
+    owningAgent: "qa_constraints",
+    tags: [
+      "candidate",
+      "adaptation",
+      "preferences",
+      "copy-on-write",
+      "conflicts",
+    ],
+    expectedInvariants: [
+      "TOO_EXPENSIVE raises non-explicit price sensitivity and confidence by exactly 0.10 within bounds while explicit signals remain authoritative.",
+      "The exact rejected suggestion is excluded and deterministic ranking uses score, rating, provider ID, then name.",
+      "Only the affected item changes, unrelated days and accepted items are preserved, and a successor activates only after deterministic validation.",
+      "No compatible replacement activates the preference version, preserves the active itinerary, and completes as NO_REPLACEMENT.",
+    ],
+    requiredEvidence: [
+      "Captured trip, preference, and parent-itinerary versions plus the resulting preference delta.",
+      "Before/after item identities for every day, deterministic candidate ordering, conflict summary, and active version pointers.",
+      "A no-replacement execution proving that the parent itinerary remains active.",
+    ],
+  },
+  {
+    id: "ADAPT-P0-RELOAD-PROGRESS",
+    title: "Adaptive progress and version history survive reload",
+    feature: "adaptive-planning",
+    documentedStage: "Adaptive planning vertical slice",
+    priority: "P0",
+    environments: localAndPreview,
+    executionKind: "browser",
+    destructive: true,
+    fixtureProfile: "qa-owner-selected-places",
+    owningAgent: "qa_journeys",
+    tags: [
+      "candidate",
+      "adaptation",
+      "polling",
+      "reload",
+      "accessibility",
+      "responsive",
+    ],
+    expectedInvariants: [
+      "Item feedback controls are keyboard operable, clearly labelled, and expose pending state without hiding the current itinerary.",
+      "Reload resumes polling from persisted active jobs and stops after a terminal state.",
+      "The UI presents preference delta, explanation, affected day, retry guidance, provider provenance, and version history without exposing internal payloads.",
+    ],
+    requiredEvidence: [
+      "Desktop and mobile browser evidence covering submission, reload during processing, terminal rendering, and keyboard operation.",
+      "Sanitized feedback POST and bounded job GET response shapes correlated by job ID.",
+    ],
+  },
+  {
+    id: "JOB-P0-CLAIM-AND-STALE-SAFETY",
+    title: "Concurrent workers claim once and stale attempts cannot activate",
+    feature: "durable-planning-jobs",
+    documentedStage: "Adaptive planning vertical slice",
+    priority: "P0",
+    environments: localAndPreview,
+    executionKind: "integration",
+    destructive: true,
+    fixtureProfile: "qa-owner-ready-trip-two-tabs",
+    owningAgent: "qa_security_concurrency",
+    tags: [
+      "candidate",
+      "jobs",
+      "skip-locked",
+      "lease",
+      "idempotency",
+      "stale-write",
+    ],
+    expectedInvariants: [
+      "Two atomic claimers cannot own one available job concurrently and duplicate delivery creates at most one successor version.",
+      "An expired or reassigned attempt cannot persist provider results or activate preference or itinerary versions.",
+      "A newer trip, preference, or parent-itinerary version causes the older job to finish SUPERSEDED without overwriting current state.",
+      "Owner reads succeed while cross-user job and version reads remain non-disclosing.",
+    ],
+    requiredEvidence: [
+      "Disposable PostgreSQL identity, claimant IDs, attempt numbers, lease timestamps, and claim ordering.",
+      "Pre/post job, feedback, trip, and active-version rows for duplicate, reassigned, and superseded executions.",
+    ],
+  },
+  {
+    id: "JOB-P1-RECOVERY-AND-FAILURES",
+    title:
+      "Worker interruption, retries, and provider failures recover visibly",
+    feature: "durable-planning-jobs",
+    documentedStage: "Adaptive planning vertical slice",
+    priority: "P1",
+    environments: localAndPreview,
+    executionKind: "integration",
+    destructive: true,
+    fixtureProfile: "qa-owner-provider-trip",
+    owningAgent: "qa_resilience_production",
+    tags: [
+      "candidate",
+      "worker",
+      "heartbeat",
+      "recovery",
+      "retry",
+      "dead-letter",
+      "provider",
+    ],
+    expectedInvariants: [
+      "Heartbeats renew a 30-second lease at five-second intervals and abandoned attempts recover without manual repair.",
+      "Retry scheduling is bounded by the documented 5, 20, and 60 second policy and the third failed attempt dead-letters.",
+      "SIGTERM stops new claims while current work completes or becomes safely recoverable.",
+      "Provider timeout, quota, malformed response, and unavailable configuration preserve the active itinerary and expose sanitized guidance.",
+    ],
+    requiredEvidence: [
+      "Structured worker logs, attempt/event timelines, retry availability timestamps, and recovery/dead-letter state.",
+      "Evidence that logs and public DTOs omit database URLs, provider keys, raw payloads, and raw provider metadata.",
     ],
   },
   {
@@ -414,7 +552,7 @@ const entries = [
     destructive: true,
     fixtureProfile: "qa-owner-provider-trip",
     owningAgent: "qa_resilience_production",
-    tags: ["planned", "google", "normalization", "quota", "timeout"],
+    tags: ["candidate", "google", "normalization", "quota", "timeout"],
     expectedInvariants: [
       "Normalized provider results upsert by stable identity and retain provider labels.",
       "Empty, malformed, quota, and timeout responses produce recoverable states.",
@@ -437,6 +575,11 @@ const entries = [
       "Interaction, database-local, and initial-content p95 values meet stage budgets.",
       "Planning snapshots and query counts stay within documented limits.",
       "Read paths do not mutate data or broadly refresh the page.",
+    ],
+    requiredEvidence: [
+      "Exact commit, migration head, stable fixture identity, preview environment, and provider mode.",
+      "Cold samples excluded and at least 20 warm samples per claimed operation.",
+      "Percentile method, p50/p95/max, query-count p95, payload-bytes p95, and separately reported provider latency.",
     ],
   },
   {
@@ -477,7 +620,8 @@ const entries = [
   },
   {
     id: "MAP-P2-PRESENTATION",
-    title: "Map markers and filters degrade safely when provider data is missing",
+    title:
+      "Map markers and filters degrade safely when provider data is missing",
     feature: "maps",
     documentedStage: "post-prototype",
     priority: "P2",
@@ -520,4 +664,3 @@ export const scenarioCatalog = Object.freeze(
 export function validateScenarioCatalog(input: unknown) {
   return scenarioCatalogSchema.parse(input);
 }
-

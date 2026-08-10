@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   qaFixtureManifestPath,
+  qaFixtureAliases,
   qaResultsDirectory,
   safeRunId,
 } from "./fixtures";
@@ -17,5 +18,13 @@ describe("QA fixture identity", () => {
   test("rejects unusable run identifiers", () => {
     expect(() => safeRunId("!!")).toThrow("three safe characters");
   });
-});
 
+  test("publishes stable non-secret aliases for evidence correlation", () => {
+    expect(qaFixtureAliases).toEqual({
+      owner: "qa-owner",
+      intruder: "qa-intruder",
+      ownerTrip: "qa-owner-ready-trip",
+      intruderTrip: "qa-intruder-draft-trip",
+    });
+  });
+});

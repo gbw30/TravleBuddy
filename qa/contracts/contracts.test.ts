@@ -17,12 +17,19 @@ import { scenarioCatalog } from "../scenarios/catalog";
 
 describe("QA contracts", () => {
   it("loads a complete, uniquely keyed feature registry", () => {
-    expect(featureRegistry).toHaveLength(18);
+    expect(featureRegistry).toHaveLength(20);
     expect(featureRegistryById.size).toBe(featureRegistry.length);
     expect(featureRegistryById.get("authentication")?.state).toBe("required");
     expect(featureRegistryById.get("conversation-persistence")?.state).toBe(
       "planned",
     );
+    expect(featureRegistryById.get("adaptive-planning")?.state).toBe(
+      "candidate",
+    );
+    expect(featureRegistryById.get("durable-planning-jobs")?.state).toBe(
+      "candidate",
+    );
+    expect(featureRegistryById.get("google-places")?.state).toBe("candidate");
     expect(featureRegistryById.get("maps")?.state).toBe("deferred");
   });
 

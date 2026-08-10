@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     trip: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
     },
@@ -34,6 +35,12 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
       findMany: vi.fn(),
     },
+    itineraryVersion: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     itineraryCityWindow: {
       deleteMany: vi.fn(),
       createMany: vi.fn(),
@@ -52,6 +59,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { buildItineraryDraft, rebuildItinerary } from "./builder";
+import type { ItineraryDraftPlace } from "./types";
 
 const baseTrip = {
   id: "trip_1",
@@ -76,6 +84,8 @@ function place(
     | "ENTERTAINMENT",
   score: number,
   estimatedCostAmount: number | null = null,
+  estimatedCostCurrency = "EUR",
+  overrides: Partial<ItineraryDraftPlace> = {},
 ) {
   return {
     id,
@@ -85,7 +95,9 @@ function place(
     description: null,
     score,
     estimatedCostAmount,
-    estimatedCostCurrency: estimatedCostAmount === null ? null : "EUR",
+    estimatedCostCurrency:
+      estimatedCostAmount === null ? null : estimatedCostCurrency,
+    ...overrides,
   };
 }
 
@@ -98,7 +110,44 @@ describe("buildItineraryDraft", () => {
       title: "Barcelona",
       status: "PLANNING",
       budgetAmount: "1500",
+      activePreferenceProfileVersionId: "preference_version_1",
+      activeItineraryVersionId: "itinerary_version_1",
       destinations: [{ id: "destination_1" }],
+    });
+    mocks.tx.trip.update.mockResolvedValue({
+      activeItineraryVersionId: "itinerary_version_2",
+    });
+    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
+    mocks.tx.itineraryVersion.findFirst.mockResolvedValue({ version: 1 });
+    mocks.tx.itineraryVersion.create.mockResolvedValue({
+      id: "itinerary_version_2",
+      version: 2,
+      parentVersionId: "itinerary_version_1",
+      preferenceProfileVersionId: "preference_version_1",
+      status: "DRAFT",
+      changeScope: "FULL",
+      changeSummary: {
+        reason: "selected_places_rebuild",
+        itemCount: 2,
+      },
+      createdAt: new Date("2026-07-01T00:00:00.000Z"),
+      activatedAt: null,
+    });
+    mocks.tx.itineraryVersion.updateMany.mockResolvedValue({ count: 1 });
+    mocks.tx.itineraryVersion.update.mockResolvedValue({
+      id: "itinerary_version_2",
+      version: 2,
+      parentVersionId: "itinerary_version_1",
+      preferenceProfileVersionId: "preference_version_1",
+      status: "ACTIVE",
+      changeScope: "FULL",
+      changeSummary: {
+        reason: "selected_places_rebuild",
+        itemCount: 2,
+      },
+      createdAt: new Date("2026-07-01T00:00:00.000Z"),
+      activatedAt: new Date("2026-07-01T00:00:01.000Z"),
     });
     mocks.tx.placeSuggestion.findMany.mockResolvedValue([
       place("hotel", "HOTEL", 80, 300),
@@ -146,11 +195,15 @@ describe("buildItineraryDraft", () => {
       }),
     ).toEqual({
       status: "no_selected_places",
+      version: null,
       days: [],
+      unscheduledItems: [],
       totals: {
         itemCount: 0,
         estimatedCostAmount: null,
         estimatedCostCurrency: null,
+        costIsComplete: true,
+        excludedCostCurrencies: [],
       },
       conflicts: [],
       conflictSummary: {
@@ -160,8 +213,6 @@ describe("buildItineraryDraft", () => {
         high: 0,
       },
     });
-    mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
-    mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
   });
 
   it("creates one day for every trip date and puts hotels first on day one", () => {
@@ -216,6 +267,134 @@ describe("buildItineraryDraft", () => {
 
     expect(result.status).toBe("built");
     expect(result.days.map((day) => day.itemCount)).toEqual([3, 1, 0]);
+  });
+
+  it("routes explicitly assigned activities to their selected days", () => {
+    const result = buildItineraryDraft({
+      trip: baseTrip,
+      selectedPlaces: [
+        place("unassigned", "ATTRACTION", 95),
+        place("madrid-day-2", "ACTIVITY", 90, null, "EUR", {
+          destinationId: "destination_2",
+          planningDayNumber: 2,
+          city: "Madrid",
+          country: "Spain",
+        }),
+        place("barcelona-day-3", "RESTAURANT", 85, null, "EUR", {
+          destinationId: "destination_1",
+          planningDayNumber: 3,
+          city: "Barcelona",
+          country: "Spain",
+        }),
+      ],
+    });
+
+    expect(
+      result.days.map((day) => day.items.map((item) => item.title)),
+    ).toEqual([
+      ["ATTRACTION unassigned"],
+      ["ACTIVITY madrid-day-2"],
+      ["RESTAURANT barcelona-day-3"],
+    ]);
+    expect(result.days[1]?.items[0]).toMatchObject({
+      city: "Madrid",
+      country: "Spain",
+    });
+  });
+
+  it("uses ticketed city windows when a selected place has no explicit day", () => {
+    const result = buildItineraryDraft({
+      trip: {
+        ...baseTrip,
+        logisticsMode: "TICKETED" as const,
+        destinations: [
+          {
+            id: "destination_1",
+            city: "Los Angeles",
+            country: "United States",
+          },
+          {
+            id: "destination_2",
+            city: "New York",
+            country: "United States",
+          },
+        ],
+        travelSegments: [
+          {
+            id: "segment_1",
+            originCity: "Los Angeles",
+            originCountry: "United States",
+            destinationCity: "New York",
+            destinationCountry: "United States",
+            departAt: new Date("2026-07-02T14:00:00.000Z"),
+            arriveAt: new Date("2026-07-02T20:00:00.000Z"),
+          },
+        ],
+      },
+      selectedPlaces: [
+        place("new-york-museum", "ATTRACTION", 90, null, "EUR", {
+          destinationId: "destination_2",
+          city: "New York",
+          country: "United States",
+        }),
+      ],
+    });
+
+    expect(result.days[0]?.items).toHaveLength(0);
+    expect(result.days[1]?.items).toEqual([
+      expect.objectContaining({
+        placeSuggestionId: "new-york-museum",
+        city: "New York",
+      }),
+    ]);
+  });
+
+  it("preserves selected pace overflow as explicit unscheduled items", () => {
+    const result = buildItineraryDraft({
+      trip: {
+        ...baseTrip,
+        endDate: baseTrip.startDate,
+        preference: {
+          pace: "RELAXED" as const,
+        },
+      },
+      selectedPlaces: [
+        place("a", "ATTRACTION", 90),
+        place("b", "ATTRACTION", 80),
+        place("c", "ACTIVITY", 70),
+        place("overflow", "RESTAURANT", 60),
+      ],
+    });
+
+    expect(result.status).toBe("built");
+    expect(result.days[0]?.itemCount).toBe(3);
+    expect(result.unscheduledItems).toEqual([
+      expect.objectContaining({
+        placeSuggestionId: "overflow",
+        title: "RESTAURANT overflow",
+        reason: "PACE_CAPACITY_EXCEEDED",
+        reasonMessage: expect.stringContaining("pace capacity"),
+      }),
+    ]);
+  });
+
+  it("marks mixed-currency itinerary totals as partial and exposes exclusions", () => {
+    const result = buildItineraryDraft({
+      trip: baseTrip,
+      selectedPlaces: [
+        place("eur", "ATTRACTION", 90, 100, "EUR"),
+        place("usd", "RESTAURANT", 80, 75, "USD"),
+        place("gbp", "ACTIVITY", 70, 50, "GBP"),
+        place("usd-2", "LANDMARK", 60, 25, "USD"),
+      ],
+    });
+
+    expect(result.totals).toMatchObject({
+      estimatedCostAmount: 100,
+      estimatedCostCurrency: "EUR",
+      costIsComplete: false,
+      excludedCostCurrencies: ["GBP", "USD"],
+    });
   });
 
   it("orders categories deterministically before score within each category", () => {
@@ -298,7 +477,7 @@ describe("buildItineraryDraft", () => {
     ).toHaveLength(12);
   });
 
-  it("replaces previous generated itinerary rows before persisting a rebuild", async () => {
+  it("persists and activates a successor version without deleting history", async () => {
     const result = await rebuildItinerary("user_1", "trip_1");
 
     expect(result.status).toBe("rebuilt");
@@ -306,80 +485,37 @@ describe("buildItineraryDraft", () => {
     if (result.status !== "rebuilt") {
       throw new Error("Expected itinerary rebuild.");
     }
-    expect(mocks.tx.planningFeedback.findMany).toHaveBeenCalledWith({
-      where: {
+    expect(mocks.tx.itineraryVersion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
         tripId: "trip_1",
-        OR: [
-          { targetType: "ITINERARY_DAY" },
-          { targetType: "ITINERARY_ITEM" },
-          { targetType: "CONFLICT" },
-        ],
-      },
-      select: expect.objectContaining({
-        id: true,
-        targetType: true,
-        targetId: true,
-        metadata: true,
+        version: 2,
+        parentVersionId: "itinerary_version_1",
+        preferenceProfileVersionId: "preference_version_1",
+        status: "DRAFT",
+        changeScope: "FULL",
       }),
+      select: expect.any(Object),
     });
-    expect(mocks.tx.planningFeedback.update).toHaveBeenCalledWith({
+    expect(mocks.tx.itineraryVersion.updateMany).toHaveBeenCalledWith({
       where: {
-        id: "feedback_1",
+        id: "itinerary_version_1",
+        tripId: "trip_1",
+        status: "ACTIVE",
       },
       data: {
-        targetType: "TRIP",
-        targetId: "trip_1",
-        itineraryDayId: null,
-        itineraryItemId: null,
-        conflictId: null,
-        metadata: {
-          source: "qa",
-          detachedBy: "itinerary_rebuild",
-          originalTarget: {
-            targetType: "ITINERARY_ITEM",
-            targetId: "old_item_1",
-            itineraryDayId: null,
-            itineraryItemId: "old_item_1",
-            conflictId: null,
-          },
-        },
+        status: "SUPERSEDED",
       },
     });
-    expect(mocks.tx.conflict.updateMany).toHaveBeenCalledWith({
+    expect(mocks.tx.trip.update).toHaveBeenCalledWith({
       where: {
-        tripId: "trip_1",
-        status: {
-          not: "OPEN",
-        },
-        itineraryItemId: {
-          not: null,
-        },
+        id: "trip_1",
       },
       data: {
-        itineraryItemId: null,
+        activeItineraryVersionId: "itinerary_version_2",
       },
     });
-    expect(mocks.tx.conflict.deleteMany).toHaveBeenCalledWith({
-      where: {
-        tripId: "trip_1",
-        status: "OPEN",
-      },
-    });
-    expect(mocks.tx.itineraryItem.deleteMany).toHaveBeenCalledWith({
-      where: {
-        tripId: "trip_1",
-      },
-    });
-    expect(mocks.tx.itineraryDay.deleteMany).toHaveBeenCalledWith({
-      where: {
-        tripId: "trip_1",
-      },
-    });
-    expect(mocks.tx.itineraryCityWindow.deleteMany).toHaveBeenCalledWith({
-      where: {
-        tripId: "trip_1",
-      },
-    });
+    expect(mocks.tx.itineraryItem.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.tx.itineraryDay.deleteMany).not.toHaveBeenCalled();
     expect(mocks.tx.itineraryDay.create).toHaveBeenCalledTimes(3);
     expect(mocks.tx.itineraryItem.create).toHaveBeenCalledTimes(2);
     expect(mocks.tx.planningEvent.create).toHaveBeenCalledWith({
@@ -394,6 +530,39 @@ describe("buildItineraryDraft", () => {
       estimatedCostAmount: 320,
       estimatedCostCurrency: "EUR",
     });
+  });
+
+  it("rebuilds from the immutable selection day instead of regenerated metadata", async () => {
+    mocks.tx.placeSuggestion.findMany.mockResolvedValue([
+      {
+        ...place("day-two-activity", "ACTIVITY", 90, 40),
+        destinationId: "destination_1",
+        metadata: {
+          planningDayNumber: 1,
+        },
+        feedback: [
+          {
+            metadata: {
+              destinationId: "destination_1",
+              planningDayNumber: 2,
+              source: "recommendation_pick",
+            },
+          },
+        ],
+      },
+    ]);
+
+    const result = await rebuildItinerary("user_1", "trip_1");
+
+    expect(result.status).toBe("rebuilt");
+    expect(mocks.tx.itineraryItem.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dayId: "day_2",
+          placeSuggestionId: "day-two-activity",
+        }),
+      }),
+    );
   });
 
   it("persists generated itinerary rows sequentially inside the transaction", async () => {

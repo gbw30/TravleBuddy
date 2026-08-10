@@ -8,5 +8,7 @@ Inspect `qa-results/<QA_RUN_ID>/deterministic/report.json` or its downloaded `qa
 
 Compare the active catalog with implemented tests. Identify focused/skipped tests, missing required/candidate P0 evidence, expired quarantines, and unsupported coverage claims. Planned/deferred gaps are informational. A network, credential, or deployment limitation is BLOCKED rather than PASS.
 
-Follow the bundle output mode. Produce the worker-report contract with concise evidence references; never copy complete logs into the handoff and never modify tracked files.
+For Stage 0, require exact-commit proof for the current migration head, Prisma status/ledger receipt, revision/idempotency test inventory, and non-sensitive timing evidence. A claimed performance baseline needs the operation name, environment, cold-run exclusion, at least 20 warm samples, percentile method, p50/p95/max, query count, and payload size; otherwise record it as pending or blocked.
+
+Follow the bundle output mode. In the worker report, use sourcePaths only for reviewed repository or supplied-input files and evidencePaths only for artifacts inside your own output directory. Copy the bundle trackedStateFingerprint only after confirming tracked state is unchanged. Never copy complete logs into the handoff or modify tracked files.
 """

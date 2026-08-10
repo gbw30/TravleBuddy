@@ -1,135 +1,68 @@
-# Conversational Planning Development Pack
+# Conversational Planning Implementation Pack
 
-Status: approved planning baseline  
-Purpose: standalone context for implementing the conversational planning prototype  
-Primary route: `/trips/[tripId]/planning`
+Status: stage-plan
+Authority: Active post-adaptive implementation stages and cross-stage invariants
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [architecture](../architecture/README.md)
+Last reviewed: 2026-08-09
 
-## Product Outcome
+This pack becomes active after the adaptive-planning evidence milestone is complete. It describes implementation sequence, not a competing product specification. If a stage assumption conflicts with the canonical target, the target wins; if it describes a capability absent from code, the current-state document must continue to mark it planned.
 
-TravleBuddy should guide planning primarily through a persisted conversation. The application asks focused questions, converts answers into validated trip preferences, recommends places when enough context exists, accepts selections or rerolls, and rebuilds a visible itinerary while the conversation continues.
+## Product outcome
 
-The prototype is complete when a user can:
+A traveler plans within one durable workspace where conversation, structured answers, recommendations, conflicts, and a highly visible live itinerary remain synchronized. The system asks focused questions, presents exactly three recommendation cards per user-facing batch, preserves accepted choices, and applies deterministic backend rules to authoritative state.
 
-1. Start or resume a trip conversation.
-2. Answer through natural language or suggested answer controls.
-3. See the trip preference profile change.
-4. Receive five relevant place recommendations.
-5. Select, reject, remove, or reroll recommendations.
-6. See selected activities and restaurants placed into a persisted itinerary.
-7. See budget, schedule, location, and restaurant-coverage conflicts without a page reload.
-8. Reload the page and continue without losing messages or itinerary state.
+## Existing foundation
 
-## Existing Foundation
+The repository already provides authentication and ownership, trip/preferences/logistics, deterministic recommendations, itinerary/conflict services, planning revisions, replay protection, compact snapshots, adaptive preference/itinerary versions, PostgreSQL jobs, resilient polling, and Google/mock provider adapters for adaptive replacement.
 
-The repository already contains:
+It does not yet provide durable conversation/message records, a conversational controller, general AI intent extraction, exact activity scheduling, primary-flow Google recommendations, general cross-trip learning, or production-grade timezone behavior. See [current implementation status](../status/current-implementation.md).
 
-- Authenticated App Router pages, Server Actions, and route handlers.
-- Neon PostgreSQL through Prisma.
-- Trip-local structured preferences.
-- Deterministic natural-language keyword extraction.
-- Persisted planning feedback and planning events.
-- Mock recommendation scoring and selection feedback.
-- A persisted itinerary builder and conflict engine.
-- Ticketed/flexible logistics, city windows, and 48 half-hour slots per day.
+## Global architecture decisions
 
-The new work must reuse these services instead of creating parallel recommendation, itinerary, or conflict systems.
+- PostgreSQL and backend domain services remain authoritative.
+- AI extracts or explains; schema validation and deterministic services decide what commits.
+- Each turn carries an operation ID and expected planning revision and performs at most one authoritative rebuild.
+- Exactly three recommendation cards are visible per batch; candidate pools may be larger.
+- Explicit trip preferences override reusable defaults and learned tendencies.
+- Selected-but-unscheduled items remain visible.
+- The itinerary is prominent in the same responsive workspace, conceptually above conversation by default; component layout is not fixed.
+- Existing forms remain transitional fallback paths until conversational QA passes.
+- PostgreSQL jobs are available for work that genuinely benefits from asynchronous execution; ordinary turns need not become jobs.
+- Optional caching or new infrastructure is measurement-gated and requires an explicit topology decision.
 
-Stage 0 now also provides a trip-owned planning revision, a replay-safe mutation ledger, compact planning snapshots, pure itinerary reads, and structured operation timings. The migration is implemented but must be applied only after the target database is confirmed as development or QA and distinct from production.
+## Ordered stages
 
-## Global Architecture Decisions
+| Stage | Document                                                             | Outcome                                                                                                         |
+| ----- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 0     | [Foundation and contracts](01-foundation-and-contracts.md)           | Implemented planning revision, replay, snapshot, and measurement foundations; final evidence tracked separately |
+| 1A    | [Conversation persistence and UI](02-conversation-persistence-ui.md) | Durable messages and one responsive planning workspace                                                          |
+| 1B    | [Conversational intelligence](03-conversational-intelligence.md)     | Validated intent, focused questions, and three-card interactions                                                |
+| 2A    | [Live itinerary scheduling](04-live-itinerary-scheduling.md)         | Deterministic placement, logistics, and conflict recovery                                                       |
+| 2B    | [Real place recommendations](05-real-place-recommendations.md)       | Existing provider boundary extended into the primary flow                                                       |
+| 3A    | [Interaction performance](06-interaction-performance.md)             | Measurement-led query, payload, and rendering improvements                                                      |
+| 3B    | [Cache and production hardening](07-cache-production-hardening.md)   | Optional evidence-gated cache, limits, resilience, and production QA                                            |
 
-### Ownership
+Complete stages in order unless the active roadmap explicitly changes sequencing. General preference learning and final timezone correctness are later roadmap milestones because their full algorithms and boundary suites are not selected here.
 
-- PostgreSQL is the source of truth.
-- Backend services own authorization, validation, preference merging, recommendation scoring, itinerary generation, and conflicts.
-- AI extracts intent and writes explanations; it never writes arbitrary database state.
-- Google supplies place and later route data through provider adapters.
-- Redis is optional cache-aside infrastructure and is never required for correctness.
+## Cross-stage invariants
 
-### AI Strategy
+- Owner scoping and archived-trip rules apply to every read and mutation.
+- DTOs are bounded; raw model/provider payloads never reach the browser.
+- Replays create no duplicate message, version, selection, or itinerary mutation.
+- Stale work cannot overwrite a newer trip revision or parent version.
+- A valid active itinerary remains available until a valid successor commits.
+- Deterministic mock behavior remains available for automated tests.
+- Provider, AI, cache, and worker failures produce explicit recoverable states.
+- Accessible semantic controls and responsive behavior survive later visual replacement.
 
-Use AI SDK with an environment-selected Gemini model through Vercel AI Gateway. Hide model construction behind a lazy `getPlanningModel()` function. Keep deterministic extraction and response templates as the fallback when AI is unavailable.
+## Context workflow
 
-Use a hybrid controller:
+For a stage task, read only:
 
-1. Parse the user message into a validated planning intent.
-2. Resolve references against authorized server state.
-3. Execute deterministic services.
-4. Generate or stream an explanation of the result.
+1. [Canonical requirements](../requirements.md).
+2. [Current implementation status](../status/current-implementation.md).
+3. [Architecture](../architecture/README.md) and relevant ADRs.
+4. This README and the current stage.
+5. Relevant code, tests, QA feature states, and scenarios.
 
-Do not begin with an unrestricted autonomous agent loop.
-
-### Interaction Strategy
-
-- Server Components load the initial planning snapshot.
-- A focused Client Component owns the chat stream and optimistic state.
-- One streaming route handles conversational turns.
-- Chat tools call feature services directly, not the application's own HTTP routes.
-- Mutations return a compact updated planning snapshot.
-- The primary path must not call `router.refresh()` or broadly revalidate the page after each turn.
-
-### UI Strategy
-
-Chat is primary. Existing structured controls remain in a collapsed `Edit details` fallback until conversational QA passes. Behavior containers and typed presentational components must remain separate so later visual redesign does not replace planning logic.
-
-## Ordered Stages
-
-| Stage | Document                                                               | Outcome                                                   | Estimate |
-| ----- | ---------------------------------------------------------------------- | --------------------------------------------------------- | -------- |
-| 0     | [Foundation and contracts](./01-foundation-and-contracts.md)           | Stable baseline, measurements, DTO and revision contracts | 1-2 days |
-| 1A    | [Conversation persistence and UI](./02-conversation-persistence-ui.md) | Persisted deterministic chat shell with live itinerary    | 2-3 days |
-| 1B    | [Conversational intelligence](./03-conversational-intelligence.md)     | Natural-language preference and mock recommendation loop  | 3-4 days |
-| 2A    | [Live itinerary scheduling](./04-live-itinerary-scheduling.md)         | Activities and restaurants placed in 30-minute slots      | 3-5 days |
-| 2B    | [Real place recommendations](./05-real-place-recommendations.md)       | Google Places behind a tested provider boundary           | 2-4 days |
-| 3A    | [Interaction performance](./06-interaction-performance.md)             | Smaller reads, no broad refreshes, measured latency       | 2-3 days |
-| 3B    | [Cache and production hardening](./07-cache-production-hardening.md)   | Optional Redis, limits, resilience, production QA         | 2-4 days |
-
-Stages 0, 1A, and 1B must be implemented in order. After Stage 1B passes, Stages 2A and 2B may be developed in parallel, but the deterministic scheduler should merge first so the complete product loop remains testable without Google. Stage 3 begins only after both Stage 2 stages pass.
-
-## Cross-Stage Invariants
-
-- Every route and tool verifies authentication and trip ownership.
-- Every external or model response is schema-validated.
-- Every mutation is idempotent or protected by a client revision.
-- One conversational turn rebuilds the itinerary at most once.
-- Conflict checks run after itinerary-affecting mutations, not after every token or UI interaction.
-- Resolved and ignored conflict history is preserved.
-- Selected places are never silently dropped when scheduling fails.
-- Provider, AI, cache, and scheduler failures produce recoverable user states.
-- Secrets and raw prompts are not exposed to the browser or production logs.
-
-## Context Management Workflow
-
-For a fresh implementation chat:
-
-1. Attach or paste this README.
-2. Attach only the document for the next incomplete stage.
-3. Ask the agent to inspect the repository before changing files.
-4. Require the stage exit criteria and full verification before moving on.
-5. Update that stage document's status and completion record after implementation.
-
-Do not provide all stage documents to an implementation chat unless cross-stage architecture is being revised. Each stage file is intentionally self-contained.
-
-## Completion Tracking
-
-- [ ] Stage 0 - Foundation and contracts (implementation complete; migration, manual QA, and latency baseline pending)
-- [ ] Stage 1A - Conversation persistence and UI shell
-- [ ] Stage 1B - Conversational intelligence
-- [ ] Stage 2A - Live itinerary scheduling
-- [ ] Stage 2B - Real place recommendations
-- [ ] Stage 3A - Interaction performance
-- [ ] Stage 3B - Cache and production hardening
-
-Stage 0 automated evidence as of 2026-07-17: ESLint, TypeScript, Prisma validation, and 213 tests pass. Migration `20260717090000_stage0_planning_revision` is pending on the configured Neon datasource. The production build remains environment-blocked by configured Google font downloads, and no font configuration was changed.
-
-## Final Prototype Boundary
-
-Deferred until after this pack is complete:
-
-- Final visual design and branding.
-- Drag-and-drop itinerary editing.
-- Complete IANA time-zone handling.
-- Google Routes and opening-hours optimization beyond documented fallbacks.
-- Map presentation and export polish.
-- Ticket document parsing, reservations, and booking.
-- Background queues unless measurements show synchronous limits are exceeded.
+Do not use historical phase documents to define current implementation order.

@@ -3,6 +3,8 @@ import type {
   ConflictStatus,
   ConflictType,
   CityWindowSource,
+  ItineraryChangeScope,
+  ItineraryVersionStatus,
   Prisma,
   SuggestionCategory,
   TripLogisticsMode,
@@ -43,6 +45,8 @@ export type ItineraryDraftTrip = {
 export type ItineraryDraftPlace = {
   id: string;
   tripId: string;
+  destinationId?: string | null;
+  planningDayNumber?: number | null;
   category: SuggestionCategory;
   name: string;
   description: string | null;
@@ -95,6 +99,8 @@ export type ItineraryDayDto = {
   itemCount: number;
   estimatedCostAmount: number | null;
   estimatedCostCurrency: string | null;
+  costIsComplete: boolean;
+  excludedCostCurrencies: string[];
   cityWindows: ItineraryCityWindowDto[];
   timeSlots: ItineraryTimeSlotDto[];
   items: ItineraryItemDto[];
@@ -104,6 +110,13 @@ export type ItineraryTotalsDto = {
   itemCount: number;
   estimatedCostAmount: number | null;
   estimatedCostCurrency: string | null;
+  costIsComplete: boolean;
+  excludedCostCurrencies: string[];
+};
+
+export type UnscheduledItineraryItemDto = ItineraryItemDto & {
+  reason: "PACE_CAPACITY_EXCEEDED" | "NO_AVAILABLE_DAY";
+  reasonMessage: string;
 };
 
 export type ItineraryConflictDto = {
@@ -124,8 +137,22 @@ export type ItineraryConflictSummaryDto = {
   high: number;
 };
 
+export type ItineraryVersionDto = {
+  id: string;
+  version: number;
+  parentVersionId: string | null;
+  preferenceProfileVersionId: string | null;
+  status: ItineraryVersionStatus;
+  changeScope: ItineraryChangeScope;
+  changeSummary: Prisma.JsonValue | null;
+  createdAt: string;
+  activatedAt: string | null;
+};
+
 export type ItineraryDto = {
+  version: ItineraryVersionDto | null;
   days: ItineraryDayDto[];
+  unscheduledItems: UnscheduledItineraryItemDto[];
   totals: ItineraryTotalsDto;
   conflicts: ItineraryConflictDto[];
   conflictSummary: ItineraryConflictSummaryDto;

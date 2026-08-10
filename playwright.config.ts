@@ -12,6 +12,14 @@ const port = serverUrl.port || (serverUrl.protocol === "https:" ? "443" : "80");
 const serverCommand =
   process.env.QA_WEB_SERVER_COMMAND ??
   `${npmCommand} run ${serverMode} -- --hostname ${serverUrl.hostname} --port ${port}`;
+const automationBypassSecret =
+  process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+const extraHTTPHeaders = automationBypassSecret
+  ? {
+      "x-vercel-protection-bypass": automationBypassSecret,
+      "x-vercel-set-bypass-cookie": "true",
+    }
+  : undefined;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -31,6 +39,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     testIdAttribute: "data-qa",
+    extraHTTPHeaders,
   },
   webServer: isLocal
     ? {
@@ -48,4 +57,3 @@ export default defineConfig({
     { name: "mobile-safari", use: { ...devices["iPhone 15"] } },
   ],
 });
-

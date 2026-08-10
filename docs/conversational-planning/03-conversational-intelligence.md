@@ -1,8 +1,9 @@
 # Stage 1B - Conversational Intelligence
 
-Status: not started  
-Depends on: Stage 1A  
-Estimated effort: 3-4 working days
+Status: stage-plan
+Authority: Validated intent, question policy, and conversational recommendation intent
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [preceding stage](02-conversation-persistence-ui.md)
+Last reviewed: 2026-08-09
 
 ## Goal
 
@@ -107,7 +108,7 @@ Policy:
 3. Do not immediately repeat skipped questions.
 4. Permit corrections at any time.
 5. Treat the explicit trip budget as different from comfort level.
-6. Generate five recommendations automatically when the active topic becomes ready.
+6. Generate exactly three visible recommendations automatically when the active topic becomes ready.
 7. Let the user switch topics naturally or through visible controls.
 
 ### Step 4: Add the planning action dispatcher
@@ -127,7 +128,7 @@ For multi-intent messages:
 
 Purpose: complete the conversation loop without separate recommendation forms.
 
-Recommendation messages show five cards with:
+Recommendation messages show exactly three cards with:
 
 - name, category, city, rating, estimated cost
 - concise deterministic match explanation
@@ -135,6 +136,8 @@ Recommendation messages show five cards with:
 - reroll control with optional natural-language note
 
 Selection, rejection, removal, and reroll update the conversation and live itinerary without navigation. Rejected records and feedback history remain persisted.
+
+This stage mutates explicit current-trip preferences only. Reusable defaults may seed a trip, but no interaction is described as learned long-term user behavior until the later preference-learning milestone defines provenance, confidence, correction, and reset rules.
 
 ### Step 6: Add AI usage persistence and safeguards
 
@@ -178,4 +181,3 @@ Selection, rejection, removal, and reroll update the conversation and live itine
 ```text
 Implement Stage 1B from docs/conversational-planning/03-conversational-intelligence.md. Stage 1A persistence and deterministic chat must already pass. Add the hybrid AI intent extractor, deterministic question engine, bounded dispatcher, and in-message mock recommendation interactions. Keep backend services authoritative, enforce idempotency/revisions, and preserve the no-AI fallback.
 ```
-

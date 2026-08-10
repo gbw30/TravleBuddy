@@ -30,6 +30,7 @@ import {
   getPersistedItineraryForTripTx,
   rebuildItineraryDraftForTripTx,
 } from "@/features/itinerary/builder";
+import { createExplicitPreferenceProfileVersionTx } from "@/features/adaptation/persistence";
 import type { ItineraryDto } from "@/features/itinerary/types";
 import {
   extractPreferenceSignals,
@@ -201,6 +202,23 @@ function getMetadataStringArray(
   }
 
   return toStringArray(metadata[key]);
+}
+
+function getMetadataValue(
+  metadata: Prisma.JsonValue | null | undefined,
+  key: string,
+) {
+  if (!metadata || Array.isArray(metadata) || typeof metadata !== "object") {
+    return undefined;
+  }
+
+  return metadata[key];
+}
+
+function normalizedDecisionText(value: string | null | undefined) {
+  const normalized = value?.trim().toLocaleLowerCase();
+
+  return normalized || null;
 }
 
 function serializeDecimalNumber(
@@ -491,7 +509,7 @@ async function savePreferenceSignals(
 ) {
   const merged = mergePreferenceSignals(currentPreference, signals);
 
-  await tx.tripPreference.upsert({
+  const projection = await tx.tripPreference.upsert({
     where: {
       tripId,
     },
@@ -520,6 +538,15 @@ async function savePreferenceSignals(
         customPreferences: merged.customPreferences,
       },
     },
+    select: {
+      interests: true,
+      pace: true,
+      updatedAt: true,
+    },
+  });
+  await createExplicitPreferenceProfileVersionTx(tx, {
+    tripId,
+    projection,
   });
 
   return merged;
@@ -697,6 +724,8 @@ function planningSnapshot(input: {
   selectedPlaces: SelectedPlanningPlace[];
   recommendations: RecommendationDto[];
   itinerary: ItineraryDto;
+  activeJobs: PlanningSnapshot["activeJobs"];
+  itineraryVersions: PlanningSnapshot["itineraryVersions"];
 }): PlanningSnapshot {
   const recommendations = input.recommendations
     .filter(
@@ -720,6 +749,8 @@ function planningSnapshot(input: {
     recommendations,
     selectedPlaces: input.selectedPlaces,
     itinerary: planningItineraryDto(input.itinerary),
+    activeJobs: input.activeJobs,
+    itineraryVersions: input.itineraryVersions,
   };
 }
 
@@ -1171,6 +1202,45 @@ export async function addUserPlanningPlace(
         };
       }
 
+      const existingUserPlaces = await tx.placeSuggestion.findMany({
+        where: {
+          tripId,
+          destinationId: destination.id,
+          provider: "USER",
+          category: input.category,
+          status: "SELECTED",
+        },
+        select: placeSuggestionSelect,
+      });
+      const identicalPlace = existingUserPlaces.find((place) => {
+        const existingDay = getMetadataValue(
+          place.metadata,
+          "planningDayNumber",
+        );
+
+        return (
+          normalizedDecisionText(place.name) ===
+            normalizedDecisionText(input.name) &&
+          normalizedDecisionText(place.description) ===
+            normalizedDecisionText(input.note) &&
+          serializeDecimalNumber(place.estimatedCostAmount) ===
+            estimatedCostAmount &&
+          normalizedDecisionText(place.estimatedCostCurrency) ===
+            normalizedDecisionText(estimatedCostCurrency) &&
+          getMetadataValue(place.metadata, "topic") === input.topic &&
+          (typeof existingDay === "number" ? existingDay : null) ===
+            (input.planningDayNumber ?? null)
+        );
+      });
+
+      if (identicalPlace) {
+        return {
+          status: "saved" as const,
+          place: toRecommendationDto(identicalPlace),
+          revision: trip.planningRevision,
+        };
+      }
+
       const record = await tx.placeSuggestion.create({
         data: {
           tripId,
@@ -1252,6 +1322,8 @@ export async function selectRecommendation(
   tripId: string,
   input: {
     suggestionId: string;
+    destinationId?: string | null;
+    planningDayNumber?: number | null;
   },
   control?: PlanningMutationControl,
 ) {
@@ -1290,14 +1362,67 @@ export async function selectRecommendation(
             select: {
               id: true,
               tripId: true,
+              destinationId: true,
               status: true,
               name: true,
+              metadata: true,
             },
           });
 
           if (!suggestion) {
             return {
               status: "suggestion_not_found" as const,
+            };
+          }
+
+          const requestedDestinationId =
+            input.destinationId ?? suggestion.destinationId;
+          const destinationIsValid =
+            !requestedDestinationId ||
+            trip.destinations.some(
+              (destination) => destination.id === requestedDestinationId,
+            );
+          const destinationMatchesSuggestion =
+            !input.destinationId ||
+            !suggestion.destinationId ||
+            input.destinationId === suggestion.destinationId;
+          const generatedPlanningDayNumber = getMetadataValue(
+            suggestion.metadata,
+            "planningDayNumber",
+          );
+          const requestedPlanningDayNumber =
+            input.planningDayNumber ??
+            (typeof generatedPlanningDayNumber === "number"
+              ? generatedPlanningDayNumber
+              : null);
+          const tripStart = trip.startDate?.getTime() ?? Number.NaN;
+          const tripEnd = trip.endDate?.getTime() ?? Number.NaN;
+          const tripDayCount =
+            Number.isFinite(tripStart) &&
+            Number.isFinite(tripEnd) &&
+            tripEnd >= tripStart
+              ? Math.floor((tripEnd - tripStart) / 86_400_000) + 1
+              : 0;
+          const planningDayIsValid =
+            requestedPlanningDayNumber === null ||
+            (Number.isInteger(requestedPlanningDayNumber) &&
+              requestedPlanningDayNumber > 0 &&
+              requestedPlanningDayNumber <= tripDayCount);
+
+          if (
+            !destinationIsValid ||
+            !destinationMatchesSuggestion ||
+            !planningDayIsValid
+          ) {
+            return {
+              status: "invalid_context" as const,
+            };
+          }
+
+          if (suggestion.status === "SELECTED") {
+            return {
+              status: "selected" as const,
+              revision: trip.planningRevision,
             };
           }
 
@@ -1320,6 +1445,12 @@ export async function selectRecommendation(
               source: "USER",
               action: "SELECT",
               metadata: {
+                ...(requestedDestinationId
+                  ? { destinationId: requestedDestinationId }
+                  : {}),
+                ...(requestedPlanningDayNumber
+                  ? { planningDayNumber: requestedPlanningDayNumber }
+                  : {}),
                 source: "recommendation_pick",
               },
             },
@@ -1330,6 +1461,12 @@ export async function selectRecommendation(
             message: `${suggestion.name} was added to the live plan preview.`,
             metadata: {
               placeSuggestionId: input.suggestionId,
+              ...(requestedDestinationId
+                ? { destinationId: requestedDestinationId }
+                : {}),
+              ...(requestedPlanningDayNumber
+                ? { planningDayNumber: requestedPlanningDayNumber }
+                : {}),
               source: "recommendation_pick",
             },
           });
@@ -1689,6 +1826,58 @@ export async function getPlanningWorkspace(
           tx,
           tripId,
         );
+        const activeJobs = (
+          await tx.generationJob.findMany({
+            where: {
+              tripId,
+              status: {
+                in: ["PENDING", "RUNNING", "RETRYING"],
+              },
+            },
+            select: {
+              id: true,
+              type: true,
+              status: true,
+              progress: true,
+              progressMessage: true,
+              attemptCount: true,
+              errorCode: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 5,
+          })
+        ).map((job) => ({
+          ...job,
+          createdAt: job.createdAt.toISOString(),
+          updatedAt: job.updatedAt.toISOString(),
+        }));
+        const itineraryVersions = (
+          await tx.itineraryVersion.findMany({
+            where: {
+              tripId,
+            },
+            select: {
+              id: true,
+              version: true,
+              status: true,
+              changeScope: true,
+              createdAt: true,
+              activatedAt: true,
+            },
+            orderBy: {
+              version: "desc",
+            },
+            take: 10,
+          })
+        ).map((version) => ({
+          ...version,
+          createdAt: version.createdAt.toISOString(),
+          activatedAt: version.activatedAt?.toISOString() ?? null,
+        }));
         const preference = preferenceSnapshot(trip.preference);
         const context = normalizedPlanningContext(trip, requestedContext);
         const recommendations = suggestions.map(toRecommendationDto);
@@ -1699,6 +1888,8 @@ export async function getPlanningWorkspace(
           selectedPlaces,
           recommendations,
           itinerary: itineraryPreview,
+          activeJobs,
+          itineraryVersions,
         });
 
         return {
@@ -1717,6 +1908,8 @@ export async function getPlanningWorkspace(
           timelineEvents: timelineEvents.map(timelineEventDto),
           placeActionLog,
           itineraryPreview,
+          activeJobs,
+          itineraryVersions,
           snapshot,
         };
       }),
@@ -1982,7 +2175,10 @@ export async function selectRecommendationFormAction(formData: FormData) {
     redirect("/trips?error=invalid-suggestion");
   }
 
-  const result = await selectRecommendation(userId, tripId, { suggestionId });
+  const result = await selectRecommendation(userId, tripId, {
+    suggestionId,
+    ...context,
+  });
 
   if (result.status === "not_found") redirect("/trips?error=not-found");
   if (result.status === "archived") {
@@ -2001,6 +2197,12 @@ export async function selectRecommendationFormAction(formData: FormData) {
     planningRedirect(
       tripId,
       planningQuery({ topic, ...context, error: "suggestion-not-found" }),
+    );
+  }
+  if (result.status === "invalid_context") {
+    planningRedirect(
+      tripId,
+      planningQuery({ topic, ...context, error: "invalid-planning-context" }),
     );
   }
 

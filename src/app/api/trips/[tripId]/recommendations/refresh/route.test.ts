@@ -26,6 +26,11 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000004",
+};
+
 function jsonRequest(body: unknown) {
   return new Request("http://localhost/api/trips/trip_1/recommendations/refresh", {
     method: "POST",
@@ -46,7 +51,11 @@ describe("/api/trips/[tripId]/recommendations/refresh route", () => {
     });
 
     const response = await POST(
-      jsonRequest({ topic: "HOTEL_BASE", note: "Less expensive and quieter." }),
+      jsonRequest({
+        topic: "HOTEL_BASE",
+        note: "Less expensive and quieter.",
+        ...mutationControl,
+      }),
       context,
     );
 
@@ -58,11 +67,19 @@ describe("/api/trips/[tripId]/recommendations/refresh route", () => {
         topic: "HOTEL_BASE",
         note: "Less expensive and quieter.",
       },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "recommendations_refresh",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
   it("returns 400 when the refresh note is missing", async () => {
-    const response = await POST(jsonRequest({ topic: "HOTEL_BASE" }), context);
+    const response = await POST(
+      jsonRequest({ topic: "HOTEL_BASE", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(400);
   });

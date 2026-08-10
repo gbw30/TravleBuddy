@@ -132,12 +132,28 @@ describe("preference input schema", () => {
     expect(result.budgetAmount).toBe(2500);
   });
 
-  it("splits free text lists by comma and newline", () => {
-    expect(parsePreferenceTextList(" vegan, \n gluten-free ,,  low sodium ")).toEqual([
-      "vegan",
-      "gluten-free",
-      "low sodium",
+  it("splits, trims, and case-insensitively deduplicates free text lists", () => {
+    expect(
+      parsePreferenceTextList(
+        " vegan, \n gluten-free ,, Vegan,  low sodium, GLUTEN-FREE ",
+      ),
+    ).toEqual(["vegan", "gluten-free", "low sodium"]);
+  });
+
+  it("normalizes every custom preference list through the schema", () => {
+    const result = preferenceInputSchema.parse({
+      ...validPreferenceInput,
+      dietaryRestrictions: " vegan, Vegan, no peanuts ",
+      accessibilityNeeds: " step-free access\nSTEP-FREE ACCESS\nquiet spaces ",
+      mustAvoid: [" crowds, Crowds ", "red-eye flights"],
+    });
+
+    expect(result.dietaryRestrictions).toEqual(["vegan", "no peanuts"]);
+    expect(result.accessibilityNeeds).toEqual([
+      "step-free access",
+      "quiet spaces",
     ]);
+    expect(result.mustAvoid).toEqual(["crowds", "red-eye flights"]);
   });
 
   it("dedupes and trims custom non-core preference boxes", () => {

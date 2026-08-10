@@ -1,4 +1,10 @@
 import type {
+  GenerationJobStatus,
+  GenerationJobType,
+  ItineraryChangeScope,
+  ItineraryVersionStatus,
+} from "@/generated/prisma/client";
+import type {
   ItineraryDto,
   ItineraryConflictDto,
 } from "@/features/itinerary/types";
@@ -30,6 +36,27 @@ export type PlanningItineraryDto = Omit<ItineraryDto, "conflicts"> & {
   conflicts: PlanningItineraryConflictDto[];
 };
 
+export type PlanningJobSummary = {
+  id: string;
+  type: GenerationJobType;
+  status: GenerationJobStatus;
+  progress: number;
+  progressMessage: string | null;
+  attemptCount: number;
+  errorCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PlanningItineraryVersionSummary = {
+  id: string;
+  version: number;
+  status: ItineraryVersionStatus;
+  changeScope: ItineraryChangeScope;
+  createdAt: string;
+  activatedAt: string | null;
+};
+
 export type PlanningSnapshot = {
   revision: number;
   conversationId: string | null;
@@ -39,6 +66,8 @@ export type PlanningSnapshot = {
   recommendations: RecommendationDto[];
   selectedPlaces: SelectedPlanningPlace[];
   itinerary: PlanningItineraryDto;
+  activeJobs: PlanningJobSummary[];
+  itineraryVersions: PlanningItineraryVersionSummary[];
 };
 
 export type PlanningTurnResult<TMessage = never, TWarning = never> = {
@@ -51,6 +80,8 @@ export type PlanningTurnResult<TMessage = never, TWarning = never> = {
 export type PlanningMutationControl = {
   expectedRevision?: number;
   operationId?: string;
+  mutationKind?: PlanningMutationKind;
+  requestFingerprint?: string;
 };
 
 export type PlanningMutationKind =
@@ -67,11 +98,14 @@ export type PlanningMutationKind =
   | "recommendation_reject"
   | "recommendation_deselect"
   | "recommendations_refresh"
+  | "itinerary_item_feedback"
   | "itinerary_rebuild"
   | "conflicts_check"
   | "conflict_status_update";
 
 export type PlanningMutationReplay = {
+  kind: string;
+  requestFingerprint: string | null;
   result: unknown;
   resultingRevision: number;
 };

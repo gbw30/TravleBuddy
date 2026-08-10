@@ -8,6 +8,10 @@ export type TripReadinessInput = {
   endDate?: Date | string | null;
   budgetAmount?: unknown | null;
   budgetCurrency?: string | null;
+  travelStyle?: string | null;
+  preference?: {
+    pace?: string | null;
+  } | null;
   destinations?: readonly unknown[] | null;
   _count?: DestinationCount | null;
 };
@@ -72,6 +76,12 @@ function hasDestinationList(trip: TripReadinessInput) {
   return Boolean(trip._count?.destinations && trip._count.destinations > 0);
 }
 
+function hasTravelPace(trip: TripReadinessInput) {
+  const pace = trip.preference?.pace ?? trip.travelStyle;
+
+  return typeof pace === "string" && pace.trim().length > 0;
+}
+
 export function canUseDiscovery(trip: TripReadinessInput) {
   return trip.status === "DRAFT" || trip.status === "PLANNING";
 }
@@ -95,6 +105,10 @@ export function getMissingFullPlanningRequirements(
 
   if (!hasBudget(trip)) {
     missingRequirements.push("trip-level budget amount and currency");
+  }
+
+  if (!hasTravelPace(trip)) {
+    missingRequirements.push("travel pace/style");
   }
 
   return missingRequirements;

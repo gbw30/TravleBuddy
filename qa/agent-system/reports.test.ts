@@ -19,11 +19,16 @@ afterEach(async () => {
   );
 });
 
-function baselineReport(runId: string, evidencePath: string): QaWorkerReport {
+function baselineReport(
+  runId: string,
+  evidencePath: string,
+  generatedAt = new Date().toISOString(),
+  trackedStateFingerprint = "0".repeat(64),
+): QaWorkerReport {
   return qaWorkerReportSchema.parse({
     reportVersion: 1,
     runId,
-    generatedAt: "2026-07-21T00:00:00.000Z",
+    generatedAt,
     commitSha: "abcdef0",
     runType: "pr",
     target: {
@@ -40,9 +45,10 @@ function baselineReport(runId: string, evidencePath: string): QaWorkerReport {
     findings: [],
     environmentBlockers: [],
     flakyScenarioIds: [],
-    sourcePaths: ["qa-results/test/deterministic/report.json"],
+    sourcePaths: ["package.json"],
     evidencePaths: [evidencePath],
     redactionConfirmed: true,
+    trackedStateFingerprint,
     usage: {
       wallTimeMs: 12,
       artifactBytes: 0,
@@ -61,7 +67,8 @@ describe("QA report summaries", () => {
     const runId = `report-summary-${process.pid}-${Date.now()}`;
     createdRuns.push(runId);
     const runRoot = qaResultsDirectory(runId);
-    await writeQaContextBundles({
+    const generatedAt = new Date(Date.now() - 1_000).toISOString();
+    const manifest = await writeQaContextBundles({
       runId,
       runType: "pr",
       targetKind: "local",
@@ -71,7 +78,7 @@ describe("QA report summaries", () => {
       changedPaths: [],
       forcedAgents: [],
       parentSandbox: "workspace-write",
-      generatedAt: "2026-07-21T00:00:00.000Z",
+      generatedAt,
     });
 
     const agentDirectory = path.join(runRoot, "agents", "qa_baseline");
@@ -81,7 +88,16 @@ describe("QA report summaries", () => {
     const evidencePath = path.relative(process.cwd(), evidenceFile);
     await writeFile(
       path.join(agentDirectory, "report.json"),
-      `${JSON.stringify(baselineReport(runId, evidencePath), null, 2)}\n`,
+      `${JSON.stringify(
+        baselineReport(
+          runId,
+          evidencePath,
+          new Date().toISOString(),
+          manifest.trackedStateFingerprint,
+        ),
+        null,
+        2,
+      )}\n`,
       "utf8",
     );
 

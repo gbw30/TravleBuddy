@@ -1,14 +1,32 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-export const qaTargetSchema = z.enum(["local", "preview", "production-readonly"]);
+export const qaTargetSchema = z.enum([
+  "local",
+  "preview",
+  "production-readonly",
+]);
+
+const optionalDatabaseFingerprintSchema = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+);
 
 const qaEnvironmentSchema = z.object({
   QA_TARGET: qaTargetSchema,
   QA_BASE_URL: z.url(),
-  QA_RUN_ID: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$/),
+  QA_RUN_ID: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{2,79}$/),
   QA_ALLOW_WRITES: z.enum(["true", "false"]).default("false"),
-  QA_DATABASE_FINGERPRINT: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  QA_DATABASE_FINGERPRINT: optionalDatabaseFingerprintSchema,
+  QA_FORBIDDEN_DATABASE_FINGERPRINT: optionalDatabaseFingerprintSchema,
+  QA_PRODUCTION_DATABASE_FINGERPRINT: optionalDatabaseFingerprintSchema,
   DATABASE_URL: z.string().optional(),
   DIRECT_URL: z.string().optional(),
 });
@@ -20,7 +38,10 @@ export type QaEnvironment = {
   runId: string;
   allowWrites: boolean;
   databaseUrl: string | null;
+  pooledDatabaseUrl: string | null;
+  directDatabaseUrl: string | null;
   expectedDatabaseFingerprint: string | null;
+  forbiddenDatabaseFingerprints: string[];
 };
 
 function defaultPort(protocol: string) {
@@ -41,8 +62,12 @@ export function canonicalDatabaseIdentity(value: string) {
   }
 
   const port = url.port || defaultPort(url.protocol);
+  const hostname = url.hostname.toLocaleLowerCase();
+  const canonicalHostname = hostname.endsWith(".neon.tech")
+    ? hostname.replace(/^([^.]+)-pooler\./, "$1.")
+    : hostname;
 
-  return `${url.protocol}//${url.hostname.toLocaleLowerCase()}:${port}/${database}`;
+  return `${url.protocol}//${canonicalHostname}:${port}/${database}`;
 }
 
 export function fingerprintDatabaseUrl(value: string) {
@@ -69,8 +94,13 @@ export function readQaEnvironment(
     runId: parsed.data.QA_RUN_ID,
     allowWrites: parsed.data.QA_ALLOW_WRITES === "true",
     databaseUrl: parsed.data.DIRECT_URL ?? parsed.data.DATABASE_URL ?? null,
-    expectedDatabaseFingerprint:
-      parsed.data.QA_DATABASE_FINGERPRINT ?? null,
+    pooledDatabaseUrl: parsed.data.DATABASE_URL ?? null,
+    directDatabaseUrl: parsed.data.DIRECT_URL ?? null,
+    expectedDatabaseFingerprint: parsed.data.QA_DATABASE_FINGERPRINT ?? null,
+    forbiddenDatabaseFingerprints: [
+      parsed.data.QA_FORBIDDEN_DATABASE_FINGERPRINT,
+      parsed.data.QA_PRODUCTION_DATABASE_FINGERPRINT,
+    ].filter((value): value is string => Boolean(value)),
   };
 }
 
@@ -101,10 +131,36 @@ export function assertQaWritesAllowed(environment: QaEnvironment) {
     throw new Error("QA writes require QA_DATABASE_FINGERPRINT.");
   }
 
+  if (environment.pooledDatabaseUrl && environment.directDatabaseUrl) {
+    const pooledIdentity = canonicalDatabaseIdentity(
+      environment.pooledDatabaseUrl,
+    );
+    const directIdentity = canonicalDatabaseIdentity(
+      environment.directDatabaseUrl,
+    );
+    if (pooledIdentity !== directIdentity) {
+      throw new Error(
+        "DATABASE_URL and DIRECT_URL must target the same PostgreSQL database.",
+      );
+    }
+  }
+
   const actual = fingerprintDatabaseUrl(environment.databaseUrl);
 
   if (!fingerprintsMatch(actual, environment.expectedDatabaseFingerprint)) {
-    throw new Error("QA database fingerprint does not match the configured target.");
+    throw new Error(
+      "QA database fingerprint does not match the configured target.",
+    );
+  }
+
+  if (
+    environment.forbiddenDatabaseFingerprints.some((forbidden) =>
+      fingerprintsMatch(actual, forbidden),
+    )
+  ) {
+    throw new Error(
+      "QA database fingerprint matches a forbidden or production database.",
+    );
   }
 
   if (
@@ -123,7 +179,9 @@ export function assertQaWritesAllowed(environment: QaEnvironment) {
 
 export function assertProductionReadOnly(environment: QaEnvironment) {
   if (environment.target !== "production-readonly") {
-    throw new Error("Production smoke checks require QA_TARGET=production-readonly.");
+    throw new Error(
+      "Production smoke checks require QA_TARGET=production-readonly.",
+    );
   }
 
   if (environment.allowWrites) {

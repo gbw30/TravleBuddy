@@ -30,6 +30,7 @@ import {
   getPlanningMutationReplayTx,
 } from "@/features/planning/mutation";
 import { createPlanningOperationContext } from "@/features/planning/telemetry";
+import { createExplicitPreferenceProfileVersionTx } from "@/features/adaptation/persistence";
 
 export type UpdateTripResult =
   | {
@@ -177,6 +178,7 @@ export async function createTrip(userId: string, input: CreateTripInput) {
       })
     : null;
   const destinations = parsed.destinations ?? [];
+  const preference = preferenceForCreate(parsed.travelStyle, profilePreference);
   const status =
     parsed.intent === "continue"
       ? deriveTripStatusFromDetails({
@@ -184,26 +186,41 @@ export async function createTrip(userId: string, input: CreateTripInput) {
           endDate: parsed.endDate,
           budgetAmount: parsed.budgetAmount,
           budgetCurrency: parsed.budgetCurrency,
+          travelStyle: parsed.travelStyle,
           destinations,
         })
       : "DRAFT";
-  const trip = await db.trip.create({
-    data: {
-      userId,
-      title: parsed.title,
-      status,
-      departureCity: parsed.departureCity ?? null,
-      departureCountry: parsed.departureCountry ?? null,
-      departureTimeZone: parsed.departureTimeZone ?? null,
-      destinationSearchText: destinationRouteSearchText(destinations),
-      startDate: parsed.startDate ?? null,
-      endDate: parsed.endDate ?? null,
-      budgetAmount: parsed.budgetAmount ?? null,
-      budgetCurrency: parsed.budgetCurrency ?? null,
-      destinations: destinationsForCreate(destinations),
-      preference: preferenceForCreate(parsed.travelStyle, profilePreference),
-    },
-    select: tripWithDetailsSelect,
+  const trip = await db.$transaction(async (tx) => {
+    const created = await tx.trip.create({
+      data: {
+        userId,
+        title: parsed.title,
+        status,
+        departureCity: parsed.departureCity ?? null,
+        departureCountry: parsed.departureCountry ?? null,
+        departureTimeZone: parsed.departureTimeZone ?? null,
+        destinationSearchText: destinationRouteSearchText(destinations),
+        startDate: parsed.startDate ?? null,
+        endDate: parsed.endDate ?? null,
+        budgetAmount: parsed.budgetAmount ?? null,
+        budgetCurrency: parsed.budgetCurrency ?? null,
+        destinations: destinationsForCreate(destinations),
+        preference,
+      },
+      select: tripWithDetailsSelect,
+    });
+
+    if (preference) {
+      await createExplicitPreferenceProfileVersionTx(tx, {
+        tripId: created.id,
+        projection: {
+          interests: profilePreference?.interests ?? [],
+          pace: parsed.travelStyle ?? profilePreference?.pace ?? null,
+        },
+      });
+    }
+
+    return created;
   });
 
   return toTripDto(trip);
@@ -409,6 +426,26 @@ export async function updateTrip(
             pace: null,
           },
         });
+      }
+
+      if (travelStyleChanged) {
+        const preferenceProjection = await tx.tripPreference.findUnique({
+          where: {
+            tripId,
+          },
+          select: {
+            interests: true,
+            pace: true,
+            updatedAt: true,
+          },
+        });
+
+        if (preferenceProjection) {
+          await createExplicitPreferenceProfileVersionTx(tx, {
+            tripId,
+            projection: preferenceProjection,
+          });
+        }
       }
 
       const updatedTrip = await tx.trip.findFirstOrThrow({

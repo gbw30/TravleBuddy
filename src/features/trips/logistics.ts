@@ -212,6 +212,69 @@ function validateTravelSegmentInput(
   };
 }
 
+type ProposedTravelSegment = Pick<
+  LogisticsTripRecord["travelSegments"][number],
+  | "id"
+  | "originCity"
+  | "originCountry"
+  | "destinationCity"
+  | "destinationCountry"
+  | "departAt"
+  | "arriveAt"
+  | "sortOrder"
+>;
+
+function sameLocation(
+  left: { city: string; country: string },
+  right: { city: string; country: string },
+) {
+  return (
+    left.city.trim().toLocaleLowerCase() ===
+      right.city.trim().toLocaleLowerCase() &&
+    left.country.trim().toLocaleLowerCase() ===
+      right.country.trim().toLocaleLowerCase()
+  );
+}
+
+export function isValidTravelSegmentChain(
+  segments: readonly ProposedTravelSegment[],
+) {
+  const chronological = [...segments].sort(
+    (left, right) =>
+      left.departAt.getTime() - right.departAt.getTime() ||
+      left.arriveAt.getTime() - right.arriveAt.getTime() ||
+      left.sortOrder - right.sortOrder ||
+      left.id.localeCompare(right.id),
+  );
+
+  for (let index = 1; index < chronological.length; index += 1) {
+    const previous = chronological[index - 1];
+    const current = chronological[index];
+
+    // Adjacent boundaries are valid; only a strict overlap breaks the chain.
+    if (current.departAt < previous.arriveAt) {
+      return false;
+    }
+
+    if (
+      !sameLocation(
+        {
+          city: previous.destinationCity,
+          country: previous.destinationCountry,
+        },
+        {
+          city: current.originCity,
+          country: current.originCountry,
+        },
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function serializeSegment(
   segment: LogisticsTripRecord["travelSegments"][number],
 ) {
@@ -375,19 +438,24 @@ export async function addTripTravelSegment(
         return { status: "invalid" as const };
       }
 
-      const existingSegments =
-        (await tx.tripTravelSegment.findMany({
-          where: {
-            tripId,
-          },
-          select: {
-            sortOrder: true,
-          },
-          orderBy: {
-            sortOrder: "desc",
-          },
-          take: 1,
-        })) ?? [];
+      const existingSegments = trip.travelSegments ?? [];
+      const sortOrder =
+        existingSegments.reduce(
+          (highest, existing) => Math.max(highest, existing.sortOrder),
+          -1,
+        ) + 1;
+      const proposedSegments = [
+        ...existingSegments,
+        {
+          id: "__proposed__",
+          ...segment,
+          sortOrder,
+        },
+      ];
+
+      if (!isValidTravelSegmentChain(proposedSegments)) {
+        return { status: "invalid" as const };
+      }
 
       await tx.trip.update({
         where: {
@@ -401,7 +469,7 @@ export async function addTripTravelSegment(
         data: {
           tripId,
           ...segment,
-          sortOrder: (existingSegments[0]?.sortOrder ?? -1) + 1,
+          sortOrder,
         },
         select: {
           id: true,
@@ -457,6 +525,27 @@ export async function updateTripTravelSegment(
       const segment = validateTravelSegmentInput(trip, input);
 
       if (!segment || !segmentId) {
+        return { status: "invalid" as const };
+      }
+
+      const existingSegment = trip.travelSegments?.find(
+        (candidate) => candidate.id === segmentId,
+      );
+
+      if (!existingSegment) {
+        return { status: "not_found" as const };
+      }
+
+      const proposedSegments = trip.travelSegments.map((candidate) =>
+        candidate.id === segmentId
+          ? {
+              ...candidate,
+              ...segment,
+            }
+          : candidate,
+      );
+
+      if (!isValidTravelSegmentChain(proposedSegments)) {
         return { status: "invalid" as const };
       }
 
@@ -517,6 +606,22 @@ export async function deleteTripTravelSegment(
       );
 
       if (replay) return replay;
+
+      const existingSegment = trip.travelSegments?.find(
+        (candidate) => candidate.id === segmentId,
+      );
+
+      if (!existingSegment) {
+        return { status: "not_found" as const };
+      }
+
+      const proposedSegments = trip.travelSegments.filter(
+        (candidate) => candidate.id !== segmentId,
+      );
+
+      if (!isValidTravelSegmentChain(proposedSegments)) {
+        return { status: "invalid" as const };
+      }
 
       const deleted = await tx.tripTravelSegment.deleteMany({
         where: {
