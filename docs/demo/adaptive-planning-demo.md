@@ -25,6 +25,27 @@ from the same commit. Always-on worker hosting is not required.
 Never record database URLs, OAuth tokens, cookies, API keys, raw provider
 payloads, or another user's data.
 
+## Scenario 0: Immediate removal without a worker
+
+This scenario proves that bounded user intent does not depend on background
+infrastructure.
+
+1. Stop the local worker and confirm no process is consuming QA jobs.
+2. Record the active itinerary version and one activity on an otherwise
+   populated day.
+3. Select a reason and choose **Remove**.
+4. Capture HTTP `200` with `status: REMOVED`, the feedback ID, planning
+   revision, affected day, and successor itinerary version.
+5. Verify the item disappears immediately and remains absent after reload.
+6. Verify unrelated days and activities are unchanged and no generation job
+   was created.
+7. If the reason is **Too expensive**, verify the inferred signal increased by
+   `0.10` unless an explicit value was protected.
+8. Repeat the exact request with the same operation ID and verify no duplicate
+   feedback or versions were created.
+
+Start the worker only for replacement and resilience scenarios below.
+
 ## Start the local demonstration worker
 
 In a fresh PowerShell terminal at the repository root:

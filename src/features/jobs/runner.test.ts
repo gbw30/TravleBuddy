@@ -115,7 +115,35 @@ describe("job runner", () => {
     expect(failureFromUnknown(new Error("database password"))).toEqual({
       code: "UNEXPECTED_JOB_ERROR",
       message: null,
+      retryable: false,
+    });
+  });
+
+  it("retries only classified transient database failures", () => {
+    expect(
+      failureFromUnknown(
+        Object.assign(new Error("transaction details"), { code: "P2028" }),
+      ),
+    ).toEqual({
+      code: "DATABASE_TRANSACTION_TIMEOUT",
+      message: "The database transaction exceeded its time budget.",
       retryable: true,
+    });
+    expect(
+      failureFromUnknown(
+        Object.assign(new Error("constraint details"), { code: "P2004" }),
+      ),
+    ).toEqual({
+      code: "DATABASE_CONSTRAINT_FAILED",
+      message: "The adaptive result did not satisfy database constraints.",
+      retryable: false,
+    });
+    expect(
+      failureFromUnknown({ code: "ADAPTATION_VALIDATION_FAILED" }),
+    ).toEqual({
+      code: "ADAPTATION_VALIDATION_FAILED",
+      message: "The adaptive result did not pass structural validation.",
+      retryable: false,
     });
   });
 

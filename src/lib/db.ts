@@ -13,14 +13,25 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: AppPrismaClient;
 };
 
-export function getDb() {
-  const client = globalForPrisma.prisma ?? createPrismaClient();
+let processClient: AppPrismaClient | undefined;
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = client;
-  }
+export function getDb() {
+  const client =
+    globalForPrisma.prisma ?? processClient ?? createPrismaClient();
+
+  processClient = client;
+  globalForPrisma.prisma = client;
 
   return client;
+}
+
+export async function disconnectDb() {
+  const client = globalForPrisma.prisma ?? processClient;
+  if (!client) return;
+
+  await client.$disconnect();
+  processClient = undefined;
+  delete globalForPrisma.prisma;
 }
 
 export const db = new Proxy({} as AppPrismaClient, {

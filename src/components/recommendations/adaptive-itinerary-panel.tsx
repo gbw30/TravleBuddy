@@ -15,9 +15,11 @@ import {
   asRecord,
   fetchPlanningJobDetail,
   isGenerationJobStatus,
+  isRemovedFeedbackResponse,
   isTerminalPlanningJob,
   mergePlanningJobs,
   planningJobPollDelay,
+  setOptimisticRemoval,
   type PlanningJobDetail,
   type QueuedFeedbackResponse,
 } from "./adaptive-itinerary-model";
@@ -48,6 +50,10 @@ export function AdaptiveItineraryPanel({
   const [pendingItemIds, setPendingItemIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [hiddenItemIds, setHiddenItemIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [panelMessage, setPanelMessage] = useState<string | null>(null);
   const [itemMessages, setItemMessages] = useState<
     Record<string, AdaptiveItemMessage>
   >({});
@@ -160,6 +166,12 @@ export function AdaptiveItineraryPanel({
     const reason = String(data.get("reason") ?? "NOT_INTERESTED");
 
     setPendingItemIds((current) => new Set(current).add(itemId));
+    if (action === "REJECT") {
+      setHiddenItemIds((current) =>
+        setOptimisticRemoval(current, itemId, true),
+      );
+      setPanelMessage("Removing the activity from the itinerary.");
+    }
     setItemMessages((current) => {
       const next = { ...current };
       delete next[itemId];
@@ -185,6 +197,15 @@ export function AdaptiveItineraryPanel({
       );
       const payload = (await response.json().catch(() => null)) as unknown;
       const body = asRecord(payload);
+
+      if (response.status === 200 && isRemovedFeedbackResponse(body)) {
+        setQueuedRevision(body.revision);
+        setPanelMessage(
+          `Activity removed from day ${body.affectedDay}. ${body.preferenceExplanation}`,
+        );
+        router.refresh();
+        return;
+      }
 
       if (
         response.status === 202 &&
@@ -215,10 +236,7 @@ export function AdaptiveItineraryPanel({
           ...current,
           [itemId]: {
             kind: "success",
-            text:
-              action === "REJECT"
-                ? "Removal queued. Your current itinerary stays active until processing finishes."
-                : "Feedback queued. We are finding a compatible replacement.",
+            text: "Feedback queued. We are finding a compatible replacement.",
           },
         }));
         return;
@@ -226,6 +244,13 @@ export function AdaptiveItineraryPanel({
 
       if (response.status === 409 && typeof body?.revision === "number") {
         setQueuedRevision(body.revision);
+        router.refresh();
+      }
+      if (action === "REJECT") {
+        setHiddenItemIds((current) =>
+          setOptimisticRemoval(current, itemId, false),
+        );
+        setPanelMessage(null);
       }
       setItemMessages((current) => ({
         ...current,
@@ -234,10 +259,18 @@ export function AdaptiveItineraryPanel({
           text:
             response.status === 409
               ? "The plan changed before this feedback was applied. Review the latest itinerary and try again."
-              : "Feedback could not be queued. Try again.",
+              : action === "REJECT"
+                ? "The activity could not be removed. The itinerary was restored."
+                : "Feedback could not be queued. Try again.",
         },
       }));
     } catch {
+      if (action === "REJECT") {
+        setHiddenItemIds((current) =>
+          setOptimisticRemoval(current, itemId, false),
+        );
+        setPanelMessage(null);
+      }
       setItemMessages((current) => ({
         ...current,
         [itemId]: {
@@ -261,6 +294,8 @@ export function AdaptiveItineraryPanel({
       jobs={jobs}
       pendingItemIds={pendingItemIds}
       itemMessages={itemMessages}
+      hiddenItemIds={hiddenItemIds}
+      panelMessage={panelMessage}
       pollError={pollError}
       itineraryVersions={itineraryVersions}
       onSubmitFeedback={submitFeedback}

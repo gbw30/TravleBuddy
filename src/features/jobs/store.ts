@@ -25,6 +25,7 @@ export type ClaimedGenerationJob<
   maxAttempts: number;
   workerId: string;
   leaseExpiresAt: Date;
+  createdAt?: Date;
 };
 
 export type EnqueueFeedbackJobInput = {

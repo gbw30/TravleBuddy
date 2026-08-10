@@ -92,6 +92,46 @@ describe("/api/trips/[tripId]/itinerary-items/[itemId]/feedback", () => {
     );
   });
 
+  it("removes an owned item synchronously and returns a 200 contract", async () => {
+    mocks.adaptation.captureItineraryItemFeedback.mockResolvedValue({
+      status: "removed",
+      feedbackId: "feedback_remove_1",
+      revision: 8,
+      affectedDay: 2,
+      itineraryVersion: {
+        id: "itinerary_version_2",
+        version: 2,
+      },
+      preferenceDelta: null,
+      preferenceExplanation:
+        "The feedback was preserved without an inferred preference change.",
+    });
+
+    const response = await POST(
+      jsonRequest({
+        action: "REJECT",
+        reason: "NOT_INTERESTED",
+        ...mutationControl,
+      }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      status: "REMOVED",
+      feedbackId: "feedback_remove_1",
+      revision: 8,
+      affectedDay: 2,
+      itineraryVersion: {
+        id: "itinerary_version_2",
+        version: 2,
+      },
+      preferenceDelta: null,
+      preferenceExplanation:
+        "The feedback was preserved without an inferred preference change.",
+    });
+  });
+
   it("rejects invalid domain and mutation-control payloads", async () => {
     const invalidFeedback = await POST(
       jsonRequest({

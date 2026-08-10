@@ -105,6 +105,10 @@ export function logWorkerActivity(
           tripId: activity.tripId,
           attempt: activity.attempt,
           outcome: activity.outcome,
+          errorCode: activity.errorCode,
+          retryScheduled: activity.retryScheduled,
+          attemptDurationMs: activity.attemptDurationMs,
+          totalDurationMs: activity.totalDurationMs,
         }),
       );
       return;

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PlanningTransaction } from "@/features/planning/mutation";
-import { createExplicitPreferenceProfileVersionTx } from "./persistence";
+import {
+  createExplicitPreferenceProfileVersionTx,
+  persistPreferencePolicyResultTx,
+} from "./persistence";
 
 const previousSnapshot = {
   schemaVersion: 1 as const,
@@ -145,6 +148,101 @@ describe("createExplicitPreferenceProfileVersionTx", () => {
       },
       data: {
         activePreferenceProfileVersionId: "preference-version-3",
+      },
+    });
+  });
+});
+
+describe("persistPreferencePolicyResultTx", () => {
+  it("does not create an inferred version for a no-op immediate command", async () => {
+    const create = vi.fn();
+    const tx = {
+      preferenceProfileVersion: {
+        findFirst: vi.fn(),
+        create,
+      },
+      tripPreference: {
+        findUnique: vi.fn(),
+        updateMany: vi.fn(),
+      },
+    } as unknown as PlanningTransaction;
+
+    await expect(
+      persistPreferencePolicyResultTx(tx, {
+        tripId: "trip-1",
+        parent: { id: "preference-version-1", version: 1 },
+        sourceFeedbackId: "feedback-1",
+        policy: {
+          status: "NO_CHANGE",
+          snapshot: previousSnapshot,
+          delta: null,
+          reason: "UNSUPPORTED_FEEDBACK",
+          explanation: "The feedback was preserved.",
+        },
+      }),
+    ).resolves.toMatchObject({
+      id: "preference-version-1",
+      version: 1,
+      created: false,
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("creates and projects a supported inferred update", async () => {
+    const updatedSnapshot = {
+      ...previousSnapshot,
+      priceSensitivity: {
+        ...previousSnapshot.priceSensitivity,
+        weight: 0.8,
+        confidence: 0.9,
+      },
+    };
+    const tx = {
+      preferenceProfileVersion: {
+        findFirst: vi.fn(async () => ({ version: 1 })),
+        create: vi.fn(async () => ({
+          id: "preference-version-2",
+          version: 2,
+        })),
+      },
+      tripPreference: {
+        findUnique: vi.fn(async () => ({ metadata: { existing: true } })),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+    } as unknown as PlanningTransaction;
+
+    await expect(
+      persistPreferencePolicyResultTx(tx, {
+        tripId: "trip-1",
+        parent: { id: "preference-version-1", version: 1 },
+        sourceFeedbackId: "feedback-1",
+        policy: {
+          status: "UPDATED",
+          snapshot: updatedSnapshot,
+          delta: {
+            field: "priceSensitivity",
+            before: previousSnapshot.priceSensitivity,
+            after: updatedSnapshot.priceSensitivity,
+            weightChange: 0.1,
+            confidenceChange: 0.1,
+          },
+          explanation: "Price sensitivity increased.",
+        },
+      }),
+    ).resolves.toMatchObject({
+      id: "preference-version-2",
+      version: 2,
+      created: true,
+    });
+    expect(tx.tripPreference.updateMany).toHaveBeenCalledWith({
+      where: { tripId: "trip-1" },
+      data: {
+        metadata: {
+          existing: true,
+          adaptive: {
+            priceSensitivity: updatedSnapshot.priceSensitivity,
+          },
+        },
       },
     });
   });

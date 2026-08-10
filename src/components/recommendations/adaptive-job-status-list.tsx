@@ -171,6 +171,22 @@ function JobStatusCard({ job }: { job: PlanningJobDetail }) {
   const label = planningJobLabel(job);
   const latestMessage = job.events?.at(-1)?.message ?? job.progressMessage;
   const isFailure = job.status === "FAILED" || job.status === "DEAD_LETTERED";
+  const failureGuidance = (() => {
+    switch (job.errorCode) {
+      case "DATABASE_CONNECTION_UNAVAILABLE":
+      case "DATABASE_POOL_TIMEOUT":
+        return "Confirm the local worker can reach the QA database, then submit a new replacement request.";
+      case "DATABASE_TRANSACTION_TIMEOUT":
+      case "DATABASE_DEADLOCK":
+      case "DATABASE_SERIALIZATION_FAILURE":
+        return "The database could not commit the replacement in time. Submit a new request; the current itinerary was preserved.";
+      case "ADAPTATION_VALIDATION_FAILED":
+      case "DATABASE_CONSTRAINT_FAILED":
+        return "Refresh the itinerary before submitting another replacement request.";
+      default:
+        return `The current itinerary is still safe. Share error code ${job.errorCode ?? "JOB_EXECUTION_FAILED"} with the developer before retrying.`;
+    }
+  })();
 
   return (
     <li className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
@@ -227,11 +243,15 @@ function JobStatusCard({ job }: { job: PlanningJobDetail }) {
               start automatically.
             </p>
           ) : null}
+          {job.status === "PENDING" ? (
+            <p className="mt-2 text-xs leading-5 text-sky-800">
+              The request is safely stored. Start the local planning worker to
+              process it; reloading this page will not lose the job.
+            </p>
+          ) : null}
           {isFailure ? (
             <p className="mt-2 text-xs leading-5 text-amber-800">
-              The current itinerary is still safe. Try the feedback action
-              again; if it keeps failing, share error code{" "}
-              {job.errorCode ?? "JOB_EXECUTION_FAILED"} with the developer.
+              {failureGuidance}
             </p>
           ) : null}
           {job.status === "SUPERSEDED" ? (

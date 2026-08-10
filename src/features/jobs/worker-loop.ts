@@ -27,6 +27,10 @@ export type WorkerLoopActivity =
       tripId: string;
       attempt: number;
       outcome: JobExecutionOutcome["status"];
+      errorCode: string | null;
+      retryScheduled: boolean;
+      attemptDurationMs: number;
+      totalDurationMs: number | null;
     }
   | {
       type: "HEARTBEAT_ERROR";
@@ -109,6 +113,7 @@ export async function runGenerationWorkerLoop(input: {
           tripId: job.tripId,
           attempt: job.attempt,
         });
+        const attemptStartedAt = now().getTime();
         const outcome = await (
           input.execute ??
           ((claimed) =>
@@ -126,12 +131,19 @@ export async function runGenerationWorkerLoop(input: {
                 }),
             }))
         )(job);
+        const finishedAt = now().getTime();
         input.onActivity?.({
           type: "JOB_FINISHED",
           jobId: job.id,
           tripId: job.tripId,
           attempt: job.attempt,
           outcome: outcome.status,
+          errorCode: outcome.errorCode ?? null,
+          retryScheduled: outcome.status === "RETRYING",
+          attemptDurationMs: Math.max(0, finishedAt - attemptStartedAt),
+          totalDurationMs: job.createdAt
+            ? Math.max(0, finishedAt - job.createdAt.getTime())
+            : null,
         });
 
         if (input.once) return "ONCE_COMPLETED";

@@ -7,3 +7,4 @@ export * from "./preferences";
 export * from "./ranking";
 export * from "./scoring";
 export * from "./schemas";
+export * from "./version-copy";

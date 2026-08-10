@@ -5,6 +5,7 @@ import {
   type AdaptivePreferenceSnapshot,
   type WeightedPreferenceSignal,
 } from "./schemas";
+import type { PreferencePolicyResult } from "./preferences";
 
 type PreferenceProjection = {
   interests: readonly string[];
@@ -34,6 +35,12 @@ function normalizedObservedAt(value?: Date | string) {
   return Number.isNaN(date.getTime())
     ? new Date().toISOString()
     : date.toISOString();
+}
+
+function jsonObject(value: Prisma.JsonValue | null | undefined) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value
+    : {};
 }
 
 export function parseAdaptivePreferenceSnapshot(
@@ -259,5 +266,87 @@ export async function createExplicitPreferenceProfileVersionTx(
   return {
     ...created,
     snapshot,
+  };
+}
+
+/**
+ * Persists a supported inferred preference update and keeps TripPreference as
+ * the current read projection. Immediate commands can skip no-op versions;
+ * durable adaptive jobs retain their existing auditable version-per-feedback
+ * behavior by setting persistNoChange.
+ */
+export async function persistPreferencePolicyResultTx(
+  tx: PlanningTransaction,
+  input: {
+    tripId: string;
+    parent: {
+      id: string;
+      version: number;
+    };
+    sourceFeedbackId: string;
+    policy: PreferencePolicyResult;
+    persistNoChange?: boolean;
+  },
+) {
+  if (input.policy.status !== "UPDATED" && !input.persistNoChange) {
+    return {
+      ...input.parent,
+      snapshot: input.policy.snapshot,
+      created: false,
+    };
+  }
+
+  const latest = await tx.preferenceProfileVersion.findFirst({
+    where: {
+      tripId: input.tripId,
+    },
+    select: {
+      version: true,
+    },
+    orderBy: {
+      version: "desc",
+    },
+  });
+  const created = await tx.preferenceProfileVersion.create({
+    data: {
+      tripId: input.tripId,
+      version: (latest?.version ?? 0) + 1,
+      parentVersionId: input.parent.id,
+      sourceFeedbackId: input.sourceFeedbackId,
+      snapshot: input.policy.snapshot,
+      delta: input.policy.delta ?? undefined,
+    },
+    select: {
+      id: true,
+      version: true,
+    },
+  });
+  const projection = await tx.tripPreference.findUnique({
+    where: {
+      tripId: input.tripId,
+    },
+    select: {
+      metadata: true,
+    },
+  });
+
+  await tx.tripPreference.updateMany({
+    where: {
+      tripId: input.tripId,
+    },
+    data: {
+      metadata: {
+        ...jsonObject(projection?.metadata),
+        adaptive: {
+          priceSensitivity: input.policy.snapshot.priceSensitivity,
+        },
+      },
+    },
+  });
+
+  return {
+    ...created,
+    snapshot: input.policy.snapshot,
+    created: true,
   };
 }

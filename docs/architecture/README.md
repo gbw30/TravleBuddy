@@ -39,9 +39,9 @@ flowchart TD
 6. Long work is represented by durable jobs. A worker rechecks parent versions before activating results.
 7. The client receives or polls a compact snapshot and renders persisted state.
 
-## Current adaptive-worker architecture
+## Current adaptive-command architecture
 
-Adaptive feedback writes an immutable event and a `PROCESS_FEEDBACK_EVENT` job in the same transaction. The worker claims jobs with `FOR UPDATE SKIP LOCKED`, renews a lease, applies retry policy, creates idempotent versions, and marks version-mismatched work `SUPERSEDED`. It never invalidates the current itinerary until a validated successor commits. See the [adaptive demo](../demo/adaptive-planning-demo.md).
+Plain removal is a bounded synchronous command: it records processed immutable feedback, applies any supported deterministic preference update, and activates a copy-on-write itinerary without the target item. Replacement requests write an immutable event and a `PROCESS_FEEDBACK_EVENT` job in the same transaction. The worker claims replacement jobs with `FOR UPDATE SKIP LOCKED`, renews a lease, applies retry policy, creates idempotent versions, and marks version-mismatched work `SUPERSEDED`. Neither command invalidates the current itinerary until a successor commits. See [ADR-006](adr-006-hybrid-adaptive-commands.md) and the [adaptive demo](../demo/adaptive-planning-demo.md).
 
 The active free-first demonstration runs the web application on the existing Vercel QA target, uses the existing Neon QA database, and runs the worker locally. This deployment choice does not alter the durable queue design.
 
@@ -56,5 +56,6 @@ Normalized inputs must produce stable ranking and scheduling. AI output never by
 3. [ADR-003: Stale-result protection](adr-003-stale-result-protection.md)
 4. [ADR-004: Resilient polling](adr-004-resilient-polling.md)
 5. [ADR-005: Database-generated identifiers](adr-005-database-generated-identifiers.md)
+6. [ADR-006: Hybrid adaptive commands](adr-006-hybrid-adaptive-commands.md)
 
 Accepted ADRs record decisions at the time they were made. New architecture changes require a new or explicitly superseding decision; the index does not rewrite ADR history.

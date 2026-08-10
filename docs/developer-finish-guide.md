@@ -190,6 +190,11 @@ The active QA/demo topology uses no hosted background-worker service. Vercel
 creates durable jobs in the existing Neon QA database, and the repository's
 standalone worker consumes them locally during the demonstration.
 
+The worker is required only for **Dislike & replace** and the resilience
+scenarios. Plain **Remove** is an immediate versioned transaction and should
+complete while the worker is stopped. If Remove creates a `PENDING` job, the
+deployed web commit does not contain the hybrid-command implementation.
+
 1. Check out the exact `$ReleaseCommit` on the existing `qa` branch and confirm
    the worktree is clean.
 2. Open a fresh PowerShell terminal at the repository root. Do not edit or load
@@ -206,7 +211,7 @@ standalone worker consumes them locally during the demonstration.
    npm run worker:start
    ```
 
-4. Keep the terminal open during the adaptive journey. Inspect sanitized
+4. Keep the terminal open during replacement journeys. Inspect sanitized
    structured logs for `STARTED`, claim/recovery activity, `JOB_FINISHED`, and
    `STOPPED`; never enable query logging or record database URLs.
 5. To demonstrate durability, stop the worker, submit feedback through Vercel,

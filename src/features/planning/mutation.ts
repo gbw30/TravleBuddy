@@ -23,7 +23,7 @@ export class PlanningMutationConflictError extends Error {
   }
 }
 
-class StalePlanningRevisionError extends Error {
+export class StalePlanningRevisionError extends Error {
   constructor() {
     super("Planning revision is stale.");
     this.name = "StalePlanningRevisionError";
@@ -229,6 +229,10 @@ export async function executePlanningMutation<T>(input: {
   userId: string;
   tripId: string;
   control?: PlanningMutationControl;
+  transactionOptions?: {
+    maxWait?: number;
+    timeout?: number;
+  };
   transaction: (tx: PlanningTransaction) => Promise<T>;
 }): Promise<T | StalePlanningMutationResult> {
   try {
@@ -249,8 +253,8 @@ export async function executePlanningMutation<T>(input: {
           },
         });
 
-        // Preserve each domain service's established not-found/archived result
-        // without exposing replay data across the ownership boundary.
+        // Preserve each domain service's established not-found/archived
+        // result without exposing replay data across the ownership boundary.
         if (trip && trip.status !== "ARCHIVED") {
           const replay = await getPlanningMutationReplayTx<T>(
             tx,
@@ -267,7 +271,7 @@ export async function executePlanningMutation<T>(input: {
       }
 
       return input.transaction(tx);
-    });
+    }, input.transactionOptions);
   } catch (error) {
     const operationId = input.control?.operationId?.trim();
 

@@ -6,9 +6,10 @@ Related: [Knowledge map](docs/README.md), [canonical target](docs/requirements.m
 Last reviewed: 2026-08-09
 
 TravleBuddy is an adaptive travel planner. A user can build a structured
-itinerary, reject an item with a reason, and watch a durable background job
-update a versioned preference profile and replace only the affected activity.
-The system preserves the current itinerary until a validated successor commits.
+itinerary, immediately remove an item with versioned audit history, or ask a
+durable background job to update a preference profile and replace only the
+affected activity. The system preserves the current itinerary until a valid
+successor commits.
 
 This repository implements the first complete adaptive-planning vertical slice.
 It is designed as a portfolio project that demonstrates product engineering,
@@ -27,11 +28,13 @@ timezone handling. Target behavior must not be mistaken for current behavior.
 flowchart LR
   U["Item feedback"] --> A["Authenticated API transaction"]
   A --> F["Immutable feedback"]
-  A --> J["PostgreSQL job"]
+  F --> R["Immediate copy-on-write removal"]
+  F --> J["Durable replacement job"]
   J --> W["Independent worker"]
   W --> P["Preference version"]
   W --> C["Persisted/provider candidates"]
   W --> I["Copy-on-write itinerary version"]
+  R --> I
   I --> V["Deterministic validation"]
   V --> X["Atomic activation"]
   J --> Q["Persistent polling UI"]
@@ -93,7 +96,8 @@ changing development or deployment topology.
 
 ## Guarantees
 
-- Feedback and its initial job/event are committed in the same transaction.
+- Removal feedback and its successor version are committed in one transaction.
+- Replacement feedback and its initial job/event are committed in one transaction.
 - HTTP retries use UUID operation IDs and the planning mutation ledger.
 - Jobs execute at least once; version creation and activation are idempotent.
 - Claims use a 30-second lease and a five-second heartbeat.
@@ -238,9 +242,10 @@ npm run test -- src/features/jobs/postgres-store.integration.test.ts prisma/adap
 ## Demo flow
 
 1. Create a trip, save preferences, select places, and build an itinerary.
-2. Open the planning workspace and reject one itinerary item.
-3. Choose `Too expensive` to demonstrate the supported inferred-preference
-   policy.
+2. Stop the worker, remove one item, and show immediate HTTP `200` plus a new
+   itinerary version.
+3. Start the worker and choose `Too expensive` with **Dislike & replace** to
+   demonstrate the durable path and supported inferred-preference policy.
 4. Observe the persisted phases from feedback receipt through validation.
 5. Confirm that only the affected item changes and a new itinerary version
    appears.

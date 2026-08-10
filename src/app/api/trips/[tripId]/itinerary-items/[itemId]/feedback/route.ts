@@ -99,6 +99,16 @@ export async function POST(request: Request, context: FeedbackRouteContext) {
     );
 
     switch (result.status) {
+      case "removed":
+        return Response.json({
+          status: "REMOVED",
+          feedbackId: result.feedbackId,
+          revision: result.revision,
+          affectedDay: result.affectedDay,
+          itineraryVersion: result.itineraryVersion,
+          preferenceDelta: result.preferenceDelta,
+          preferenceExplanation: result.preferenceExplanation,
+        });
       case "queued":
         return Response.json(
           {

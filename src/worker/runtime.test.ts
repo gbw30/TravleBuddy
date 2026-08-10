@@ -80,6 +80,10 @@ describe("worker runtime", () => {
       tripId: "trip_1",
       attempt: 2,
       outcome: "SUCCEEDED",
+      errorCode: null,
+      retryScheduled: false,
+      attemptDurationMs: 450,
+      totalDurationMs: 1_250,
     });
     logWorkerActivity("worker_1", {
       type: "LOOP_ERROR",
@@ -96,6 +100,10 @@ describe("worker runtime", () => {
       tripId: "trip_1",
       attempt: 2,
       outcome: "SUCCEEDED",
+      errorCode: null,
+      retryScheduled: false,
+      attemptDurationMs: 450,
+      totalDurationMs: 1_250,
     });
     expect(JSON.parse(String(error.mock.calls[0]?.[0]))).toEqual({
       event: "planning_worker",

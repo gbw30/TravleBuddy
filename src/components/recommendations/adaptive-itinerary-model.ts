@@ -35,6 +35,51 @@ export type QueuedFeedbackResponse = {
   status: GenerationJobStatus;
 };
 
+export type RemovedFeedbackResponse = {
+  status: "REMOVED";
+  feedbackId: string;
+  revision: number;
+  affectedDay: number;
+  itineraryVersion: {
+    id: string;
+    version: number;
+  };
+  preferenceDelta: unknown;
+  preferenceExplanation: string;
+};
+
+export function isRemovedFeedbackResponse(
+  value: Record<string, unknown> | null,
+): value is RemovedFeedbackResponse {
+  const itineraryVersion = asRecord(value?.itineraryVersion);
+
+  return Boolean(
+    value?.status === "REMOVED" &&
+    typeof value.feedbackId === "string" &&
+    typeof value.revision === "number" &&
+    typeof value.affectedDay === "number" &&
+    typeof value.preferenceExplanation === "string" &&
+    typeof itineraryVersion?.id === "string" &&
+    typeof itineraryVersion.version === "number",
+  );
+}
+
+export function setOptimisticRemoval(
+  current: ReadonlySet<string>,
+  itemId: string,
+  hidden: boolean,
+) {
+  const next = new Set(current);
+
+  if (hidden) {
+    next.add(itemId);
+  } else {
+    next.delete(itemId);
+  }
+
+  return next;
+}
+
 type FetchLike = (
   input: string | URL | Request,
   init?: RequestInit,
@@ -169,7 +214,7 @@ export function planningJobLabel(job: PlanningJobDetail) {
 
   switch (job.status) {
     case "PENDING":
-      return "Feedback received";
+      return "Waiting for a planning worker";
     case "RUNNING":
       return "Updating your itinerary";
     case "RETRYING":

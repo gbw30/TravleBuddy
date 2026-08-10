@@ -12,6 +12,11 @@ import {
   planningJobPollDelay,
   type PlanningJobDetail,
 } from "./adaptive-itinerary-panel";
+import {
+  isRemovedFeedbackResponse,
+  setOptimisticRemoval,
+} from "./adaptive-itinerary-model";
+import { AdaptiveItineraryView } from "./adaptive-itinerary-view";
 
 const day = {
   id: "day_1",
@@ -221,5 +226,55 @@ describe("AdaptiveItineraryPanel", () => {
     await expect(
       fetchPlanningJobDetail(malformedFetcher, "trip_1", "job_1"),
     ).resolves.toBeNull();
+  });
+
+  it("hides an optimistically removed item and announces completion", () => {
+    const html = renderToStaticMarkup(
+      <AdaptiveItineraryView
+        revision={8}
+        days={[day]}
+        jobs={[]}
+        pendingItemIds={new Set()}
+        itemMessages={{}}
+        hiddenItemIds={new Set(["item_1"])}
+        panelMessage="Premium Museum was removed from day 1."
+        pollError={false}
+        itineraryVersions={[]}
+        onSubmitFeedback={() => undefined}
+      />,
+    );
+
+    expect(html).not.toContain("Remove Premium Museum");
+    expect(html).toContain("No itinerary items are assigned to this day.");
+    expect(html).toContain('role="status"');
+    expect(html).toContain("Premium Museum was removed from day 1.");
+  });
+
+  it("accepts only the bounded immediate-removal response contract", () => {
+    expect(
+      isRemovedFeedbackResponse({
+        status: "REMOVED",
+        feedbackId: "feedback_1",
+        revision: 8,
+        affectedDay: 1,
+        itineraryVersion: { id: "version_3", version: 3 },
+        preferenceDelta: null,
+        preferenceExplanation: "Feedback recorded.",
+      }),
+    ).toBe(true);
+    expect(
+      isRemovedFeedbackResponse({
+        status: "REMOVED",
+        feedbackId: "feedback_1",
+      }),
+    ).toBe(false);
+  });
+
+  it("restores an optimistically hidden item after a failed removal", () => {
+    const hidden = setOptimisticRemoval(new Set<string>(), "item_1", true);
+    const restored = setOptimisticRemoval(hidden, "item_1", false);
+
+    expect(hidden.has("item_1")).toBe(true);
+    expect(restored.has("item_1")).toBe(false);
   });
 });

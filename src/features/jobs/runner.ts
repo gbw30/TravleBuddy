@@ -46,9 +46,15 @@ export type GenerationJobHandlers = Record<
 >;
 
 export type JobExecutionOutcome =
-  | { status: "SUCCEEDED" | "SUPERSEDED" }
-  | { status: "RETRYING" | "FAILED" | "DEAD_LETTERED" }
-  | { status: "LEASE_LOST" };
+  | {
+      status: "SUCCEEDED" | "SUPERSEDED";
+      errorCode?: null;
+    }
+  | {
+      status: "RETRYING" | "FAILED" | "DEAD_LETTERED";
+      errorCode: string;
+    }
+  | { status: "LEASE_LOST"; errorCode?: "JOB_LEASE_LOST" };
 
 export class JobExecutionError extends Error {
   constructor(
@@ -87,11 +93,124 @@ export function failureFromUnknown(error: unknown): JobFailure {
     };
   }
 
+  const codes = errorCodes(error);
+  const known = codes.find((code) => failureClassifications[code]);
+
+  if (known) {
+    return failureClassifications[known];
+  }
+
+  if (codes.some((code) => code.startsWith("08"))) {
+    return {
+      code: "DATABASE_CONNECTION_UNAVAILABLE",
+      message: "The database connection was interrupted.",
+      retryable: true,
+    };
+  }
+
   return {
     code: "UNEXPECTED_JOB_ERROR",
     message: null,
-    retryable: true,
+    retryable: false,
   };
+}
+
+const failureClassifications: Record<string, JobFailure> = {
+  P1001: {
+    code: "DATABASE_CONNECTION_UNAVAILABLE",
+    message: "The database is temporarily unavailable.",
+    retryable: true,
+  },
+  P1002: {
+    code: "DATABASE_CONNECTION_UNAVAILABLE",
+    message: "The database connection timed out.",
+    retryable: true,
+  },
+  P2024: {
+    code: "DATABASE_POOL_TIMEOUT",
+    message: "A database connection was not available in time.",
+    retryable: true,
+  },
+  P2028: {
+    code: "DATABASE_TRANSACTION_TIMEOUT",
+    message: "The database transaction exceeded its time budget.",
+    retryable: true,
+  },
+  INVALID_JOB_PAYLOAD: {
+    code: "INVALID_JOB_PAYLOAD",
+    message: "The job payload is invalid.",
+    retryable: false,
+  },
+  ADAPTATION_VALIDATION_FAILED: {
+    code: "ADAPTATION_VALIDATION_FAILED",
+    message: "The adaptive result did not pass structural validation.",
+    retryable: false,
+  },
+  "40001": {
+    code: "DATABASE_SERIALIZATION_FAILURE",
+    message: "A concurrent database update must be retried.",
+    retryable: true,
+  },
+  "40P01": {
+    code: "DATABASE_DEADLOCK",
+    message: "A concurrent database update must be retried.",
+    retryable: true,
+  },
+  "57P01": {
+    code: "DATABASE_CONNECTION_UNAVAILABLE",
+    message: "The database restarted during processing.",
+    retryable: true,
+  },
+  P2002: {
+    code: "DATABASE_CONSTRAINT_FAILED",
+    message: "The adaptive result conflicted with existing state.",
+    retryable: false,
+  },
+  P2003: {
+    code: "DATABASE_CONSTRAINT_FAILED",
+    message: "The adaptive result referenced unavailable state.",
+    retryable: false,
+  },
+  P2004: {
+    code: "DATABASE_CONSTRAINT_FAILED",
+    message: "The adaptive result did not satisfy database constraints.",
+    retryable: false,
+  },
+  P2025: {
+    code: "ADAPTATION_VALIDATION_FAILED",
+    message: "The adaptive target is no longer available.",
+    retryable: false,
+  },
+};
+
+function errorCodes(error: unknown) {
+  const codes: string[] = [];
+  const visited = new Set<unknown>();
+  let current = error;
+
+  for (let depth = 0; depth < 5 && current; depth += 1) {
+    if (
+      (typeof current !== "object" && typeof current !== "function") ||
+      visited.has(current)
+    ) {
+      break;
+    }
+    visited.add(current);
+    const candidate = current as {
+      code?: unknown;
+      sqlState?: unknown;
+      cause?: unknown;
+    };
+
+    for (const value of [candidate.code, candidate.sqlState]) {
+      if (typeof value === "string" && value.trim()) {
+        codes.push(value.trim().toUpperCase().slice(0, 64));
+      }
+    }
+    current = candidate.cause;
+  }
+
+  return codes;
 }
 
 type HeartbeatPump = {
@@ -221,12 +340,13 @@ export async function executeClaimedJob(input: {
       return { status: "LEASE_LOST" };
     }
 
-    const failed = await input.store.fail(input.job, failureFromUnknown(error));
+    const failure = failureFromUnknown(error);
+    const failed = await input.store.fail(input.job, failure);
 
     if (!failed.applied) {
       return { status: "LEASE_LOST" };
     }
 
-    return { status: failed.status };
+    return { status: failed.status, errorCode: failure.code };
   }
 }

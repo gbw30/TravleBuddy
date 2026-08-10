@@ -10,6 +10,7 @@ import {
   runPlanningWorker,
 } from "./runtime";
 import { validateWorkerEnv } from "@/lib/env";
+import { disconnectDb } from "@/lib/db";
 
 async function main() {
   loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
@@ -42,6 +43,7 @@ async function main() {
     });
   } finally {
     removeShutdownHandlers();
+    await disconnectDb();
   }
 }
 

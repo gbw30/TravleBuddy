@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getPlaceProvider } from "@/lib/providers/places/server";
-import { refreshItineraryConflictsForTripTx } from "@/features/itinerary/conflict-engine";
+import {
+  getOpenItineraryConflictsForTripTx,
+  refreshItineraryConflictsForTripTx,
+} from "@/features/itinerary/conflict-engine";
 import {
   JobExecutionError,
   JobLeaseLostError,
@@ -15,10 +18,12 @@ import {
   buildAdaptiveReplacementProposal,
   findNewBlockingHighConflicts,
   parseAdaptivePreferenceSnapshot,
-  recomputeAffectedDayEstimatedCost,
   rescoreReplacementCandidates,
   scoreReplacementCandidate,
   suggestionProjectionMutationForOutcome,
+  adaptiveItinerarySnapshotSelect,
+  materializeAdaptiveItineraryVersionTx,
+  persistPreferencePolicyResultTx,
   type AdaptivePreferenceSnapshot,
   type ReplacementCandidate,
 } from "./index";
@@ -68,70 +73,6 @@ async function verifyActiveJobClaim(claim: ActiveJobClaim) {
     await assertActiveJobClaim(tx, claim);
   });
 }
-
-const itinerarySnapshotSelect = {
-  id: true,
-  version: true,
-  days: {
-    select: {
-      id: true,
-      dayNumber: true,
-      date: true,
-      title: true,
-      notes: true,
-      estimatedCostAmount: true,
-      estimatedCostCurrency: true,
-      cityWindows: {
-        select: {
-          destinationId: true,
-          travelSegmentId: true,
-          city: true,
-          country: true,
-          startTime: true,
-          endTime: true,
-          source: true,
-        },
-        orderBy: {
-          startTime: "asc",
-        },
-      },
-      items: {
-        select: {
-          id: true,
-          placeSuggestionId: true,
-          title: true,
-          description: true,
-          startTime: true,
-          endTime: true,
-          durationMinutes: true,
-          sortOrder: true,
-          estimatedCostAmount: true,
-          estimatedCostCurrency: true,
-          notes: true,
-          placeSuggestion: {
-            select: {
-              destinationId: true,
-              providerPlaceId: true,
-              category: true,
-              city: true,
-              country: true,
-            },
-          },
-        },
-        orderBy: {
-          sortOrder: "asc",
-        },
-      },
-    },
-    orderBy: {
-      dayNumber: "asc",
-    },
-  },
-} satisfies Prisma.ItineraryVersionSelect;
-
-type ItinerarySnapshot = Prisma.ItineraryVersionGetPayload<{
-  select: typeof itinerarySnapshotSelect;
-}>;
 
 const candidateSelect = {
   id: true,
@@ -256,6 +197,7 @@ async function loadJobState(jobId: string, workerId: string, attempt: number) {
       preferenceProfileVersion: {
         select: {
           id: true,
+          version: true,
           snapshot: true,
         },
       },
@@ -519,163 +461,6 @@ async function fetchAndPersistCandidates(input: {
   };
 }
 
-async function cloneReplacementItinerary(
-  tx: Prisma.TransactionClient,
-  input: {
-    tripId: string;
-    jobId: string;
-    source: ItinerarySnapshot;
-    preferenceProfileVersionId: string;
-    targetItemId: string;
-    replacement: CandidateRecord;
-    preferenceExplanation: string;
-  },
-) {
-  const latest = await tx.itineraryVersion.findFirst({
-    where: {
-      tripId: input.tripId,
-    },
-    select: {
-      version: true,
-    },
-    orderBy: {
-      version: "desc",
-    },
-  });
-  const affectedDay = input.source.days.find((day) =>
-    day.items.some((item) => item.id === input.targetItemId),
-  );
-
-  if (!affectedDay) {
-    throw new JobExecutionError("TARGET_ITEM_SUPERSEDED", {
-      retryable: false,
-      publicMessage: "The rejected itinerary item is no longer active.",
-    });
-  }
-
-  const version = await tx.itineraryVersion.create({
-    data: {
-      tripId: input.tripId,
-      version: (latest?.version ?? 0) + 1,
-      parentVersionId: input.source.id,
-      preferenceProfileVersionId: input.preferenceProfileVersionId,
-      sourceJobId: input.jobId,
-      status: "DRAFT",
-      changeScope: "ITEM",
-      changeSummary: {
-        outcome: "REPLACED",
-        affectedDay: affectedDay.dayNumber,
-        rejectedItemId: input.targetItemId,
-        replacementSuggestionId: input.replacement.id,
-        explanation: input.preferenceExplanation,
-      },
-    },
-    select: {
-      id: true,
-      version: true,
-    },
-  });
-  let replacementItemId: string | null = null;
-
-  for (const sourceDay of input.source.days) {
-    const dayCost =
-      sourceDay.id === affectedDay.id
-        ? recomputeAffectedDayEstimatedCost({
-            declaredCurrency: sourceDay.estimatedCostCurrency,
-            items: sourceDay.items.map((sourceItem) =>
-              sourceItem.id === input.targetItemId
-                ? {
-                    estimatedCostAmount: input.replacement.estimatedCostAmount,
-                    estimatedCostCurrency:
-                      input.replacement.estimatedCostCurrency,
-                  }
-                : sourceItem,
-            ),
-          })
-        : {
-            estimatedCostAmount: sourceDay.estimatedCostAmount,
-            estimatedCostCurrency: sourceDay.estimatedCostCurrency,
-          };
-    const day = await tx.itineraryDay.create({
-      data: {
-        tripId: input.tripId,
-        itineraryVersionId: version.id,
-        dayNumber: sourceDay.dayNumber,
-        date: sourceDay.date,
-        title: sourceDay.title,
-        notes: sourceDay.notes,
-        estimatedCostAmount: dayCost.estimatedCostAmount,
-        estimatedCostCurrency: dayCost.estimatedCostCurrency,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (sourceDay.cityWindows.length > 0) {
-      await tx.itineraryCityWindow.createMany({
-        data: sourceDay.cityWindows.map((window) => ({
-          tripId: input.tripId,
-          dayId: day.id,
-          destinationId: window.destinationId,
-          travelSegmentId: window.travelSegmentId,
-          city: window.city,
-          country: window.country,
-          startTime: window.startTime,
-          endTime: window.endTime,
-          source: window.source,
-        })),
-      });
-    }
-
-    for (const sourceItem of sourceDay.items) {
-      const replacing = sourceItem.id === input.targetItemId;
-      const item = await tx.itineraryItem.create({
-        data: {
-          tripId: input.tripId,
-          dayId: day.id,
-          placeSuggestionId: replacing
-            ? input.replacement.id
-            : sourceItem.placeSuggestionId,
-          title: replacing ? input.replacement.name : sourceItem.title,
-          description: replacing
-            ? input.replacement.description
-            : sourceItem.description,
-          startTime: sourceItem.startTime,
-          endTime: sourceItem.endTime,
-          durationMinutes: sourceItem.durationMinutes,
-          sortOrder: sourceItem.sortOrder,
-          estimatedCostAmount: replacing
-            ? input.replacement.estimatedCostAmount
-            : sourceItem.estimatedCostAmount,
-          estimatedCostCurrency: replacing
-            ? input.replacement.estimatedCostCurrency
-            : sourceItem.estimatedCostCurrency,
-          notes: sourceItem.notes,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (replacing) replacementItemId = item.id;
-    }
-  }
-
-  if (!replacementItemId) {
-    throw new JobExecutionError("REPLACEMENT_NOT_MATERIALIZED", {
-      retryable: false,
-      publicMessage: "The replacement itinerary could not be materialized.",
-    });
-  }
-
-  return {
-    ...version,
-    affectedDay: affectedDay.dayNumber,
-    replacementItemId,
-  };
-}
-
 export async function processFeedbackEventJob(
   input: ProcessFeedbackEventJobInput,
 ): Promise<JobHandlerResult> {
@@ -731,13 +516,36 @@ export async function processFeedbackEventJob(
       publicMessage: "The feedback event is incomplete.",
     });
   }
+  if (feedback.action !== "REQUEST_ALTERNATIVE") {
+    await markFeedbackSuperseded(
+      feedback.id,
+      "Immediate removal feedback must be resubmitted through the synchronous command path.",
+      claim,
+    );
+    return {
+      status: "SUPERSEDED",
+      result: {
+        outcome: "SUPERSEDED",
+        feedbackId: feedback.id,
+        retryGuidance:
+          "Refresh the itinerary and use Remove again; this legacy queued action did not change the plan.",
+      },
+    };
+  }
+  const capturedPreferenceProfileVersionId =
+    initial.preferenceProfileVersionId!;
+  const capturedPreferenceProfileVersion = initial.preferenceProfileVersion!;
   const targetItemId = feedback.itineraryItemId;
   const parentItineraryVersionId = initial.parentItineraryVersionId;
 
   const snapshot = parseAdaptivePreferenceSnapshot(
     initial.preferenceProfileVersion?.snapshot,
   );
-  if (!snapshot) {
+  if (
+    !snapshot ||
+    !initial.preferenceProfileVersion ||
+    !initial.preferenceProfileVersionId
+  ) {
     throw new JobExecutionError("INVALID_PREFERENCE_SNAPSHOT", {
       retryable: false,
       publicMessage: "The active preference snapshot is invalid.",
@@ -767,7 +575,7 @@ export async function processFeedbackEventJob(
       id: parentItineraryVersionId,
       tripId: initial.tripId,
     },
-    select: itinerarySnapshotSelect,
+    select: adaptiveItinerarySnapshotSelect,
   });
   if (!sourceItinerary) {
     await markFeedbackSuperseded(
@@ -882,18 +690,37 @@ export async function processFeedbackEventJob(
   const rejectedSuggestions = await db.planningFeedback.findMany({
     where: {
       tripId: initial.tripId,
-      placeSuggestionId: {
-        not: null,
-      },
       action: {
         in: ["REJECT", "REQUEST_ALTERNATIVE"],
       },
+      OR: [
+        {
+          placeSuggestionId: {
+            not: null,
+          },
+        },
+        {
+          itineraryItemId: {
+            not: null,
+          },
+        },
+      ],
     },
     select: {
       placeSuggestionId: true,
       placeSuggestion: {
         select: {
           providerPlaceId: true,
+        },
+      },
+      itineraryItem: {
+        select: {
+          placeSuggestionId: true,
+          placeSuggestion: {
+            select: {
+              providerPlaceId: true,
+            },
+          },
         },
       },
     },
@@ -924,12 +751,18 @@ export async function processFeedbackEventJob(
       destinationId: destination?.id ?? "unavailable-destination",
       category: target.placeSuggestion?.category ?? "ACTIVITY",
       rejectedCandidateIds: rejectedSuggestions.flatMap((item) =>
-        item.placeSuggestionId ? [item.placeSuggestionId] : [],
+        item.placeSuggestionId
+          ? [item.placeSuggestionId]
+          : item.itineraryItem?.placeSuggestionId
+            ? [item.itineraryItem.placeSuggestionId]
+            : [],
       ),
       rejectedProviderPlaceIds: rejectedSuggestions.flatMap((item) =>
         item.placeSuggestion?.providerPlaceId
           ? [item.placeSuggestion.providerPlaceId]
-          : [],
+          : item.itineraryItem?.placeSuggestion?.providerPlaceId
+            ? [item.itineraryItem.placeSuggestion.providerPlaceId]
+            : [],
       ),
     },
     createReplacementItem: (candidate, replacedItem) => {
@@ -977,412 +810,399 @@ export async function processFeedbackEventJob(
   );
   throwIfAborted(input.signal);
 
-  const commit = await db.$transaction(async (tx) => {
-    await assertActiveJobClaim(tx, claim);
-    const alreadyProcessed = await tx.planningFeedback.findUnique({
-      where: {
-        id: feedback.id,
-      },
-      select: {
-        processingStatus: true,
-      },
-    });
-    const existingJob = await tx.generationJob.findUnique({
-      where: {
-        id: initial.id,
-      },
-      select: {
-        result: true,
-      },
-    });
-    const existingResult = existingJob?.result
-      ? jsonValue(existingJob.result)
-      : null;
-
-    if (alreadyProcessed?.processingStatus === "PROCESSED" && existingResult) {
+  const commit = await db.$transaction(
+    async (tx) => {
       await assertActiveJobClaim(tx, claim);
-      return {
-        state: "COMMITTED" as const,
-        result: existingResult,
-      };
-    }
-
-    const locked = await tx.trip.updateMany({
-      where: {
-        id: initial.tripId,
-        tripVersion: initial.tripVersion,
-        activePreferenceProfileVersionId: initial.preferenceProfileVersionId,
-        activeItineraryVersionId: initial.parentItineraryVersionId,
-      },
-      data: {
-        tripVersion: {
-          increment: 1,
-        },
-        planningRevision: {
-          increment: 1,
-        },
-      },
-    });
-
-    if (locked.count !== 1) {
-      return {
-        state: "STALE" as const,
-      };
-    }
-
-    const latestPreference = await tx.preferenceProfileVersion.findFirst({
-      where: {
-        tripId: initial.tripId,
-      },
-      select: {
-        version: true,
-      },
-      orderBy: {
-        version: "desc",
-      },
-    });
-    const preferenceVersion = await tx.preferenceProfileVersion.create({
-      data: {
-        tripId: initial.tripId,
-        version: (latestPreference?.version ?? 0) + 1,
-        parentVersionId: initial.preferenceProfileVersionId,
-        sourceFeedbackId: feedback.id,
-        snapshot: proposal.preference.snapshot,
-        delta: proposal.preference.delta ?? undefined,
-      },
-      select: {
-        id: true,
-        version: true,
-      },
-    });
-    const preferenceProjection = await tx.tripPreference.findUnique({
-      where: {
-        tripId: initial.tripId,
-      },
-      select: {
-        metadata: true,
-      },
-    });
-
-    await tx.tripPreference.updateMany({
-      where: {
-        tripId: initial.tripId,
-      },
-      data: {
-        metadata: {
-          ...jsonObject(preferenceProjection?.metadata),
-          adaptive: {
-            priceSensitivity: proposal.preference.snapshot.priceSensitivity,
-          },
-        },
-      },
-    });
-
-    let itineraryVersion: {
-      id: string;
-      version: number;
-      affectedDay: number;
-      replacementItemId: string;
-    } | null = null;
-    let replacement: CandidateRecord | null = null;
-    let validation:
-      | {
-          status: "NOT_APPLICABLE";
-        }
-      | {
-          status: "PASSED";
-        }
-      | {
-          status: "BLOCKED";
-          draftVersion: {
-            id: string;
-            version: number;
-          };
-          blockingConflicts: Array<{
-            type: string;
-            severity: string;
-            message: string;
-          }>;
-        } = {
-      status: "NOT_APPLICABLE",
-    };
-    let selectionProjection =
-      suggestionProjectionMutationForOutcome("NO_REPLACEMENT");
-
-    if (proposal.status === "PROPOSED") {
-      replacement = candidateMap.get(proposal.candidate.id) ?? null;
-      if (!replacement) {
-        throw new JobExecutionError("REPLACEMENT_RECORD_NOT_FOUND", {
-          retryable: false,
-          publicMessage: "The selected replacement is no longer available.",
-        });
-      }
-
-      const conflictTrip = await tx.trip.findUniqueOrThrow({
+      const alreadyProcessed = await tx.planningFeedback.findUnique({
         where: {
-          id: initial.tripId,
+          id: feedback.id,
         },
         select: {
-          id: true,
-          title: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          budgetAmount: true,
-          budgetCurrency: true,
-          destinations: {
-            select: {
-              id: true,
-            },
-          },
-          preference: {
-            select: {
-              pace: true,
-            },
-          },
+          processingStatus: true,
         },
       });
-      const baselineConflicts = await refreshItineraryConflictsForTripTx(
-        tx,
-        conflictTrip,
-        {
-          itineraryVersionId: parentItineraryVersionId,
+      const existingJob = await tx.generationJob.findUnique({
+        where: {
+          id: initial.id,
         },
-      );
-      const draftItineraryVersion = await cloneReplacementItinerary(tx, {
-        tripId: initial.tripId,
-        jobId: initial.id,
-        source: sourceItinerary,
-        preferenceProfileVersionId: preferenceVersion.id,
-        targetItemId,
-        replacement,
-        preferenceExplanation: proposal.preference.explanation,
+        select: {
+          result: true,
+        },
       });
-      const proposedConflicts = await refreshItineraryConflictsForTripTx(
-        tx,
-        conflictTrip,
-        {
-          itineraryVersionId: draftItineraryVersion.id,
+      const existingResult = existingJob?.result
+        ? jsonValue(existingJob.result)
+        : null;
+
+      if (
+        alreadyProcessed?.processingStatus === "PROCESSED" &&
+        existingResult
+      ) {
+        await assertActiveJobClaim(tx, claim);
+        return {
+          state: "COMMITTED" as const,
+          result: existingResult,
+        };
+      }
+
+      const locked = await tx.trip.updateMany({
+        where: {
+          id: initial.tripId,
+          tripVersion: initial.tripVersion,
+          activePreferenceProfileVersionId: initial.preferenceProfileVersionId,
+          activeItineraryVersionId: initial.parentItineraryVersionId,
         },
-      );
-      const blockingConflicts = findNewBlockingHighConflicts({
-        baseline: baselineConflicts,
-        proposed: proposedConflicts,
-        affectedDay: draftItineraryVersion.affectedDay,
+        data: {
+          tripVersion: {
+            increment: 1,
+          },
+          planningRevision: {
+            increment: 1,
+          },
+        },
       });
 
-      if (blockingConflicts.length > 0) {
-        const conflictSummary = blockingConflicts
-          .slice(0, 10)
-          .map((conflict) => ({
-            type: conflict.type,
-            severity: conflict.severity,
-            message: conflict.message,
-          }));
-        await tx.itineraryVersion.update({
-          where: {
-            id: draftItineraryVersion.id,
-          },
-          data: {
-            status: "FAILED",
-            changeSummary: {
-              outcome: "VALIDATION_BLOCKED",
-              affectedDay: draftItineraryVersion.affectedDay,
-              rejectedItemId: targetItemId,
-              replacementSuggestionId: replacement.id,
-              blockingConflicts: conflictSummary,
-            },
-          },
-        });
-        validation = {
-          status: "BLOCKED",
-          draftVersion: {
-            id: draftItineraryVersion.id,
-            version: draftItineraryVersion.version,
-          },
-          blockingConflicts: conflictSummary,
+      if (locked.count !== 1) {
+        return {
+          state: "STALE" as const,
         };
-      } else {
-        const replacementScoring = candidateScoringMap.get(replacement.id);
-        if (!replacementScoring) {
-          throw new JobExecutionError("REPLACEMENT_SCORE_NOT_FOUND", {
+      }
+
+      const preferenceVersion = await persistPreferencePolicyResultTx(tx, {
+        tripId: initial.tripId,
+        parent: {
+          id: capturedPreferenceProfileVersionId,
+          version: capturedPreferenceProfileVersion.version,
+        },
+        sourceFeedbackId: feedback.id,
+        policy: proposal.preference,
+        persistNoChange: true,
+      });
+
+      let itineraryVersion: {
+        id: string;
+        version: number;
+        affectedDay: number;
+        replacementItemId: string;
+      } | null = null;
+      let replacement: CandidateRecord | null = null;
+      let validation:
+        | {
+            status: "NOT_APPLICABLE";
+          }
+        | {
+            status: "PASSED";
+          }
+        | {
+            status: "BLOCKED";
+            draftVersion: {
+              id: string;
+              version: number;
+            };
+            blockingConflicts: Array<{
+              type: string;
+              severity: string;
+              message: string;
+            }>;
+          } = {
+        status: "NOT_APPLICABLE",
+      };
+      let selectionProjection =
+        suggestionProjectionMutationForOutcome("NO_REPLACEMENT");
+
+      if (proposal.status === "PROPOSED") {
+        replacement = candidateMap.get(proposal.candidate.id) ?? null;
+        if (!replacement) {
+          throw new JobExecutionError("REPLACEMENT_RECORD_NOT_FOUND", {
             retryable: false,
-            publicMessage:
-              "The selected replacement score is no longer available.",
+            publicMessage: "The selected replacement is no longer available.",
           });
         }
 
-        await tx.placeSuggestion.update({
+        const conflictTrip = await tx.trip.findUniqueOrThrow({
           where: {
-            id: replacement.id,
+            id: initial.tripId,
           },
-          data: {
-            status: "SELECTED",
-            score: replacementScoring.score,
-            explanation: proposal.preference.explanation,
-            metadata: {
-              ...jsonObject(replacement.metadata),
-              scoring: replacementScoring,
-              scoringPreference: {
-                feedbackId: feedback.id,
-                priceSensitivity:
-                  proposal.preference.snapshot.priceSensitivity.weight,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            budgetAmount: true,
+            budgetCurrency: true,
+            destinations: {
+              select: {
+                id: true,
+              },
+            },
+            preference: {
+              select: {
+                pace: true,
               },
             },
           },
         });
-        itineraryVersion = draftItineraryVersion;
-        selectionProjection =
-          suggestionProjectionMutationForOutcome("REPLACED");
-        validation = {
-          status: "PASSED",
-        };
-
-        const superseded = await tx.itineraryVersion.updateMany({
-          where: {
-            id: parentItineraryVersionId,
+        const baselineConflicts = await getOpenItineraryConflictsForTripTx(
+          tx,
+          initial.tripId,
+          parentItineraryVersionId,
+        );
+        const materializedItineraryVersion =
+          await materializeAdaptiveItineraryVersionTx(tx, {
             tripId: initial.tripId,
-            status: "ACTIVE",
-          },
-          data: {
-            status: "SUPERSEDED",
-          },
-        });
-        if (superseded.count !== 1) {
-          throw new JobExecutionError("PARENT_ITINERARY_NOT_ACTIVE", {
+            source: sourceItinerary,
+            preferenceProfileVersionId: preferenceVersion.id,
+            targetItemId,
+            feedbackId: feedback.id,
+            preferenceExplanation: proposal.preference.explanation,
+            sourceJobId: initial.id,
+            change: {
+              kind: "REPLACE",
+              replacement,
+            },
+          });
+
+        if (!materializedItineraryVersion.replacementItemId) {
+          throw new JobExecutionError("REPLACEMENT_NOT_MATERIALIZED", {
             retryable: false,
             publicMessage:
-              "The captured itinerary is no longer the active version.",
+              "The replacement itinerary could not be materialized.",
           });
         }
-        await tx.itineraryVersion.update({
+        const draftItineraryVersion = {
+          ...materializedItineraryVersion,
+          replacementItemId: materializedItineraryVersion.replacementItemId,
+        };
+        const proposedConflicts = await refreshItineraryConflictsForTripTx(
+          tx,
+          conflictTrip,
+          {
+            itineraryVersionId: draftItineraryVersion.id,
+          },
+        );
+        const blockingConflicts = findNewBlockingHighConflicts({
+          baseline: baselineConflicts,
+          proposed: proposedConflicts,
+          affectedDay: draftItineraryVersion.affectedDay,
+        });
+
+        if (blockingConflicts.length > 0) {
+          const conflictSummary = blockingConflicts
+            .slice(0, 10)
+            .map((conflict) => ({
+              type: conflict.type,
+              severity: conflict.severity,
+              message: conflict.message,
+            }));
+          await tx.itineraryVersion.update({
+            where: {
+              id: draftItineraryVersion.id,
+            },
+            data: {
+              status: "FAILED",
+              changeSummary: {
+                outcome: "VALIDATION_BLOCKED",
+                affectedDay: draftItineraryVersion.affectedDay,
+                rejectedItemId: targetItemId,
+                replacementSuggestionId: replacement.id,
+                blockingConflicts: conflictSummary,
+              },
+            },
+          });
+          validation = {
+            status: "BLOCKED",
+            draftVersion: {
+              id: draftItineraryVersion.id,
+              version: draftItineraryVersion.version,
+            },
+            blockingConflicts: conflictSummary,
+          };
+        } else {
+          const replacementScoring = candidateScoringMap.get(replacement.id);
+          if (!replacementScoring) {
+            throw new JobExecutionError("REPLACEMENT_SCORE_NOT_FOUND", {
+              retryable: false,
+              publicMessage:
+                "The selected replacement score is no longer available.",
+            });
+          }
+
+          await tx.placeSuggestion.update({
+            where: {
+              id: replacement.id,
+            },
+            data: {
+              status: "SELECTED",
+              score: replacementScoring.score,
+              explanation: proposal.preference.explanation,
+              metadata: {
+                ...jsonObject(replacement.metadata),
+                scoring: replacementScoring,
+                scoringPreference: {
+                  feedbackId: feedback.id,
+                  priceSensitivity:
+                    proposal.preference.snapshot.priceSensitivity.weight,
+                },
+              },
+            },
+          });
+          itineraryVersion = draftItineraryVersion;
+          selectionProjection =
+            suggestionProjectionMutationForOutcome("REPLACED");
+          validation = {
+            status: "PASSED",
+          };
+
+          const superseded = await tx.itineraryVersion.updateMany({
+            where: {
+              id: parentItineraryVersionId,
+              tripId: initial.tripId,
+              status: "ACTIVE",
+            },
+            data: {
+              status: "SUPERSEDED",
+            },
+          });
+          if (superseded.count !== 1) {
+            throw new JobExecutionError("PARENT_ITINERARY_NOT_ACTIVE", {
+              retryable: false,
+              publicMessage:
+                "The captured itinerary is no longer the active version.",
+            });
+          }
+          await tx.itineraryVersion.update({
+            where: {
+              id: itineraryVersion.id,
+            },
+            data: {
+              status: "ACTIVE",
+              activatedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      if (
+        target.placeSuggestionId &&
+        selectionProjection.rejectedSuggestionStatus
+      ) {
+        await tx.placeSuggestion.updateMany({
           where: {
-            id: itineraryVersion.id,
+            id: target.placeSuggestionId,
+            tripId: initial.tripId,
           },
           data: {
-            status: "ACTIVE",
-            activatedAt: new Date(),
+            status: selectionProjection.rejectedSuggestionStatus,
           },
         });
       }
-    }
 
-    if (
-      target.placeSuggestionId &&
-      selectionProjection.rejectedSuggestionStatus
-    ) {
-      await tx.placeSuggestion.updateMany({
+      await tx.trip.update({
         where: {
-          id: target.placeSuggestionId,
-          tripId: initial.tripId,
+          id: initial.tripId,
         },
         data: {
-          status: selectionProjection.rejectedSuggestionStatus,
+          activePreferenceProfileVersionId: preferenceVersion.id,
+          ...(itineraryVersion
+            ? { activeItineraryVersionId: itineraryVersion.id }
+            : {}),
         },
       });
-    }
-
-    await tx.trip.update({
-      where: {
-        id: initial.tripId,
-      },
-      data: {
-        activePreferenceProfileVersionId: preferenceVersion.id,
-        ...(itineraryVersion
-          ? { activeItineraryVersionId: itineraryVersion.id }
-          : {}),
-      },
-    });
-    const processingResult = jsonValue({
-      outcome: itineraryVersion ? "REPLACED" : "NO_REPLACEMENT",
-      feedbackId: feedback.id,
-      preferenceVersion: {
-        id: preferenceVersion.id,
-        version: preferenceVersion.version,
-        delta: proposal.preference.delta,
-        explanation: proposal.preference.explanation,
-      },
-      affectedDay:
-        itineraryVersion?.affectedDay ??
-        sourceItinerary.days.find((day) =>
-          day.items.some((item) => item.id === targetItemId),
-        )?.dayNumber ??
-        null,
-      itineraryVersion: itineraryVersion
-        ? {
-            id: itineraryVersion.id,
-            version: itineraryVersion.version,
-          }
-        : null,
-      replacement:
-        replacement && itineraryVersion
+      const processingResult = jsonValue({
+        outcome: itineraryVersion ? "REPLACED" : "NO_REPLACEMENT",
+        feedbackId: feedback.id,
+        preferenceVersion: {
+          id: preferenceVersion.id,
+          version: preferenceVersion.version,
+          delta: proposal.preference.delta,
+          explanation: proposal.preference.explanation,
+        },
+        affectedDay:
+          itineraryVersion?.affectedDay ??
+          sourceItinerary.days.find((day) =>
+            day.items.some((item) => item.id === targetItemId),
+          )?.dayNumber ??
+          null,
+        itineraryVersion: itineraryVersion
           ? {
-              itemId: itineraryVersion.replacementItemId,
-              suggestionId: replacement.id,
-              name: replacement.name,
-              score: candidateScoringMap.get(replacement.id)?.score ?? null,
-              explanation:
-                replacement.explanation ?? proposal.preference.explanation,
+              id: itineraryVersion.id,
+              version: itineraryVersion.version,
             }
           : null,
-      validation,
-      provider: providerState,
-      retryGuidance:
-        validation.status === "BLOCKED"
-          ? "The proposed replacement introduced a new blocking conflict. Review the failed draft or submit feedback for another alternative."
-          : providerState.state === "UNAVAILABLE"
-            ? "Configure the place provider or add a compatible persisted candidate, then submit new feedback."
+        replacement:
+          replacement && itineraryVersion
+            ? {
+                itemId: itineraryVersion.replacementItemId,
+                suggestionId: replacement.id,
+                name: replacement.name,
+                score: candidateScoringMap.get(replacement.id)?.score ?? null,
+                explanation:
+                  replacement.explanation ?? proposal.preference.explanation,
+              }
             : null,
-    });
+        validation,
+        provider: providerState,
+        retryGuidance:
+          validation.status === "BLOCKED"
+            ? "The proposed replacement introduced a new blocking conflict. Review the failed draft or submit feedback for another alternative."
+            : providerState.state === "UNAVAILABLE"
+              ? "Configure the place provider or add a compatible persisted candidate, then submit new feedback."
+              : null,
+      });
 
-    await tx.planningFeedback.update({
-      where: {
-        id: feedback.id,
-      },
-      data: {
-        processingStatus: "PROCESSED",
-        processedAt: new Date(),
-      },
-    });
-    const jobResult = await tx.generationJob.updateMany({
-      where: {
-        id: initial.id,
-        status: "RUNNING",
-        workerId: input.workerId,
-        attemptCount: input.attempt,
-      },
-      data: {
-        result: processingResult as Prisma.InputJsonValue,
-      },
-    });
-    if (jobResult.count !== 1) {
-      throw new JobLeaseLostError();
-    }
-    await tx.planningEvent.create({
-      data: {
-        tripId: initial.tripId,
-        actor: "ENGINE",
-        type: "ENGINE_EXPLANATION",
-        title: itineraryVersion
-          ? "Itinerary item replaced"
-          : validation.status === "BLOCKED"
-            ? "Replacement blocked by itinerary validation"
-            : "Preferences updated; no replacement found",
-        message: itineraryVersion
-          ? `${target.title} was replaced with ${replacement?.name}.`
-          : validation.status === "BLOCKED"
-            ? "The preference update was preserved, but the current itinerary remains active because the proposed replacement introduced a new blocking conflict."
-            : "The feedback changed the active preference profile, but no compatible replacement was available.",
-        metadata: processingResult as Prisma.InputJsonValue,
-      },
-    });
-    await assertActiveJobClaim(tx, claim);
+      await tx.planningFeedback.update({
+        where: {
+          id: feedback.id,
+        },
+        data: {
+          processingStatus: "PROCESSED",
+          processedAt: new Date(),
+        },
+      });
+      const jobResult = await tx.generationJob.updateMany({
+        where: {
+          id: initial.id,
+          status: "RUNNING",
+          workerId: input.workerId,
+          attemptCount: input.attempt,
+        },
+        data: {
+          result: processingResult as Prisma.InputJsonValue,
+        },
+      });
+      if (jobResult.count !== 1) {
+        throw new JobLeaseLostError();
+      }
+      await tx.planningEvent.create({
+        data: {
+          tripId: initial.tripId,
+          actor: "ENGINE",
+          type: "ENGINE_EXPLANATION",
+          title: itineraryVersion
+            ? "Itinerary item replaced"
+            : validation.status === "BLOCKED"
+              ? "Replacement blocked by itinerary validation"
+              : "Preferences updated; no replacement found",
+          message: itineraryVersion
+            ? `${target.title} was replaced with ${replacement?.name}.`
+            : validation.status === "BLOCKED"
+              ? "The preference update was preserved, but the current itinerary remains active because the proposed replacement introduced a new blocking conflict."
+              : "The feedback changed the active preference profile, but no compatible replacement was available.",
+          metadata: processingResult as Prisma.InputJsonValue,
+        },
+      });
+      await assertActiveJobClaim(tx, claim);
 
-    return {
-      state: "COMMITTED" as const,
-      result: processingResult,
-    };
-  });
+      return {
+        state: "COMMITTED" as const,
+        result: processingResult,
+      };
+    },
+    {
+      maxWait: 5_000,
+      timeout: 30_000,
+    },
+  );
 
   if (commit.state === "STALE") {
     await markFeedbackSuperseded(

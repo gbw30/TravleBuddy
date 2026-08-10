@@ -28,6 +28,8 @@ export function AdaptiveItineraryView({
   jobs,
   pendingItemIds,
   itemMessages,
+  hiddenItemIds,
+  panelMessage,
   pollError,
   itineraryVersions,
   onSubmitFeedback,
@@ -37,6 +39,8 @@ export function AdaptiveItineraryView({
   jobs: readonly PlanningJobDetail[];
   pendingItemIds: ReadonlySet<string>;
   itemMessages: Readonly<Record<string, AdaptiveItemMessage>>;
+  hiddenItemIds: ReadonlySet<string>;
+  panelMessage: string | null;
   pollError: boolean;
   itineraryVersions: readonly PlanningItineraryVersionSummary[];
   onSubmitFeedback: FormEventHandler<HTMLFormElement>;
@@ -56,14 +60,24 @@ export function AdaptiveItineraryView({
             Shape the itinerary as you react
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-600">
-            Dislike or remove an item. TravleBuddy preserves the current plan
-            while a durable background job updates only the affected day.
+            Remove an item immediately, or ask a durable background job to find
+            and validate a replacement for the affected day.
           </p>
         </div>
         <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-800">
           Revision {revision}
         </span>
       </div>
+
+      {panelMessage ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+        >
+          {panelMessage}
+        </p>
+      ) : null}
 
       {days.length > 0 ? (
         <div className="mt-5 grid gap-4">
@@ -79,83 +93,87 @@ export function AdaptiveItineraryView({
               >
                 Day {day.dayNumber}
               </h3>
-              {day.items.length > 0 ? (
+              {day.items.some((item) => !hiddenItemIds.has(item.id)) ? (
                 <ul className="mt-3 grid gap-3">
-                  {day.items.map((item) => {
-                    const pending = pendingItemIds.has(item.id);
-                    const message = itemMessages[item.id];
-                    const selectId = `feedback-reason-${item.id}`;
+                  {day.items
+                    .filter((item) => !hiddenItemIds.has(item.id))
+                    .map((item) => {
+                      const pending = pendingItemIds.has(item.id);
+                      const message = itemMessages[item.id];
+                      const selectId = `feedback-reason-${item.id}`;
 
-                    return (
-                      <li key={item.id} className="rounded-md bg-zinc-50 p-3">
-                        <p className="text-sm font-medium text-zinc-950">
-                          {item.title}
-                        </p>
-                        <form
-                          data-item-id={item.id}
-                          onSubmit={onSubmitFeedback}
-                          className="mt-3 flex flex-wrap items-end gap-2"
-                        >
-                          <label
-                            htmlFor={selectId}
-                            className="grid gap-1 text-xs font-medium text-zinc-700"
-                          >
-                            Reason
-                            <select
-                              id={selectId}
-                              name="reason"
-                              disabled={pending}
-                              defaultValue="NOT_INTERESTED"
-                              className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-900"
-                            >
-                              {feedbackReasons.map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <button
-                            type="submit"
-                            name="action"
-                            value="REQUEST_ALTERNATIVE"
-                            disabled={pending}
-                            aria-label={`Dislike ${item.title} and find a replacement`}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-zinc-950 px-3 text-xs font-medium text-white hover:bg-zinc-800 disabled:cursor-wait disabled:opacity-60"
-                          >
-                            <ThumbsDown
-                              aria-hidden="true"
-                              className="size-3.5"
-                            />
-                            {pending ? "Queuing..." : "Dislike & replace"}
-                          </button>
-                          <button
-                            type="submit"
-                            name="action"
-                            value="REJECT"
-                            disabled={pending}
-                            aria-label={`Remove ${item.title} from the itinerary`}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-60"
-                          >
-                            <Trash2 aria-hidden="true" className="size-3.5" />
-                            Remove
-                          </button>
-                        </form>
-                        {message ? (
-                          <p
-                            role={message.kind === "error" ? "alert" : "status"}
-                            className={
-                              message.kind === "error"
-                                ? "mt-2 text-xs leading-5 text-red-700"
-                                : "mt-2 text-xs leading-5 text-emerald-700"
-                            }
-                          >
-                            {message.text}
+                      return (
+                        <li key={item.id} className="rounded-md bg-zinc-50 p-3">
+                          <p className="text-sm font-medium text-zinc-950">
+                            {item.title}
                           </p>
-                        ) : null}
-                      </li>
-                    );
-                  })}
+                          <form
+                            data-item-id={item.id}
+                            onSubmit={onSubmitFeedback}
+                            className="mt-3 flex flex-wrap items-end gap-2"
+                          >
+                            <label
+                              htmlFor={selectId}
+                              className="grid gap-1 text-xs font-medium text-zinc-700"
+                            >
+                              Reason
+                              <select
+                                id={selectId}
+                                name="reason"
+                                disabled={pending}
+                                defaultValue="NOT_INTERESTED"
+                                className="h-9 rounded-md border border-zinc-300 bg-white px-2 text-sm text-zinc-900"
+                              >
+                                {feedbackReasons.map(([value, label]) => (
+                                  <option key={value} value={value}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <button
+                              type="submit"
+                              name="action"
+                              value="REQUEST_ALTERNATIVE"
+                              disabled={pending}
+                              aria-label={`Dislike ${item.title} and find a replacement`}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-zinc-950 px-3 text-xs font-medium text-white hover:bg-zinc-800 disabled:cursor-wait disabled:opacity-60"
+                            >
+                              <ThumbsDown
+                                aria-hidden="true"
+                                className="size-3.5"
+                              />
+                              {pending ? "Queuing..." : "Dislike & replace"}
+                            </button>
+                            <button
+                              type="submit"
+                              name="action"
+                              value="REJECT"
+                              disabled={pending}
+                              aria-label={`Remove ${item.title} from the itinerary`}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-60"
+                            >
+                              <Trash2 aria-hidden="true" className="size-3.5" />
+                              Remove
+                            </button>
+                          </form>
+                          {message ? (
+                            <p
+                              role={
+                                message.kind === "error" ? "alert" : "status"
+                              }
+                              className={
+                                message.kind === "error"
+                                  ? "mt-2 text-xs leading-5 text-red-700"
+                                  : "mt-2 text-xs leading-5 text-emerald-700"
+                              }
+                            >
+                              {message.text}
+                            </p>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                 </ul>
               ) : (
                 <p className="mt-2 text-sm text-zinc-500">

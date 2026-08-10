@@ -51,6 +51,7 @@ type ClaimRow = {
   maxAttempts: number;
   workerId: string;
   leaseExpiresAt: Date | string;
+  createdAt?: Date | string;
 };
 
 type EnqueueRow = {
@@ -167,7 +168,8 @@ SELECT
   claimed.attempt_count AS "attempt",
   claimed.max_attempts AS "maxAttempts",
   claimed.worker_id AS "workerId",
-  claimed.lease_expires_at AS "leaseExpiresAt"
+  claimed.lease_expires_at AS "leaseExpiresAt",
+  claimed.created_at AS "createdAt"
 FROM claimed
 JOIN attempt ON attempt.job_id = claimed.id
 `;
@@ -946,6 +948,14 @@ export class PostgresGenerationJobStore implements GenerationJobStore {
         row.leaseExpiresAt instanceof Date
           ? row.leaseExpiresAt
           : new Date(row.leaseExpiresAt),
+      ...(row.createdAt
+        ? {
+            createdAt:
+              row.createdAt instanceof Date
+                ? row.createdAt
+                : new Date(row.createdAt),
+          }
+        : {}),
     };
   }
 
