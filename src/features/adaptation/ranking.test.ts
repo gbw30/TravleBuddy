@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ReplacementCandidate } from "./schemas";
 import {
+  compareCandidateAffordability,
   compareReplacementCandidates,
+  evaluateReplacementCandidates,
   rankReplacementCandidates,
+  replacementCandidatesNeedProviderFetch,
+  semanticPlaceFingerprint,
   selectReplacementCandidate,
 } from "./ranking";
 
@@ -18,6 +22,11 @@ function candidate(
     name: `Place ${id}`,
     score: 80,
     rating: 4.5,
+    city: "Bogota",
+    country: "Colombia",
+    priceLevel: 2,
+    estimatedCostAmount: 50,
+    estimatedCostCurrency: "USD",
     ...overrides,
   };
 }
@@ -167,6 +176,119 @@ describe("replacement candidate ranking", () => {
     );
 
     expect(ranked.map(({ id }) => id)).toEqual(["fresh"]);
+  });
+
+  it("excludes the same visible place even when provider identities differ", () => {
+    const targetFingerprint = semanticPlaceFingerprint({
+      name: "Bogota Old Town Culture Walk",
+      category: "ACTIVITY",
+      city: "Bogota",
+      country: "Colombia",
+    });
+    const evaluation = evaluateReplacementCandidates(
+      [
+        candidate("legacy-duplicate", {
+          providerPlaceId: "legacy-provider-id",
+          name: "  BOGOTÁ old-town culture walk ",
+        }),
+        candidate("different", { name: "Bogota Riverside Walk" }),
+      ],
+      {
+        ...baseFilter,
+        excludedSemanticFingerprints: [targetFingerprint],
+      },
+    );
+
+    expect(evaluation.rankedCandidates.map(({ id }) => id)).toEqual([
+      "different",
+    ]);
+    expect(evaluation.diagnostics.excludedSamePlace).toBe(1);
+  });
+
+  it("requires a strictly lower same-currency cost before rating can rank candidates", () => {
+    const evaluation = evaluateReplacementCandidates(
+      [
+        candidate("higher-rated-same-cost", {
+          rating: 5,
+          score: 100,
+          estimatedCostAmount: 80,
+        }),
+        candidate("higher-rated-expensive", {
+          rating: 5,
+          score: 100,
+          estimatedCostAmount: 120,
+        }),
+        candidate("cheaper", {
+          rating: 3.5,
+          score: 60,
+          estimatedCostAmount: 40,
+        }),
+      ],
+      {
+        ...baseFilter,
+        cheaperThan: {
+          estimatedCostAmount: 80,
+          estimatedCostCurrency: "USD",
+          priceLevel: 3,
+        },
+      },
+    );
+
+    expect(evaluation.rankedCandidates.map(({ id }) => id)).toEqual([
+      "cheaper",
+    ]);
+    expect(evaluation.diagnostics.excludedNotCheaper).toBe(2);
+  });
+
+  it("requests provider expansion when a nonempty persisted pool has no eligible candidate", () => {
+    expect(
+      replacementCandidatesNeedProviderFetch([candidate("selected")], {
+        ...baseFilter,
+        selectedCandidateIds: ["selected"],
+      }),
+    ).toBe(true);
+    expect(
+      replacementCandidatesNeedProviderFetch(
+        [candidate("eligible")],
+        baseFilter,
+      ),
+    ).toBe(false);
+  });
+
+  it("falls back to price level and rejects unknown affordability", () => {
+    expect(
+      compareCandidateAffordability(
+        {
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+          priceLevel: 1,
+        },
+        {
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+          priceLevel: 3,
+        },
+      ),
+    ).toEqual({
+      cheaper: true,
+      basis: "PRICE_LEVEL",
+      cheaperBy: null,
+      priceTierDelta: 2,
+    });
+    expect(
+      compareCandidateAffordability(
+        {
+          estimatedCostAmount: null,
+          estimatedCostCurrency: null,
+          priceLevel: null,
+        },
+        {
+          estimatedCostAmount: 80,
+          estimatedCostCurrency: "USD",
+          priceLevel: null,
+        },
+      ).cheaper,
+    ).toBe(false);
   });
 
   it("is independent of input order and never mutates the input", () => {

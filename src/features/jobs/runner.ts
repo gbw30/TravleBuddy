@@ -49,6 +49,7 @@ export type JobExecutionOutcome =
   | {
       status: "SUCCEEDED" | "SUPERSEDED";
       errorCode?: null;
+      result?: JsonValue;
     }
   | {
       status: "RETRYING" | "FAILED" | "DEAD_LETTERED";
@@ -328,11 +329,15 @@ export async function executeClaimedJob(input: {
         input.job,
         result.result ?? null,
       );
-      return { status: applied ? "SUPERSEDED" : "LEASE_LOST" };
+      return applied
+        ? { status: "SUPERSEDED", result: result.result ?? null }
+        : { status: "LEASE_LOST" };
     }
 
     const applied = await input.store.complete(input.job, result.result);
-    return { status: applied ? "SUCCEEDED" : "LEASE_LOST" };
+    return applied
+      ? { status: "SUCCEEDED", result: result.result }
+      : { status: "LEASE_LOST" };
   } catch (error) {
     await heartbeat.stop();
 

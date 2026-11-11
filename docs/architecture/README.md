@@ -47,7 +47,13 @@ The active free-first demonstration runs the web application on the existing Ver
 
 ## Determinism and graceful degradation
 
-Normalized inputs must produce stable ranking and scheduling. AI output never bypasses validation, and provider data never becomes authoritative without normalization. If AI or a live provider is unavailable, the product reports the limitation and uses supported deterministic behavior; it does not fabricate external results.
+Normalized inputs must produce stable ranking and scheduling. AI output never
+bypasses validation, and provider data never becomes authoritative without
+normalization. Adaptive replacement also requires a distinct semantic identity,
+and `TOO_EXPENSIVE` candidates must be demonstrably cheaper before rating can
+rank them. If AI or a live provider is unavailable, the product reports the
+limitation and uses supported deterministic behavior; it does not fabricate
+external results.
 
 ## Accepted ADRs
 
@@ -57,5 +63,6 @@ Normalized inputs must produce stable ranking and scheduling. AI output never by
 4. [ADR-004: Resilient polling](adr-004-resilient-polling.md)
 5. [ADR-005: Database-generated identifiers](adr-005-database-generated-identifiers.md)
 6. [ADR-006: Hybrid adaptive commands](adr-006-hybrid-adaptive-commands.md)
+7. [ADR-007: Adaptive replacement identity and affordability](adr-007-adaptive-replacement-identity-and-affordability.md)
 
 Accepted ADRs record decisions at the time they were made. New architecture changes require a new or explicitly superseding decision; the index does not rewrite ADR history.

@@ -84,6 +84,17 @@ describe("worker runtime", () => {
       retryScheduled: false,
       attemptDurationMs: 450,
       totalDurationMs: 1_250,
+      domainOutcome: "REPLACED",
+      outcomeReason: null,
+      candidatePool: {
+        persisted: 2,
+        fetched: 4,
+        total: 6,
+        eligible: 1,
+        excludedSamePlace: 2,
+        excludedNotCheaper: 3,
+      },
+      itineraryActivated: true,
     });
     logWorkerActivity("worker_1", {
       type: "LOOP_ERROR",
@@ -104,6 +115,17 @@ describe("worker runtime", () => {
       retryScheduled: false,
       attemptDurationMs: 450,
       totalDurationMs: 1_250,
+      domainOutcome: "REPLACED",
+      outcomeReason: null,
+      candidatePool: {
+        persisted: 2,
+        fetched: 4,
+        total: 6,
+        eligible: 1,
+        excludedSamePlace: 2,
+        excludedNotCheaper: 3,
+      },
+      itineraryActivated: true,
     });
     expect(JSON.parse(String(error.mock.calls[0]?.[0]))).toEqual({
       event: "planning_worker",

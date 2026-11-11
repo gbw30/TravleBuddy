@@ -14,6 +14,7 @@ import type {
   RecommendationPreferenceSnapshot,
   SelectedPlanningPlace,
 } from "@/features/recommendations/types";
+import type { JobEventType, JsonValue } from "@/features/jobs/contracts";
 
 export type PlanningContext = {
   topic: PlanningTopic;
@@ -44,6 +45,17 @@ export type PlanningJobSummary = {
   progressMessage: string | null;
   attemptCount: number;
   errorCode: string | null;
+  maxAttempts?: number;
+  availableAt?: string;
+  completedAt?: string | null;
+  result?: JsonValue | null;
+  events?: Array<{
+    id: string;
+    type: JobEventType;
+    progress: number | null;
+    message: string | null;
+    createdAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 };

@@ -9,6 +9,72 @@ import type {
   GenerationJobStore,
   JobRecoveryResult,
 } from "./store";
+import type { JsonValue } from "./contracts";
+
+type WorkerResultSummary = {
+  domainOutcome: "REPLACED" | "NO_REPLACEMENT" | "SUPERSEDED" | null;
+  outcomeReason:
+    | "NO_CHEAPER_REPLACEMENT"
+    | "NO_ELIGIBLE_CANDIDATE"
+    | "VALIDATION_BLOCKED"
+    | null;
+  candidatePool: {
+    persisted: number;
+    fetched: number;
+    total: number;
+    eligible: number;
+    excludedSamePlace: number;
+    excludedNotCheaper: number;
+  } | null;
+  itineraryActivated: boolean | null;
+};
+
+function boundedCount(value: unknown) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? Math.min(value, 10_000)
+    : 0;
+}
+
+function summarizeJobResult(value: JsonValue | undefined): WorkerResultSummary {
+  const record =
+    value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  const poolValue = record?.candidatePool;
+  const pool =
+    poolValue && typeof poolValue === "object" && !Array.isArray(poolValue)
+      ? poolValue
+      : null;
+  const domainOutcome =
+    record?.outcome === "REPLACED" ||
+    record?.outcome === "NO_REPLACEMENT" ||
+    record?.outcome === "SUPERSEDED"
+      ? record.outcome
+      : null;
+  const outcomeReason =
+    record?.outcomeReason === "NO_CHEAPER_REPLACEMENT" ||
+    record?.outcomeReason === "NO_ELIGIBLE_CANDIDATE" ||
+    record?.outcomeReason === "VALIDATION_BLOCKED"
+      ? record.outcomeReason
+      : null;
+
+  return {
+    domainOutcome,
+    outcomeReason,
+    candidatePool: pool
+      ? {
+          persisted: boundedCount(pool.persisted),
+          fetched: boundedCount(pool.fetched),
+          total: boundedCount(pool.total),
+          eligible: boundedCount(pool.eligible),
+          excludedSamePlace: boundedCount(pool.excludedSamePlace),
+          excludedNotCheaper: boundedCount(pool.excludedNotCheaper),
+        }
+      : null,
+    itineraryActivated:
+      typeof record?.itineraryActivated === "boolean"
+        ? record.itineraryActivated
+        : null,
+  };
+}
 
 export type WorkerLoopActivity =
   | {
@@ -31,6 +97,10 @@ export type WorkerLoopActivity =
       retryScheduled: boolean;
       attemptDurationMs: number;
       totalDurationMs: number | null;
+      domainOutcome: WorkerResultSummary["domainOutcome"];
+      outcomeReason: WorkerResultSummary["outcomeReason"];
+      candidatePool: WorkerResultSummary["candidatePool"];
+      itineraryActivated: boolean | null;
     }
   | {
       type: "HEARTBEAT_ERROR";
@@ -132,6 +202,9 @@ export async function runGenerationWorkerLoop(input: {
             }))
         )(job);
         const finishedAt = now().getTime();
+        const resultSummary = summarizeJobResult(
+          "result" in outcome ? outcome.result : undefined,
+        );
         input.onActivity?.({
           type: "JOB_FINISHED",
           jobId: job.id,
@@ -144,6 +217,7 @@ export async function runGenerationWorkerLoop(input: {
           totalDurationMs: job.createdAt
             ? Math.max(0, finishedAt - job.createdAt.getTime())
             : null,
+          ...resultSummary,
         });
 
         if (input.once) return "ONCE_COMPLETED";

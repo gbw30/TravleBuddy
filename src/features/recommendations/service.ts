@@ -144,6 +144,33 @@ const planningEventSelect = {
   createdAt: true,
 } satisfies Prisma.PlanningEventSelect;
 
+const planningJobSummarySelect = {
+  id: true,
+  type: true,
+  status: true,
+  progress: true,
+  progressMessage: true,
+  attemptCount: true,
+  maxAttempts: true,
+  availableAt: true,
+  completedAt: true,
+  errorCode: true,
+  result: true,
+  createdAt: true,
+  updatedAt: true,
+  events: {
+    select: {
+      id: true,
+      type: true,
+      progress: true,
+      message: true,
+      createdAt: true,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: 50,
+  },
+} satisfies Prisma.GenerationJobSelect;
+
 const recommendationFeedbackSelect = {
   reason: true,
   userNote: true,
@@ -1826,34 +1853,50 @@ export async function getPlanningWorkspace(
           tx,
           tripId,
         );
-        const activeJobs = (
-          await tx.generationJob.findMany({
+        const [activeJobRecords, recentTerminalJobRecords] = await Promise.all([
+          tx.generationJob.findMany({
             where: {
               tripId,
               status: {
                 in: ["PENDING", "RUNNING", "RETRYING"],
               },
             },
-            select: {
-              id: true,
-              type: true,
-              status: true,
-              progress: true,
-              progressMessage: true,
-              attemptCount: true,
-              errorCode: true,
-              createdAt: true,
-              updatedAt: true,
-            },
+            select: planningJobSummarySelect,
             orderBy: {
               createdAt: "desc",
             },
             take: 5,
-          })
-        ).map((job) => ({
+          }),
+          tx.generationJob.findMany({
+            where: {
+              tripId,
+              status: {
+                in: ["SUCCEEDED", "FAILED", "DEAD_LETTERED", "SUPERSEDED"],
+              },
+            },
+            select: planningJobSummarySelect,
+            orderBy: {
+              completedAt: "desc",
+            },
+            take: 5,
+          }),
+        ]);
+        const activeJobs = [
+          ...activeJobRecords,
+          ...recentTerminalJobRecords,
+        ].map((job) => ({
           ...job,
+          availableAt: job.availableAt.toISOString(),
+          completedAt: job.completedAt?.toISOString() ?? null,
+          result:
+            (job.result as PlanningSnapshot["activeJobs"][number]["result"]) ??
+            null,
           createdAt: job.createdAt.toISOString(),
           updatedAt: job.updatedAt.toISOString(),
+          events: job.events.map((event) => ({
+            ...event,
+            createdAt: event.createdAt.toISOString(),
+          })),
         }));
         const itineraryVersions = (
           await tx.itineraryVersion.findMany({

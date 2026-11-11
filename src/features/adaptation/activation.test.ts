@@ -3,6 +3,7 @@ import {
   findNewBlockingHighConflicts,
   recomputeAffectedDayEstimatedCost,
   rescoreReplacementCandidates,
+  resolveAdaptiveReplacementOutcomeReason,
   suggestionProjectionMutationForOutcome,
 } from "./activation";
 
@@ -28,6 +29,39 @@ describe("suggestionProjectionMutationForOutcome", () => {
       rejectedSuggestionStatus: "REJECTED",
       replacementSuggestionStatus: "SELECTED",
     });
+  });
+});
+
+describe("resolveAdaptiveReplacementOutcomeReason", () => {
+  it("separates activated, no-cheaper, generic, and validation outcomes", () => {
+    expect(
+      resolveAdaptiveReplacementOutcomeReason({
+        itineraryActivated: true,
+        validationBlocked: false,
+        feedbackReason: "TOO_EXPENSIVE",
+      }),
+    ).toBeNull();
+    expect(
+      resolveAdaptiveReplacementOutcomeReason({
+        itineraryActivated: false,
+        validationBlocked: false,
+        feedbackReason: "TOO_EXPENSIVE",
+      }),
+    ).toBe("NO_CHEAPER_REPLACEMENT");
+    expect(
+      resolveAdaptiveReplacementOutcomeReason({
+        itineraryActivated: false,
+        validationBlocked: false,
+        feedbackReason: "WRONG_VIBE",
+      }),
+    ).toBe("NO_ELIGIBLE_CANDIDATE");
+    expect(
+      resolveAdaptiveReplacementOutcomeReason({
+        itineraryActivated: false,
+        validationBlocked: true,
+        feedbackReason: "TOO_EXPENSIVE",
+      }),
+    ).toBe("VALIDATION_BLOCKED");
   });
 });
 

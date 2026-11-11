@@ -69,6 +69,54 @@ describe("generation worker loop", () => {
     ).resolves.toBe("ONCE_IDLE");
   });
 
+  it("emits bounded domain outcome diagnostics for a completed job", async () => {
+    const store = storeWithClaims([job]);
+    const finished: Array<Record<string, unknown>> = [];
+
+    await runGenerationWorkerLoop({
+      store,
+      handlers,
+      workerId: "worker_1",
+      signal: new AbortController().signal,
+      once: true,
+      execute: vi.fn().mockResolvedValue({
+        status: "SUCCEEDED",
+        result: {
+          outcome: "NO_REPLACEMENT",
+          outcomeReason: "NO_CHEAPER_REPLACEMENT",
+          itineraryActivated: false,
+          candidatePool: {
+            persisted: 2,
+            fetched: 4,
+            total: 6,
+            eligible: 0,
+            excludedSamePlace: 1,
+            excludedNotCheaper: 5,
+          },
+        },
+      }),
+      onActivity: (activity) => {
+        if (activity.type === "JOB_FINISHED") finished.push(activity);
+      },
+    });
+
+    expect(finished).toEqual([
+      expect.objectContaining({
+        domainOutcome: "NO_REPLACEMENT",
+        outcomeReason: "NO_CHEAPER_REPLACEMENT",
+        itineraryActivated: false,
+        candidatePool: {
+          persisted: 2,
+          fetched: 4,
+          total: 6,
+          eligible: 0,
+          excludedSamePlace: 1,
+          excludedNotCheaper: 5,
+        },
+      }),
+    ]);
+  });
+
   it("stops claiming after shutdown but finishes an active job", async () => {
     const controller = new AbortController();
     const store = storeWithClaims([job, null]);

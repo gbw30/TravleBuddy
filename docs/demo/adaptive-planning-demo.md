@@ -12,6 +12,9 @@ termination, fixtures, or migrations at production.
 - A test user owns a trip with an active multi-day itinerary.
 - The itinerary has at least two replaceable activities and compatible pending
   candidates for the same destination/category.
+- The activity used for **Too expensive** has at least one canonical mock
+  candidate in the same category with a lower same-currency estimated cost (or
+  a lower price tier when exact costs are unavailable).
 - `PLACE_PROVIDER_MODE=mock` is used for the deterministic recording.
 - Browser developer tools preserve network requests.
 - Worker logs are captured through the repository log sanitizer.
@@ -91,6 +94,8 @@ set above with `Remove-Item Env:<NAME>`.
    - one new preference profile version exists;
    - one new itinerary version exists when a replacement was available;
    - the target item changed;
+   - the before/after names are different and the result displays a strictly
+     lower cost or price tier;
    - unrelated days/items did not change;
    - the former itinerary remains readable with `?version=<old-version>`;
    - result details name the replacement, affected day, and explanation.
@@ -103,8 +108,16 @@ Optional no-replacement branch:
 
 1. Use a fixture with no eligible candidates.
 2. Submit the same feedback type.
-3. Verify a `NO_REPLACEMENT` result, an updated preference version, and an
-   unchanged active itinerary pointer.
+3. Verify a `NO_REPLACEMENT` result with
+   `NO_CHEAPER_REPLACEMENT`, an updated preference version, and an unchanged
+   active itinerary pointer.
+4. Reload and verify the explicit no-cheaper explanation remains visible and
+   the original activity is still present.
+
+`JOB_FINISHED` reports both the technical job status and the domain outcome.
+Periodic `RECOVERY_COMPLETED` entries are normal scans for expired leases; a
+zero recovered count is not another execution attempt and does not mean a
+replacement was activated.
 
 ## Scenario 2: Worker interruption and recovery
 

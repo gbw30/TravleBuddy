@@ -83,12 +83,34 @@ const completedJob = {
     },
     affectedDay: 1,
     itineraryVersion: { id: "version_2", version: 2 },
+    itineraryActivated: true,
+    target: {
+      itemId: "item_1",
+      suggestionId: "suggestion_1",
+      name: "Premium Museum",
+      estimatedCostAmount: 120,
+      estimatedCostCurrency: "USD",
+      priceLevel: 4,
+    },
     replacement: {
       itemId: "item_2",
       suggestionId: "suggestion_2",
       name: "City History Walk",
       score: 91,
+      estimatedCostAmount: 35,
+      estimatedCostCurrency: "USD",
+      priceLevel: 2,
+      cheaperBy: 85,
+      priceTierDelta: null,
       explanation: "A lower-cost attraction with a similar theme.",
+    },
+    candidatePool: {
+      persisted: 2,
+      fetched: 4,
+      total: 6,
+      eligible: 1,
+      excludedSamePlace: 1,
+      excludedNotCheaper: 4,
     },
     provider: {
       state: "FETCHED",
@@ -162,6 +184,10 @@ describe("AdaptiveItineraryPanel", () => {
     expect(html).toContain("Price sensitivity 0.40");
     expect(html).toContain("0.50");
     expect(html).toContain("City History Walk");
+    expect(html).toContain("Activity replaced");
+    expect(html).toContain("Premium Museum to City History Walk");
+    expect(html).toContain("USD 120.00 to USD 35.00");
+    expect(html).toContain("1 eligible");
     expect(html).toContain("Day 1");
     expect(html).toContain(
       "Mock planning data — Google Places unavailable (QUOTA_EXCEEDED)",
@@ -268,6 +294,57 @@ describe("AdaptiveItineraryPanel", () => {
         feedbackId: "feedback_1",
       }),
     ).toBe(false);
+  });
+
+  it("keeps a successful no-cheaper result explicit after reload", () => {
+    const html = renderToStaticMarkup(
+      <AdaptiveItineraryView
+        revision={9}
+        days={[day]}
+        jobs={[
+          {
+            ...completedJob,
+            id: "job_no_cheaper",
+            result: {
+              outcome: "NO_REPLACEMENT",
+              outcomeReason: "NO_CHEAPER_REPLACEMENT",
+              itineraryActivated: false,
+              target: {
+                itemId: "item_1",
+                suggestionId: "suggestion_1",
+                name: "Premium Museum",
+                estimatedCostAmount: 120,
+                estimatedCostCurrency: "USD",
+                priceLevel: 4,
+              },
+              replacement: null,
+              candidatePool: {
+                persisted: 2,
+                fetched: 4,
+                total: 6,
+                eligible: 0,
+                excludedSamePlace: 1,
+                excludedNotCheaper: 5,
+              },
+              retryGuidance:
+                "The current activity was retained. Remove it if you do not want to keep it.",
+            },
+          },
+        ]}
+        pendingItemIds={new Set()}
+        itemMessages={{}}
+        hiddenItemIds={new Set()}
+        panelMessage={null}
+        pollError={false}
+        itineraryVersions={[]}
+        onSubmitFeedback={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("No cheaper replacement found");
+    expect(html).toContain("No demonstrably cheaper replacement was available");
+    expect(html).toContain("The original activity remains");
+    expect(html).toContain("5 not cheaper");
   });
 
   it("restores an optimistically hidden item after a failed removal", () => {

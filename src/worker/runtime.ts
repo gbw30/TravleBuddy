@@ -109,6 +109,10 @@ export function logWorkerActivity(
           retryScheduled: activity.retryScheduled,
           attemptDurationMs: activity.attemptDurationMs,
           totalDurationMs: activity.totalDurationMs,
+          domainOutcome: activity.domainOutcome,
+          outcomeReason: activity.outcomeReason,
+          candidatePool: activity.candidatePool,
+          itineraryActivated: activity.itineraryActivated,
         }),
       );
       return;

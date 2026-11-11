@@ -49,6 +49,7 @@ function JobResultDetails({
   }
 
   const status = textFrom(record, ["status", "outcome"]);
+  const outcomeReason = textFrom(record, ["outcomeReason"]);
   const preferenceVersion = asRecord(record.preferenceVersion);
   const preferenceDelta = asRecord(
     preferenceVersion?.delta ??
@@ -68,7 +69,17 @@ function JobResultDetails({
     numberFrom(afterSignal, ["weight"]) ??
     numberFrom(priceDelta, ["to", "next", "nextWeight"]);
   const replacement = asRecord(record.replacement ?? record.candidate);
+  const target = asRecord(record.target);
+  const targetName = textFrom(target, ["name", "title"]);
   const replacementName = textFrom(replacement, ["name", "title"]);
+  const targetCost = numberFrom(target, ["estimatedCostAmount"]);
+  const replacementCost = numberFrom(replacement, ["estimatedCostAmount"]);
+  const targetCurrency = textFrom(target, ["estimatedCostCurrency"]);
+  const replacementCurrency = textFrom(replacement, ["estimatedCostCurrency"]);
+  const targetPriceLevel = numberFrom(target, ["priceLevel"]);
+  const replacementPriceLevel = numberFrom(replacement, ["priceLevel"]);
+  const cheaperBy = numberFrom(replacement, ["cheaperBy"]);
+  const priceTierDelta = numberFrom(replacement, ["priceTierDelta"]);
   const explanation =
     textFrom(replacement, ["explanation"]) ??
     textFrom(preferenceVersion, ["explanation"]) ??
@@ -86,6 +97,14 @@ function JobResultDetails({
   const providerProvenance = asRecord(provider?.provenance);
   const providerLabel = textFrom(providerProvenance, ["label"]);
   const retryGuidance = textFrom(record, ["retryGuidance"]);
+  const candidatePool = asRecord(record.candidatePool);
+  const persistedCandidates = numberFrom(candidatePool, ["persisted"]);
+  const fetchedCandidates = numberFrom(candidatePool, ["fetched"]);
+  const eligibleCandidates = numberFrom(candidatePool, ["eligible"]);
+  const samePlaceCandidates = numberFrom(candidatePool, ["excludedSamePlace"]);
+  const notCheaperCandidates = numberFrom(candidatePool, [
+    "excludedNotCheaper",
+  ]);
 
   if (
     !status &&
@@ -109,8 +128,11 @@ function JobResultDetails({
         <div>
           <dt className="font-semibold text-zinc-900">Result</dt>
           <dd className="mt-0.5">
-            No compatible replacement was available. The previous itinerary
-            remains active.
+            {outcomeReason === "NO_CHEAPER_REPLACEMENT"
+              ? "No demonstrably cheaper replacement was available. The original activity remains in the active itinerary."
+              : outcomeReason === "VALIDATION_BLOCKED"
+                ? "A proposed replacement did not pass itinerary validation. The original activity remains active."
+                : "No compatible replacement was available. The original activity remains active."}
           </dd>
         </div>
       ) : null}
@@ -123,10 +145,42 @@ function JobResultDetails({
           </dd>
         </div>
       ) : null}
-      {replacementName ? (
+      {targetName && replacementName ? (
+        <div>
+          <dt className="font-semibold text-zinc-900">Replacement</dt>
+          <dd className="mt-0.5">
+            {targetName} to {replacementName}
+          </dd>
+        </div>
+      ) : replacementName ? (
         <div>
           <dt className="font-semibold text-zinc-900">Replacement</dt>
           <dd className="mt-0.5">{replacementName}</dd>
+        </div>
+      ) : null}
+      {targetCost !== null &&
+      replacementCost !== null &&
+      targetCurrency &&
+      targetCurrency === replacementCurrency ? (
+        <div>
+          <dt className="font-semibold text-zinc-900">Cost comparison</dt>
+          <dd className="mt-0.5">
+            {targetCurrency} {targetCost.toFixed(2)} to {replacementCurrency}{" "}
+            {replacementCost.toFixed(2)}
+            {cheaperBy !== null
+              ? ` (${targetCurrency} ${cheaperBy.toFixed(2)} less)`
+              : null}
+          </dd>
+        </div>
+      ) : targetPriceLevel !== null && replacementPriceLevel !== null ? (
+        <div>
+          <dt className="font-semibold text-zinc-900">Price comparison</dt>
+          <dd className="mt-0.5">
+            Tier {targetPriceLevel} to tier {replacementPriceLevel}
+            {priceTierDelta !== null
+              ? ` (${priceTierDelta} tier${priceTierDelta === 1 ? "" : "s"} lower)`
+              : null}
+          </dd>
         </div>
       ) : null}
       {affectedDay !== null ? (
@@ -147,6 +201,21 @@ function JobResultDetails({
           <dd className="mt-0.5 text-zinc-600">
             {providerLabel ?? providerName ?? "Persisted candidates"}
             {providerState ? ` · ${providerState.toLocaleLowerCase()}` : null}
+          </dd>
+        </div>
+      ) : null}
+      {persistedCandidates !== null ||
+      fetchedCandidates !== null ||
+      eligibleCandidates !== null ? (
+        <div>
+          <dt className="font-semibold text-zinc-900">Candidate evaluation</dt>
+          <dd className="mt-0.5 text-zinc-600">
+            {persistedCandidates ?? 0} persisted | {fetchedCandidates ?? 0}{" "}
+            fetched | {eligibleCandidates ?? 0} eligible
+            {samePlaceCandidates ? ` | ${samePlaceCandidates} duplicate` : null}
+            {notCheaperCandidates
+              ? ` | ${notCheaperCandidates} not cheaper`
+              : null}
           </dd>
         </div>
       ) : null}
@@ -294,7 +363,7 @@ export function AdaptiveJobStatusList({
       ) : null}
       {jobs.length > 0 ? (
         <ol className="mt-3 grid gap-3">
-          {jobs.slice(0, 5).map((job) => (
+          {jobs.slice(0, 10).map((job) => (
             <JobStatusCard key={job.id} job={job} />
           ))}
         </ol>

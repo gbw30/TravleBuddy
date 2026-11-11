@@ -106,6 +106,30 @@ export const replacementCandidateSchema = z
     name: z.string().trim().min(1).max(500),
     score: z.number().finite().min(0).max(100).nullable(),
     rating: z.number().finite().min(0).max(5).nullable(),
+    city: z.string().trim().min(1).max(120).nullable().optional(),
+    country: z.string().trim().min(1).max(120).nullable().optional(),
+    priceLevel: z.number().int().min(0).max(5).nullable().optional(),
+    estimatedCostAmount: z
+      .number()
+      .finite()
+      .nonnegative()
+      .nullable()
+      .optional(),
+    estimatedCostCurrency: z
+      .string()
+      .trim()
+      .min(3)
+      .max(3)
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
+export const replacementAffordabilityTargetSchema = z
+  .object({
+    estimatedCostAmount: z.number().finite().nonnegative().nullable(),
+    estimatedCostCurrency: z.string().trim().min(3).max(3).nullable(),
+    priceLevel: z.number().int().min(0).max(5).nullable(),
   })
   .strict();
 
@@ -129,6 +153,11 @@ export const replacementCandidateFilterSchema = z
       .array(z.string().trim().min(1).max(500))
       .max(1_000)
       .default([]),
+    excludedSemanticFingerprints: z
+      .array(z.string().trim().min(1).max(1_000))
+      .max(1_000)
+      .default([]),
+    cheaperThan: replacementAffordabilityTargetSchema.nullable().default(null),
   })
   .strict();
 

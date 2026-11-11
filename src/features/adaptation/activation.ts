@@ -32,6 +32,23 @@ export type AdaptiveActivationOutcome =
   | "NO_REPLACEMENT"
   | "VALIDATION_BLOCKED";
 
+export type AdaptiveReplacementOutcomeReason =
+  | "NO_CHEAPER_REPLACEMENT"
+  | "NO_ELIGIBLE_CANDIDATE"
+  | "VALIDATION_BLOCKED";
+
+export function resolveAdaptiveReplacementOutcomeReason(input: {
+  itineraryActivated: boolean;
+  validationBlocked: boolean;
+  feedbackReason: string | null;
+}): AdaptiveReplacementOutcomeReason | null {
+  if (input.itineraryActivated) return null;
+  if (input.validationBlocked) return "VALIDATION_BLOCKED";
+  return input.feedbackReason === "TOO_EXPENSIVE"
+    ? "NO_CHEAPER_REPLACEMENT"
+    : "NO_ELIGIBLE_CANDIDATE";
+}
+
 function numberValue(value: NumberLike | null) {
   if (value === null) return null;
 

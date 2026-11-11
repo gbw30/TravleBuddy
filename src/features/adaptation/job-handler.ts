@@ -17,15 +17,21 @@ import {
   applyFeedbackPreferencePolicy,
   buildAdaptiveReplacementProposal,
   findNewBlockingHighConflicts,
+  compareCandidateAffordability,
+  evaluateReplacementCandidates,
   parseAdaptivePreferenceSnapshot,
   rescoreReplacementCandidates,
+  replacementCandidatesNeedProviderFetch,
+  resolveAdaptiveReplacementOutcomeReason,
   scoreReplacementCandidate,
   suggestionProjectionMutationForOutcome,
+  semanticPlaceFingerprint,
   adaptiveItinerarySnapshotSelect,
   materializeAdaptiveItineraryVersionTx,
   persistPreferencePolicyResultTx,
   type AdaptivePreferenceSnapshot,
   type ReplacementCandidate,
+  type ReplacementCandidateFilter,
 } from "./index";
 
 type ProcessFeedbackEventJobInput = {
@@ -142,6 +148,11 @@ function candidateDto(
     name: candidate.name,
     score,
     rating: numberValue(candidate.rating),
+    city: candidate.city,
+    country: candidate.country,
+    priceLevel: candidate.priceLevel,
+    estimatedCostAmount: numberValue(candidate.estimatedCostAmount),
+    estimatedCostCurrency: candidate.estimatedCostCurrency,
   };
 }
 
@@ -356,6 +367,7 @@ async function fetchAndPersistCandidates(input: {
       code: outcome.code,
       message: outcome.message,
       provider: outcome.provider,
+      fetchedCount: 0,
       candidates: [] as CandidateRecord[],
     };
   }
@@ -399,6 +411,8 @@ async function fetchAndPersistCandidates(input: {
         longitude: place.longitude,
         rating: place.rating,
         priceLevel: place.priceLevel,
+        estimatedCostAmount: place.estimatedCostAmount,
+        estimatedCostCurrency: place.estimatedCostCurrency,
         score: scoring.score,
         rawProviderData: place.rawProviderData,
         metadata: {
@@ -449,6 +463,7 @@ async function fetchAndPersistCandidates(input: {
   if (!candidates) {
     return {
       state: "STALE" as const,
+      fetchedCount: 0,
       candidates: [] as CandidateRecord[],
     };
   }
@@ -457,6 +472,7 @@ async function fetchAndPersistCandidates(input: {
     state: "FETCHED" as const,
     provider: outcome.provider,
     provenance: outcome.provenance,
+    fetchedCount: outcome.places.length,
     candidates,
   };
 }
@@ -613,13 +629,156 @@ export async function processFeedbackEventJob(
   await input.reportProgress(
     "FINDING_REPLACEMENT",
     50,
-    "Finding a compatible replacement.",
+    feedback.reason === "TOO_EXPENSIVE"
+      ? "Finding a demonstrably cheaper replacement."
+      : "Finding a compatible replacement.",
   );
   const destinationId = target.placeSuggestion?.destinationId ?? null;
   const destination = destinationId
     ? initial.trip.destinations.find((item) => item.id === destinationId)
     : null;
+  const rejectedSuggestions = await db.planningFeedback.findMany({
+    where: {
+      tripId: initial.tripId,
+      action: {
+        in: ["REJECT", "REQUEST_ALTERNATIVE"],
+      },
+      OR: [
+        {
+          placeSuggestionId: {
+            not: null,
+          },
+        },
+        {
+          itineraryItemId: {
+            not: null,
+          },
+        },
+      ],
+    },
+    select: {
+      placeSuggestionId: true,
+      placeSuggestion: {
+        select: {
+          providerPlaceId: true,
+          name: true,
+          category: true,
+          city: true,
+          country: true,
+        },
+      },
+      itineraryItem: {
+        select: {
+          title: true,
+          placeSuggestionId: true,
+          placeSuggestion: {
+            select: {
+              providerPlaceId: true,
+              name: true,
+              category: true,
+              city: true,
+              country: true,
+            },
+          },
+        },
+      },
+    },
+    take: 1_000,
+  });
+  const selectedItems = sourceItinerary.days
+    .flatMap((day) => day.items)
+    .filter((item) => item.id !== targetItemId);
+  const rejectedPlaces = rejectedSuggestions.flatMap((item) => {
+    const place = item.placeSuggestion ?? item.itineraryItem?.placeSuggestion;
+    const name = place?.name ?? item.itineraryItem?.title;
+
+    return place && name
+      ? [
+          {
+            ...place,
+            name,
+          },
+        ]
+      : [];
+  });
+  const targetFingerprint = target.placeSuggestion
+    ? semanticPlaceFingerprint({
+        name: target.placeSuggestion.name ?? target.title,
+        category: target.placeSuggestion.category,
+        city: target.placeSuggestion.city,
+        country: target.placeSuggestion.country,
+      })
+    : null;
+  const candidateFilter: ReplacementCandidateFilter = {
+    destinationId: destination?.id ?? "unavailable-destination",
+    category: target.placeSuggestion?.category ?? "ACTIVITY",
+    selectedCandidateIds: selectedItems.flatMap((item) =>
+      item.placeSuggestionId ? [item.placeSuggestionId] : [],
+    ),
+    selectedProviderPlaceIds: selectedItems.flatMap((item) =>
+      item.placeSuggestion?.providerPlaceId
+        ? [item.placeSuggestion.providerPlaceId]
+        : [],
+    ),
+    rejectedCandidateIds: rejectedSuggestions.flatMap((item) =>
+      item.placeSuggestionId
+        ? [item.placeSuggestionId]
+        : item.itineraryItem?.placeSuggestionId
+          ? [item.itineraryItem.placeSuggestionId]
+          : [],
+    ),
+    rejectedProviderPlaceIds: rejectedSuggestions.flatMap((item) =>
+      item.placeSuggestion?.providerPlaceId
+        ? [item.placeSuggestion.providerPlaceId]
+        : item.itineraryItem?.placeSuggestion?.providerPlaceId
+          ? [item.itineraryItem.placeSuggestion.providerPlaceId]
+          : [],
+    ),
+    excludedSemanticFingerprints: [
+      ...(targetFingerprint ? [targetFingerprint] : []),
+      ...selectedItems.flatMap((item) =>
+        item.placeSuggestion
+          ? [
+              semanticPlaceFingerprint({
+                name: item.placeSuggestion.name ?? item.title,
+                category: item.placeSuggestion.category,
+                city: item.placeSuggestion.city,
+                country: item.placeSuggestion.country,
+              }),
+            ]
+          : [],
+      ),
+      ...rejectedPlaces.map(semanticPlaceFingerprint),
+    ],
+    cheaperThan:
+      feedback.reason === "TOO_EXPENSIVE"
+        ? {
+            estimatedCostAmount: numberValue(target.estimatedCostAmount),
+            estimatedCostCurrency: target.estimatedCostCurrency,
+            priceLevel: target.placeSuggestion?.priceLevel ?? null,
+          }
+        : null,
+  };
+  const evaluateCandidateRecords = (records: readonly CandidateRecord[]) => {
+    const rescored = rescoreReplacementCandidates(
+      records,
+      preferencePolicyResult.snapshot.priceSensitivity.weight,
+    );
+    const dtos = rescored
+      .map(({ candidate, scoring }) => candidateDto(candidate, scoring.score))
+      .filter((candidate): candidate is ReplacementCandidate =>
+        Boolean(candidate),
+      );
+
+    return {
+      rescored,
+      dtos,
+      ...evaluateReplacementCandidates(dtos, candidateFilter),
+    };
+  };
   let candidates: CandidateRecord[] = [];
+  let persistedCandidateCount = 0;
+  let fetchedCandidateCount = 0;
   let providerState:
     | { state: "PERSISTED"; provider: null }
     | {
@@ -643,8 +802,12 @@ export async function processFeedbackEventJob(
       destinationId: destination.id,
       category: target.placeSuggestion.category,
     });
+    persistedCandidateCount = candidates.length;
 
-    if (candidates.length === 0) {
+    const persistedDtos = evaluateCandidateRecords(candidates).dtos;
+    if (
+      replacementCandidatesNeedProviderFetch(persistedDtos, candidateFilter)
+    ) {
       const fetched = await fetchAndPersistCandidates({
         tripId: initial.tripId,
         tripVersion: initial.tripVersion,
@@ -670,7 +833,10 @@ export async function processFeedbackEventJob(
           },
         };
       }
-      candidates = fetched.candidates;
+      if (fetched.state !== "UNAVAILABLE") {
+        candidates = fetched.candidates;
+      }
+      fetchedCandidateCount = fetched.fetchedCount;
       providerState =
         fetched.state === "UNAVAILABLE"
           ? {
@@ -687,49 +853,11 @@ export async function processFeedbackEventJob(
     }
   }
 
-  const rejectedSuggestions = await db.planningFeedback.findMany({
-    where: {
-      tripId: initial.tripId,
-      action: {
-        in: ["REJECT", "REQUEST_ALTERNATIVE"],
-      },
-      OR: [
-        {
-          placeSuggestionId: {
-            not: null,
-          },
-        },
-        {
-          itineraryItemId: {
-            not: null,
-          },
-        },
-      ],
-    },
-    select: {
-      placeSuggestionId: true,
-      placeSuggestion: {
-        select: {
-          providerPlaceId: true,
-        },
-      },
-      itineraryItem: {
-        select: {
-          placeSuggestionId: true,
-          placeSuggestion: {
-            select: {
-              providerPlaceId: true,
-            },
-          },
-        },
-      },
-    },
-    take: 1_000,
-  });
   const rescoredCandidates = rescoreReplacementCandidates(
     candidates,
     preferencePolicyResult.snapshot.priceSensitivity.weight,
   );
+  const evaluatedCandidates = evaluateCandidateRecords(candidates);
   const candidateMap = new Map(
     candidates.map((candidate) => [candidate.id, candidate]),
   );
@@ -742,29 +870,8 @@ export async function processFeedbackEventJob(
     preferencePolicyResult,
     itinerary: sourceItinerary,
     targetItemId,
-    candidates: rescoredCandidates
-      .map(({ candidate, scoring }) => candidateDto(candidate, scoring.score))
-      .filter((candidate): candidate is ReplacementCandidate =>
-        Boolean(candidate),
-      ),
-    candidateFilter: {
-      destinationId: destination?.id ?? "unavailable-destination",
-      category: target.placeSuggestion?.category ?? "ACTIVITY",
-      rejectedCandidateIds: rejectedSuggestions.flatMap((item) =>
-        item.placeSuggestionId
-          ? [item.placeSuggestionId]
-          : item.itineraryItem?.placeSuggestionId
-            ? [item.itineraryItem.placeSuggestionId]
-            : [],
-      ),
-      rejectedProviderPlaceIds: rejectedSuggestions.flatMap((item) =>
-        item.placeSuggestion?.providerPlaceId
-          ? [item.placeSuggestion.providerPlaceId]
-          : item.itineraryItem?.placeSuggestion?.providerPlaceId
-            ? [item.itineraryItem.placeSuggestion.providerPlaceId]
-            : [],
-      ),
-    },
+    candidates: evaluatedCandidates.dtos,
+    candidateFilter,
     createReplacementItem: (candidate, replacedItem) => {
       const record = candidateMap.get(candidate.id);
 
@@ -1108,8 +1215,24 @@ export async function processFeedbackEventJob(
             : {}),
         },
       });
+      const outcome = itineraryVersion ? "REPLACED" : "NO_REPLACEMENT";
+      const outcomeReason = resolveAdaptiveReplacementOutcomeReason({
+        itineraryActivated: Boolean(itineraryVersion),
+        validationBlocked: validation.status === "BLOCKED",
+        feedbackReason: feedback.reason,
+      });
+      const replacementCandidate =
+        replacement && itineraryVersion ? candidateDto(replacement) : null;
+      const affordability =
+        replacementCandidate && candidateFilter.cheaperThan
+          ? compareCandidateAffordability(
+              replacementCandidate,
+              candidateFilter.cheaperThan,
+            )
+          : null;
       const processingResult = jsonValue({
-        outcome: itineraryVersion ? "REPLACED" : "NO_REPLACEMENT",
+        outcome,
+        outcomeReason,
         feedbackId: feedback.id,
         preferenceVersion: {
           id: preferenceVersion.id,
@@ -1129,6 +1252,15 @@ export async function processFeedbackEventJob(
               version: itineraryVersion.version,
             }
           : null,
+        itineraryActivated: Boolean(itineraryVersion),
+        target: {
+          itemId: targetItemId,
+          suggestionId: target.placeSuggestionId,
+          name: target.title,
+          estimatedCostAmount: numberValue(target.estimatedCostAmount),
+          estimatedCostCurrency: target.estimatedCostCurrency,
+          priceLevel: target.placeSuggestion?.priceLevel ?? null,
+        },
         replacement:
           replacement && itineraryVersion
             ? {
@@ -1136,10 +1268,26 @@ export async function processFeedbackEventJob(
                 suggestionId: replacement.id,
                 name: replacement.name,
                 score: candidateScoringMap.get(replacement.id)?.score ?? null,
+                estimatedCostAmount: numberValue(
+                  replacement.estimatedCostAmount,
+                ),
+                estimatedCostCurrency: replacement.estimatedCostCurrency,
+                priceLevel: replacement.priceLevel,
+                cheaperBy: affordability?.cheaperBy ?? null,
+                priceTierDelta: affordability?.priceTierDelta ?? null,
                 explanation:
                   replacement.explanation ?? proposal.preference.explanation,
               }
             : null,
+        candidatePool: {
+          persisted: persistedCandidateCount,
+          fetched: fetchedCandidateCount,
+          total: evaluatedCandidates.diagnostics.total,
+          eligible: evaluatedCandidates.diagnostics.eligible,
+          excludedSamePlace: evaluatedCandidates.diagnostics.excludedSamePlace,
+          excludedNotCheaper:
+            evaluatedCandidates.diagnostics.excludedNotCheaper,
+        },
         validation,
         provider: providerState,
         retryGuidance:
@@ -1147,7 +1295,11 @@ export async function processFeedbackEventJob(
             ? "The proposed replacement introduced a new blocking conflict. Review the failed draft or submit feedback for another alternative."
             : providerState.state === "UNAVAILABLE"
               ? "Configure the place provider or add a compatible persisted candidate, then submit new feedback."
-              : null,
+              : outcomeReason === "NO_CHEAPER_REPLACEMENT"
+                ? "The current activity was retained. Remove it or submit different feedback if you do not want to keep it."
+                : outcomeReason === "NO_ELIGIBLE_CANDIDATE"
+                  ? "The current activity was retained because no compatible alternative was available."
+                  : null,
       });
 
       await tx.planningFeedback.update({
@@ -1182,12 +1334,16 @@ export async function processFeedbackEventJob(
             ? "Itinerary item replaced"
             : validation.status === "BLOCKED"
               ? "Replacement blocked by itinerary validation"
-              : "Preferences updated; no replacement found",
+              : outcomeReason === "NO_CHEAPER_REPLACEMENT"
+                ? "Preferences updated; no cheaper replacement found"
+                : "Preferences updated; no replacement found",
           message: itineraryVersion
             ? `${target.title} was replaced with ${replacement?.name}.`
             : validation.status === "BLOCKED"
               ? "The preference update was preserved, but the current itinerary remains active because the proposed replacement introduced a new blocking conflict."
-              : "The feedback changed the active preference profile, but no compatible replacement was available.",
+              : outcomeReason === "NO_CHEAPER_REPLACEMENT"
+                ? "The feedback changed the active preference profile, but the current activity was retained because no demonstrably cheaper replacement was available."
+                : "The feedback changed the active preference profile, but no compatible replacement was available.",
           metadata: processingResult as Prisma.InputJsonValue,
         },
       });

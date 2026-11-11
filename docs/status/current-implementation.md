@@ -38,6 +38,13 @@ Executable code, Prisma schema, migrations, and tests override this summary if t
 - Job claims use PostgreSQL locking and leases; retries and stale-state supersession are durable.
 - Reloads can recover bounded job progress and version metadata.
 - Provider mock mode supports deterministic tests and the QA demonstration.
+- Primary and adaptive mock recommendations share stable place identities; a
+  semantic fingerprint also excludes historical same-place aliases.
+- `TOO_EXPENSIVE` replacement requires a strictly lower comparable cost or
+  price tier. A missing cheaper candidate completes as an explicit successful
+  no-change result and preserves the current itinerary.
+- Recent terminal job outcomes and bounded candidate diagnostics reload with
+  the planning snapshot instead of existing only in browser polling state.
 
 ## External and deployment state
 

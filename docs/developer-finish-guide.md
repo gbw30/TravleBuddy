@@ -213,7 +213,12 @@ deployed web commit does not contain the hybrid-command implementation.
 
 4. Keep the terminal open during replacement journeys. Inspect sanitized
    structured logs for `STARTED`, claim/recovery activity, `JOB_FINISHED`, and
-   `STOPPED`; never enable query logging or record database URLs.
+   `STOPPED`; never enable query logging or record database URLs. For
+   `JOB_FINISHED`, inspect `domainOutcome`, `outcomeReason`,
+   `itineraryActivated`, and the bounded candidate counts. Technical
+   `SUCCEEDED` alone does not assert that a replacement existed. Repeated
+   `RECOVERY_COMPLETED` messages with zero recovered jobs are normal lease
+   scans, not repeated execution.
 5. To demonstrate durability, stop the worker, submit feedback through Vercel,
    show the persisted `PENDING` job, then restart the worker and show it claim
    and complete that job.

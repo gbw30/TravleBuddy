@@ -172,11 +172,17 @@ export function mergePlanningJobs(
     });
   });
 
-  return Array.from(merged.values()).sort(
-    (left, right) =>
+  return Array.from(merged.values()).sort((left, right) => {
+    const terminalDifference =
+      Number(isTerminalPlanningJob(left.status)) -
+      Number(isTerminalPlanningJob(right.status));
+
+    return (
+      terminalDifference ||
       right.createdAt.localeCompare(left.createdAt) ||
-      right.id.localeCompare(left.id),
-  );
+      right.id.localeCompare(left.id)
+    );
+  });
 }
 
 export function planningJobEventLabel(type: JobEventType) {
@@ -194,7 +200,7 @@ export function planningJobEventLabel(type: JobEventType) {
     case "RETRY_SCHEDULED":
       return "Retry scheduled";
     case "COMPLETED":
-      return "Itinerary updated";
+      return "Planning update completed";
     case "FAILED":
       return "Update failed";
     case "DEAD_LETTERED":
@@ -207,6 +213,23 @@ export function planningJobEventLabel(type: JobEventType) {
 }
 
 export function planningJobLabel(job: PlanningJobDetail) {
+  const result = asRecord(job.result);
+  const outcome = result?.outcome;
+  const outcomeReason = result?.outcomeReason;
+
+  if (job.status === "SUCCEEDED") {
+    if (outcome === "REPLACED") return "Activity replaced";
+    if (outcomeReason === "NO_CHEAPER_REPLACEMENT") {
+      return "No cheaper replacement found";
+    }
+    if (outcomeReason === "VALIDATION_BLOCKED") {
+      return "Replacement kept the current itinerary";
+    }
+    if (outcome === "NO_REPLACEMENT") {
+      return "No compatible replacement found";
+    }
+  }
+
   const latestEvent = job.events?.at(-1);
   if (latestEvent) {
     return planningJobEventLabel(latestEvent.type);
@@ -220,7 +243,7 @@ export function planningJobLabel(job: PlanningJobDetail) {
     case "RETRYING":
       return "Retry scheduled";
     case "SUCCEEDED":
-      return "Itinerary updated";
+      return "Planning update completed";
     case "FAILED":
       return "Update failed";
     case "DEAD_LETTERED":

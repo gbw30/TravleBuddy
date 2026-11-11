@@ -189,6 +189,8 @@ describe("adaptation schemas", () => {
       selectedProviderPlaceIds: [],
       rejectedCandidateIds: [],
       rejectedProviderPlaceIds: [],
+      excludedSemanticFingerprints: [],
+      cheaperThan: null,
     });
   });
 

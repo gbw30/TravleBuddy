@@ -77,6 +77,7 @@ describe("job runner", () => {
 
     await expect(executeClaimedJob({ store, handlers, job })).resolves.toEqual({
       status: "SUCCEEDED",
+      result: { outcome: "REPLACED" },
     });
     expect(store.reportProgress).toHaveBeenCalledWith({
       claim: job,

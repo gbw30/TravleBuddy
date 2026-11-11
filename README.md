@@ -51,6 +51,8 @@ The current policy is intentionally narrow:
   name.
 - A missing replacement activates the preference version and keeps the current
   itinerary.
+- `TOO_EXPENSIVE` activates only a distinct, demonstrably cheaper candidate;
+  otherwise it records a successful no-change outcome with an explicit reason.
 
 ## Architecture
 

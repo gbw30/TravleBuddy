@@ -80,7 +80,21 @@ export const normalizedPlaceSchema = z.object({
   latitude: z.number().finite().min(-90).max(90).nullable(),
   longitude: z.number().finite().min(-180).max(180).nullable(),
   rating: z.number().finite().min(0).max(5).nullable(),
-  priceLevel: z.number().int().min(0).max(4).nullable(),
+  priceLevel: z.number().int().min(0).max(5).nullable(),
+  estimatedCostAmount: z
+    .number()
+    .finite()
+    .nonnegative()
+    .nullable()
+    .default(null),
+  estimatedCostCurrency: z
+    .string()
+    .trim()
+    .min(3)
+    .max(3)
+    .transform((value) => value.toUpperCase())
+    .nullable()
+    .default(null),
   rawProviderData: boundedProviderMetadataSchema,
 });
 export type NormalizedPlace = z.infer<typeof normalizedPlaceSchema>;
