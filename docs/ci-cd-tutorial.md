@@ -18,7 +18,7 @@ Develop and integrate directly on the existing `qa` branch unless the developer 
 | Workflow                  | Trigger                                        | Purpose                                                                                                                           |
 | ------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml`                  | Pull request to `main`, push to `main`         | Blocking Prisma validation/generation, lint, types, unit tests, and production build using non-secret placeholders.               |
-| `qa-pr.yml`               | `qa` pull request to `main` or manual dispatch | Temporary PostgreSQL integration checks and critical Chromium journey; heavy agentic review remains opt-in by label/manual input. |
+| `qa-pr.yml`               | Manual dispatch                                | Temporary PostgreSQL integration checks and critical Chromium journey; automatic PR QA is disabled.                         |
 | `qa-migrations.yml`       | Manual dispatch                                | Protected exact-commit migration against the existing QA database after explicit authorization.                                   |
 | `qa-nightly.yml`          | Manual dispatch                                | Extended QA when intentionally requested; not part of every edit loop.                                                            |
 | `qa-release.yml`          | Manual dispatch                                | Release gate for an exact candidate.                                                                                              |
