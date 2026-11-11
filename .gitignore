@@ -47,3 +47,7 @@ next-env.d.ts
 node_modules
 
 /src/generated/prisma
+
+# Claude Code per-user state
+.claude/settings.local.json
+.claude/state/
