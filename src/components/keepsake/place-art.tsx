@@ -28,13 +28,26 @@ export function PlaceArt({
     );
   }
 
+  return <Art art={place.art} label={place.name} className={className} />;
+}
+
+/** The poster-style illustration used wherever there is no photo. */
+export function Art({
+  art,
+  label,
+  className = "",
+}: {
+  art: ArtStyle;
+  label: string;
+  className?: string;
+}) {
   return (
     <span
-      data-art={place.art}
+      data-art={art}
       role="img"
-      aria-label={place.name}
+      aria-label={label}
       className={`relative block w-full overflow-hidden ${className}`}
-      style={{ background: ART[place.art] }}
+      style={{ background: ART[art] }}
     >
       <span className="absolute top-[22%] left-1/2 size-8 -translate-x-1/2 rounded-full bg-[rgb(255_244_214/0.9)]" />
     </span>
