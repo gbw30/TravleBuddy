@@ -58,6 +58,7 @@ Never infer implementation from a target requirement, permanent scope from a sta
 ## Main indexes
 
 - [Product vision](product-vision.md), [PRD](prd.md) and [visual direction mockup](design/planning-screen-mockup.html)
+- [Prototype review guide](design/prototype-review.md)
 - [Architecture and ADRs](architecture/README.md)
 - [Conversational implementation pack](conversational-planning/README.md)
 - [Adaptive demonstration](demo/adaptive-planning-demo.md)
