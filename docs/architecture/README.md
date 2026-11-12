@@ -67,5 +67,6 @@ external results.
 6. [ADR-006: Hybrid adaptive commands](adr-006-hybrid-adaptive-commands.md)
 7. [ADR-007: Adaptive replacement identity and affordability](adr-007-adaptive-replacement-identity-and-affordability.md)
 8. [ADR-008: Modular services in one deployment](adr-008-modular-services-in-one-deployment.md)
+9. [ADR-009: OpenStreetMap as the first place-data provider](adr-009-place-data-provider.md)
 
 Accepted ADRs record decisions at the time they were made. New architecture changes require a new or explicitly superseding decision; the index does not rewrite ADR history.
