@@ -16,7 +16,7 @@ export function ratingLabel(rating: number | null): string {
 const face =
   "[grid-area:1/1] block min-w-0 p-2 shadow-[0_3px_10px_rgb(60_40_20/0.25)] [backface-visibility:hidden]";
 const action =
-  "rounded-full border border-terracotta-deep px-3 py-1 font-sans text-xs font-semibold";
+  "rounded-full border border-terracotta-deep px-1 py-1 font-sans text-[11px] font-semibold whitespace-nowrap";
 
 export function Postcard({
   place,
@@ -36,17 +36,17 @@ export function Postcard({
   const backId = useId();
 
   return (
-    <article data-qa="postcard" className="flex min-w-0 flex-col gap-2">
+    <article data-qa="postcard" className="flex h-full min-w-0 flex-col gap-2">
       <button
         type="button"
         aria-pressed={flipped}
         aria-label={`${place.name}. Flip card`}
         aria-describedby={flipped ? backId : frontId}
         onClick={() => setFlipped((value) => !value)}
-        className="block w-full cursor-pointer text-left text-ink [perspective:1000px]"
+        className="block w-full flex-1 cursor-pointer text-left text-ink [perspective:1000px]"
       >
         <span
-          className={`grid transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
+          className={`grid h-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
         >
           <span
             id={frontId}
@@ -84,12 +84,12 @@ export function Postcard({
           </span>
         </span>
       </button>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         {onPick && (
           <button
             type="button"
             onClick={onPick}
-            className={`${action} bg-terracotta-deep text-white`}
+            className={`${action} col-span-2 bg-terracotta-deep text-white`}
           >
             Pick
           </button>

@@ -47,3 +47,12 @@ body {
   color: var(--color-ink);
   font-family: var(--font-serif);
 }
+
+/* A picked card travels to its itinerary slot; not for people who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
