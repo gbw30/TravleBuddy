@@ -1,124 +1,224 @@
-# TravleBuddy Target Product Requirements
+# TravleBuddy Target Requirements
 
 Status: canonical-target
-Authority: Sole canonical specification of intended product behavior
-Supersedes: [Pre-MVP requirements](history/pre-mvp-requirements.md) and the [adaptive portfolio vision](history/adaptive-portfolio-vision-2026-08.md)
-Related: [Current implementation](status/current-implementation.md), [architecture](architecture/README.md), [roadmap](roadmap.md)
-Last reviewed: 2026-08-09
+Authority: Numbered, testable requirements for the target product. Wins over the PRD and the vision where they disagree
+Supersedes: [Target requirements of August 2026](history/target-requirements-2026-08.md) and its `TB-FR-01` to `TB-FR-35` identifiers, which are retired
+Related: [Product vision](product-vision.md), [PRD](prd.md), [roadmap](roadmap.md), [architecture](architecture/README.md), [current implementation](status/current-implementation.md)
+Last reviewed: 2026-11-12
 
 ## 1. Authority and interpretation
 
-This document defines the target product, regardless of whether a capability is implemented today. It does not certify implementation, choose deployment credentials, or prescribe an unproven learning algorithm. Repository reality is recorded in [current-implementation.md](status/current-implementation.md); delivery order is recorded in [roadmap.md](roadmap.md).
+- This catalogue defines what the first version must do, in statements a builder can test. The [PRD](prd.md) explains each area in detail; section references such as "PRD 9.3" point there.
+- It describes the target, whether or not a capability exists today. Repository reality is recorded in [current-implementation.md](status/current-implementation.md).
+- Identifiers are stable. A removed requirement keeps its number and is marked withdrawn.
+- "Traveller" means the signed-in person planning the trip. "Agent" means the product's planning assistant as the traveller experiences it. "AI model" means the language model behind part of the agent.
+- Requirements under [section 14](#14-later-stages) are not part of the first version.
 
-## 2. Product vision and users
+## 2. Accounts and Home (PRD 3, 4)
 
-TravleBuddy is a persistent conversational travel-planning workspace. It helps a traveler turn incomplete ideas into an explainable, editable itinerary while preserving explicit instructions, selected activities, logistics, and history. It is aimed first at individual leisure travelers and small groups who need guided discovery without surrendering control to an opaque automated planner.
+| ID        | Requirement                                                                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-ACC-01 | A traveller can sign in and sign out, and can reach only their own trips and profile.                                                         |
+| TB-ACC-02 | The app has Home, Create and Profile areas. A Discover area can be added without restructuring the navigation.                                |
+| TB-HOM-01 | Home lists the traveller's trips with destination, dates, a picture and a state of planning, upcoming or past.                                |
+| TB-HOM-02 | Opening a trip that is being planned returns the traveller to where they left off.                                                            |
+| TB-HOM-03 | A traveller can rename, archive and delete a trip. Delete requires confirmation.                                                              |
+| TB-HOM-04 | With no trips, Home shows a welcome and a way to start a trip.                                                                                |
+| TB-HOM-05 | A trip is planning until the traveller marks its plan finished, then upcoming until its last day, then past. A finished plan can be reopened. |
 
-The product should feel like working with a careful travel planner: it asks only useful questions, presents a small number of relevant choices, explains why they fit, and continuously keeps a visible itinerary consistent.
+## 3. Starting a trip and trip facts (PRD 5, 7.2)
 
-## 3. Persistent planning workspace
+| ID        | Requirement                                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-STA-01 | Starting a trip asks whether the traveller already holds flight or train tickets.                                                           |
+| TB-STA-02 | Entered tickets record type, origin, destination, departure and arrival date and time, and an optional reference.                           |
+| TB-STA-03 | Entered tickets become fixed commitments and set the trip's dates and cities.                                                               |
+| TB-STA-04 | The traveller chooses Guided planning or Quick plan. The start screen can take further choices later.                                       |
+| TB-FAC-01 | A trip stores ordered cities with nights in each, dates or a length with a rough time of year, travellers including children, and a budget. |
+| TB-FAC-02 | A trip stores how firm its dates and its budget are.                                                                                        |
+| TB-FAC-03 | A trip stores its purpose.                                                                                                                  |
+| TB-FAC-04 | A trip can cover several cities, and the plan shows the travel between them.                                                                |
+| TB-FAC-05 | A destination can be any city the place provider knows. There is no fixed list of cities.                                                   |
 
-Each trip has one durable planning workspace containing the conversation, structured answers, recommendations, live itinerary, conflicts, progress, and version history. The live itinerary must be highly visible in the same workspace; its default conceptual position is above the conversation, but the responsive layout may place it differently without changing behavior.
+## 4. Fixed commitments (PRD 10)
 
-The workspace must survive reloads and allow a traveler to resume from the last committed planning state. Existing structured forms may remain as accessible fallback or precision-entry paths.
+| ID        | Requirement                                                                                                     |
+| --------- | --------------------------------------------------------------------------------------------------------------- |
+| TB-FIX-01 | A traveller can add, edit and remove fixed commitments of kind transport, stay, reservation, must-see or other. |
+| TB-FIX-02 | A commitment records a name or place, a date, an optional start and end time, an optional reference and a note. |
+| TB-FIX-03 | A commitment with a time is locked into the itinerary and no automatic action moves or removes it.              |
+| TB-FIX-04 | A commitment without a time is scheduled before any optional item and is never dropped.                         |
+| TB-FIX-05 | A commitment can be created by telling the agent in conversation.                                               |
+| TB-FIX-06 | When two commitments clash, the traveller is told immediately and the product does not choose between them.     |
 
-## 4. Live itinerary
+## 5. Guided planning (PRD 7)
 
-The itinerary is a continuously updated plan, not a final report generated only at the end. It must distinguish selected-but-unscheduled items from scheduled items, preserve accepted choices, expose conflicts, and explain material changes. A planning action must not silently discard unrelated days or accepted activities.
+| ID        | Requirement                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| TB-AGT-01 | Every agent question can be answered by tapping a choice or by typing.                                                         |
+| TB-AGT-02 | Any question can be skipped. The agent then uses the profile or a default and says which.                                      |
+| TB-AGT-03 | The agent asks only for facts it does not already have from tickets, the profile or earlier messages.                          |
+| TB-AGT-04 | The agent asks whether anything is already decided and records the answers as fixed commitments.                               |
+| TB-AGT-05 | The agent covers pace, day shape, interests, atmosphere, food, getting around, where to stay and budget priorities.            |
+| TB-AGT-06 | Where the profile already holds an answer, the agent confirms it instead of asking from scratch.                               |
+| TB-AGT-07 | Readiness to propose is judged per topic, and the agent proposes for a topic as soon as that topic is ready.                   |
+| TB-AGT-08 | When the agent cannot propose yet, it says what it still needs.                                                                |
+| TB-AGT-09 | Each proposal is for a named slot with a day and a time.                                                                       |
+| TB-AGT-10 | Slots are filled in the order fixed commitments, stays, main sights or activities, meals, then gaps.                           |
+| TB-AGT-11 | The traveller can direct the agent to any slot or day at any time.                                                             |
+| TB-AGT-12 | When an answer conflicts with the personal profile, the agent asks why this trip is different and records the answer.          |
+| TB-AGT-13 | The conversation, including proposals and answers, is saved in order and restored on reload.                                   |
+| TB-AGT-14 | Typed input is turned into validated structured data before it changes any trip fact, preference or plan.                      |
+| TB-AGT-15 | With the AI model unavailable, Guided planning continues with scripted questions and template reasons, and says it is limited. |
 
-## 5. Conversation and progressive discovery
+## 6. Recommendation cards (PRD 8)
 
-Conversation is the target primary planning interaction. The system must persist user and assistant messages, structured answers, linked recommendations, and the planning revision associated with each turn. It should progressively discover missing information and ask focused questions rather than repeat a complete questionnaire.
+| ID        | Requirement                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| TB-CRD-01 | A proposal shows three cards. With fewer than three eligible places it shows those and says so.                          |
+| TB-CRD-02 | The front of a card shows the place name, a picture, and essentials including type, price level and distance.            |
+| TB-CRD-03 | Clicking a card flips it to a summary and the reason it suits the traveller and the slot.                                |
+| TB-CRD-04 | A control under the card opens a closer look with more pictures, address, hours, price, rating and position in the day.  |
+| TB-CRD-05 | Picking a card schedules it in the proposed slot.                                                                        |
+| TB-CRD-06 | A card can be saved to the shelf without being scheduled.                                                                |
+| TB-CRD-07 | The traveller can ask for a different set, optionally giving reasons from a list or in their own words, per set or card. |
+| TB-CRD-08 | Discard reasons update the trip profile and affect the next proposal.                                                    |
+| TB-CRD-09 | A discarded place is not proposed again in the same trip unless the traveller asks or changes the relevant preference.   |
+| TB-CRD-10 | The traveller can search for a place by name and add it to a slot or the shelf.                                          |
+| TB-CRD-11 | A place unknown to the provider can be entered by hand and is marked as added by the traveller.                          |
+| TB-CRD-12 | Presented, picked, saved and discarded cards remain on record for the trip.                                              |
 
-Structured controls remain appropriate for dates, exact ticket times, city order, accessibility requirements, and other values where precision matters. Natural-language understanding must produce validated structured intent before it can mutate authoritative planning state.
+## 7. Live itinerary and scheduling (PRD 9)
 
-## 6. Planning state and precedence
+| ID        | Requirement                                                                                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-ITN-01 | The itinerary is visible during planning and updates as soon as a change is saved.                                                                                        |
+| TB-ITN-02 | Each day shows scheduled items with start time and duration, travel between items with means and minutes, and open slots.                                                 |
+| TB-ITN-03 | Time to wander or rest is shown as its own block, with a suggested area when one exists.                                                                                  |
+| TB-ITN-04 | Items do not overlap.                                                                                                                                                     |
+| TB-ITN-05 | An item is scheduled only when the place is open for the whole slot. Unknown hours are flagged.                                                                           |
+| TB-ITN-06 | Consecutive items are separated by at least the travel time by the traveller's preferred means, plus the pace buffer.                                                     |
+| TB-ITN-07 | An item is scheduled only on a day and time when the traveller is in that city.                                                                                           |
+| TB-ITN-08 | Each day respects the trip's pace and day shape.                                                                                                                          |
+| TB-ITN-09 | The traveller can move any item that is not locked, by dragging and by a keyboard-operable control.                                                                       |
+| TB-ITN-10 | After a traveller's move the plan is rechecked. A broken rule is flagged with a reason and an offered fix and the move stays saved. A move onto a locked item is refused. |
+| TB-ITN-11 | The traveller can ask for three alternatives for any slot, and can remove any item that is not locked.                                                                    |
+| TB-ITN-12 | Every change creates a saved version, and the traveller can undo the last change.                                                                                         |
+| TB-ITN-13 | A chosen place that cannot be scheduled is placed on the shelf with the reason and is never dropped.                                                                      |
+| TB-ITN-14 | The shelf lists saved places. The agent offers to schedule them where they fit, and the traveller can place them directly.                                                |
+| TB-ITN-15 | A planning action changes only the items it concerns. Unrelated days and items stay as they were.                                                                         |
+| TB-ITN-16 | All times are stored and shown in the local time of the place, and are correct across time zones and clock changes.                                                       |
+| TB-ITN-17 | Scheduling is repeatable: the same trip state and the same request produce the same plan.                                                                                 |
+| TB-ITN-18 | When a trip has no exact dates, the agent proposes provisional dates, says so, and rechecks the plan when they change.                                                    |
+| TB-ITN-19 | When no ticket covers a change of city, the plan holds an assumed transfer marked as not booked, which can be moved or replaced.                                          |
+| TB-ITN-20 | Each item has a visit length from a standard table by kind of place, shown as an estimate and editable by the traveller.                                                  |
 
-The product distinguishes:
+## 8. Quick plan (PRD 11)
 
-- **Trip facts:** destinations, dates, travelers, city sequence, and booked logistics.
-- **Trip preferences:** explicit instructions that apply to the current trip.
-- **User preferences:** reusable long-term tendencies learned gradually across trips.
-- **Conversation context:** recent messages and structured answers needed to interpret the current turn.
+| ID        | Requirement                                                                                                                                        |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-QPL-01 | Quick plan collects a trip brief in five steps: where and when, already decided, this trip, your style, review.                                    |
+| TB-QPL-02 | Only the first step is required.                                                                                                                   |
+| TB-QPL-03 | Answers known from the personal profile are filled in and labelled with their source. Changing them affects only this trip.                        |
+| TB-QPL-04 | The brief is saved at every step, and the traveller can go back or return later without losing answers.                                            |
+| TB-QPL-05 | Problems with an answer are explained beside the field when they occur.                                                                            |
+| TB-QPL-06 | Free text entered in the brief is turned into preferences and shown for confirmation before use.                                                   |
+| TB-QPL-07 | The review step shows the whole brief in plain sentences with a way to edit each part.                                                             |
+| TB-QPL-08 | Building proceeds one day at a time while the page is open, shows progress, saves each day as it is built, and resumes when the traveller returns. |
+| TB-QPL-09 | The built itinerary obeys every scheduling rule in section 7 and every trust rule in section 11.                                                   |
+| TB-QPL-10 | The result opens in the normal workspace with a report of what was built, assumed, left on the shelf and uncertain.                                |
+| TB-QPL-11 | Every assumption in the report can be changed from the report.                                                                                     |
+| TB-QPL-12 | The traveller can switch from the brief to the conversation, keeping everything entered.                                                           |
+| TB-QPL-13 | From the conversation, the traveller can ask the agent to fill all remaining open slots.                                                           |
 
-Explicit current-trip instructions always override user-level tendencies. Learned tendencies carry both a value and confidence, must remain inspectable, and must never overwrite explicit values. The final algorithm for general cross-trip learning is intentionally not fixed by this specification.
+## 9. Memory (PRD 12)
 
-## 7. Readiness and recommendation transition
+| ID        | Requirement                                                                                                                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-MEM-01 | Each traveller has a personal profile that carries across trips, and each trip has its own trip profile.                                                                                                   |
+| TB-MEM-02 | A trip profile starts from the personal profile. Where they differ, the trip profile is used.                                                                                                              |
+| TB-MEM-03 | The personal profile covers pace, day shape, interests, atmosphere, food, dietary rules, budget, getting around and stays.                                                                                 |
+| TB-MEM-04 | Each profile entry records its value, whether it is a hard limit or a taste, how sure the site is, and where it came from.                                                                                 |
+| TB-MEM-05 | No proposal or built plan includes a place whose data conflicts with a hard limit. A place whose data cannot confirm a hard limit is marked unconfirmed, and no place is described as safe for an allergy. |
+| TB-MEM-06 | When the agent uses a memory from another trip, it names that trip.                                                                                                                                        |
+| TB-MEM-07 | A general statement the traveller makes about themselves is added to the personal profile after confirmation.                                                                                              |
+| TB-MEM-08 | A taste learned from behaviour reaches the personal profile only after the pattern shows in two or more ordinary trips whose plans were marked finished.                                                   |
+| TB-MEM-09 | Behaviour in a trip marked as different does not change the personal profile. General statements made during it still follow TB-MEM-07.                                                                    |
+| TB-MEM-10 | A stated preference is never overwritten by a learned one.                                                                                                                                                 |
+| TB-MEM-11 | The profile page lists every entry with source and sureness, and lets the traveller edit, delete, add and reset.                                                                                           |
+| TB-MEM-12 | A deleted entry is not learned again from the same past evidence.                                                                                                                                          |
+| TB-MEM-13 | Changes to either profile are versioned.                                                                                                                                                                   |
+| TB-MEM-14 | Profile entries belong to a fixed set of topics that ranking understands. A statement that fits none is kept as a note, shown as not yet affecting suggestions.                                            |
 
-Readiness is topic-specific. The system can recommend restaurants when dining context is sufficient even if lodging preferences are incomplete. It should proactively transition from questions to recommendations when enough relevant information exists and explain what remains unknown when it cannot proceed.
+## 10. Reasons (PRD 13)
 
-## 8. Recommendation experience
+| ID        | Requirement                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| TB-RSN-01 | Every proposed card and every change the agent makes to the plan has a reason the traveller can read.      |
+| TB-RSN-02 | A reason names at least one thing about the traveller and one about the trip or slot.                      |
+| TB-RSN-03 | A reason is produced from the factors that ranked the place. The AI model may word it but not add grounds. |
+| TB-RSN-04 | A reason is one to three sentences.                                                                        |
 
-Each user-facing recommendation batch contains exactly three cards. A provider or ranking pool may contain more candidates, but the visible decision set is three. Each card must identify the place or activity, category, relevant location, rating or other available evidence, price context when known, and an explanation tied to current trip preferences.
+## 11. Trust (PRD 14)
 
-Travelers can select, reject, refine, or request another batch. Rejected items cannot immediately reappear without a meaningful change in constraints or an explicit reset. Selection and rejection history must persist and inform later ranking. Ranking must be deterministic after normalized candidates and planning inputs are fixed, with documented tie-breakers.
+| ID        | Requirement                                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| TB-TRU-01 | Every place shown comes from a place-data provider or was entered by the traveller and is marked so.                   |
+| TB-TRU-02 | Place facts (name, address, hours, price, rating, pictures, travel time) come only from data, never from the AI model. |
+| TB-TRU-03 | AI model output is validated against a schema and cannot write trip facts, preferences or the plan directly.           |
+| TB-TRU-04 | Eligibility, ranking and scheduling are decided by fixed rules, and the same inputs give the same proposals.           |
+| TB-TRU-05 | Unknown place facts are shown as unknown. Estimated costs and visit lengths are labelled as estimates.                 |
+| TB-TRU-06 | When a provider is unavailable, the agent says so, keeps the current plan and does not show made-up results.           |
 
-## 9. Scheduling and logistics
+## 12. Design and accessibility (PRD 15)
 
-Scheduling is deterministic and server-authoritative. The scheduler must respect trip dates, city windows, opening or ticketed windows, travel blocks, meal policies, item duration, and explicit fixed commitments. Flexible logistics may be moved within allowed windows; ticketed logistics and explicit appointments may not.
+| ID        | Requirement                                                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| TB-DSN-01 | The interface follows the keepsake direction: paper background, serif type, postcard cards, ticket-stub bookings, day stamps. |
+| TB-DSN-02 | A card flips on click, and a picked card visibly moves to its slot.                                                           |
+| TB-DSN-03 | Motion respects the device's reduced-motion setting.                                                                          |
+| TB-DSN-04 | Every screen is usable on a phone browser.                                                                                    |
+| TB-DSN-05 | Every action can be performed with a keyboard.                                                                                |
+| TB-DSN-06 | Text meets WCAG AA contrast, and no information is carried by colour alone.                                                   |
+| TB-DSN-07 | Cards, stamps and ticket stubs expose text equivalents to screen readers.                                                     |
+| TB-DSN-08 | A clickable prototype of the main screens is approved by the product owner before the full interface is built.                |
+| TB-DSN-09 | Cards and the closer look are presentable when a place has no photo, price level or rating.                                   |
 
-Multi-city days must represent location transitions and prevent an activity from being placed in the wrong city window. A selected activity that cannot be scheduled remains selected and visibly unscheduled with a reason; it is never silently dropped.
+## 13. System (PRD 16, 17; [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md))
 
-## 10. Timezone correctness
+| ID        | Requirement                                                                                                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-SYS-01 | The application is one deployment divided into services with defined interfaces, as set out in ADR-008.                                                                                                  |
+| TB-SYS-02 | Each database table is owned by one service, and no other service reads or writes it directly.                                                                                                           |
+| TB-SYS-03 | Service borders are enforced by an automated check that fails the build when broken.                                                                                                                     |
+| TB-SYS-04 | Every action that changes data, and every read the browser makes after a page loads, goes through a documented HTTP route. Server-rendered pages may call service interfaces directly.                   |
+| TB-SYS-05 | A planning action carries an operation identifier and the plan revision it expects. Repeating it returns the original result.                                                                            |
+| TB-SYS-06 | A planning action commits completely or not at all. A plan made by the agent replaces the current one only after passing every scheduling rule; a traveller's own change commits with flags (TB-ITN-10). |
+| TB-SYS-07 | Stale or late work cannot overwrite a newer plan.                                                                                                                                                        |
+| TB-SYS-08 | No traveller-facing action depends on a separately running worker. Long work is split into steps that each finish within one request, are saved, and can be resumed after a reload.                      |
+| TB-SYS-09 | Place providers sit behind a common adapter with Google, OpenStreetMap and sample-data implementations, and the active one is chosen by configuration.                                                   |
+| TB-SYS-10 | The AI model sits behind a boundary that can be switched off, with the limited mode of TB-AGT-15 as the fallback.                                                                                        |
+| TB-SYS-11 | Spending on the AI model and on place data is capped separately. At the AI cap the agent runs in limited mode; at the place-data cap proposals use saved and sample places and the agent says so.        |
+| TB-SYS-12 | Saved place data is kept only as the provider's terms allow.                                                                                                                                             |
+| TB-SYS-13 | A trip records a visibility setting, private in the first version, and its owner separately from who may view it.                                                                                        |
+| TB-SYS-14 | The Itinerary service can copy an itinerary into a new trip. No screen exposes this in the first version.                                                                                                |
+| TB-SYS-15 | Itinerary quality is checked against the four sample travellers in PRD 18 before the first version is called complete.                                                                                   |
 
-The target system uses IANA timezone identifiers and evaluates each event in the local timezone of its origin or destination as appropriate. Storage, comparison, display, daylight-saving transitions, overnight travel, and cross-timezone boundaries must be correct. UTC may be used internally, but it cannot be the only user-facing scheduling interpretation.
+## 14. Later stages
 
-## 11. Conflicts and recovery
+Not part of the first version. Listed so that nothing built now blocks them. See [PRD 16](prd.md#16-later-stages-and-the-room-the-first-version-leaves-for-them).
 
-The system detects and explains time overlap, impossible location transitions, city-window violations, budget pressure, schedule density, and other supported planning conflicts. Conflict results are derived from authoritative state and refresh after relevant mutations. Recovery suggestions must be actionable and must not activate an invalid successor itinerary.
-
-## 12. Planning-turn transaction and concurrency
-
-A planning turn has one operation identifier and expected planning revision. The backend validates ownership and input, interprets intent, computes at most one authoritative rebuild for the turn, persists messages and structured changes, and returns the resulting snapshot. Replayed operations return the original result. Stale revisions fail safely or become superseded; late asynchronous work cannot overwrite newer state.
-
-Long-running work may use durable jobs with leases, retries, and progress events. The user can reload and recover progress. State activation is atomic: the current valid itinerary remains active until a validated successor commits.
-
-## 13. System responsibilities
-
-PostgreSQL is the durable authority for users, trips, preferences, conversations, recommendations, itinerary versions, feedback, jobs, and replay records. Backend services own authorization, validation, deterministic ranking and scheduling, conflict derivation, and state transitions.
-
-AI may extract structured intent, draft conversational language, and help explain decisions. AI output is untrusted until schema-validated and cannot directly write authoritative state. Place providers supply normalized candidates behind an adapter; provider metadata is bounded and private. The product must support deterministic mock data for tests and graceful degradation when AI or external providers are unavailable.
-
-## 14. Traceable target functional requirements
-
-The following checklist is the target acceptance catalogue. IDs remain stable as implementation evolves.
-
-1. **TB-FR-01 — Account access:** A traveler can authenticate, sign out, and access only owned trips.
-2. **TB-FR-02 — Trip lifecycle:** A traveler can create, view, edit, archive, and resume a trip.
-3. **TB-FR-03 — Trip facts:** The system persists dates, travelers, destinations, and ordered city stays.
-4. **TB-FR-04 — Persistent workspace:** Each trip opens into one resumable planning workspace.
-5. **TB-FR-05 — Durable conversation:** User and assistant messages persist in order with planning context.
-6. **TB-FR-06 — Structured answers:** Precise answers can be captured with accessible structured controls.
-7. **TB-FR-07 — Progressive discovery:** The planner asks focused questions only for relevant missing information.
-8. **TB-FR-08 — Validated intent:** Natural-language input becomes schema-validated structured intent before mutation.
-9. **TB-FR-09 — Topic readiness:** Recommendation readiness is evaluated independently by topic.
-10. **TB-FR-10 — Proactive transition:** The planner offers recommendations as soon as the relevant topic is ready.
-11. **TB-FR-11 — Trip preferences:** Explicit current-trip preferences are durable and editable.
-12. **TB-FR-12 — User tendencies:** Long-term preferences can be learned gradually with inspectable confidence.
-13. **TB-FR-13 — Preference precedence:** Explicit trip instructions always override learned tendencies.
-14. **TB-FR-14 — Three-card batches:** Exactly three recommendation cards are presented per user-facing batch.
-15. **TB-FR-15 — Recommendation evidence:** Cards show useful normalized details and preference-linked explanations.
-16. **TB-FR-16 — Deterministic ranking:** Fixed inputs produce stable ranking and tie-breaking.
-17. **TB-FR-17 — Selection:** A traveler can select a recommendation without losing prior accepted choices.
-18. **TB-FR-18 — Rejection:** A traveler can reject a recommendation and record a reason.
-19. **TB-FR-19 — Refinement:** A traveler can request alternatives or refine constraints conversationally.
-20. **TB-FR-20 — Recommendation history:** Selected, rejected, and presented candidates remain auditable.
-21. **TB-FR-21 — Live itinerary:** The visible itinerary updates after committed planning changes.
-22. **TB-FR-22 — Version history:** Preference and itinerary changes are versioned and explainable.
-23. **TB-FR-23 — Selected-item preservation:** Unplaceable selected items remain visible as unscheduled.
-24. **TB-FR-24 — Deterministic scheduling:** Server-owned policies assign eligible items reproducibly.
-25. **TB-FR-25 — Ticketed commitments:** Fixed-time bookings are preserved unless explicitly changed.
-26. **TB-FR-26 — Flexible logistics:** Flexible travel and lodging constraints can be placed within valid windows.
-27. **TB-FR-27 — Multi-city windows:** Activities and travel blocks respect ordered city presence.
-28. **TB-FR-28 — Timezone correctness:** Scheduling and display use correct IANA local-time semantics.
-29. **TB-FR-29 — Conflict detection:** Supported conflicts are derived, persisted or returned consistently, and explained.
-30. **TB-FR-30 — Safe recovery:** Invalid successor plans never replace the last valid active itinerary.
-31. **TB-FR-31 — Atomic planning turn:** One turn produces at most one committed authoritative planning revision.
-32. **TB-FR-32 — Replay safety:** Repeating an operation ID returns its prior result without duplicate mutations.
-33. **TB-FR-33 — Concurrency safety:** Stale or late work cannot overwrite newer planning state.
-34. **TB-FR-34 — Provider boundary:** External places are normalized behind a mockable, failure-aware adapter.
-35. **TB-FR-35 — Graceful degradation:** Core planning remains understandable when AI or providers are unavailable.
+| ID        | Requirement                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------- |
+| TB-LTR-01 | Travellers can search and browse public itineraries, view their photos and details.          |
+| TB-LTR-02 | Travellers can save itineraries to collections.                                              |
+| TB-LTR-03 | A trip can be started from a prebuilt template or from another traveller's public itinerary. |
+| TB-LTR-04 | Travellers can upload photos to their trips.                                                 |
+| TB-LTR-05 | Travellers can publish a trip.                                                               |
+| TB-LTR-06 | Home shows observations drawn from the traveller's trips.                                    |
+| TB-LTR-07 | Several people can plan one trip together.                                                   |
+| TB-LTR-08 | A phone app uses the same HTTP interface as the website.                                     |
 
 ## 15. Implementation status
 
-This specification intentionally makes no claim that every requirement exists. Consult [current implementation status](status/current-implementation.md), executable repository evidence, and [QA feature states](../qa/feature-states.json) before describing a capability as delivered.
+This catalogue makes no claim that any requirement is built. Consult [current implementation status](status/current-implementation.md), the code and tests, and [QA feature states](../qa/feature-states.json) before describing a capability as delivered.

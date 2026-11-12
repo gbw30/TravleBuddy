@@ -7,6 +7,8 @@ Last reviewed: 2026-08-09
 
 ## Architecture principles
 
+The target product was redefined on 2026-11-12 ([PRD](../prd.md)). [ADR-008](adr-008-modular-services-in-one-deployment.md) sets the target service borders. The sections below still describe the principles and the current adaptive architecture, which remain in force; the diagram predates the redefinition.
+
 TravleBuddy uses a hybrid planning architecture. PostgreSQL is the durable source of truth. Backend services own authorization, validation, state transitions, deterministic ranking and scheduling, conflict derivation, and version activation. AI and place providers are bounded inputs: they may propose structured data, but validated backend logic decides what commits.
 
 The current system is a Next.js application with Prisma/PostgreSQL persistence, Auth.js identity, deterministic recommendation services, and a PostgreSQL-backed adaptive job queue. The target adds durable conversation and structured intent while reusing the same authority boundaries.
@@ -64,5 +66,6 @@ external results.
 5. [ADR-005: Database-generated identifiers](adr-005-database-generated-identifiers.md)
 6. [ADR-006: Hybrid adaptive commands](adr-006-hybrid-adaptive-commands.md)
 7. [ADR-007: Adaptive replacement identity and affordability](adr-007-adaptive-replacement-identity-and-affordability.md)
+8. [ADR-008: Modular services in one deployment](adr-008-modular-services-in-one-deployment.md)
 
 Accepted ADRs record decisions at the time they were made. New architecture changes require a new or explicitly superseding decision; the index does not rewrite ADR history.

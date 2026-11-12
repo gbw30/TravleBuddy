@@ -3,16 +3,17 @@
 Status: historical
 Authority: Archive index and old-to-new path map only
 Related: [Knowledge map](../README.md), [target requirements](../requirements.md), [current implementation](../status/current-implementation.md), [roadmap](../roadmap.md)
-Last reviewed: 2026-08-09
+Last reviewed: 2026-11-12
 
 Do not use documents in this directory as current product requirements or implementation order. They preserve rationale, completed-phase evidence, and obsolete assumptions for auditability.
 
-| Historical document                                               | Why it was superseded                                                                                | Current authority                                                                                   |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| [Pre-MVP requirements](pre-mvp-requirements.md)                   | Mixed aspirational requirements, completed phase records, architecture, and old deployment guidance. | [Target requirements](../requirements.md) and [current status](../status/current-implementation.md) |
-| [Adaptive portfolio vision](adaptive-portfolio-vision-2026-08.md) | Defined the narrow adaptive milestone, not the final conversational product.                         | [Target requirements](../requirements.md)                                                           |
-| [Agent development plan](travlebuddy-agent-development-plan.md)   | Phase-oriented plan is no longer the active delivery order.                                          | [Roadmap](../roadmap.md)                                                                            |
-| [Phase records](phases/)                                          | Completed implementation evidence, retained without implying current authority.                      | Current code/tests and [status](../status/current-implementation.md)                                |
+| Historical document                                                  | Why it was superseded                                                                                                                                             | Current authority                                                                                   |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [Pre-MVP requirements](pre-mvp-requirements.md)                      | Mixed aspirational requirements, completed phase records, architecture, and old deployment guidance.                                                              | [Target requirements](../requirements.md) and [current status](../status/current-implementation.md) |
+| [Adaptive portfolio vision](adaptive-portfolio-vision-2026-08.md)    | Defined the narrow adaptive milestone, not the final conversational product.                                                                                      | [Target requirements](../requirements.md)                                                           |
+| [Target requirements of August 2026](target-requirements-2026-08.md) | Described a conversation-first workspace; replaced by the travel-agent product with memory, slot-first cards and Quick plan. Its `TB-FR` identifiers are retired. | [Vision](../product-vision.md), [PRD](../prd.md) and [requirements](../requirements.md)             |
+| [Agent development plan](travlebuddy-agent-development-plan.md)      | Phase-oriented plan is no longer the active delivery order.                                                                                                       | [Roadmap](../roadmap.md)                                                                            |
+| [Phase records](phases/)                                             | Completed implementation evidence, retained without implying current authority.                                                                                   | Current code/tests and [status](../status/current-implementation.md)                                |
 
 ## Moved paths
 

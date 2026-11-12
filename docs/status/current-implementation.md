@@ -51,7 +51,8 @@ Executable code, Prisma schema, migrations, and tests override this summary if t
 - Protected QA migration certification succeeded for commit `e6e74c65fe3c2d5377eeeee1a67c90675d21ad60`.
 - The standing topology is the existing `qa` and `main` branches, existing Neon QA/production databases, existing Vercel QA/production targets, and a local worker for the adaptive demonstration.
 - Google Places implementation exists but live provider credentials and configuration are not required for the deterministic QA milestone.
-- Final adaptive browser evidence and portfolio recording remain to be completed before conversational implementation begins.
+- Final adaptive browser evidence and the portfolio recording were not completed. The [roadmap](../roadmap.md) of 2026-11-12 no longer gates on them.
+- The target product was redefined on 2026-11-12 ([PRD](../prd.md)). The capability matrix above still describes what is built; its "Planned" rows refer to the earlier target.
 
 ## Evidence map
 

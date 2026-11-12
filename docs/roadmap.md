@@ -1,83 +1,91 @@
 # TravleBuddy Active Roadmap
 
 Status: active-roadmap
-Authority: Ordered delivery milestones from current implementation to target product
-Related: [Target requirements](requirements.md), [current implementation](status/current-implementation.md), [conversational stages](conversational-planning/README.md)
-Last reviewed: 2026-08-09
+Authority: Ordered delivery milestones from the current implementation to the first version
+Supersedes: The roadmap of 2026-08-09, whose milestones 1 to 7 are replaced by the order below
+Related: [Product vision](product-vision.md), [PRD](prd.md), [requirements](requirements.md), [current implementation](status/current-implementation.md), [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md)
+Last reviewed: 2026-11-12
 
-This roadmap is one delivery path, not a choice between an adaptive product and a conversational product. The adaptive system is the proven engineering foundation; the conversational workspace is the intended product direction.
+This roadmap orders the work toward the first version defined in the [PRD](prd.md). It builds on the existing codebase: sign-in, versioned plans, replay safety and the place-provider layer are kept. The screens and the planning flow are rebuilt.
+
+Each milestone needs its own implementation plan before work starts. This document sets the order and the exit evidence only.
 
 ## Working constraints
 
-- Use only the existing `qa` and `main` branches, Neon QA/production databases, and Vercel targets.
-- Use the local worker for the adaptive demonstration; do not require Render or another paid background-worker service.
-- Keep deterministic mock providers available throughout development and QA.
-- Do not begin the next milestone until the preceding exit evidence is recorded.
-- Preserve authentication, ownership, validation, idempotency, stale-write protection, and migration isolation at every stage.
+- Use only the existing `qa` and `main` branches, Neon QA and production databases, and Vercel targets. See [operating constraints](operating-constraints.md).
+- The background worker runs only on the developer's machine. Nothing a traveller does may depend on it (TB-SYS-08).
+- Keep sample place data available for tests and offline demos at every stage.
+- Do not begin a milestone until the previous one's exit evidence is recorded.
+- These hold at every milestone and are rechecked at each exit: ownership and authentication (TB-ACC-01), replay safety (TB-SYS-05), all-or-nothing commits (TB-SYS-06), stale-write protection (TB-SYS-07), and an HTTP route for each new action (TB-SYS-04).
+- Existing trips and data in the QA and production databases are test data and may be discarded. Old screens and tables are replaced outright, not migrated. The QA migration safety process still applies.
 
-## Milestone 0 — Documentation knowledge base
+## What happens to earlier plans
 
-Establish the target/current/plan split, archive historical records, repair retrieval routes, and verify documentation consistency without changing application behavior.
+- **The adaptive demonstration recording** (the former Milestone 1) is no longer a gate. The adaptive replacement logic is reused for "show me others" on a scheduled item, run inside the request instead of on the worker.
+- **The [conversational planning pack](conversational-planning/README.md)** no longer sets the delivery order. Its engineering contracts for operation identifiers, revisions and replay remain a useful reference for Milestones 5 and 7.
 
-Exit evidence:
+## Milestone 0: Provider and cost check
 
-- One canonical target specification.
-- Evidence-backed current-state matrix.
-- Architecture and history indexes.
-- Passing link, formatting, QA-context, and documentation-scope checks.
+Read Google's official price list and terms for places, photos, opening hours and routes, and the usage limits of the free OpenStreetMap services for places and routing. Decide which provider the first version runs on: Google if it fits the spending cap, otherwise OpenStreetMap with Google kept ready ([PRD 17](prd.md#17-ai-model-place-data-and-running-cost)). Confirm what place data may be saved under the chosen terms. The product owner sets spending caps on the provider accounts.
 
-## Milestone 1 — Complete adaptive portfolio evidence
+Exit evidence: a recorded decision with the figures and sources it rests on, and the caps in place.
 
-Finish the already-implemented adaptive milestone before building conversation features.
+## Milestone 1: Clickable prototype
 
-1. Confirm the existing Vercel QA target runs the certified commit and points only to the existing Neon QA database.
-2. Run the worker locally against QA with deterministic mock Places configuration.
-3. Demonstrate `TOO_EXPENSIVE` targeted replacement, persisted job progress, preference and itinerary version creation, and unchanged unrelated days.
-4. Replay the same operation ID and confirm no duplicate versions.
-5. Run real-PostgreSQL lease recovery and two-claimer integration tests.
-6. Demonstrate stale-job supersession without adding infrastructure.
-7. Complete the evidence template and capture a 60–90 second portfolio recording.
+Build the main screens in the agreed look with sample data and no back end, so the product owner can judge the look and the experience before the full build.
 
-Exit evidence: [adaptive demo acceptance criteria](demo/adaptive-planning-demo.md) and a completed evidence record. The protected QA migration certification for commit `e6e74c65fe3c2d5377eeeee1a67c90675d21ad60` is already complete; a later code commit requires exact-commit recertification only when schema/migration policy requires it.
+Screens: Home, starting a trip, the planning workspace (conversation, three cards with flip and closer look, live itinerary, shelf, fixed commitments), the Quick plan brief and its result report, and the profile page. Wide-screen and phone layouts. Cards are shown both with photos and with illustrations only.
 
-## Milestone 2 — Conversation persistence and workspace UI
+Decisions to settle here: the closer look as enlarged card or overlay; how the itinerary is reached on a phone; the navigation layout.
 
-Implement [Stage 1A](conversational-planning/02-conversation-persistence-ui.md): durable conversations/messages, turn and replay contracts, bounded history, and a single responsive workspace. Keep existing forms as fallback paths. Make the live itinerary prominent in the same workspace, conceptually above the conversation by default.
+Exit evidence: the product owner approves the prototype (TB-DSN-08, TB-DSN-09). Agreed colours, type and components are recorded for reuse.
 
-Exit evidence: reload-safe messages, owner isolation, accessible structured answers, revision/replay tests, and critical browser coverage.
+## Milestone 2: Service borders
 
-## Milestone 3 — Conversational intelligence and three-card batches
+Apply [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md) to the existing code without changing behaviour: one public interface per service, a table-ownership map that lists foreign keys crossing a border, and an automated border check. Code access is restricted; the database schema is not changed here.
 
-Implement [Stage 1B](conversational-planning/03-conversational-intelligence.md): validated structured intent, focused question selection, bounded dispatch, deterministic fallback, one rebuild per turn, and exactly three visible recommendation cards. This stage updates trip preferences only; it does not claim learned cross-trip tendencies.
+Exit evidence: TB-SYS-01 to TB-SYS-03 hold; existing tests pass unchanged.
 
-Exit evidence: schema-invalid AI output cannot mutate state; fallback works without AI; cards support select/reject/refine; messages and planning changes commit coherently.
+## Milestone 3: New shell, trip start and fixed commitments
 
-## Milestone 4 — Live scheduling
+Rebuild Home, the navigation and the start-a-trip flow in the new look. Add tickets, trip facts with firmness and purpose, any-city destinations, and the fixed commitments section. Remove the screens these replace.
 
-Implement [Stage 2A](conversational-planning/04-live-itinerary-scheduling.md): deterministic activity assignment, selected-but-unscheduled preservation, ticketed/flexible logistics, multi-city windows, travel blocks, and conflict recovery. Retain the prototype's documented UTC limitation until final timezone work.
+Exit evidence: TB-ACC, TB-HOM, TB-FAC, TB-STA-01 to TB-STA-03, TB-FIX-01, TB-FIX-02, TB-FIX-06 and TB-SYS-13 pass, on wide and phone screens.
 
-Exit evidence: deterministic scheduling tests, preserved fixed commitments, multi-city boundary coverage, and responsive live-itinerary updates.
+## Milestone 4: Places, cards and the live itinerary
 
-## Milestone 5 — Primary place-provider integration
+1. Build the chosen provider into the main recommendation path behind the common adapter, with pictures or illustrations, opening hours, travel times and saved place data. The existing Google adapter covers text search only, so most of this is new.
+2. Build slot-based scheduling with the rules of PRD 9.3, pace, provisional dates, assumed transfers and estimated visit lengths.
+3. Build the postcard cards, the live itinerary, the shelf, moving, swapping and undo.
 
-Implement [Stage 2B](conversational-planning/05-real-place-recommendations.md): reuse and extend the existing Google/mock adapter into the main recommendation pipeline. Fetch and rank a bounded candidate pool, then show exactly three cards. Keep mock mode authoritative for automated QA and provide explicit provider-unavailable states.
+At the end of this milestone a traveller can build a trip slot by slot from ranked cards, with templated reasons and without the conversation.
 
-Exit evidence: normalization, timeout/retry, stable upsert/ranking, raw metadata privacy, persisted-candidate reuse, fallback, and quota-safe tests.
+Exit evidence: TB-CRD, TB-ITN except the agent's offer in TB-ITN-14, TB-FIX-03, TB-FIX-04, TB-TRU-01, TB-TRU-02, TB-TRU-04 to TB-TRU-06, TB-SYS-08, TB-SYS-09, TB-SYS-12, TB-SYS-14 and the place-data half of TB-SYS-11 pass.
 
-## Milestone 6 — Measured interaction performance and hardening
+## Milestone 5: Guided planning
 
-Complete [Stage 3A](conversational-planning/06-interaction-performance.md) before [Stage 3B](conversational-planning/07-cache-production-hardening.md). Measure complete planning turns, reduce snapshot/query cost, bound history, and add observability. Introduce optional caching, streaming, or rate-limit infrastructure only when evidence justifies it and the developer explicitly approves any topology change.
+Add the saved conversation, the AI model boundary with Claude Haiku 5.5, the facts stage, the getting-to-know-you stage, per-topic readiness, slot-first proposals in conversation, worded reasons, and the limited mode.
 
-Exit evidence: recorded baselines and targets, no broad invalidation in normal turns, bounded failure behavior, and production-style QA on the existing topology.
+Exit evidence: TB-AGT except TB-AGT-06 and TB-AGT-12, TB-RSN, TB-FIX-05, TB-TRU-03, the agent's offer in TB-ITN-14, TB-SYS-10 and the AI half of TB-SYS-11 pass. The conversation works with the AI model switched off.
 
-## Milestone 7 — Long-term preference learning and timezone completion
+## Milestone 6: Memory
 
-Add general user-level learned tendencies with inspectable confidence and reversible evidence. Explicit trip preferences must always win. Select the learning algorithm only after requirements and privacy behavior are reviewed.
+Add the personal profile with sources and sureness, hard limits, the question about why a trip differs, learning across trips, and the profile page.
 
-Complete production-grade IANA timezone behavior across origin/destination display, storage, scheduling, daylight-saving transitions, overnight travel, and multi-timezone boundaries.
+Exit evidence: TB-MEM, TB-AGT-06 and TB-AGT-12 pass, including isolation between travellers and the rule that stated preferences win.
 
-Exit evidence: cross-trip isolation and precedence tests, confidence provenance, user correction/reset behavior, and timezone boundary suites.
+## Milestone 7: Quick plan
 
-## Later product expansion
+Add the five-step brief, the day-at-a-time build, the result report, and switching between the two ways of planning.
 
-Maps, booking/cancellation, rich export, group collaboration, and other expansions require separate product decisions. They do not block the conversational-planning target defined above.
+Exit evidence: TB-QPL and TB-STA-04 pass; a build interrupted by closing the page resumes on return.
+
+## Milestone 8: Quality and release
+
+Judge both ways of planning against the four sample travellers of PRD 18. Complete accessibility, phone layouts, time zones, performance and cost-cap checks. Record a portfolio demonstration.
+
+Exit evidence: TB-SYS-15 and TB-DSN-01 to TB-DSN-07 pass; every requirement in sections 2 to 13 of the catalogue has passing evidence; full QA on the existing topology; the demonstration is recorded.
+
+## Later stages
+
+Discover and collections, templates and starting from another itinerary, publishing, observations on Home, planning together, and a phone app follow the first version. Each needs its own product decisions and is listed under TB-LTR in the [requirements](requirements.md#14-later-stages).

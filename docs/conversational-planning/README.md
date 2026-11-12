@@ -5,6 +5,8 @@ Authority: Active post-adaptive implementation stages and cross-stage invariants
 Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [architecture](../architecture/README.md)
 Last reviewed: 2026-08-09
 
+> **Superseded as a delivery plan on 2026-11-12.** The [roadmap](../roadmap.md) and [PRD](../prd.md) now set the product and the order of work. This pack is kept as an engineering reference for operation identifiers, revisions and replay. Where it disagrees with the PRD or requirements, they win.
+
 This pack becomes active after the adaptive-planning evidence milestone is complete. It describes implementation sequence, not a competing product specification. If a stage assumption conflicts with the canonical target, the target wins; if it describes a capability absent from code, the current-state document must continue to mark it planned.
 
 ## Product outcome
