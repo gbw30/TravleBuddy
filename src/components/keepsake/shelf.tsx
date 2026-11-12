@@ -39,6 +39,8 @@ export function Shelf({
               <MoveMenu
                 label={`Place ${place.name} in…`}
                 placeholder="Place in…"
+                action="Place"
+                actionLabel={`Place ${place.name} in the chosen slot`}
                 options={openSlots}
                 onChoose={(slotId) => onPlace(place.id, slotId)}
               />

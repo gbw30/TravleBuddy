@@ -6,9 +6,11 @@ import { flushSync } from "react-dom";
 
 import {
   buildRest,
+  changedSlots,
   currentProposal,
   initialState,
   moveItem,
+  offeredCount,
   pickCard,
   placeFromShelf,
   removeItem,
@@ -19,6 +21,7 @@ import {
 } from "@/features/prototype/planning-state";
 import { read, subscribe, write } from "@/features/prototype/session-store";
 import type {
+  Entry,
   PlanningState,
   SamplePlace,
   SampleTrip,
@@ -77,9 +80,13 @@ export function PrototypeWorkspace({
     const start = initialState(trip);
     if (!options.built) return start;
     const built = buildRest(trip, start);
-    return trip.places[SHELVED_BY_BUILD]
-      ? saveForLater(built, SHELVED_BY_BUILD)
-      : built;
+    // A freshly built trip is the starting point: nothing to undo yet.
+    return {
+      ...(trip.places[SHELVED_BY_BUILD]
+        ? saveForLater(built, SHELVED_BY_BUILD)
+        : built),
+      past: [],
+    };
   }, [trip, options.built]);
   const state = useMemo(() => parse(raw, trip) ?? base, [raw, trip, base]);
 
@@ -92,7 +99,8 @@ export function PrototypeWorkspace({
   const [heard, setHeard] = useState<string | null>(null);
   const [typed, setTyped] = useState<string[]>([]);
   const [phoneView, setPhoneView] = useState<"plan" | "itinerary">("plan");
-  const [seen, setSeen] = useState(0);
+  // The itinerary as it was when last looked at on a phone.
+  const [seen, setSeen] = useState<Entry[] | null>(null);
 
   const update = (next: PlanningState) => {
     if (next !== state) write(JSON.stringify(next));
@@ -113,8 +121,11 @@ export function PrototypeWorkspace({
       value: slot.id,
       label: `Day ${slot.day} · ${slot.start} ${slot.label}`,
     }));
-  const changes = Math.max(0, state.past.length - seen);
   const itineraryOpen = phoneView === "itinerary";
+  const changes = itineraryOpen
+    ? 0
+    : changedSlots(state.entries, seen ?? base.entries);
+  const offered = offeredCount(trip, state);
 
   function pick(placeId: string) {
     const slotId = state.activeSlotId;
@@ -143,19 +154,19 @@ export function PrototypeWorkspace({
     input.value = "";
   }
 
-  function toggleItinerary() {
-    setPhoneView(itineraryOpen ? "plan" : "itinerary");
-    setSeen(state.past.length);
+  function showPhoneView(view: "plan" | "itinerary") {
+    setPhoneView(view);
+    setSeen(state.entries);
   }
 
   const itinerary = (
     <LiveItinerary
       trip={trip}
       state={state}
-      transitSlotId={transit?.slotId ?? null}
+      transit={transit}
       onActivate={(slotId) => {
         update(setActiveSlot(state, slotId));
-        setPhoneView("plan");
+        showPhoneView("plan");
       }}
       onMove={(from, to) => update(moveItem(trip, state, from, to))}
       onRemove={(slotId) => update(removeItem(state, slotId))}
@@ -269,7 +280,7 @@ export function PrototypeWorkspace({
             role="tab"
             aria-selected={!itineraryOpen}
             className={`${pill} aria-selected:bg-terracotta-deep aria-selected:text-white`}
-            onClick={() => setPhoneView("plan")}
+            onClick={() => showPhoneView("plan")}
           >
             Plan with me
           </button>
@@ -279,7 +290,7 @@ export function PrototypeWorkspace({
             aria-selected={itineraryOpen}
             data-qa="itinerary-toggle"
             className={`${pill} aria-selected:bg-terracotta-deep aria-selected:text-white`}
-            onClick={toggleItinerary}
+            onClick={() => showPhoneView(itineraryOpen ? "plan" : "itinerary")}
           >
             Itinerary{changes > 0 ? ` · ${changes} new` : ""}
           </button>
@@ -325,13 +336,16 @@ export function PrototypeWorkspace({
             ))}
             {heard && <AgentMessage>{heard}</AgentMessage>}
             <AgentMessage>{agentLine}</AgentMessage>
-            {activeSlot && proposal.length === 0 && (
+            {activeSlot && offered === 0 && (
               <AgentMessage>I have no more places for this slot.</AgentMessage>
             )}
-            {proposal.length > 0 && proposal.length < 3 && (
+            {offered > 0 && proposal.length === 0 && (
               <AgentMessage>
-                I only found {proposal.length} that fit.
+                The other places for this slot are on your shelf.
               </AgentMessage>
+            )}
+            {offered > 0 && offered < 3 && (
+              <AgentMessage>I only found {offered} that fit.</AgentMessage>
             )}
 
             {proposal.length > 0 && (
@@ -422,7 +436,9 @@ export function PrototypeWorkspace({
               type="button"
               data-qa="itinerary-toggle"
               aria-expanded={itineraryOpen}
-              onClick={toggleItinerary}
+              onClick={() =>
+                showPhoneView(itineraryOpen ? "plan" : "itinerary")
+              }
               className="flex w-full items-center justify-between py-3 font-sans text-sm font-semibold lg:hidden"
             >
               <span>Itinerary{changes > 0 ? ` · ${changes} new` : ""}</span>

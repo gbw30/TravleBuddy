@@ -69,7 +69,10 @@ test.describe("prototype walkthrough", () => {
     await flip.focus();
     await page.keyboard.press("Enter");
     await expect(flip).toHaveAttribute("aria-pressed", "true");
-    await expect(card.getByText("Why it suits you")).toBeVisible();
+    // The back is announced only once the card is flipped.
+    await expect(card.locator('[aria-live="polite"]')).toContainText(
+      "Why it suits you",
+    );
 
     await pickFirst(page);
   });
@@ -107,12 +110,52 @@ test.describe("prototype walkthrough", () => {
     const flag = sampleTrip.moveFlags["senso-ji@d1-dinner"];
     const move = page.getByLabel(`Move ${firstSet[0]} to…`);
     await move.focus();
+    const steps = await move
+      .locator("option")
+      .evaluateAll(
+        (options, label) =>
+          options.findIndex((option) => option.textContent === label),
+        "Day 1 · 19:30 Dinner",
+      );
+    for (let i = 0; i < steps; i += 1) await page.keyboard.press("ArrowDown");
+
+    // Arrowing through the list must not move anything by itself.
     await expect(move).toBeFocused();
-    await move.selectOption({ label: "Day 1 · 19:30 Dinner" });
+    await expect(itinerary(page).getByText(flag)).toHaveCount(0);
+
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
     await expect(itinerary(page).getByText(flag)).toBeVisible();
 
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(itinerary(page).getByText(flag)).toHaveCount(0);
+  });
+
+  test("a pick animates without errors", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(String(error)));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    await openTrip(page);
+    await pickFirst(page);
+    // An aborted view transition rejects a moment after the pick lands.
+    await page.waitForTimeout(700);
+    expect(errors).toEqual([]);
+  });
+
+  test("the agent's italic is a real italic face", async ({ page }) => {
+    await openTrip(page);
+    const italic = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return [...document.fonts].some(
+        (face) =>
+          /lora/i.test(face.family) &&
+          face.style === "italic" &&
+          face.status === "loaded",
+      );
+    });
+    expect(italic).toBe(true);
   });
 
   test("booked items cannot be moved or removed", async ({ page }) => {

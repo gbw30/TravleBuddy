@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildRest,
+  changedSlots,
   currentProposal,
   initialState,
   moveItem,
+  offeredCount,
   pickCard,
   placeFromShelf,
   removeItem,
@@ -128,6 +130,19 @@ describe("prototype planning state", () => {
     const s0 = initialState(t);
     expect(undo(s0)).toBe(s0);
     expect(undo(pickCard(t, s0, "p2")).entries).toEqual(s0.entries);
+  });
+
+  it("counts itinerary slots changed since a snapshot, ignoring shelf and discards", () => {
+    const s0 = initialState(t);
+    expect(changedSlots(saveForLater(s0, "p1").entries, s0.entries)).toBe(0);
+    expect(changedSlots(showOthers(t, s0).entries, s0.entries)).toBe(0);
+    expect(changedSlots(pickCard(t, s0, "p2").entries, s0.entries)).toBe(1);
+  });
+
+  it("knows how many places a set offered before any were saved", () => {
+    const s0 = initialState(t);
+    expect(offeredCount(t, saveForLater(s0, "p1"))).toBe(3);
+    expect(offeredCount(t, showOthers(t, s0))).toBe(2);
   });
 
   it("the sample trip meets its content limits", () => {

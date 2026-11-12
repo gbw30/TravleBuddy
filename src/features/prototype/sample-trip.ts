@@ -674,7 +674,7 @@ export const sampleTrip: SampleTrip = {
     "d3-afternoon":
       "For the afternoon of Day 3 at 14:30, I'd suggest somewhere to wander.",
     "d2-lunch":
-      "For lunch on Day 2 at 12:30, I'd suggest one of these. All three are vegetarian-friendly.",
+      "For lunch on Day 2 at 12:30, I'd suggest one of these. All are vegetarian-friendly.",
     "d1-dinner":
       "For dinner on Day 1 at 19:30, close to your hotel after the flight, I'd suggest one of these.",
   },

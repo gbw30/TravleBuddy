@@ -9,7 +9,7 @@ import { TicketStub } from "./ticket-stub";
 export function LiveItinerary({
   trip,
   state,
-  transitSlotId,
+  transit,
   onActivate,
   onMove,
   onRemove,
@@ -17,8 +17,8 @@ export function LiveItinerary({
 }: {
   trip: SampleTrip;
   state: PlanningState;
-  /** Slot a just-picked card is travelling to. */
-  transitSlotId: string | null;
+  /** A just-picked card and the slot it is travelling to. */
+  transit: { placeId: string; slotId: string } | null;
   onActivate: (slotId: string) => void;
   onMove: (fromSlotId: string, toSlotId: string) => void;
   onRemove: (slotId: string) => void;
@@ -58,7 +58,9 @@ export function LiveItinerary({
                   <li
                     key={slot.id}
                     style={
-                      transitSlotId === slot.id
+                      transit?.slotId === slot.id &&
+                      entry.type === "item" &&
+                      entry.placeId === transit.placeId
                         ? { viewTransitionName: "picked-card" }
                         : undefined
                     }
@@ -112,6 +114,8 @@ export function LiveItinerary({
                           <MoveMenu
                             label={`Move ${place.name} to…`}
                             placeholder="Move to…"
+                            action="Move"
+                            actionLabel={`Move ${place.name} to the chosen slot`}
                             options={trip.slots
                               .filter(
                                 (s) => s.id !== slot.id && !isLocked(s.id),

@@ -35,6 +35,22 @@ describe("keepsake components", () => {
     expect(html).not.toContain(">Save for later<");
   });
 
+  it("names each action after the place and announces the back", () => {
+    const html = renderToStaticMarkup(
+      <Postcard
+        place={place}
+        showPhoto
+        onPick={() => {}}
+        onSave={() => {}}
+        onCloserLook={() => {}}
+      />,
+    );
+    expect(html).toContain('aria-label="Pick Sometaro"');
+    expect(html).toContain('aria-label="Save Sometaro for later"');
+    expect(html).toContain('aria-label="Closer look at Sometaro"');
+    expect(html).toContain('aria-live="polite"');
+  });
+
   it("uses the illustration when there is no photo", () => {
     const html = renderToStaticMarkup(<PlaceArt place={place} showPhoto />);
     expect(html).toContain('data-art="sea"');

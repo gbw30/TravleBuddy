@@ -75,6 +75,22 @@ export function currentProposal(
     .map((id) => trip.places[id]);
 }
 
+/** How many places the current set offers, counting any saved for later. */
+export function offeredCount(trip: SampleTrip, state: PlanningState): number {
+  const slot = state.activeSlotId;
+  if (!slot) return 0;
+  const set = trip.proposals[slot]?.[state.proposalSet[slot] ?? 0] ?? [];
+  const gone = unavailable({ ...state, shelf: [] });
+  return set.filter((id) => !gone.has(id)).length;
+}
+
+/** How many itinerary slots differ between two versions of the plan. */
+export function changedSlots(entries: Entry[], since: Entry[]): number {
+  return entries.filter(
+    (entry, index) => JSON.stringify(entry) !== JSON.stringify(since[index]),
+  ).length;
+}
+
 export function pickCard(
   trip: SampleTrip,
   state: PlanningState,

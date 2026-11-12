@@ -31,7 +31,7 @@ Things to try on the planning screen:
 2. Pick a card and watch it travel to its slot in the itinerary.
 3. Ask for others and give a reason.
 4. Save a card for later, then place it from the shelf.
-5. Move a picked place to the Day 1 dinner slot. It is saved and flagged, not refused.
+5. Pick Senso-ji Temple for the Day 2 morning, then move it to the Day 1 dinner slot: choose the slot in its "Move to…" list and press Move. The move is saved and flagged, because the temple is closed by then. It is not refused.
 6. Try to move a booked item. It has no controls.
 7. Use Undo, then Build the rest for me.
 
@@ -53,7 +53,8 @@ Switches combine, for example `/prototype/trip?look=overlay&phone=tab&photos=off
 ## What the prototype does not show
 
 - Real conversation. The message box replies with a fixed sentence.
-- Real places or scheduling. The trip is one sample trip to Tokyo.
+- Real places or scheduling. The trip is one sample trip to Tokyo, and Quick plan always builds that trip whatever you enter.
+- Links between screens. Tickets, commitments and profile changes you add are not carried into the trip, and travel times do not change when you pick or move a place.
 - Renaming, archiving and deleting trips on Home.
 - An empty Home for a new traveller.
 - Saving the Quick plan brief across a page reload.

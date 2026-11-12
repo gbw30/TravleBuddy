@@ -423,7 +423,7 @@ Because the look can only be judged by seeing it, a clickable prototype of the m
 - **What OpenStreetMap means for the product:** there are no photos, so cards use poster-style illustrations; ratings and price levels are absent and shown as unknown, so ranking cannot use them; opening hours exist only where mappers entered them; travel times are estimated from distance. Every screen showing place data credits OpenStreetMap contributors.
 - **What exists today:** the Google adapter covers text search only. Pictures, hours, travel times and the OpenStreetMap adapter all still have to be built.
 - **Verified on 2026-11-12.** Official prices and terms are recorded in [ADR-009](architecture/adr-009-place-data-provider.md). Expected running cost at 30 trips a month is under one US dollar, nearly all of it the AI model.
-- **Spending cap (default):** 20 US dollars a month in total at the portfolio stage, enforced by caps on both accounts and by a limit in the app.
+- **Spending cap (default):** 20 US dollars a month in total at the portfolio stage, enforced by a cap on each paid account and by a limit in the app. With OpenStreetMap as the provider, the only paid account is the AI model's.
 - **The two caps are separate.** When the AI cap is reached, the agent runs in limited mode ([7.7](#77-when-the-ai-model-is-unavailable)). When the place-data cap is reached, proposals use saved and sample places only, and the agent says new places cannot be looked up until the cap resets. Neither switches off the other.
 - **Saved place data:** place details are kept after the first lookup to avoid paying twice, within what the provider's terms allow.
 - **Sample data stays** for automated tests and offline demos.

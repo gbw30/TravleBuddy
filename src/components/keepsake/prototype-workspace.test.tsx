@@ -47,6 +47,16 @@ describe("prototype workspace", () => {
     }
   });
 
+  it("a built trip starts with nothing to undo", () => {
+    const html = renderToStaticMarkup(
+      <PrototypeWorkspace
+        trip={sampleTrip}
+        options={{ ...options, built: true }}
+      />,
+    );
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Undo<\/button>/);
+  });
+
   it("uses the fixed discard reasons", () => {
     expect(DISCARD_REASONS).toEqual([
       "Too expensive",

@@ -36,7 +36,10 @@ export function Postcard({
   const backId = useId();
 
   return (
-    <article data-qa="postcard" className="flex h-full min-w-0 flex-col gap-2">
+    <article
+      data-qa="postcard"
+      className="relative flex h-full min-w-0 flex-col gap-2"
+    >
       <button
         type="button"
         aria-pressed={flipped}
@@ -48,11 +51,7 @@ export function Postcard({
         <span
           className={`grid h-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
         >
-          <span
-            id={frontId}
-            aria-hidden={flipped}
-            className={`${face} relative bg-card`}
-          >
+          <span aria-hidden={flipped} className={`${face} relative bg-card`}>
             <PlaceArt place={place} showPhoto={showPhoto} className="h-32" />
             <span
               aria-hidden
@@ -64,17 +63,22 @@ export function Postcard({
               <span className="block font-bold [overflow-wrap:anywhere]">
                 {place.name}
               </span>
-              <span className="block text-xs opacity-75 [overflow-wrap:anywhere]">
+              <span
+                id={frontId}
+                className="block text-xs opacity-75 [overflow-wrap:anywhere]"
+              >
                 {place.essentials} · {priceLabel(place.priceLevel)}
               </span>
             </span>
           </span>
           <span
-            id={backId}
             aria-hidden={!flipped}
             className={`${face} bg-stamp-paper bg-[repeating-linear-gradient(180deg,transparent_0_23px,rgb(120_85_45/0.18)_23px_24px)] [transform:rotateY(180deg)]`}
           >
-            <span className="block p-2 text-sm leading-6 [overflow-wrap:anywhere]">
+            <span
+              id={backId}
+              className="block p-2 text-sm leading-6 [overflow-wrap:anywhere]"
+            >
               <span className="block">{place.summary}</span>
               <span className="mt-2 block font-sans text-[10px] font-bold tracking-widest text-terracotta uppercase">
                 Why it suits you
@@ -84,11 +88,16 @@ export function Postcard({
           </span>
         </span>
       </button>
+      {/* The flip button's label hides its contents from screen readers, so the back is announced here. */}
+      <span aria-live="polite" className="sr-only">
+        {flipped ? `${place.summary} Why it suits you: ${place.reason}` : ""}
+      </span>
       <div className="grid grid-cols-2 gap-1.5">
         {onPick && (
           <button
             type="button"
             onClick={onPick}
+            aria-label={`Pick ${place.name}`}
             className={`${action} col-span-2 bg-terracotta-deep text-white`}
           >
             Pick
@@ -98,6 +107,7 @@ export function Postcard({
           <button
             type="button"
             onClick={onSave}
+            aria-label={`Save ${place.name} for later`}
             className={`${action} text-terracotta-deep`}
           >
             Save for later
@@ -107,6 +117,7 @@ export function Postcard({
           <button
             type="button"
             onClick={onCloserLook}
+            aria-label={`Closer look at ${place.name}`}
             className={`${action} text-terracotta-deep`}
           >
             Closer look
