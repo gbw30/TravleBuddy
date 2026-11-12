@@ -10,6 +10,18 @@
   --color-foreground: var(--foreground);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+
+  /* Keepsake design tokens (docs/prd.md section 15). Text pairs are contrast-checked in keepsake-tokens.test.ts. */
+  --font-serif: var(--font-lora), Georgia, serif;
+  --color-paper: #d9c3a0;
+  --color-ink: #2b2622;
+  --color-card: #ffffff;
+  --color-row: #fffaf0;
+  --color-row-edge: #cdbb98;
+  --color-terracotta: #b4542f;
+  --color-terracotta-deep: #7a3319;
+  --color-stamp: #8a2420;
+  --color-stamp-paper: #fdf8ec;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +35,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+}
+
+.keepsake-paper {
+  background: var(--color-paper)
+    repeating-linear-gradient(
+      45deg,
+      rgb(120 85 45 / 0.07) 0 2px,
+      transparent 2px 9px
+    );
+  color: var(--color-ink);
+  font-family: var(--font-serif);
 }
