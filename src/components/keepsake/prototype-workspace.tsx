@@ -31,7 +31,7 @@ import { DiscardReasons } from "./discard-reasons";
 import { LiveItinerary } from "./live-itinerary";
 import { Postcard } from "./postcard";
 import { Shelf } from "./shelf";
-import { eyebrow, field, pill, pillPrimary } from "./styles";
+import { eyebrow, fieldLarge, pill, pillPrimary } from "./styles";
 
 export type WorkspaceOptions = {
   photos: boolean;
@@ -387,7 +387,7 @@ export function PrototypeWorkspace({
                 name="message"
                 aria-label="Message the agent"
                 placeholder="Tell me anything, such as “I've booked dinner on Tuesday”"
-                className={`${field} min-w-0 flex-1 py-2 text-sm`}
+                className={`${fieldLarge} min-w-0 flex-1`}
               />
               <button type="submit" className={pillPrimary}>
                 Send

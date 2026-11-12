@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { field, pill, pillPrimary } from "./styles";
+import { fieldLarge, pill, pillPrimary } from "./styles";
 
 export const DISCARD_REASONS: readonly string[] = [
   "Too expensive",
@@ -57,7 +57,7 @@ export function DiscardReasons({
         <input
           value={note}
           onChange={(event) => setNote(event.target.value)}
-          className={`${field} mt-1 block w-full py-2 text-sm`}
+          className={`${fieldLarge} mt-1 block w-full`}
         />
       </label>
       <div className="mt-3 flex gap-2">
