@@ -105,6 +105,50 @@ npx playwright test e2e/prototype.spec.ts --project=chromium --project=mobile-ch
 
 If port 3000 is in use, start the app on another port and pass it, for example `QA_BASE_URL=http://127.0.0.1:3210`.
 
+## Known gaps from the code review
+
+A review on 2026-11-12 found these smaller problems. They were left as they are and should be revisited before the keepsake components are reused in the real product.
+
+**Accessibility**
+
+- The `?phone=tab` version uses tab roles without the full tab pattern.
+- Keyboard focus is lost after Pick, after Choose from the phone sheet, and after Edit or Delete on the profile.
+- New agent messages are not announced to screen readers.
+- The closer look opens scrolled past the photo on short screens.
+- The Swap button mixes a pressed state with a changing label.
+- Home illustrations repeat the trip title as an image label.
+- Quick plan step 1 errors are not tied to their fields.
+- The sample pace pills in the conversation look clickable but are not.
+- The message box placeholder and the field borders are low contrast.
+- Not tested in Firefox, Safari or with a real screen reader.
+
+**Behaviour and copy**
+
+- A slot with no places left offers no next step.
+- The shelf's "Place in…" list is empty once no slot is open.
+- Travel times read as exact, not as estimates.
+- Visit length is in the sample data but never shown.
+- Quick plan number fields accept odd values, such as "03", decimals, or more children than travellers.
+- Commitments added in Quick plan step 2 disappear on leaving the step.
+- A fast double-click on the last Next starts the build.
+- On a phone the picked card fades instead of travelling, because the itinerary is behind the sheet.
+
+**Code and tests**
+
+- Saved prototype state is checked only by size, so a changed sample trip in an old tab could crash the page.
+- Two text colour classes sit on one element in `itinerary-row.tsx`.
+- `priceLabel` hard-codes the yen sign.
+- Class strings are duplicated in `start-trip.tsx` and `profile-list.tsx`.
+- The serif font preloads on every existing page.
+- The sample photos are still served in production.
+- The phone browser test runs at 412px wide, not 390px.
+- The accessibility scan covers opening states only, and cannot judge contrast on the textured background.
+- No unit test covers removing an item, choosing a slot, picking into a filled slot, or a build that leaves a slot open.
+
+**Left out of the prototype on purpose**
+
+Visit lengths on items, an offered fix on a flagged item, a message when a move onto a booked item is refused, position in the day in the closer look, discarding a single card, and searching for a place by name. All are in the [requirements](../requirements.md) for the real build.
+
 ## Approval record
 
 To be filled in by the product owner. Milestone 1 is complete only when this is filled in.
