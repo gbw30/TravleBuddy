@@ -1,9 +1,10 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { NextResponse } from "next/server";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
+import { env, isDevLoginEnabled } from "@/lib/env";
 import {
   getAuthRouteDecision,
   getSessionUserId,
@@ -12,6 +13,31 @@ import {
 
 type PrismaAdapterClient = Parameters<typeof PrismaAdapter>[0];
 
+const DEV_USER_EMAIL = "dev@travlebuddy.local";
+
+// Signs in one fixed local user without Google. Registered only when
+// isDevLoginEnabled(); authorize() checks again in case it is ever reached.
+const devLogin = Credentials({
+  id: "dev-login",
+  name: "Development sign-in",
+  credentials: {},
+  async authorize() {
+    if (!isDevLoginEnabled()) return null;
+    const user = await db.user.upsert({
+      where: { email: DEV_USER_EMAIL },
+      update: {},
+      // An explicit id keeps this working on a database that is behind on the
+      // migration that gives users.id a default.
+      create: {
+        id: crypto.randomUUID(),
+        email: DEV_USER_EMAIL,
+        name: "Dev Traveller",
+      },
+    });
+    return { id: user.id, email: user.email, name: user.name };
+  },
+});
+
 export const authConfig = {
   adapter: PrismaAdapter(db as unknown as PrismaAdapterClient),
   providers: [
@@ -19,6 +45,7 @@ export const authConfig = {
       clientId: env.AUTH_GOOGLE_ID,
       clientSecret: env.AUTH_GOOGLE_SECRET,
     }),
+    ...(isDevLoginEnabled() ? [devLogin] : []),
   ],
   secret: env.AUTH_SECRET,
   redirectProxyUrl: env.AUTH_REDIRECT_PROXY_URL,
@@ -43,7 +70,9 @@ export const authConfig = {
       }
 
       if (decision.kind === "redirect") {
-        return NextResponse.redirect(new URL(decision.destination, request.nextUrl));
+        return NextResponse.redirect(
+          new URL(decision.destination, request.nextUrl),
+        );
       }
 
       return true;

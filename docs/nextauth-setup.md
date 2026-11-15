@@ -434,3 +434,9 @@ npm run db:deploy
 ```
 
 For QA, do not run this command from report-only verification. Use the protected `QA - Protected Migrations` workflow documented in `qa/README.md`; it validates exact Git/database/migration identity and never auto-rolls back. For deployment-protected Vercel QA, store `VERCEL_AUTOMATION_BYPASS_SECRET` in the protected GitHub environment. Playwright sends it only as Vercel protection headers and does not log it.
+
+## Signing in without Google during local development
+
+Set `AUTH_DEV_LOGIN="1"` in `.env.local` to add a **Sign in as dev user** button to `/login`. It signs in one fixed user (`dev@travlebuddy.local`), created in whichever database `DATABASE_URL` points to, and works on any port because it does not go through Google.
+
+It takes effect only when `NODE_ENV` is `development`, which is true for `npm run dev` and false for every built or deployed version, so the flag does nothing on Vercel. Remove the line to go back to Google only.

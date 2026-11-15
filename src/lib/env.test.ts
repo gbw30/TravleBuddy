@@ -119,3 +119,37 @@ describe("server environment validation", () => {
     });
   });
 });
+
+describe("development sign-in switch", () => {
+  it("is on only in development with the flag set to 1", async () => {
+    const { isDevLoginEnabled } = await import("./env");
+
+    expect(
+      isDevLoginEnabled({ NODE_ENV: "development", AUTH_DEV_LOGIN: "1" }),
+    ).toBe(true);
+    expect(isDevLoginEnabled({ NODE_ENV: "development" })).toBe(false);
+    expect(
+      isDevLoginEnabled({ NODE_ENV: "development", AUTH_DEV_LOGIN: "true" }),
+    ).toBe(false);
+  });
+
+  it("can never be switched on outside development", async () => {
+    const { isDevLoginEnabled } = await import("./env");
+
+    for (const NODE_ENV of ["production", "test", undefined]) {
+      expect(isDevLoginEnabled({ NODE_ENV, AUTH_DEV_LOGIN: "1" })).toBe(false);
+    }
+  });
+
+  it("stays off on Vercel even if NODE_ENV is mis-set to development", async () => {
+    const { isDevLoginEnabled } = await import("./env");
+
+    expect(
+      isDevLoginEnabled({
+        NODE_ENV: "development",
+        AUTH_DEV_LOGIN: "1",
+        VERCEL: "1",
+      }),
+    ).toBe(false);
+  });
+});

@@ -125,6 +125,19 @@ export function validateWorkerEnv(source: RawServerEnv = process.env) {
   return parsed.data;
 }
 
+/**
+ * The Google-free development sign-in. It needs both conditions, so a stray
+ * flag on a deployed build (where NODE_ENV is "production") can never enable it.
+ * It is also off on Vercel, where NODE_ENV could be mis-set by hand.
+ */
+export function isDevLoginEnabled(source: RawServerEnv = process.env) {
+  return (
+    source.NODE_ENV === "development" &&
+    source.AUTH_DEV_LOGIN === "1" &&
+    !source.VERCEL
+  );
+}
+
 export const env = new Proxy({} as ServerEnv, {
   get(_target, property: keyof ServerEnv) {
     return getServerEnv()[property];
