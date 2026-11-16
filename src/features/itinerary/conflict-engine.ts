@@ -42,10 +42,15 @@ type DetectableTrip = {
   preference: {
     pace: TravelPace | null;
   } | null;
+  selectedPlaces?: {
+    id: string;
+    name: string;
+  }[];
 };
 
 type DetectableItem = {
   id: string;
+  placeSuggestionId?: string | null;
   title: string;
   startTime: Date | string | null;
   endTime: Date | string | null;
@@ -102,6 +107,7 @@ const severityRank: Record<ConflictSeverity, number> = {
 
 const conflictTripSelect = {
   id: true,
+  activeItineraryVersionId: true,
   title: true,
   status: true,
   startDate: true,
@@ -126,6 +132,7 @@ const conflictDaySelect = {
   items: {
     select: {
       id: true,
+      placeSuggestionId: true,
       title: true,
       startTime: true,
       endTime: true,
@@ -381,33 +388,101 @@ function budgetConflicts({
     return [];
   }
 
-  const total = days
-    .flatMap((day) => day.items)
-    .reduce((sum, item) => {
-      if (item.estimatedCostCurrency !== trip.budgetCurrency) {
-        return sum;
-      }
+  const items = days.flatMap((day) => day.items);
+  const total = items.reduce((sum, item) => {
+    if (item.estimatedCostCurrency !== trip.budgetCurrency) {
+      return sum;
+    }
 
-      return sum + (numberValue(item.estimatedCostAmount) ?? 0);
-    }, 0);
+    return sum + (numberValue(item.estimatedCostAmount) ?? 0);
+  }, 0);
+  const excludedCostCurrencies = [
+    ...new Set(
+      items
+        .filter(
+          (item) =>
+            numberValue(item.estimatedCostAmount) !== null &&
+            item.estimatedCostCurrency &&
+            item.estimatedCostCurrency !== trip.budgetCurrency,
+        )
+        .map((item) => item.estimatedCostCurrency as string),
+    ),
+  ].sort();
+  const conflicts: ConflictCandidate[] =
+    excludedCostCurrencies.length > 0
+      ? [
+          {
+            itineraryItemId: null,
+            type: "BUDGET",
+            severity: "MEDIUM",
+            message: `The ${trip.budgetCurrency} itinerary estimate is partial because selected costs in ${excludedCostCurrencies.join(", ")} are excluded.`,
+            recommendation:
+              "Review the excluded currencies separately before comparing the partial estimate with the trip budget.",
+            metadata: conflictMetadata({
+              rule: "mixed_currency_cost_exclusions",
+              currency: trip.budgetCurrency,
+              excludedCostCurrencies,
+            }),
+          },
+        ]
+      : [];
 
   if (total <= budgetAmount) {
+    return conflicts;
+  }
+
+  conflicts.push({
+    itineraryItemId: null,
+    type: "BUDGET",
+    severity: "HIGH",
+    message: `Estimated itinerary cost ${trip.budgetCurrency} ${total} exceeds the trip budget of ${trip.budgetCurrency} ${budgetAmount}.`,
+    recommendation:
+      "Remove lower-priority places, refresh recommendations with a lower budget, or raise the trip budget.",
+    metadata: conflictMetadata({
+      rule: "trip_budget",
+      budgetAmount,
+      estimatedAmount: total,
+      currency: trip.budgetCurrency,
+    }),
+  });
+
+  return conflicts;
+}
+
+function unscheduledOverflowConflicts({
+  trip,
+  days,
+}: {
+  trip: DetectableTrip;
+  days: readonly DetectableDay[];
+}): ConflictCandidate[] {
+  const scheduledPlaceIds = new Set(
+    days.flatMap((day) =>
+      day.items.flatMap((item) =>
+        item.placeSuggestionId ? [item.placeSuggestionId] : [],
+      ),
+    ),
+  );
+  const unscheduled = (trip.selectedPlaces ?? []).filter(
+    (place) => !scheduledPlaceIds.has(place.id),
+  );
+
+  if (unscheduled.length === 0) {
     return [];
   }
 
   return [
     {
       itineraryItemId: null,
-      type: "BUDGET",
-      severity: "HIGH",
-      message: `Estimated itinerary cost ${trip.budgetCurrency} ${total} exceeds the trip budget of ${trip.budgetCurrency} ${budgetAmount}.`,
+      type: "SCHEDULE_DENSITY",
+      severity: "LOW",
+      message: `${unscheduled.length} selected place${unscheduled.length === 1 ? " is" : "s are"} kept as unscheduled because the current itinerary pace has no remaining capacity.`,
       recommendation:
-        "Remove lower-priority places, refresh recommendations with a lower budget, or raise the trip budget.",
+        "Keep these selections for review; a future scheduling step can place them after dates, pace, or priorities change.",
       metadata: conflictMetadata({
-        rule: "trip_budget",
-        budgetAmount,
-        estimatedAmount: total,
-        currency: trip.budgetCurrency,
+        rule: "unscheduled_selected_overflow",
+        unscheduledCount: unscheduled.length,
+        placeSuggestionIds: unscheduled.map((place) => place.id),
       }),
     },
   ];
@@ -682,6 +757,7 @@ export function detectItineraryConflicts({
   return sortedConflicts(
     uniqueConflictCandidates([
       ...budgetConflicts({ trip, days }),
+      ...unscheduledOverflowConflicts({ trip, days }),
       ...densityConflicts({ trip, days }),
       ...missingDurationConflicts(days),
       ...distanceConflicts(days),
@@ -717,10 +793,26 @@ export function summarizeItineraryConflicts(
 export async function getOpenItineraryConflictsForTripTx(
   tx: ConflictTx,
   tripId: string,
+  itineraryVersionId?: string | null,
 ) {
+  const activeItineraryVersionId =
+    itineraryVersionId === undefined
+      ? (
+          await tx.trip.findUnique({
+            where: { id: tripId },
+            select: { activeItineraryVersionId: true },
+          })
+        )?.activeItineraryVersionId
+      : itineraryVersionId;
+
+  if (!activeItineraryVersionId) {
+    return [];
+  }
+
   const records = await tx.conflict.findMany({
     where: {
       tripId,
+      itineraryVersionId: activeItineraryVersionId,
       status: "OPEN",
     },
     select: itineraryConflictSelect,
@@ -736,10 +828,15 @@ export async function getOpenItineraryConflictsForTripTx(
   return sortedConflicts(unique);
 }
 
-async function conflictDays(tx: ConflictTx, tripId: string) {
+async function conflictDays(
+  tx: ConflictTx,
+  tripId: string,
+  itineraryVersionId: string,
+) {
   return tx.itineraryDay.findMany({
     where: {
       tripId,
+      itineraryVersionId,
     },
     select: conflictDaySelect,
     orderBy: {
@@ -783,6 +880,7 @@ async function existingItineraryItemIds(
 async function createDetectedConflicts(
   tx: ConflictTx,
   tripId: string,
+  itineraryVersionId: string,
   detected: readonly ConflictCandidate[],
 ) {
   if (detected.length === 0) {
@@ -792,6 +890,7 @@ async function createDetectedConflicts(
   const existingItemIds = await existingItineraryItemIds(tx, tripId, detected);
   const data = detected.map((conflict) => ({
     tripId,
+    itineraryVersionId,
     itineraryItemId:
       conflict.itineraryItemId && existingItemIds.has(conflict.itineraryItemId)
         ? conflict.itineraryItemId
@@ -828,6 +927,7 @@ export async function refreshItineraryConflictsForTripTx(
   options: {
     writeEvent?: boolean;
     operation?: PlanningOperationContext;
+    itineraryVersionId?: string;
   } = {},
 ) {
   const operation =
@@ -837,20 +937,47 @@ export async function refreshItineraryConflictsForTripTx(
     "conflict_refresh",
     operation,
     async () => {
-      const days = await conflictDays(tx, trip.id);
+      const itineraryVersionId =
+        options.itineraryVersionId ??
+        (
+          await tx.trip.findUnique({
+            where: { id: trip.id },
+            select: { activeItineraryVersionId: true },
+          })
+        )?.activeItineraryVersionId;
+
+      if (!itineraryVersionId) {
+        return [];
+      }
+
+      const days = await conflictDays(tx, trip.id, itineraryVersionId);
+      const selectedPlaces = await tx.placeSuggestion.findMany({
+        where: {
+          tripId: trip.id,
+          status: "SELECTED",
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
       const detected = detectItineraryConflicts({
-        trip,
+        trip: {
+          ...trip,
+          selectedPlaces,
+        },
         days: days as ConflictDayRecord[],
       });
 
       await tx.conflict.deleteMany({
         where: {
           tripId: trip.id,
+          itineraryVersionId,
           status: "OPEN",
         },
       });
 
-      await createDetectedConflicts(tx, trip.id, detected);
+      await createDetectedConflicts(tx, trip.id, itineraryVersionId, detected);
 
       if (options.writeEvent) {
         await tx.planningEvent.create({
@@ -872,7 +999,11 @@ export async function refreshItineraryConflictsForTripTx(
         });
       }
 
-      return getOpenItineraryConflictsForTripTx(tx, trip.id);
+      return getOpenItineraryConflictsForTripTx(
+        tx,
+        trip.id,
+        itineraryVersionId,
+      );
     },
     () => ({ status: "refreshed" }),
   );

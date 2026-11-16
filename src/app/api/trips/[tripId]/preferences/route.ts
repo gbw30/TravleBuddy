@@ -5,6 +5,15 @@ import {
 import { saveTripPreference } from "@/features/preferences/actions";
 import { getTripPreferenceForUser } from "@/features/preferences/queries";
 import { preferenceInputSchema } from "@/features/preferences/schemas";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type TripPreferenceRouteContext = {
   params: Promise<{
@@ -17,14 +26,6 @@ function apiError(message: string, status: number, details?: unknown) {
     details ? { error: message, details } : { error: message },
     { status },
   );
-}
-
-async function readJson(request: Request) {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
 }
 
 function accessErrorResponse(
@@ -79,7 +80,13 @@ export async function PUT(
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId } = await context.params;
-    const body = await readJson(request);
+    const body = await readPlanningMutationJson(request);
+    const parsedControl = parsePlanningMutationControl(body);
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
     const parsed = preferenceInputSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -92,7 +99,17 @@ export async function PUT(
       );
     }
 
-    const result = await saveTripPreference(userId, tripId, parsed.data);
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "preference_save",
+      parsed.data,
+    );
+    const result = await saveTripPreference(
+      userId,
+      tripId,
+      parsed.data,
+      control,
+    );
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -117,6 +134,9 @@ export async function PUT(
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to save trip preferences.", 500);
   }

@@ -13,6 +13,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const fingerprintMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "prisma/migrations/20260723120000_stage0_planning_mutation_fingerprint/migration.sql",
+  ),
+  "utf8",
+);
 
 describe("Stage 0 planning persistence", () => {
   it("starts existing and new trips at planning revision zero", () => {
@@ -38,5 +45,15 @@ describe("Stage 0 planning persistence", () => {
       'ON "planning_mutations"("trip_id", "created_at");',
     );
     expect(migration).toContain("ON DELETE CASCADE ON UPDATE CASCADE;");
+  });
+
+  it("stores a nullable SHA-256 request fingerprint additively", () => {
+    expect(schema).toMatch(
+      /requestFingerprint\s+String\?\s+@map\("request_fingerprint"\)\s+@db\.Char\(64\)/,
+    );
+    expect(fingerprintMigration).toContain(
+      'ADD COLUMN "request_fingerprint" CHAR(64);',
+    );
+    expect(fingerprintMigration).not.toContain("NOT NULL");
   });
 });

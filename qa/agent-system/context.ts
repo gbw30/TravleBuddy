@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -34,6 +35,7 @@ export type ContextRunOptions = {
   forcedAgents: QaAgent[];
   parentSandbox: QaParentSandbox;
   generatedAt?: string;
+  trackedStateFingerprint?: string;
 };
 
 function unique<T>(values: readonly T[]) {
@@ -54,6 +56,28 @@ export function serializeBoundedContext(
   }
 
   return { serialized, bytes };
+}
+
+export function readTrackedStateFingerprint() {
+  const commands = [
+    ["status", "--porcelain=v1", "--untracked-files=no"],
+    ["diff", "--no-ext-diff", "--binary", "HEAD", "--", "."],
+    ["diff", "--no-ext-diff", "--binary", "--cached", "HEAD", "--", "."],
+  ];
+  const outputs = commands.map((args) => {
+    const result = spawnSync("git", args, {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 20 * 1024 * 1024,
+    });
+    if (result.status !== 0) {
+      throw new Error(
+        `Unable to fingerprint tracked state with: git ${args.join(" ")}`,
+      );
+    }
+    return result.stdout;
+  });
+  return createHash("sha256").update(outputs.join("\0"), "utf8").digest("hex");
 }
 
 export function buildAgentContext(options: {
@@ -91,6 +115,8 @@ export function buildAgentContext(options: {
     runId: options.run.runId,
     generatedAt: options.run.generatedAt ?? new Date().toISOString(),
     commitSha: options.run.commitSha,
+    trackedStateFingerprint:
+      options.run.trackedStateFingerprint ?? readTrackedStateFingerprint(),
     activeStage: options.run.activeStage,
     runType: options.run.runType,
     targetKind: options.run.targetKind,
@@ -134,6 +160,10 @@ export function buildAgentContext(options: {
 export async function writeQaContextBundles(
   run: ContextRunOptions,
 ): Promise<QaContextManifest> {
+  const trackedStateFingerprint =
+    run.trackedStateFingerprint ?? readTrackedStateFingerprint();
+  const generatedAt = run.generatedAt ?? new Date().toISOString();
+  const normalizedRun = { ...run, generatedAt, trackedStateFingerprint };
   const selection = selectAgentsForChanges({
     runType: run.runType,
     changedPaths: run.changedPaths,
@@ -150,7 +180,7 @@ export async function writeQaContextBundles(
   const contextBytesByAgent: Partial<Record<QaAgent, number>> = {};
   for (const agent of selection.selectedAgents) {
     const context = buildAgentContext({
-      run,
+      run: normalizedRun,
       selectedAgents: selection.selectedAgents,
       selectionReasons: selection.reasons,
       agent,
@@ -165,8 +195,9 @@ export async function writeQaContextBundles(
   const manifest = qaContextManifestSchema.parse({
     contractVersion: 1,
     runId: run.runId,
-    generatedAt: run.generatedAt ?? new Date().toISOString(),
+    generatedAt,
     commitSha: run.commitSha,
+    trackedStateFingerprint,
     activeStage: run.activeStage,
     runType: run.runType,
     targetKind: run.targetKind,

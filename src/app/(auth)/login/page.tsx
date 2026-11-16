@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { SignInButton } from "@/components/auth/auth-buttons";
+import { DevSignInButton, SignInButton } from "@/components/auth/auth-buttons";
 import { auth } from "@/lib/auth";
+import { isDevLoginEnabled } from "@/lib/env";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -19,6 +20,14 @@ export default async function LoginPage() {
           </p>
         </div>
         <SignInButton />
+        {isDevLoginEnabled() && (
+          <div className="mt-3">
+            <DevSignInButton />
+            <p className="mt-2 text-xs text-zinc-600">
+              Development only. Signs in a fixed local user without Google.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );

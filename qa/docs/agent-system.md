@@ -44,7 +44,7 @@ Production uses read-only security and resilience review followed by the auditor
 
 `qa:context` snapshots each agent’s assigned scenarios, blocking scenario IDs, relevant features, source/documentation/test paths, permissions, evidence inputs, and output location. Bundles are limited to 32 KiB and contain references rather than source or log contents.
 
-Workers emit the typed report contract. `qa:reports:validate` verifies run/commit/target/scenario identity, hashes artifacts, checks path containment, scans bounded text evidence for common unredacted secrets, and generates a compact summary and evidence index.
+Workers emit the typed report contract. `qa:reports:validate` verifies context/report chronology; run, agent, commit, target, assignment, and verdict consistency; and unchanged tracked-state fingerprints. Source citations remain distinct from produced evidence, which must stay inside the owning worker directory. Stage 0 revision proof includes operation ordering, mutation fingerprint, revisions, and durable deltas. Validated performance proof requires cold-run exclusion, 20 warm samples, percentile method, p50/p95/max, query and payload p95, and separate provider latency.
 
 The auditor reads summaries first. It opens every failed, blocked, flaky, confirmed, security, or production-risk item, contradictions and missing evidence, plus one required P0 sample per selected worker. Successful bulk logs and media remain unloaded.
 

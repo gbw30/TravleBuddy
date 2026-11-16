@@ -1,129 +1,54 @@
-docs/
-  ci-cd-tutorial.md
-  folder-structure.md
-  neon-env-setup.md
-  nextauth-setup.md
-  phase-2-documentation.md
-  phase-3-documentation.md
-  phase-4-documentation.md
-  phase-5-documentation.md
-  requirements.md
-  travlebuddy_agent_development_plan.md
+# Repository Structure
 
-prisma/
-  schema.prisma
-  migrations/
+Status: architecture
+Authority: Architecture-oriented map of current repository responsibilities
+Related: [Architecture](architecture/README.md), [current implementation](status/current-implementation.md), [knowledge map](README.md)
+Last reviewed: 2026-08-09
 
-src/
-  app/
-    (auth)/
-      login/
-    (dashboard)/
-      dashboard/
-      profile/
-        page.tsx
-      trips/
-        [tripId]/
-          preferences/
-            page.tsx
-          settings/
-            page.test.tsx
-            page.tsx
-          page.tsx
-        new/
-          page.tsx
-        page.tsx
-    api/
-      auth/
-        [...nextauth]/
-      trips/
-        [tripId]/
-          preferences/
-            route.test.ts
-            route.ts
-          route.test.ts
-          route.ts
-        route.test.ts
-        route.ts
-    favicon.ico
-    globals.css
-    layout.tsx
-    page.tsx
+This map explains responsibilities rather than listing every generated or short-lived file.
 
-  components/
-    auth/
-      auth-buttons.tsx
-      sign-out-confirm-form.tsx
-    layout/
-      app-nav.tsx
-    preferences/
-      preference-form.tsx
-      preference-summary.tsx
-    trips/
-      new-trip-form.tsx
-      trip-readiness-panel.tsx
-      trip-settings-form.tsx
-      trip-summary-card.tsx
+```text
+TravleBuddy/
+├── src/
+│   ├── app/                    Next.js App Router pages, layouts, route handlers
+│   ├── components/             Reusable and feature-facing React presentation
+│   ├── features/               Domain services and contracts
+│   │   ├── adaptation/         Feedback policy and copy-on-write replacement
+│   │   └── jobs/               PostgreSQL queue state and execution contracts
+│   ├── lib/                    Shared auth, database, validation, and providers
+│   │   └── providers/places/   Google/mock PlaceProvider boundary
+│   └── worker/                 Standalone durable-job runtime
+├── prisma/                     Schema, migrations, and seed support
+├── docs/                       Product, status, architecture, plans, operations, history
+├── qa/                         Report-only QA system, feature states, scenarios, policies
+├── .github/workflows/          Existing CI, QA, migration, nightly, and release automation
+├── scripts/                    Repository verification and operational helpers
+├── public/                     Static web assets
+└── generated/ or Prisma output Generated code; never edit as product source
+```
 
-  features/
-    itinerary/
-      builder.ts
-      conflict-engine.ts
-      schemas.ts
-      types.ts
-    profile/
-      actions.ts
-      actions.test.ts
-      preferences.ts
-      preferences.test.ts
-      queries.ts
-      queries.test.ts
-      schemas.ts
-      schemas.test.ts
-      types.ts
-    preferences/
-      actions.ts
-      actions.test.ts
-      queries.ts
-      queries.test.ts
-      schemas.ts
-      schemas.test.ts
-      types.ts
-    recommendations/
-      schemas.ts
-      scoring.ts
-      service.ts
-      types.ts
-    trips/
-      actions.ts
-      location-catalog.ts
-      planning-feedback.ts
-      queries.ts
-      readiness.ts
-      schemas.ts
-      types.ts
+## Application layer
 
-  lib/
-    ai/
-      gemini.ts
-      prompts.ts
-    auth.ts
-    auth-policy.ts
-    auth-routes.ts
-    authorization.ts
-    authorization-rules.ts
-    db.ts
-    env.ts
-    export/
-      pdf.ts
-      json.ts
-    google/
-      maps.ts
-      places.ts
-      routes.ts
+`src/app` owns routing and server entry points. Route handlers must remain thin: authenticate, validate, call a domain service, and serialize a bounded DTO. Pages compose the planning workspace but do not own durable planning rules.
 
-  proxy.ts
+`src/components` separates behavior containers from presentational components. This boundary allows later visual redesign without changing semantic controls, status handling, accessibility, or server contracts.
 
-  types/
-    index.ts
-    next-auth.d.ts
+## Domain and infrastructure layer
+
+`src/features` contains use-case logic that can be exercised without the UI. Adaptive policy is callable both inline in tests and from the worker. Job persistence and state transitions remain separate from job-specific business logic.
+
+`src/lib` contains shared infrastructure, including Prisma access, Auth.js integration, schemas, observability, and provider adapters. External provider response shapes must not leak into application DTOs.
+
+`src/worker` is a process entry point, not a second business-logic implementation. It claims durable jobs and delegates execution to feature services.
+
+## Data layer
+
+`prisma/schema.prisma` defines durable application state. `prisma/migrations` is append-only deployment history. Migrations are applied only through the protected workflow or an explicitly authorized local procedure against the intended database.
+
+## Documentation and QA
+
+`docs/README.md` routes product and engineering knowledge. `docs/history` is non-authoritative. `qa/README.md` controls report-only verification, while `qa/feature-states.json` is the machine-readable feature-state authority. Generated `qa-results` evidence is run-owned and gitignored.
+
+## Generated and secret material
+
+Do not manually edit generated Prisma/client output or track `.env` files, credentials, QA receipts containing secrets, browser session data, or provider raw metadata. See [operating constraints](operating-constraints.md) for the fixed branch/database/deployment topology.

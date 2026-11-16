@@ -1,1639 +1,224 @@
-# TravleBuddy
-## AI-Powered Travel Planning Platform
-
-Version: 0.1 (Pre-MVP Requirements & System Design)
-Status: Planning Phase
-
----
-
-# 1. Executive Summary
-
-TravleBuddy is an AI-assisted travel planning platform that helps users create optimized travel itineraries through guided preference collection, intelligent destination recommendations, map visualization, and itinerary conflict detection.
-
-Instead of forcing users to manually research destinations, compare locations, calculate travel times, and organize schedules, TravleBuddy guides users through a dynamic questionnaire and progressively builds an itinerary tailored to their preferences.
-
-The platform combines:
-
-- Structured user preferences
-- AI reasoning
-- Location intelligence
-- Travel-time optimization
-- Budget awareness
-- Itinerary conflict detection
-
-The primary goal is to reduce trip planning complexity while producing realistic, personalized travel itineraries.
-
----
-
-# 2. Problem Statement
-
-Travel planning is fragmented across multiple platforms.
-
-Users often:
-
-- Search destinations on Google
-- Search hotels separately
-- Build itineraries manually
-- Compare travel distances themselves
-- Estimate budgets manually
-- Organize schedules in spreadsheets or notes
-
-This process is time-consuming and often results in:
-
-- Inefficient itineraries
-- Budget overruns
-- Excessive travel time
-- Missed attractions
-- Poor hotel placement
-
-TravleBuddy aims to centralize and automate the planning process.
-
----
-
-# 3. Goals
-
-## Primary Goal
-
-Enable users to create personalized, optimized travel itineraries with minimal manual effort.
-
-## Secondary Goals
-
-- Reduce planning time
-- Improve itinerary quality
-- Improve destination discovery
-- Visualize trip plans geographically
-- Explain recommendations transparently
-- Allow trip persistence and exporting
-
----
-
-# 4. Target Users
-
-## Primary Users
-
-Travelers planning trips to unfamiliar locations.
-
-Examples:
-
-- Vacation travelers
-- Weekend travelers
-- Solo travelers
-- Families
-- Couples
-- International travelers
-
-## Secondary Users
-
-Users who:
-
-- Enjoy itinerary planning
-- Want travel inspiration
-- Compare destinations
-- Share travel experiences
-
----
-
-# 5. MVP Scope
-
-The MVP focuses exclusively on:
-
-### Included
-
-- User authentication
-- User profiles
-- Trip creation
-- Preference questionnaire
-- Trip-local structured preference profile
-- Guided preference feedback loop
-- Destination recommendations
-- Hotel recommendations
-- Activity recommendations
-- Interactive maps
-- Itinerary generation
-- Conflict detection
-- Trip persistence
-- Trip export/download
-
-### Trip Modes
-
-The MVP supports two trip modes:
-
-- Draft trips
-- Planning trips
-
-Draft trips are used for early discovery only. Users may explore possible destinations, cities, attractions, and general ideas before committing to travel dates or budget.
-
-Draft trips must not build itineraries, map routes, run itinerary conflict checks, or generate full trip exports because date-sensitive and budget-sensitive planning may be inaccurate before the user commits to a real trip window.
-
-Planning trips unlock the full planning workflow only after the trip has:
-
-- At least one ordered destination city or travel destination
-- Start date
-- End date
-- Trip-level maximum budget amount
-- Budget currency
-
-This prevents the backend from spending effort on itinerary, route, map, and conflict calculations before the trip is specific enough to produce useful results.
-
-### Excluded
-
-- Social feed
-- User following
-- Trip posting
-- Public profiles
-- Photo sharing
-- Group trip collaboration
-- Real-time collaboration
-- Booking integration
-- Flight purchasing
-- Hotel purchasing
-
----
-
-# 6. Core User Flow
-
-## Step 1
-
-User creates account.
-
-## Step 2
-
-User creates a new trip.
-
-Inputs:
-
-- Title, required for trip creation
-- Departure city and country, optional for drafts and useful for future jet lag and time-zone-aware planning
-- Destination search text or one or more selected destination cities, optional for drafts and required for full planning
-- Travel dates, optional for drafts and required for full planning
-- Travelers, deferred from Phase 4
-- Trip-level maximum budget, optional for drafts and required for full planning
-- Budget currency, stored as entered by the user
-
-## Step 3
-
-System begins preference discovery for the current trip.
-
-Phase 5 currently implements this as a single-page structured questionnaire and preference API foundation. Before the final MVP is considered product-complete, this should evolve into a guided feedback loop where the user answers focused questions with predefined options or custom answers.
-
-Example:
-
-"What matters most?"
-
-Options:
-
-- Best attractions
-- Best food
-- Best hotels
-- Budget
-- Nightlife
-- Adventure
-- Relaxation
-
-## Step 4
-
-Trip-local preference profile is saved.
-
-The Phase 5 profile belongs to one trip and becomes the recommendation input for Phase 6. User-level learned preferences are deferred until the trip-local MVP loop is stable.
-
-## Step 5
-
-Recommendation engine generates:
-
-- 5 destinations
-- 5 hotels
-- 5 attractions
-- 5 restaurants
-
-depending on current planning stage.
-
-## Step 6
-
-User selects preferred options.
-
-## Step 7
-
-System updates itinerary.
-
-## Step 8
-
-Conflict detection runs.
-
-## Step 9
-
-System suggests adjustments if needed.
-
-## Continuous Feedback Loop
-
-Throughout planning, the system should maintain a feedback loop with the user.
-
-The reasoning engine should:
-
-- Explain why suggestions were made
-- Surface missing information before full planning is unlocked
-- Show budget impact as places and activities are selected
-- Ask for refinement when user feedback changes recommendation direction
-- Preserve feedback as planning context for future recommendations and itinerary changes
-
-The MVP feedback loop is structured and persisted, not a full chat system. It stores user feedback, engine explanations, readiness warnings, budget warnings, itinerary proposals, and conflict summaries so future AI or chat features can build on reliable historical context.
-
-Preference capture is part of this feedback loop. In the final MVP and product, users should not primarily save preferences through one large static form. The system should ask focused questions, let users choose predefined options or enter custom answers, and save those answers back into the trip-local preference profile.
-
-### Conversational Planning Implementation Pack
-
-The current implementation path for the final conversational planning prototype is documented in [`docs/conversational-planning/README.md`](./conversational-planning/README.md). Its staged documents are the authoritative execution order for conversation persistence, natural-language orchestration, real place data, live 30-minute scheduling, interaction performance, and optional cache/production hardening. Existing phase descriptions in this requirements document remain product requirements and historical context.
-
-### Stage 6 Conversational Planning Loop
-
-The core product workflow is a conversational planning workspace, not a separate questionnaire, recommendation page, and itinerary page.
-
-Users should be able to describe trip ideas in natural English. The system stores those messages as planning feedback, extracts structured preference signals into the trip-local preference profile, and shows the extracted signals as visible preference chips.
-
-The loop begins by asking what topic should guide the conversation:
-
-- Hotel/base location
-- Must-do activities
-- Food/nightlife
-- Budget/pace
-
-The system should recommend places when enough topic-specific preference information has been collected. Recommendations are presented in topic-specific groups of five and include explanations for why they were chosen.
-
-Users can pick one recommendation or refresh the group by explaining what is missing from the current selection. Refresh notes are preference refinements and should improve later recommendations.
-
-### Stage 7 Recommendation Feedback Loop
-
-Recommendation feedback remains inside the same planning workspace. Users can reject recommendations with structured reasons, remove selected places without rejecting them, and see a compact planning timeline of major planning actions.
-
-The planning workspace should also expose a focused place-action log for accepted, rejected, and removed locations. This log supports misclick recovery by letting users find prior place actions and add a removed or rejected place back into the live plan without losing the underlying feedback history.
-
-Rejected recommendations are not deleted. They remain persisted as `PlaceSuggestion` rows with `status = REJECTED`, and the associated `PlanningFeedback` reason influences later deterministic recommendation scoring. Selected places remain the Stage 8 itinerary-builder input through `PlaceSuggestion.status = SELECTED`.
-
-The travel plan should take shape inside the same feedback loop. Already-decided places and picked recommendations appear in a live plan preview. Full day/time scheduling, route maps, and conflict checks can build on that preview in later stages.
-
-For multi-destination trips, the planning workspace should let the user change the current saved destination city and planning day context. In Phase 9 this context scopes generated recommendations to the selected city and is stored with planning feedback and already-decided places for future scheduling. Exact manual day placement, drag-and-drop reorder, and clock-time scheduling remain deferred beyond Phase 9.
-
-### Stage 8 Basic Itinerary Builder
-
-The planning workspace should generate a persistent day-by-day itinerary draft from selected places without moving the primary workflow away from `/trips/[tripId]/planning`.
-
-When at least one `PlaceSuggestion` is `SELECTED`, the system creates `ItineraryDay` rows for every trip date from start through end, inclusive, and `ItineraryItem` rows for selected places. Hotels appear first on Day 1 as base/check-in anchors. Non-hotel places are distributed by pace:
-
-- `RELAXED`: 3 items per day
-- `BALANCED`: 4 items per day
-- `PACKED`: 6 items per day
-
-Generated itinerary drafts rebuild automatically after selected-place changes and pace changes. Trip settings changes that affect dates, destinations, budget, or pace also rebuild the persisted draft when the trip is planning-ready. The planning workspace shows a compact itinerary preview with day/date, item count, selected items, daily estimated cost, and trip estimated cost. `/trips/[tripId]/itinerary` shows a read-only expanded draft and links back to planning.
-
-Stage 8 does not support manual itinerary edits, manual reorder, clock times, route duration, conflict warnings, maps, export, Gemini, Google APIs, or Redis caching.
-
-### Stage 9 Conflict Detection
-
-Conflict detection runs from persisted itinerary days and items after the trip is planning-ready. Phase 9 refreshes deterministic open conflicts automatically after persisted itinerary rebuilds, itinerary page reads, and trip settings changes that affect the itinerary or budget. These checks must remain database-local and must not call maps, AI, route-duration, hours, or availability providers in the selection hot path. Future expensive checks should run through explicit check actions or asynchronous jobs.
-
-Phase 9 stores open conflict warnings, shows them on `/trips/[tripId]/itinerary`, and lets the user mark warnings as resolved or ignored. Rerunning detection replaces only current open warnings and preserves resolved/ignored history.
-
-Open conflict warnings must be deduplicated before display, and severity should follow common visual convention: low as informational, medium as warning, and high as danger.
-
-Already-decided places added in the planning workspace include optional estimated cost. When provided, the cost is stored in the trip budget currency and included in itinerary totals and budget conflict detection. Cost input must be server-validated before database writes so out-of-range values show a recoverable planning error instead of crashing the site.
-
-Phase 9 also records the final product direction for meal coverage: a complete itinerary should assign restaurants to every day that contains activities when the user has selected restaurants. Restaurant assignment should be based on closeness to that day's selected activities and then scheduled by realistic meal times. Phase 9 only warns when a day has activities but no restaurant; automatic restaurant placement is deferred until place coordinates, route durations, and hours data exist.
-
-### Pre-Places Logistics and Time Grid Foundation
-
-Before Google Places integration, the planning flow should collect city-timing intent at `/trips/[tripId]/logistics` after preferences and before the planning loop.
-
-The user has two planning-mode options:
-
-- Ticketed timing: the user enters structured transfer timing for flights, trains, buses, cars, ferries, or other travel segments.
-- Flexible timing: the user decides city timing inside the planning loop, preserving the current manual city/day selector.
-
-Ticketed timing stores `Trip.logisticsMode = TICKETED` and `TripTravelSegment` rows with origin city/country, destination city/country, depart date-time, arrive date-time, optional carrier, optional reference, and sort order. Saving a ticket/transfer keeps the user on the logistics page so they can enter every known segment before planning. Rebuilding the itinerary derives `ItineraryCityWindow` rows for each day. Same-day transfers split the day so a single date can contain an origin-city window, a travel block, and a destination-city window.
-
-Flexible timing stores `Trip.logisticsMode = FLEXIBLE` and does not auto-assign city windows. The planning workspace keeps the manual saved-destination and day context.
-
-The itinerary DTO exposes a read-only 30-minute time-grid foundation. Every itinerary day has 48 half-hour slots. Ticketed trips show city context and travel blocks in those slots. Existing selected places without start/end times remain unscheduled within their day; exact activity placement is deferred. The planning loop's day selector must always use the trip's original date range from settings, not the number of saved tickets or the presence of itinerary items.
-
-Final MVP scheduling should support chat-controlled planning limits and preferences, including:
-
-- maximum restaurants or food stops per day
-- maximum attractions or activities per day
-- preferred duration per attraction or activity category
-- meal frequency and meal windows
-- daily start/end limits
-- pacing rules by day
-- whether split-city travel days should prefer lighter activity schedules
-
-This foundation stage does not implement a full auto-scheduler, drag/drop editing, route-duration optimization, opening-hours checks, ticket uploads, PDF parsing, or reservation-management workflows. Those require Google Places, route-duration APIs, provider hours/availability, quota policy, caching, and QA scenarios before production use.
-
-## Step 10
-
-User saves or exports itinerary.
-
----
-
-# 7. Dynamic Questionnaire System
-
-## Purpose
-
-Collect structured travel preferences.
-
-## Requirements
-
-Phase 5 currently collects a complete trip-local profile with a single structured form as the data and API foundation.
-
-Final MVP preference capture should evolve into a guided feedback loop.
-
-The loop should:
-
-- Ask one focused preference question at a time.
-- Present predefined answer options where available.
-- Allow a custom answer when predefined options do not fit.
-- Save each answer into the trip-local preference profile.
-- Add, remove, or refine non-core preferences as the user gives more feedback.
-- Preserve preference changes as planning context when useful.
-
-Future versions may adapt questions based on previous responses and vary the question order.
-
-### Example
-
-Future adaptive example:
-
-If user values hotels:
-
-Ask:
-
-- Hotel budget
-- Hotel location
-- Amenities
-- Walking distance preferences
-
-If user values activities:
-
-Ask:
-
-- Attraction types
-- Daily pace
-- Indoor/outdoor preferences
-
----
-
-# 8. User Preference Categories
-
-## Budget
-
-Options:
-
-- Budget
-- Moderate
-- Luxury
-
-## Travel Style
-
-Options:
-
-- Relaxed
-- Balanced
-- Packed
-
-## Interests
-
-Options:
-
-- Food
-- History
-- Museums
-- Nature
-- Adventure
-- Nightlife
-- Shopping
-- Photography
-- Beaches
-- Art
-- Architecture
-- Music
-- Wellness
-- Local culture
-- Hidden gems
-
-## Transportation
-
-Options:
-
-- Walking
-- Public Transit
-- Ride Share
-- Rental Car
-- Mixed
-
-## Accommodation
-
-Options:
-
-- Hostel
-- Hotel
-- Resort
-- Airbnb
-- Other
-
-## Accessibility
-
-Options:
-
-- Mobility concerns
-- Family friendly
-- Child friendly
-
----
-
-# 9. Recommendation Engine
-
-## Purpose
-
-Generate personalized travel recommendations.
-
-## Inputs
-
-- Trip-local preference profile
-- Trip details
-- Existing itinerary
-- Budget
-- Selected locations
-
-## Outputs
-
-- Ranked recommendations
-
----
-
-## Recommendation Sources
-
-### MVP
-
-- Google Places API
-- Gemini API
-
-### Future
-
-- Yelp
-- TripAdvisor
-- Event APIs
-- Weather APIs
-
----
-
-## Recommendation Categories
-
-### Hotels
-
-### Restaurants
-
-### Attractions
-
-### Activities
-
-### Landmarks
-
-### Entertainment
-
----
-
-## Recommendation Explanation
-
-Every recommendation should provide reasoning.
-
-Example:
-
-> Recommended because it matches your interest in food, is within your budget, and is located near your selected hotel.
-
-Recommendation explanations and user responses should be persisted as part of the planning feedback loop.
-
-User feedback may include:
-
-- Accept
-- Reject
-- Refresh
-- Refine
-- Request alternative
-- Too expensive
-- Too far
-- Wrong vibe
-- Already been there
-- Other
-
----
-
-# 10. Recommendation Scoring System
-
-Potential scoring factors:
-
-```text
-Preference Match
-+ Budget Match
-+ Popularity
-+ Rating
-+ Proximity
-- Travel Time
-- Conflict Penalties
-```
-
-Future versions may include ML-based ranking.
-
----
-
-# 11. Itinerary Builder
-
-## Purpose
-
-Automatically organize selected destinations.
-
----
-
-## Full Planning Requirement
-
-Itinerary generation requires a planning-ready trip.
-
-A trip is planning-ready only when it has:
-
-- Planning status
-- At least one destination city or travel destination
-- Start date
-- End date
-- Trip-level maximum budget amount
-- Budget currency
-
-Draft trips may collect suggestions, but they must not generate itinerary days or itinerary items.
-
-## Inputs
-
-- Selected destinations
-- Hotels
-- User preferences
-- Trip dates
-
----
-
-## Outputs
-
-Daily itinerary.
-
-Example:
-
-Day 1
-- Hotel Check-In
-- Museum
-- Lunch
-- Walking Tour
-
-Day 2
-- Beach
-- Restaurant
-- Night Market
-
----
-
-# 12. Conflict Detection Engine
-
-## Purpose
-
-Detect impractical itineraries.
-
----
-
-## Phase 9 Deterministic Scope
-
-The initial engine detects:
-
-- Time overlap when both overlapping items have start and end times.
-- Mixed-city/mixed-country day warnings as a placeholder for future route-distance checks.
-- Trip-budget overrun in the trip budget currency.
-- Schedule density warnings based on the selected travel pace.
-- Hotel location mismatch when hotel city differs from the majority non-hotel activity city.
-- Missing activity duration warnings.
-- Explicit closed/unavailable metadata warnings.
-- Missing restaurant coverage warnings for days that contain activities but no restaurant.
-
-Future proximity and route-duration checks require Google Places, Google Routes, provider hours, caching, quota controls, and QA seed trips before production use.
-
-## MVP Conflict Types
-
-### Time Conflict
-
-Example:
-
-Location closes before arrival.
-
----
-
-### Distance Conflict
-
-Example:
-
-Two activities require excessive travel.
-
----
-
-### Budget Conflict
-
-Example:
-
-Planned spending exceeds budget.
-
----
-
-### Schedule Density Conflict
-
-Example:
-
-Too many activities in one day.
-
----
-
-### Hotel Location Conflict
-
-Example:
-
-Selected hotel is far from majority of activities.
-
----
-
-# 13. Map System
-
-## Requirements
-
-Map route visualization requires a planning-ready trip.
-
-Draft trips may later show lightweight discovery results if needed, but MVP route maps and day-by-day map filtering are only available after the trip has destination, date, and budget requirements filled.
-
-## Display
-
-Display:
-
-- Hotel
-- Attractions
-- Restaurants
-- Activities
-
-on a unified map.
-
----
-
-## Features
-
-- Marker visualization
-- Route visualization
-- Estimated travel times
-- Day-by-day filtering
-
----
-
-# 14. User Accounts
-
-## Features
-
-### Registration
-
-### Login
-
-### Logout
-
-### Password Recovery
-
-### Session Management
-
----
-
-# 15. User Profiles
-
-## MVP
-
-Store:
-
-- Name
-- Email
-- Saved Trips
-- Saved travel preference defaults
-
-Profile behavior:
-
-- Users can edit their display name from `/profile`.
-- The profile tab displays saved travel preferences extracted from trip preferences.
-- Saved travel preferences use a separate `UserTravelPreference` model.
-- The saved profile preferences can be applied when creating a new trip.
-- Profile defaults are deterministic latest-save defaults, not inferred ML recommendations.
-
----
-
-## Future
-
-- Bio
-- Travel stats
-- Public profiles
-- Shared itineraries
-- Uploaded photos
-- Advanced cross-trip learning from long-term behavior and feedback
-
----
-
-# 16. Trip Management
-
-Users can:
-
-- Create trips
-- Edit trips
-- Delete trips
-- Duplicate trips
-- Save drafts
-
-### Phase 4 Trip CRUD
-
-Phase 4 implements authenticated trip CRUD with a full-detail trip creation form.
-
-Trip creation requires:
-
-- Title
-
-Trip records use generated `Trip.id` values as database and route keys. Trip titles are user-facing labels and are not unique.
-
-The new trip screen should expose the full core creation fields:
-
-- Departure city
-- Departure country
-- Destination city
-- Destination country
-- Start date
-- End date
-- Budget amount
-- Budget currency
-- Travel style
-
-The new trip screen has two actions:
-
-- `Save as draft`, available whenever title is filled.
-- `Continue trip creation`, available only after the required planning fields are complete.
-
-When users try to continue with missing planning fields, the UI must explain why the action is unavailable and focus the first missing field.
-
-Long trips across multiple cities or countries are modeled as one `Trip` with multiple ordered `TripDestination` rows. The app must not create separate linked trip records for this Stage 4 flow.
-
-Destination and departure fields use a curated static city/country/time-zone dropdown catalog during Phase 4. External autocomplete is deferred to the Google Places phase.
-
-Trip settings support:
-
-- Destination city
-- Destination country
-- Start date
-- End date
-- Budget amount
-- Budget currency
-- Travel style
-- A separate Preferences tab for reviewing and modifying trip-local preferences
-
-Draft trips may omit destination, dates, budget, and travel style. If a user saves a named trip as draft, the system persists it as `DRAFT`. Continuing into the planning workflow remains locked until the trip has:
-
-- At least one destination
-- Valid date range
-- Positive trip-level budget amount
-- Budget currency
-- Travel style
-
-Phase 4 supports `USD` and `EUR` only. The database stores the original user-entered budget amount and currency. Currency conversion and USD-normalized comparison values are deferred to a later budget/conflict feature and should include exchange-rate snapshots if implemented.
-
-Every trip read, update, and delete must verify that the authenticated user owns the trip.
-
-The Phase 4 API uses true partial updates for `PATCH /api/trips/[tripId]`. Empty PATCH payloads are rejected. Destination, date, and budget pair requirements are checked after the incoming patch is merged with the existing trip state.
-
-Trip date inputs must be strict `YYYY-MM-DD` calendar dates. Invalid normalized dates, such as `2026-02-31`, must be rejected instead of silently converted.
-
-Archived trips are immutable in Phase 4. They cannot be edited or deleted until a future explicit archive/restore workflow is designed.
-
----
-
-# 17. Preference Questionnaire
-
-### Phase 5 Preference Questionnaire
-
-Phase 5 implements trip-local preference profiles on the existing `TripPreference` model and reusable profile defaults on the migration-backed `UserTravelPreference` model.
-
-The current Phase 5 page is a foundation for saving, editing, reloading, and exposing preferences to recommendations. It is not the final product preference UX.
-
-The preference page is available at:
-
-```text
-/trips/[tripId]/preferences
-```
-
-The page is locked until the trip is planning-ready. A planning-ready trip has:
-
-- Title
-- At least one ordered destination
-- Valid start and end date
-- Positive budget amount
-- Budget currency
-- Travel style
-
-The complete preference profile requires:
-
-- Budget level
-- Pace
-- At least one interest
-- At least one transportation mode
-
-Optional profile fields include:
-
-- Accommodation types
-- Hotel priority
-- Walking tolerance in kilometers
-- Dietary restrictions
-- Accessibility needs
-- Must-avoid items
-- Custom notes
-- Custom preferences
-
-`TripPreference.pace` remains the source of truth for the Phase 4 travel style.
-
-Dietary restrictions, accessibility needs, and must-avoid values are stored as structured arrays after splitting comma- or newline-separated input, trimming whitespace, and dropping blanks.
-
-Custom preferences are stored as deduped structured trip-local values in `TripPreference.metadata.customPreferences`.
-
-The authenticated API surface is:
-
-```text
-GET /api/trips/[tripId]/preferences
-PUT /api/trips/[tripId]/preferences
-```
-
-Successful creates and updates append a visible system planning event so later recommendation and itinerary phases can explain how preference context changed.
-
-Reset/delete preferences and user-level learned preferences are future scope. Learned preferences should be designed as a transparent cross-trip loop after the MVP trip-local workflow works end to end.
-
-### Preference Editing UX
-
-Users must be able to modify preferences from trip settings.
-
-Settings requirements:
-
-- `/trips/[tripId]/settings` includes a separate Preferences tab.
-- The Preferences tab loads the same trip-local preference profile used by recommendations.
-- Core preference fields remain obvious because they are needed for recommendation readiness.
-- Non-core preferences appear as boxes or chips.
-- Each non-core preference box includes a clickable `x` for removal.
-- Adding a new custom preference creates a new visible box immediately.
-
-Preference search/add requirements:
-
-- The Preferences tab includes a search bar for adding preferences manually.
-- When the search query matches known preference options, matching options are shown.
-- When no known option matches, the UI should allow creating a custom preference from the query.
-- Custom preferences are stored as structured trip-local preference values, not only as display text.
-
-### Final Preference Capture UX
-
-The final MVP and product should save preferences through a guided feedback loop.
-
-Feedback-loop requirements:
-
-- Ask focused questions during trip planning.
-- Let the user select from available options or enter a custom answer.
-- Persist answers to the trip-local preference profile.
-- Use the same profile in the settings Preferences tab.
-- Write durable planning context for meaningful preference changes.
-- Keep user-level learned preferences separate from trip-local preferences until cross-trip learning is explicitly designed.
-
-### User-Level Preference Defaults
-
-Phase 5 stores reusable profile defaults in `UserTravelPreference`.
-
-Requirements:
-
-- Saving trip preferences updates the user's saved travel preference defaults.
-- The profile page displays saved travel preference defaults.
-- The profile page lets users edit their display name.
-- New trip creation offers a `Use my saved travel preferences` option when saved defaults exist.
-- Applying saved profile preferences creates a trip-local `TripPreference` for the new trip.
-- Trip-local preferences stay editable per trip after autofill.
-
----
-
-# 18. Trip Export
-
-## Supported Formats
-
-### PDF
-
-### JSON
-
----
-
-## Export Content
-
-- Itinerary
-- Locations
-- Maps
-- Recommendations
-- Notes
-
----
-
-# 19. Data Models
-
----
-
-## User
-
-```typescript
-User {
-  id
-  name
-  email
-  emailVerified
-  image
-  travelPreference
-  createdAt
-}
-```
-
----
-
-## UserTravelPreference
-
-```typescript
-UserTravelPreference {
-  id
-  userId
-  budgetLevel
-  pace
-  interests[]
-  transportationModes[]
-  accommodationTypes[]
-  hotelPriority
-  walkingToleranceKm
-  dietaryRestrictions
-  accessibilityNeeds
-  mustAvoid
-  customPreferences
-  metadata
-}
-```
-
-`UserTravelPreference` stores reusable profile defaults extracted from the user's latest saved trip preference. It is separate from `TripPreference`, which remains the trip-local source of truth.
-
----
-
-## Trip
-
-```typescript
-Trip {
-  id
-  userId
-  title
-  status
-  logisticsMode
-  destinationSearchText
-  departureCity
-  departureCountry
-  departureTimeZone
-  startDate
-  endDate
-  budgetAmount
-  budgetCurrency
-  createdAt
-  updatedAt
-}
-```
-
----
-
-## TripTravelSegment
-
-```typescript
-TripTravelSegment {
-  id
-  tripId
-  mode
-  originCity
-  originCountry
-  destinationCity
-  destinationCountry
-  departAt
-  arriveAt
-  carrier
-  referenceCode
-  sortOrder
-}
-```
-
-`TripTravelSegment` stores structured ticket/transfer timing for the pre-Places logistics foundation. It is not a ticket-upload or confirmation-management model.
-
----
-
-## TripDestination
-
-```typescript
-TripDestination {
-  id
-  tripId
-  city
-  country
-  region
-  timeZone
-  latitude
-  longitude
-  sortOrder
-}
-```
-
----
-
-## ItineraryCityWindow
-
-```typescript
-ItineraryCityWindow {
-  id
-  tripId
-  dayId
-  destinationId
-  travelSegmentId
-  city
-  country
-  startTime
-  endTime
-  source
-}
-```
-
-`ItineraryCityWindow` records ticket-derived city context for itinerary days. A transfer day may have two city windows on the same date; travel blocks are exposed in itinerary time slots from the associated travel segments.
-
----
-
-## PreferenceProfile
-
-```typescript
-PreferenceProfile {
-  id
-  tripId
-  budgetLevel
-  pace
-  interests[]
-  transportationModes[]
-  accommodationTypes[]
-  hotelPriority
-  walkingTolerance
-  dietaryRestrictions
-  accessibilityNeeds
-  mustAvoid
-  customNotes
-  customPreferences
-  metadata
-}
-```
-
----
-
-## PlaceSuggestion
-
-```typescript
-PlaceSuggestion {
-  id
-  tripId
-  destinationId
-  provider
-  providerPlaceId
-  name
-  category
-  status
-  score
-  explanation
-  estimatedCostAmount
-  estimatedCostCurrency
-  rating
-  address
-  latitude
-  longitude
-}
-```
-
----
-
-## ItineraryDay
-
-```typescript
-ItineraryDay {
-  id
-  tripId
-  dayNumber
-}
-```
-
----
-
-## ItineraryItem
-
-```typescript
-ItineraryItem {
-  id
-  tripId
-  dayId
-  placeSuggestionId
-  startTime
-  endTime
-  estimatedCostAmount
-  estimatedCostCurrency
-}
-```
-
----
-
-## Conflict
-
-```typescript
-Conflict {
-  id
-  tripId
-  itineraryItemId
-  type
-  severity
-  status
-  message
-  recommendation
-}
-```
-
----
-
-## PlanningFeedback
-
-```typescript
-PlanningFeedback {
-  id
-  tripId
-  targetType
-  targetId
-  source
-  action
-  reason
-  userNote
-  tripPreferenceId
-  placeSuggestionId
-  itineraryDayId
-  itineraryItemId
-  conflictId
-  metadata
-  createdAt
-}
-```
-
-`targetId` must match the typed target field for the selected `targetType`. Trip-level feedback uses the parent `tripId` as `targetId`. Child-target feedback must reference a child record owned by the same trip.
-
----
-
-## PlanningEvent
-
-```typescript
-PlanningEvent {
-  id
-  tripId
-  actor
-  type
-  title
-  message
-  metadata
-  createdAt
-}
-```
-
----
-
-# 20. Technology Stack
-
-## Frontend
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-
----
-
-## Backend
-
-- Next.js Server Actions
-- Next.js API Routes
-
----
-
-## Database
-
-- PostgreSQL
-
----
-
-## ORM
-
-- Prisma
-
----
-
-## Authentication
-
-The project will use Auth.js / NextAuth with the v5-style `next-auth@beta` API.
-
-MVP authentication will use Google OAuth.
-
-Google OAuth is the only MVP login method. Email/password auth, magic links, Clerk, and dev-only auth bypasses are out of scope for Phase 3.
-
-Email/password authentication is deferred because it requires additional security work, including password hashing, email verification, password reset, and abuse protection.
-
-All user-specific resources must be protected by both session checks and ownership checks. Users may only access trips where `trip.userId === session.user.id`.
-
-The implementation must use:
-
-- `next-auth@beta`
-- `@auth/prisma-adapter`
-- Auth.js-compatible Prisma models from Phase 2
-- `src/proxy.ts` for Next.js 16 protected-route redirects
-- Server-side authorization helpers for protected data access
-
-Route protection is not enough by itself. Server Actions, Route Handlers, and query helpers must verify the authenticated user owns the parent trip before reading or mutating user-owned data.
-
----
-
-## AI
-
-- Gemini API
-
----
-
-## Maps
-
-- Google Places API
-- Google Routes API
-- Google Maps API
-
----
-
-## Hosting
-
-- Vercel
-
----
-
-## Database Hosting
-
-- Neon PostgreSQL
-
-Alternative:
-
-- Supabase PostgreSQL
-
----
-
-# 21. System Architecture
-
-```text
-User
- │
- ▼
-Next.js Frontend
- │
- ▼
-Server Actions / API Routes
- │
- ├───────────────┐
- ▼               ▼
-PostgreSQL     Gemini API
- │
- ▼
-Prisma ORM
- │
- ▼
-Recommendation Engine
- │
- ▼
-Conflict Engine
- │
- ▼
-Itinerary Builder
- │
- ▼
-Google Places API
-Google Routes API
-```
-
----
-
-# 22. Folder Structure
-
-```text
-src/
-  app/
-    (auth)/
-    (dashboard)/
-      dashboard/
-      trips/
-      profile/
-    api/
-      recommendations/
-      itinerary/
-      export/
-
-  components/
-    ui/
-    layout/
-    questionnaire/
-    recommendations/
-    itinerary/
-    map/
-    profile/
-
-  features/
-    trips/
-      actions.ts
-      queries.ts
-      schemas.ts
-      types.ts
-
-    preferences/
-      actions.ts
-      queries.ts
-      schemas.ts
-      types.ts
-
-    recommendations/
-      service.ts
-      scoring.ts
-      schemas.ts
-      types.ts
-
-    itinerary/
-      builder.ts
-      conflict-engine.ts
-      schemas.ts
-      types.ts
-
-  lib/
-    db.ts
-    auth.ts
-
-    google/
-      places.ts
-      routes.ts
-      maps.ts
-
-    ai/
-      gemini.ts
-      prompts.ts
-
-    export/
-      pdf.ts
-      json.ts
-
-  prisma/
-    schema.prisma
-    migrations/
-
-  types/
-    index.ts
-```
-
----
-
-# 23. Security Requirements
-
-## Authentication
-
-Protected routes required.
-
-## Authorization
-
-Users may only access their own trips.
-
-## API Security
-
-Rate limiting required.
-
-## Input Validation
-
-All user inputs validated.
-
-## Environment Variables
-
-No API keys exposed to frontend.
-
----
-
-# 24. Scalability Requirements
-
-System should support:
-
-- Multiple concurrent users
-- Thousands of trips
-- API request caching
-- Future social features
-
-Redis preference caching is a final MVP optimization candidate, not part of the initial recommendation loop. If added, Redis should cache derived preference/readiness/recommendation-input DTOs while Postgres remains the source of truth. Cache invalidation must run after preference updates, feedback refinements, selected-place changes, and trip settings updates, and the optimization stage should include before/after latency measurements.
-
----
-
-# 25. Future Roadmap
-
-## Phase 2
-
-### Public Profiles
-
-Users can:
-
-- Share trips
-- Display travel history
-
----
-
-### Photo Uploads
-
-Users can upload:
-
-- Destination photos
-- Trip memories
-
----
-
-### Social Features
-
-Users can:
-
-- Follow others
-- Like trips
-- Save shared itineraries
-
----
-
-### Discovery
-
-Users can browse:
-
-- Trending destinations
-- Popular itineraries
-- Top-rated activities
-
----
-
-### Advanced AI
-
-AI can:
-
-- Continuously optimize itineraries
-- Suggest alternatives automatically
-- Learn user preferences over time
-
----
-
-# 26. Success Metrics
-
-## Product Metrics
-
-- Completed itineraries
-- Saved trips
-- Exported trips
-- User retention
-
-## Technical Metrics
-
-- API response time
-- Recommendation latency
-- Conflict detection accuracy
-- Map rendering performance
-
----
-
-# 27. MVP Completion Criteria
-
-The MVP is considered complete when a user can:
-
-1. Register and authenticate.
-2. Create a trip.
-3. Complete preference onboarding.
-4. Receive personalized recommendations.
-5. Select destinations.
-6. Provide feedback that influences later planning suggestions.
-7. See system explanations, budget impact, missing information, and suggested next actions during planning.
-8. Automatically generate an itinerary after the trip has destinations, dates, and budget.
-9. View itinerary on a map after the trip has destinations, dates, and budget.
-10. Receive conflict warnings.
-11. Save trip progress.
-12. Export itinerary.
-
----
-
-# 28. CI/CD Requirements
-
-## Source Control
-
-- GitHub should be the source of truth for the repository.
-- `main` should represent production-ready code.
-- Feature work should be merged through pull requests.
-
----
-
-## Continuous Integration
-
-CI should run on every pull request and every push to `main`.
-
-Required checks:
-
-- Install dependencies with `npm ci`
-- Validate Prisma schema
-- Generate Prisma client
-- Run ESLint
-- Run TypeScript type checks
-- Run production build with `next build`
-
-Recommended future checks:
-
-- Unit tests for recommendation scoring, itinerary building, and conflict detection
-- Integration tests for trip creation and persistence
-- End-to-end tests for registration, trip creation, questionnaire completion, itinerary generation, map display, and export
-
----
-
-## Continuous Deployment
-
-Preferred deployment path:
-
-- Vercel for the Next.js application
-- Neon PostgreSQL for the production database
-- GitHub integration enabled in Vercel
-
-Deployment behavior:
-
-- Pull requests should create Vercel preview deployments.
-- Merges to `main` should deploy to production after CI passes.
-- Production deployments should use Vercel environment variables, not committed `.env` files.
-- Database migrations should be applied through `prisma migrate deploy` before or during production deployment once migrations exist.
-
----
-
-## Required CI/CD Secrets
-
-The following secrets should be configured in GitHub Actions and Vercel as the project adopts each service:
-
-```text
-DATABASE_URL
-DIRECT_URL
-AUTH_SECRET
-AUTH_URL
-AUTH_GOOGLE_ID
-AUTH_GOOGLE_SECRET
-GEMINI_API_KEY
-GOOGLE_MAPS_API_KEY
-GOOGLE_PLACES_API_KEY
-GOOGLE_ROUTES_API_KEY
-```
-
-Legacy `NEXTAUTH_*` and `GOOGLE_CLIENT_*` aliases may exist only as local migration aids. Phase 3 uses the `AUTH_*` names above as the canonical variables.
-
----
-
-## Environment Rules
-
-- `.env` and `.env.local` files must not be committed.
-- Browser-exposed variables must use the `NEXT_PUBLIC_` prefix only when the value is safe for users to see.
-- Server-only API keys must be accessed only from Server Actions, Route Handlers, or server-side libraries.
-- CI should use test or staging credentials where possible.
-- Production should use separate production credentials.
-
----
-
-## Release Environments
-
-### Preview
-
-Used for pull requests.
-
-Purpose:
-
-- Validate UI changes
-- Test user flows before merge
-- Share work for review
-
-### Production
-
-Used for `main`.
-
-Purpose:
-
-- Serve real users
-- Use production database and production API credentials
-- Track deployment health and failures
-
----
-
-## Deployment Gates
-
-A deployment should be blocked if:
-
-- Linting fails
-- Type checking fails
-- Prisma schema validation fails
-- The production build fails
-- Required environment variables are missing
-- Future automated tests fail
+# TravleBuddy Target Requirements
+
+Status: canonical-target
+Authority: Numbered, testable requirements for the target product. Wins over the PRD and the vision where they disagree
+Supersedes: [Target requirements of August 2026](history/target-requirements-2026-08.md) and its `TB-FR-01` to `TB-FR-35` identifiers, which are retired
+Related: [Product vision](product-vision.md), [PRD](prd.md), [roadmap](roadmap.md), [architecture](architecture/README.md), [current implementation](status/current-implementation.md)
+Last reviewed: 2026-11-12
+
+## 1. Authority and interpretation
+
+- This catalogue defines what the first version must do, in statements a builder can test. The [PRD](prd.md) explains each area in detail; section references such as "PRD 9.3" point there.
+- It describes the target, whether or not a capability exists today. Repository reality is recorded in [current-implementation.md](status/current-implementation.md).
+- Identifiers are stable. A removed requirement keeps its number and is marked withdrawn.
+- "Traveller" means the signed-in person planning the trip. "Agent" means the product's planning assistant as the traveller experiences it. "AI model" means the language model behind part of the agent.
+- Requirements under [section 14](#14-later-stages) are not part of the first version.
+
+## 2. Accounts and Home (PRD 3, 4)
+
+| ID        | Requirement                                                                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-ACC-01 | A traveller can sign in and sign out, and can reach only their own trips and profile.                                                         |
+| TB-ACC-02 | The app has Home, Create and Profile areas. A Discover area can be added without restructuring the navigation.                                |
+| TB-HOM-01 | Home lists the traveller's trips with destination, dates, a picture and a state of planning, upcoming or past.                                |
+| TB-HOM-02 | Opening a trip that is being planned returns the traveller to where they left off.                                                            |
+| TB-HOM-03 | A traveller can rename, archive and delete a trip. Delete requires confirmation.                                                              |
+| TB-HOM-04 | With no trips, Home shows a welcome and a way to start a trip.                                                                                |
+| TB-HOM-05 | A trip is planning until the traveller marks its plan finished, then upcoming until its last day, then past. A finished plan can be reopened. |
+
+## 3. Starting a trip and trip facts (PRD 5, 7.2)
+
+| ID        | Requirement                                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-STA-01 | Starting a trip asks whether the traveller already holds flight or train tickets.                                                           |
+| TB-STA-02 | Entered tickets record type, origin, destination, departure and arrival date and time, and an optional reference.                           |
+| TB-STA-03 | Entered tickets become fixed commitments and set the trip's dates and cities.                                                               |
+| TB-STA-04 | The traveller chooses Guided planning or Quick plan. The start screen can take further choices later.                                       |
+| TB-FAC-01 | A trip stores ordered cities with nights in each, dates or a length with a rough time of year, travellers including children, and a budget. |
+| TB-FAC-02 | A trip stores how firm its dates and its budget are.                                                                                        |
+| TB-FAC-03 | A trip stores its purpose.                                                                                                                  |
+| TB-FAC-04 | A trip can cover several cities, and the plan shows the travel between them.                                                                |
+| TB-FAC-05 | A destination can be any city the place provider knows. There is no fixed list of cities.                                                   |
+
+## 4. Fixed commitments (PRD 10)
+
+| ID        | Requirement                                                                                                     |
+| --------- | --------------------------------------------------------------------------------------------------------------- |
+| TB-FIX-01 | A traveller can add, edit and remove fixed commitments of kind transport, stay, reservation, must-see or other. |
+| TB-FIX-02 | A commitment records a name or place, a date, an optional start and end time, an optional reference and a note. |
+| TB-FIX-03 | A commitment with a time is locked into the itinerary and no automatic action moves or removes it.              |
+| TB-FIX-04 | A commitment without a time is scheduled before any optional item and is never dropped.                         |
+| TB-FIX-05 | A commitment can be created by telling the agent in conversation.                                               |
+| TB-FIX-06 | When two commitments clash, the traveller is told immediately and the product does not choose between them.     |
+
+## 5. Guided planning (PRD 7)
+
+| ID        | Requirement                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| TB-AGT-01 | Every agent question can be answered by tapping a choice or by typing.                                                         |
+| TB-AGT-02 | Any question can be skipped. The agent then uses the profile or a default and says which.                                      |
+| TB-AGT-03 | The agent asks only for facts it does not already have from tickets, the profile or earlier messages.                          |
+| TB-AGT-04 | The agent asks whether anything is already decided and records the answers as fixed commitments.                               |
+| TB-AGT-05 | The agent covers pace, day shape, interests, atmosphere, food, getting around, where to stay and budget priorities.            |
+| TB-AGT-06 | Where the profile already holds an answer, the agent confirms it instead of asking from scratch.                               |
+| TB-AGT-07 | Readiness to propose is judged per topic, and the agent proposes for a topic as soon as that topic is ready.                   |
+| TB-AGT-08 | When the agent cannot propose yet, it says what it still needs.                                                                |
+| TB-AGT-09 | Each proposal is for a named slot with a day and a time.                                                                       |
+| TB-AGT-10 | Slots are filled in the order fixed commitments, stays, main sights or activities, meals, then gaps.                           |
+| TB-AGT-11 | The traveller can direct the agent to any slot or day at any time.                                                             |
+| TB-AGT-12 | When an answer conflicts with the personal profile, the agent asks why this trip is different and records the answer.          |
+| TB-AGT-13 | The conversation, including proposals and answers, is saved in order and restored on reload.                                   |
+| TB-AGT-14 | Typed input is turned into validated structured data before it changes any trip fact, preference or plan.                      |
+| TB-AGT-15 | With the AI model unavailable, Guided planning continues with scripted questions and template reasons, and says it is limited. |
+
+## 6. Recommendation cards (PRD 8)
+
+| ID        | Requirement                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| TB-CRD-01 | A proposal shows three cards. With fewer than three eligible places it shows those and says so.                          |
+| TB-CRD-02 | The front of a card shows the place name, a picture, and essentials including type, price level and distance.            |
+| TB-CRD-03 | Clicking a card flips it to a summary and the reason it suits the traveller and the slot.                                |
+| TB-CRD-04 | A control under the card opens a closer look with more pictures, address, hours, price, rating and position in the day.  |
+| TB-CRD-05 | Picking a card schedules it in the proposed slot.                                                                        |
+| TB-CRD-06 | A card can be saved to the shelf without being scheduled.                                                                |
+| TB-CRD-07 | The traveller can ask for a different set, optionally giving reasons from a list or in their own words, per set or card. |
+| TB-CRD-08 | Discard reasons update the trip profile and affect the next proposal.                                                    |
+| TB-CRD-09 | A discarded place is not proposed again in the same trip unless the traveller asks or changes the relevant preference.   |
+| TB-CRD-10 | The traveller can search for a place by name and add it to a slot or the shelf.                                          |
+| TB-CRD-11 | A place unknown to the provider can be entered by hand and is marked as added by the traveller.                          |
+| TB-CRD-12 | Presented, picked, saved and discarded cards remain on record for the trip.                                              |
+
+## 7. Live itinerary and scheduling (PRD 9)
+
+| ID        | Requirement                                                                                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-ITN-01 | The itinerary is visible during planning and updates as soon as a change is saved.                                                                                        |
+| TB-ITN-02 | Each day shows scheduled items with start time and duration, travel between items with means and minutes, and open slots.                                                 |
+| TB-ITN-03 | Time to wander or rest is shown as its own block, with a suggested area when one exists.                                                                                  |
+| TB-ITN-04 | Items do not overlap.                                                                                                                                                     |
+| TB-ITN-05 | An item is scheduled only when the place is open for the whole slot. Unknown hours are flagged.                                                                           |
+| TB-ITN-06 | Consecutive items are separated by at least the travel time by the traveller's preferred means, plus the pace buffer.                                                     |
+| TB-ITN-07 | An item is scheduled only on a day and time when the traveller is in that city.                                                                                           |
+| TB-ITN-08 | Each day respects the trip's pace and day shape.                                                                                                                          |
+| TB-ITN-09 | The traveller can move any item that is not locked, by dragging and by a keyboard-operable control.                                                                       |
+| TB-ITN-10 | After a traveller's move the plan is rechecked. A broken rule is flagged with a reason and an offered fix and the move stays saved. A move onto a locked item is refused. |
+| TB-ITN-11 | The traveller can ask for three alternatives for any slot, and can remove any item that is not locked.                                                                    |
+| TB-ITN-12 | Every change creates a saved version, and the traveller can undo the last change.                                                                                         |
+| TB-ITN-13 | A chosen place that cannot be scheduled is placed on the shelf with the reason and is never dropped.                                                                      |
+| TB-ITN-14 | The shelf lists saved places. The agent offers to schedule them where they fit, and the traveller can place them directly.                                                |
+| TB-ITN-15 | A planning action changes only the items it concerns. Unrelated days and items stay as they were.                                                                         |
+| TB-ITN-16 | All times are stored and shown in the local time of the place, and are correct across time zones and clock changes.                                                       |
+| TB-ITN-17 | Scheduling is repeatable: the same trip state and the same request produce the same plan.                                                                                 |
+| TB-ITN-18 | When a trip has no exact dates, the agent proposes provisional dates, says so, and rechecks the plan when they change.                                                    |
+| TB-ITN-19 | When no ticket covers a change of city, the plan holds an assumed transfer marked as not booked, which can be moved or replaced.                                          |
+| TB-ITN-20 | Each item has a visit length from a standard table by kind of place, shown as an estimate and editable by the traveller.                                                  |
+
+## 8. Quick plan (PRD 11)
+
+| ID        | Requirement                                                                                                                                        |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-QPL-01 | Quick plan collects a trip brief in five steps: where and when, already decided, this trip, your style, review.                                    |
+| TB-QPL-02 | Only the first step is required.                                                                                                                   |
+| TB-QPL-03 | Answers known from the personal profile are filled in and labelled with their source. Changing them affects only this trip.                        |
+| TB-QPL-04 | The brief is saved at every step, and the traveller can go back or return later without losing answers.                                            |
+| TB-QPL-05 | Problems with an answer are explained beside the field when they occur.                                                                            |
+| TB-QPL-06 | Free text entered in the brief is turned into preferences and shown for confirmation before use.                                                   |
+| TB-QPL-07 | The review step shows the whole brief in plain sentences with a way to edit each part.                                                             |
+| TB-QPL-08 | Building proceeds one day at a time while the page is open, shows progress, saves each day as it is built, and resumes when the traveller returns. |
+| TB-QPL-09 | The built itinerary obeys every scheduling rule in section 7 and every trust rule in section 11.                                                   |
+| TB-QPL-10 | The result opens in the normal workspace with a report of what was built, assumed, left on the shelf and uncertain.                                |
+| TB-QPL-11 | Every assumption in the report can be changed from the report.                                                                                     |
+| TB-QPL-12 | The traveller can switch from the brief to the conversation, keeping everything entered.                                                           |
+| TB-QPL-13 | From the conversation, the traveller can ask the agent to fill all remaining open slots.                                                           |
+
+## 9. Memory (PRD 12)
+
+| ID        | Requirement                                                                                                                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-MEM-01 | Each traveller has a personal profile that carries across trips, and each trip has its own trip profile.                                                                                                   |
+| TB-MEM-02 | A trip profile starts from the personal profile. Where they differ, the trip profile is used.                                                                                                              |
+| TB-MEM-03 | The personal profile covers pace, day shape, interests, atmosphere, food, dietary rules, budget, getting around and stays.                                                                                 |
+| TB-MEM-04 | Each profile entry records its value, whether it is a hard limit or a taste, how sure the site is, and where it came from.                                                                                 |
+| TB-MEM-05 | No proposal or built plan includes a place whose data conflicts with a hard limit. A place whose data cannot confirm a hard limit is marked unconfirmed, and no place is described as safe for an allergy. |
+| TB-MEM-06 | When the agent uses a memory from another trip, it names that trip.                                                                                                                                        |
+| TB-MEM-07 | A general statement the traveller makes about themselves is added to the personal profile after confirmation.                                                                                              |
+| TB-MEM-08 | A taste learned from behaviour reaches the personal profile only after the pattern shows in two or more ordinary trips whose plans were marked finished.                                                   |
+| TB-MEM-09 | Behaviour in a trip marked as different does not change the personal profile. General statements made during it still follow TB-MEM-07.                                                                    |
+| TB-MEM-10 | A stated preference is never overwritten by a learned one.                                                                                                                                                 |
+| TB-MEM-11 | The profile page lists every entry with source and sureness, and lets the traveller edit, delete, add and reset.                                                                                           |
+| TB-MEM-12 | A deleted entry is not learned again from the same past evidence.                                                                                                                                          |
+| TB-MEM-13 | Changes to either profile are versioned.                                                                                                                                                                   |
+| TB-MEM-14 | Profile entries belong to a fixed set of topics that ranking understands. A statement that fits none is kept as a note, shown as not yet affecting suggestions.                                            |
+
+## 10. Reasons (PRD 13)
+
+| ID        | Requirement                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| TB-RSN-01 | Every proposed card and every change the agent makes to the plan has a reason the traveller can read.      |
+| TB-RSN-02 | A reason names at least one thing about the traveller and one about the trip or slot.                      |
+| TB-RSN-03 | A reason is produced from the factors that ranked the place. The AI model may word it but not add grounds. |
+| TB-RSN-04 | A reason is one to three sentences.                                                                        |
+
+## 11. Trust (PRD 14)
+
+| ID        | Requirement                                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| TB-TRU-01 | Every place shown comes from a place-data provider or was entered by the traveller and is marked so.                   |
+| TB-TRU-02 | Place facts (name, address, hours, price, rating, pictures, travel time) come only from data, never from the AI model. |
+| TB-TRU-03 | AI model output is validated against a schema and cannot write trip facts, preferences or the plan directly.           |
+| TB-TRU-04 | Eligibility, ranking and scheduling are decided by fixed rules, and the same inputs give the same proposals.           |
+| TB-TRU-05 | Unknown place facts are shown as unknown. Estimated costs and visit lengths are labelled as estimates.                 |
+| TB-TRU-06 | When a provider is unavailable, the agent says so, keeps the current plan and does not show made-up results.           |
+
+## 12. Design and accessibility (PRD 15)
+
+| ID        | Requirement                                                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| TB-DSN-01 | The interface follows the keepsake direction: paper background, serif type, postcard cards, ticket-stub bookings, day stamps. |
+| TB-DSN-02 | A card flips on click, and a picked card visibly moves to its slot.                                                           |
+| TB-DSN-03 | Motion respects the device's reduced-motion setting.                                                                          |
+| TB-DSN-04 | Every screen is usable on a phone browser.                                                                                    |
+| TB-DSN-05 | Every action can be performed with a keyboard.                                                                                |
+| TB-DSN-06 | Text meets WCAG AA contrast, and no information is carried by colour alone.                                                   |
+| TB-DSN-07 | Cards, stamps and ticket stubs expose text equivalents to screen readers.                                                     |
+| TB-DSN-08 | A clickable prototype of the main screens is approved by the product owner before the full interface is built.                |
+| TB-DSN-09 | Cards and the closer look are presentable when a place has no photo, price level or rating.                                   |
+
+## 13. System (PRD 16, 17; [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md))
+
+| ID        | Requirement                                                                                                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-SYS-01 | The application is one deployment divided into services with defined interfaces, as set out in ADR-008.                                                                                                  |
+| TB-SYS-02 | Each database table is owned by one service, and no other service reads or writes it directly.                                                                                                           |
+| TB-SYS-03 | Service borders are enforced by an automated check that fails the build when broken.                                                                                                                     |
+| TB-SYS-04 | Every action that changes data, and every read the browser makes after a page loads, goes through a documented HTTP route. Server-rendered pages may call service interfaces directly.                   |
+| TB-SYS-05 | A planning action carries an operation identifier and the plan revision it expects. Repeating it returns the original result.                                                                            |
+| TB-SYS-06 | A planning action commits completely or not at all. A plan made by the agent replaces the current one only after passing every scheduling rule; a traveller's own change commits with flags (TB-ITN-10). |
+| TB-SYS-07 | Stale or late work cannot overwrite a newer plan.                                                                                                                                                        |
+| TB-SYS-08 | No traveller-facing action depends on a separately running worker. Long work is split into steps that each finish within one request, are saved, and can be resumed after a reload.                      |
+| TB-SYS-09 | Place providers sit behind a common adapter with Google, OpenStreetMap and sample-data implementations, and the active one is chosen by configuration.                                                   |
+| TB-SYS-10 | The AI model sits behind a boundary that can be switched off, with the limited mode of TB-AGT-15 as the fallback.                                                                                        |
+| TB-SYS-11 | Spending on the AI model and on place data is capped separately. At the AI cap the agent runs in limited mode; at the place-data cap proposals use saved and sample places and the agent says so.        |
+| TB-SYS-12 | Saved place data is kept only as the provider's terms allow.                                                                                                                                             |
+| TB-SYS-13 | A trip records a visibility setting, private in the first version, and its owner separately from who may view it.                                                                                        |
+| TB-SYS-14 | The Itinerary service can copy an itinerary into a new trip. No screen exposes this in the first version.                                                                                                |
+| TB-SYS-15 | Itinerary quality is checked against the four sample travellers in PRD 18 before the first version is called complete.                                                                                   |
+
+## 14. Later stages
+
+Not part of the first version. Listed so that nothing built now blocks them. See [PRD 16](prd.md#16-later-stages-and-the-room-the-first-version-leaves-for-them).
+
+| ID        | Requirement                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------- |
+| TB-LTR-01 | Travellers can search and browse public itineraries, view their photos and details.          |
+| TB-LTR-02 | Travellers can save itineraries to collections.                                              |
+| TB-LTR-03 | A trip can be started from a prebuilt template or from another traveller's public itinerary. |
+| TB-LTR-04 | Travellers can upload photos to their trips.                                                 |
+| TB-LTR-05 | Travellers can publish a trip.                                                               |
+| TB-LTR-06 | Home shows observations drawn from the traveller's trips.                                    |
+| TB-LTR-07 | Several people can plan one trip together.                                                   |
+| TB-LTR-08 | A phone app uses the same HTTP interface as the website.                                     |
+
+## 15. Implementation status
+
+This catalogue makes no claim that any requirement is built. Consult [current implementation status](status/current-implementation.md), the code and tests, and [QA feature states](../qa/feature-states.json) before describing a capability as delivered.

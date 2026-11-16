@@ -27,6 +27,18 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000006",
+};
+
+function mutationRequest() {
+  return new Request("http://localhost", {
+    method: "POST",
+    body: JSON.stringify(mutationControl),
+  });
+}
+
 describe("/api/trips/[tripId]/recommendations/[suggestionId]/deselect route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,13 +50,18 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/deselect route", ()
       status: "deselected",
     });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(200);
     expect(mocks.service.deselectRecommendation).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
       { suggestionId: "suggestion_1" },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "recommendation_deselect",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
@@ -53,7 +70,7 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/deselect route", ()
       status: "suggestion_not_found",
     });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(404);
   });

@@ -27,6 +27,18 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000005",
+};
+
+function mutationRequest() {
+  return new Request("http://localhost", {
+    method: "POST",
+    body: JSON.stringify(mutationControl),
+  });
+}
+
 describe("/api/trips/[tripId]/recommendations/[suggestionId]/select route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,15 +46,23 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/select route", () =
   });
 
   it("selects an owned recommendation", async () => {
-    mocks.service.selectRecommendation.mockResolvedValue({ status: "selected" });
+    mocks.service.selectRecommendation.mockResolvedValue({
+      status: "selected",
+      revision: 1,
+    });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(200);
     expect(mocks.service.selectRecommendation).toHaveBeenCalledWith(
       "user_1",
       "trip_1",
       { suggestionId: "suggestion_1" },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "recommendation_select",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
@@ -51,8 +71,21 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/select route", () =
       status: "suggestion_not_found",
     });
 
-    const response = await POST(new Request("http://localhost"), context);
+    const response = await POST(mutationRequest(), context);
 
     expect(response.status).toBe(404);
+  });
+
+  it("returns 422 when the stored recommendation context is invalid", async () => {
+    mocks.service.selectRecommendation.mockResolvedValue({
+      status: "invalid_context",
+    });
+
+    const response = await POST(mutationRequest(), context);
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: "Suggestion does not match a valid trip day and destination.",
+    });
   });
 });

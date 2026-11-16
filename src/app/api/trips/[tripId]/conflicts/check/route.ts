@@ -4,6 +4,15 @@ import {
   assertAuthenticatedApiUser,
 } from "@/lib/authorization";
 import { checkItineraryConflicts } from "@/features/itinerary/conflict-engine";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type ConflictCheckRouteContext = {
   params: Promise<{
@@ -40,13 +49,26 @@ function accessErrorResponse(
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: ConflictCheckRouteContext,
 ) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId } = await context.params;
-    const result = await checkItineraryConflicts(userId, tripId);
+    const parsedControl = parsePlanningMutationControl(
+      await readPlanningMutationJson(request),
+    );
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "conflicts_check",
+      {},
+    );
+    const result = await checkItineraryConflicts(userId, tripId, control);
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -67,6 +89,9 @@ export async function POST(
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to check conflicts.", 500);
   }

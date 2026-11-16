@@ -1,0 +1,11 @@
+{
+  "enabledPlugins": {
+    "stack-production@devkit": true,
+    "superpowers@claude-plugins-official": true,
+    "stack-web@devkit": true,
+    "jmo-workflow@jmo-skills": true,
+    "stack-large-repo@devkit": true,
+    "serena@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
+  }
+}

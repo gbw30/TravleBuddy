@@ -1,208 +1,307 @@
 # TravleBuddy
 
-AI-assisted travel planning software that turns user preferences, trip constraints, and location data into ranked recommendations and structured itineraries.
+Status: current-state
+Authority: Repository overview, setup, and implemented adaptive-slice entry point
+Related: [Knowledge map](docs/README.md), [canonical target](docs/requirements.md), [current implementation](docs/status/current-implementation.md), [active roadmap](docs/roadmap.md)
+Last reviewed: 2026-08-09
 
-TravleBuddy is designed as more than a recommendation UI: it persists planning state, validates mutations, detects scheduling conflicts, integrates external location data, and includes a dedicated QA pipeline for exercising critical workflows before deployment.
+TravleBuddy is an adaptive travel planner. A user can build a structured
+itinerary, immediately remove an item with versioned audit history, or ask a
+durable background job to update a preference profile and replace only the
+affected activity. The system preserves the current itinerary until a valid
+successor commits.
 
-## What It Does
+This repository implements the first complete adaptive-planning vertical slice.
+It is designed as a portfolio project that demonstrates product engineering,
+transactional state management, background processing, concurrency control, and
+provider isolation without pretending that credentialed cloud infrastructure is
+already configured.
 
-- Collects trip preferences and planning constraints
-- Produces ranked destination/activity suggestions
-- Builds structured itinerary timelines
-- Detects and resolves scheduling conflicts
-- Persists trips and planning state in PostgreSQL
-- Supports authenticated, user-specific data
-- Integrates Google Maps data for location-aware planning
-- Validates API inputs and state transitions
-- Exercises critical flows with Vitest and Playwright
+The target product is broader: one persistent conversational workspace with a
+live itinerary, focused discovery, three-card recommendation batches,
+deterministic scheduling, and eventually learned preferences and complete
+timezone handling. Target behavior must not be mistaken for current behavior.
+
+## Adaptive planning loop
+
+```mermaid
+flowchart LR
+  U["Item feedback"] --> A["Authenticated API transaction"]
+  A --> F["Immutable feedback"]
+  F --> R["Immediate copy-on-write removal"]
+  F --> J["Durable replacement job"]
+  J --> W["Independent worker"]
+  W --> P["Preference version"]
+  W --> C["Persisted/provider candidates"]
+  W --> I["Copy-on-write itinerary version"]
+  R --> I
+  I --> V["Deterministic validation"]
+  V --> X["Atomic activation"]
+  J --> Q["Persistent polling UI"]
+```
+
+The current policy is intentionally narrow:
+
+- `TOO_EXPENSIVE` increases inferred price sensitivity and confidence by `0.10`,
+  capped at `1.0`.
+- Explicit signals outrank inferred signals.
+- Other rejection reasons exclude the exact item without inventing a broader
+  preference rule.
+- Replacement ranking is deterministic by score, rating, provider ID, then
+  name.
+- A missing replacement activates the preference version and keeps the current
+  itinerary.
+- `TOO_EXPENSIVE` activates only a distinct, demonstrably cheaper candidate;
+  otherwise it records a successful no-change outcome with an explicit reason.
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    U[User / Browser] --> UI[Next.js + React UI]
-    UI --> AUTH[Auth.js / Google OAuth]
-    UI --> API[Next.js Server + Application Services]
-    API --> VALIDATION[Zod Validation]
-    API --> PLANNING[Recommendation & Scheduling Logic]
-    API --> MAPS[Google Maps APIs]
-    API --> DB[(PostgreSQL)]
-    DB --> PRISMA[Prisma ORM / Migrations]
-    PLANNING --> DB
-    API --> QA[QA & Verification Hooks]
-```
+- Next.js 16 App Router web application and ownership-gated route handlers.
+- PostgreSQL and Prisma as the source of truth.
+- Versioned preference profiles and copy-on-write itinerary versions.
+- Immutable feedback identity and captured input versions.
+- PostgreSQL-backed jobs using `FOR UPDATE SKIP LOCKED`.
+- Standalone TypeScript worker with leases, heartbeats, retries, recovery, and
+  stale-result checks.
+- Google Places and deterministic mock providers behind one interface.
+- Resilient client polling that resumes from persisted active jobs after reload.
 
-The application keeps UI concerns, planning logic, persistence, and verification separate so that recommendation and scheduling behavior can be tested independently from the interface.
-
-## Tech Stack
-
-| Layer | Technology | Role |
-|---|---|---|
-| Application | Next.js 16, React 19, TypeScript | Full-stack application and UI |
-| Authentication | Auth.js / NextAuth | Google OAuth and authenticated user sessions |
-| Database | PostgreSQL | Persistent relational trip and itinerary state |
-| ORM | Prisma | Typed database access and schema migrations |
-| Validation | Zod | Runtime request and payload validation |
-| Maps | Google Maps JavaScript API | Location-aware planning and map integration |
-| Testing | Vitest, Playwright | Unit/integration and end-to-end verification |
-| QA tooling | Custom TypeScript CLI scripts | Deterministic validation, environment checks, staged QA |
-| Styling | Tailwind CSS | Responsive interface styling |
-
-## Core Planning Flow
-
-A planning operation follows a guarded application flow rather than writing directly from UI state:
+Important code is organized under:
 
 ```text
-User request
-  -> authenticate session
-  -> validate request payload
-  -> load current trip/planning state
-  -> compute ranked suggestions or itinerary changes
-  -> check scheduling/logistics constraints
-  -> persist validated state
-  -> return updated plan to the client
+src/features/adaptation/       preference policy, scoring, orchestration
+src/features/jobs/             queue contracts, PostgreSQL store, runner
+src/worker/                    standalone worker process
+src/lib/providers/places/      mock and Google provider boundary
+src/features/itinerary/        structured itinerary and conflict validation
+src/components/recommendations behavior and presentational planning UI
+prisma/migrations/             additive schema and data-preserving backfills
 ```
 
-This separation makes the planning logic easier to test and reduces the chance that malformed client input can directly corrupt persisted trip state.
+Start with [the documentation knowledge map](docs/README.md). See the
+[canonical target](docs/requirements.md), [evidence-backed current
+implementation](docs/status/current-implementation.md), [active
+roadmap](docs/roadmap.md), and [architecture index](docs/architecture/README.md)
+for the target/current/plan split.
 
-## Engineering Decisions
+## Fixed development topology
 
-### PostgreSQL for structured planning state
+This project deliberately reuses its existing `qa` and `main` branches,
+existing QA and production databases, and existing Vercel QA/production
+targets. Do not create additional branches, worktrees, persistent databases,
+Vercel projects, or preview environments unless the developer explicitly
+approves the specific addition. Existing CI's temporary PostgreSQL service is
+part of the current topology and remains allowed.
 
-Trips, itinerary entries, user preferences, and revisions form strongly related data. A relational database provides explicit structure and supports safer multi-entity updates than treating the entire plan as an unstructured document.
+See [the standing operating constraints](docs/operating-constraints.md) before
+changing development or deployment topology.
 
-**Tradeoff:** relational schemas require migration discipline as the product evolves, which is why migration validation is part of the project workflow.
+## Guarantees
 
-### Prisma for typed persistence and migrations
+- Removal feedback and its successor version are committed in one transaction.
+- Replacement feedback and its initial job/event are committed in one transaction.
+- HTTP retries use UUID operation IDs and the planning mutation ledger.
+- Jobs execute at least once; version creation and activation are idempotent.
+- Claims use a 30-second lease and a five-second heartbeat.
+- Retry delays are 5, 20, and 60 seconds, with dead-lettering after the third
+  failed attempt.
+- A worker rechecks trip, preference, and parent-itinerary versions before
+  persisting provider data and again before activation.
+- An old worker cannot activate over newer trip state.
+- The active itinerary is not superseded until its successor has been copied,
+  validated, and activated in the same database transaction.
+- API reads and mutations enforce trip ownership; provider raw metadata and job
+  payloads are not exposed in client DTOs.
+- Provider payloads, job payloads/results/events, progress text, and public
+  history are bounded.
 
-Prisma keeps database access aligned with the TypeScript application while providing an explicit migration workflow. The repository separates schema generation, migration status checks, and deployment-oriented migration commands rather than hiding database changes inside application startup.
+The queue makes an at-least-once guarantee, not an exactly-once claim.
 
-### Runtime validation at API boundaries
+## Local setup
 
-TypeScript protects compile-time assumptions, but external requests still arrive as runtime data. Zod is used to validate those boundaries before application logic operates on incoming state.
+Requirements:
 
-### Separate QA commands instead of one generic test script
+- Node.js 24
+- npm
+- PostgreSQL 16-compatible database
 
-The project includes dedicated commands for environment diagnosis, deterministic gates, seeding, cleanup, critical E2E flows, nightly E2E flows, production-safe verification, coverage, and staged QA.
+Install dependencies and create a local environment file:
 
-That structure allows different levels of confidence to be exercised depending on the deployment context.
-
-## Reliability & Testing
-
-The repository includes both conventional automated tests and a larger QA toolchain.
-
-### Vitest
-
-Used for application/service-level verification and coverage.
-
-```bash
-npm test
-npm run qa:coverage
+```powershell
+npm ci
+Copy-Item .env.example .env.local
 ```
 
-### Playwright
-
-Used for browser-level end-to-end verification of critical user workflows.
-
-### QA pipeline
-
-Available scripts include:
-
-```bash
-npm run qa:doctor
-npm run qa:validate
-npm run qa:seed
-npm run qa:e2e:critical
-npm run qa:e2e:nightly
-npm run qa:e2e:production
-npm run qa:gate
-npm run qa:stage
-```
-
-The intent is to make environment correctness, test data, migration state, and critical application behavior explicit rather than relying only on a successful production build.
-
-## Security & Data Integrity
-
-Key safeguards represented in the repository include:
-
-- authenticated user sessions
-- server-side application logic for protected operations
-- runtime request validation
-- relational ownership between users and persisted trip data
-- migration validation before database changes are deployed
-- production-oriented verification commands that avoid treating live systems like disposable test environments
-
-No client-side control should be considered a substitute for server-side authorization or validation.
-
-## Project Structure
+For a deterministic no-cost demo, set:
 
 ```text
-.
-├── docs/                  # Architecture, setup, phase, and CI/CD documentation
-├── e2e/                   # Playwright end-to-end tests
-├── prisma/                # Database schema and migrations
-├── qa/                    # Deterministic QA tooling and staged verification
-├── src/                   # Application code
-├── .github/               # Repository automation / CI configuration
-├── package.json
-└── playwright.config.ts
+DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://...
+PLACE_PROVIDER_MODE=mock
+QA_PROVIDER_MODE=mock
 ```
 
-The `docs/` directory also contains detailed setup and implementation notes, including authentication, Neon/PostgreSQL configuration, CI/CD, folder structure, and conversational-planning documentation.
+The web application also requires the Auth.js variables documented in
+`.env.example`. The standalone worker requires only `DATABASE_URL`, optional
+worker identity, and optional provider configuration.
 
-## Engineering Challenges
+### Free-first preview topology
 
-### Scheduling state that changes over time
+The active portfolio milestone does not provision an always-on cloud worker.
+The existing Vercel QA preview writes jobs to the existing Neon QA database,
+and a standalone worker runs locally during demonstrations:
 
-Travel plans are not static recommendations. Moving one item can create downstream timing conflicts. The application therefore models itinerary planning as persisted state that can be checked and revised rather than as a one-shot generated response.
+```text
+Browser -> Vercel web/API -> Neon PostgreSQL queue <- local worker
+```
 
-### Safe application evolution
+Use the pooled QA `qa_app` connection only as a session variable; do not replace
+the production-oriented local `.env`:
 
-Because itinerary and user state are persistent, schema changes cannot be treated as local-only refactors. The project includes explicit migration status/deploy commands and protected QA flows to reduce deployment risk.
+```powershell
+$env:DATABASE_URL = Read-Host "Pooled qa_app QA URL"
+$env:NODE_ENV = "production"
+$env:PLACE_PROVIDER_MODE = "mock"
+$env:QA_PROVIDER_MODE = "mock"
+$env:PLANNING_WORKER_ID = "travlebuddy-local-demo-worker"
+npm run worker:start
+```
 
-### Testing external-data workflows
+After stopping the worker with `Ctrl+C`, remove those session variables. Jobs
+submitted while it is offline remain pending and are processed after it starts,
+which demonstrates durable process separation. Always-on worker hosting and the
+root `render.yaml` template are optional deferred infrastructure.
 
-Location-aware behavior depends on external services. The repository separates deterministic application checks from integration/E2E verification so core business logic can still be validated without making every test depend on live third-party responses.
+Validate and apply migrations only to the currently authorized non-production
+database. Do not create another database for this step:
 
-## Running Locally
-
-### Prerequisites
-
-- Node.js
-- PostgreSQL database
-- Google OAuth credentials
-- Google Maps API configuration
-
-Use `.env.example` as the source of truth for required environment variables.
-
-```bash
-git clone https://github.com/gbw30/TravleBuddy.git
-cd TravleBuddy
-npm install
+```powershell
+npm run prisma:validate
 npm run prisma:generate
+npm run db:deploy
+```
+
+Run the web and worker in separate terminals:
+
+```powershell
 npm run dev
 ```
 
-Open `http://localhost:3000`.
-
-Before shipping changes, run the relevant verification commands:
-
-```bash
-npm run lint
-npm run typecheck
-npm test
-npm run prisma:validate
-npm run qa:gate
+```powershell
+npm run worker:start
 ```
 
-## What I Would Improve Next
+Process at most one available job:
 
-- move long-running AI or external-data work behind asynchronous job processing where appropriate
-- add richer observability around recommendation failures and external API latency
-- expand load and concurrency testing for itinerary mutations
-- add clearer public architecture visuals and product demo media
-- continue separating deterministic planning logic from model-generated suggestions
+```powershell
+npm run worker:once
+```
 
-## Additional Documentation
+Never run migrations against an unverified production database. The protected
+QA and deployment sequence is in
+[docs/developer-finish-guide.md](docs/developer-finish-guide.md).
 
-See [`docs/`](./docs) for implementation notes covering authentication, database setup, CI/CD, project phases, and conversational planning.
+## Verification
+
+Ordinary repository verification:
+
+```powershell
+npm run prisma:validate
+npm run prisma:generate
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+```
+
+The deterministic QA gate additionally validates migration status, coverage,
+and the critical browser journey when an isolated writable QA database is
+configured:
+
+```powershell
+npm run qa:gate
+npm run qa:context
+```
+
+Mock provider mode is mandatory for automated tests and normal QA.
+
+GitHub Actions keeps ordinary development lean: `CI` handles source integrity,
+and `QA - Pull Request` handles the existing temporary PostgreSQL service,
+focused integration tests, and critical Chromium journeys. Extended QA,
+protected migrations, release QA, production smoke, and Codex audits run only
+when manually requested or explicitly opted in.
+
+The real PostgreSQL claim/recovery and existing-trip migration tests are opt-in
+and refuse to run without the explicit URL of the existing authorized QA
+database. The migration test uses and removes a uniquely named run-owned schema
+inside that database:
+
+```powershell
+$env:ADAPTATION_TEST_DATABASE_URL = "postgresql://EXISTING_AUTHORIZED_QA_DATABASE"
+npm run test -- src/features/jobs/postgres-store.integration.test.ts prisma/adaptive-planning-migration.integration.test.ts
+```
+
+## Demo flow
+
+1. Create a trip, save preferences, select places, and build an itinerary.
+2. Stop the worker, remove one item, and show immediate HTTP `200` plus a new
+   itinerary version.
+3. Start the worker and choose `Too expensive` with **Dislike & replace** to
+   demonstrate the durable path and supported inferred-preference policy.
+4. Observe the persisted phases from feedback receipt through validation.
+5. Confirm that only the affected item changes and a new itinerary version
+   appears.
+6. Reload during processing to show that polling resumes from database state.
+7. Run the recovery and stale-result demonstrations from
+   [docs/demo/adaptive-planning-demo.md](docs/demo/adaptive-planning-demo.md).
+
+## Failure model
+
+- A transient handler/provider failure schedules a bounded retry.
+- A worker that stops heartbeating loses its lease; recovery marks the attempt
+  abandoned and makes the job retryable or dead-lettered.
+- A permanent configuration or validation failure is visible through the job
+  API and UI with retry guidance.
+- A newer trip or planning mutation supersedes an older job.
+- No compatible candidate produces a successful `NO_REPLACEMENT` outcome; the
+  preference update remains active and the prior itinerary stays active.
+- `SIGTERM` stops new claims while the worker finishes its current execution or
+  safely loses/releases the lease.
+
+## Implemented versus externally unconfigured
+
+Implemented in this repository:
+
+- Schema, migration, backfill, services, routes, worker, mock provider, Google
+  provider adapter, progress UI, tests, CI rules, an optional Render template,
+  and free-first local-worker runbooks.
+
+Not configured by this repository:
+
+- A Google Cloud project, billing, quota alerts, or API key.
+- Vercel environment variables and deployment verification.
+- An always-on hosted worker; the active milestone uses the local standalone
+  worker during demonstrations.
+- Production migration execution. Protected QA migration certification has
+  succeeded for commit `e6e74c65fe3c2d5377eeeee1a67c90675d21ad60`.
+- Final Figma styling and environment-backed release evidence.
+
+Not part of the current adaptive slice:
+
+- Conversation persistence, validated AI intent, live activity scheduling,
+  primary-flow Google discovery, long-term preference learning, full timezone
+  correctness, optional cache activation, Routes, WebSockets/SSE, maps,
+  booking/cancellation, job cancellation, and broad adaptation policies. The
+  active roadmap begins conversational work after adaptive evidence is complete.
+
+Dependency decision (2026-08-06): the developer temporarily accepts and tracks
+the current `npm audit --omit=dev` findings in two upstream chains: Prisma via
+`fast-uri`, and Next.js via optional `sharp`. The installed dependency graph
+reports no available fix. TravleBuddy does not use `next/image` or the Image
+Optimization API. Do not force unsupported transitive overrides or replace
+Prisma/Next.js solely to silence the audit; review official patched releases,
+update through supported versions, and rerun the full gate before production
+promotion.
+
+Follow [the developer finish guide](docs/developer-finish-guide.md) for the
+credentialed steps that remain.

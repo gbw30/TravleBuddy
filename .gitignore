@@ -47,3 +47,10 @@ next-env.d.ts
 node_modules
 
 /src/generated/prisma
+
+# Claude Code per-user state
+.claude/settings.local.json
+.claude/state/
+
+# Rendered proposal images; regenerate from the HTML files next to them.
+docs/design/mockups-2026-11/images/

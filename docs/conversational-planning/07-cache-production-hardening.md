@@ -1,12 +1,13 @@
 # Stage 3B - Cache and Production Hardening
 
-Status: not started  
-Depends on: Stage 3A measurements  
-Estimated effort: 2-4 working days
+Status: stage-plan
+Authority: Evidence-gated cache and production-hardening intent
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [preceding stage](06-interaction-performance.md), [job queue ADR](../architecture/adr-002-postgresql-job-queue.md)
+Last reviewed: 2026-08-09
 
 ## Goal
 
-Make the prototype resilient in preview and production. Add optional cache-aside behavior only where measurements justify it, then add rate limits, timeouts, failure recovery, observability, and end-to-end release gates.
+Make the prototype resilient in preview and production. Reuse the implemented PostgreSQL queue for durable asynchronous work. Add optional cache-aside behavior only where measurements justify it, then add rate limits, timeouts, failure recovery, observability, and end-to-end release gates.
 
 ## Architecture Decisions
 
@@ -175,8 +176,8 @@ QA environments must use isolated databases and credentials. Test:
 
 ## Developer Actions
 
-- Provision Upstash Redis only after Stage 3A measurement review.
-- Configure separate preview and production Redis instances or namespaces.
+- Keep cache mode disabled unless Stage 3A measurements justify it and the developer explicitly approves the required topology change.
+- Do not provision another persistent service, database, branch, or preview from this stage document.
 - Set Vercel environment variables for every enabled provider.
 - Configure provider quotas, billing alerts, and production monitoring.
 - Confirm migrations run with `prisma migrate deploy`.
@@ -196,4 +197,3 @@ QA environments must use isolated databases and credentials. Test:
 ```text
 Implement Stage 3B from docs/conversational-planning/07-cache-production-hardening.md only after Stage 3A measurements exist. Add optional cache-aside behavior for approved candidates, then rate limits, timeouts, failure recovery, and observability. PostgreSQL must remain authoritative, Redis must be optional, and the application must pass the documented failure-mode QA with AI, Google, or Redis disabled.
 ```
-

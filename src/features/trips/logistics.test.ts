@@ -57,9 +57,33 @@ import {
   addTripTravelSegmentFormAction,
   addTripTravelSegment,
   deleteTripTravelSegment,
+  isValidTravelSegmentChain,
   saveTripLogisticsMode,
   updateTripTravelSegment,
 } from "./logistics";
+
+function travelSegment(
+  id: string,
+  originCity: string,
+  destinationCity: string,
+  departAt: string,
+  arriveAt: string,
+  sortOrder: number,
+) {
+  return {
+    id,
+    mode: "TRAIN",
+    originCity,
+    originCountry: "United States",
+    destinationCity,
+    destinationCountry: "United States",
+    departAt: new Date(departAt),
+    arriveAt: new Date(arriveAt),
+    carrier: null,
+    referenceCode: null,
+    sortOrder,
+  };
+}
 
 const planningTrip = {
   id: "trip_1",
@@ -80,6 +104,7 @@ const planningTrip = {
       sortOrder: 1,
     },
   ],
+  travelSegments: [],
 };
 
 describe("trip logistics service", () => {
@@ -189,6 +214,20 @@ describe("trip logistics service", () => {
   });
 
   it("updates one owned segment and finalizes once", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValueOnce({
+      ...planningTrip,
+      travelSegments: [
+        travelSegment(
+          "segment_1",
+          "Los Angeles",
+          "New York",
+          "2026-07-02T14:00:00.000Z",
+          "2026-07-02T20:00:00.000Z",
+          0,
+        ),
+      ],
+    });
+
     const result = await updateTripTravelSegment(
       "user_1",
       "trip_1",
@@ -210,6 +249,20 @@ describe("trip logistics service", () => {
   });
 
   it("deletes one owned segment and finalizes once", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValueOnce({
+      ...planningTrip,
+      travelSegments: [
+        travelSegment(
+          "segment_1",
+          "Los Angeles",
+          "New York",
+          "2026-07-02T14:00:00.000Z",
+          "2026-07-02T20:00:00.000Z",
+          0,
+        ),
+      ],
+    });
+
     const result = await deleteTripTravelSegment(
       "user_1",
       "trip_1",
@@ -238,5 +291,143 @@ describe("trip logistics service", () => {
     expect(
       mocks.itinerary.rebuildItineraryDraftForTripTx,
     ).not.toHaveBeenCalled();
+  });
+
+  it("accepts equal segment boundaries when the locations connect", () => {
+    expect(
+      isValidTravelSegmentChain([
+        travelSegment(
+          "segment_1",
+          "Los Angeles",
+          "Chicago",
+          "2026-07-01T08:00:00.000Z",
+          "2026-07-01T10:00:00.000Z",
+          0,
+        ),
+        travelSegment(
+          "segment_2",
+          " chicago ",
+          "New York",
+          "2026-07-01T10:00:00.000Z",
+          "2026-07-01T12:00:00.000Z",
+          1,
+        ),
+      ]),
+    ).toBe(true);
+  });
+
+  it("rejects an add when the full proposed chain overlaps", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValueOnce({
+      ...planningTrip,
+      travelSegments: [
+        travelSegment(
+          "segment_1",
+          "Los Angeles",
+          "Chicago",
+          "2026-07-02T08:00:00.000Z",
+          "2026-07-02T12:00:00.000Z",
+          0,
+        ),
+      ],
+    });
+
+    const result = await addTripTravelSegment("user_1", "trip_1", {
+      mode: "TRAIN",
+      originCity: "Chicago",
+      originCountry: "United States",
+      destinationCity: "New York",
+      destinationCountry: "United States",
+      departAt: "2026-07-02T11:00",
+      arriveAt: "2026-07-02T14:00",
+    });
+
+    expect(result.status).toBe("invalid");
+    expect(mocks.tx.tripTravelSegment.create).not.toHaveBeenCalled();
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects an update that breaks location continuity", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValueOnce({
+      ...planningTrip,
+      travelSegments: [
+        travelSegment(
+          "segment_1",
+          "Los Angeles",
+          "Chicago",
+          "2026-07-02T08:00:00.000Z",
+          "2026-07-02T10:00:00.000Z",
+          0,
+        ),
+        travelSegment(
+          "segment_2",
+          "Chicago",
+          "New York",
+          "2026-07-02T12:00:00.000Z",
+          "2026-07-02T14:00:00.000Z",
+          1,
+        ),
+      ],
+    });
+
+    const result = await updateTripTravelSegment(
+      "user_1",
+      "trip_1",
+      "segment_2",
+      {
+        mode: "TRAIN",
+        originCity: "Boston",
+        originCountry: "United States",
+        destinationCity: "New York",
+        destinationCountry: "United States",
+        departAt: "2026-07-02T12:00",
+        arriveAt: "2026-07-02T14:00",
+      },
+    );
+
+    expect(result.status).toBe("invalid");
+    expect(mocks.tx.tripTravelSegment.updateMany).not.toHaveBeenCalled();
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleting a segment when the remaining chain is discontinuous", async () => {
+    mocks.tx.trip.findFirst.mockResolvedValueOnce({
+      ...planningTrip,
+      travelSegments: [
+        travelSegment(
+          "segment_1",
+          "Los Angeles",
+          "Chicago",
+          "2026-07-01T08:00:00.000Z",
+          "2026-07-01T10:00:00.000Z",
+          0,
+        ),
+        travelSegment(
+          "segment_2",
+          "Chicago",
+          "Boston",
+          "2026-07-01T12:00:00.000Z",
+          "2026-07-01T14:00:00.000Z",
+          1,
+        ),
+        travelSegment(
+          "segment_3",
+          "Boston",
+          "New York",
+          "2026-07-01T16:00:00.000Z",
+          "2026-07-01T18:00:00.000Z",
+          2,
+        ),
+      ],
+    });
+
+    const result = await deleteTripTravelSegment(
+      "user_1",
+      "trip_1",
+      "segment_2",
+    );
+
+    expect(result.status).toBe("invalid");
+    expect(mocks.tx.tripTravelSegment.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
   });
 });

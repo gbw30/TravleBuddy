@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   db: {
     $transaction: vi.fn(),
     trip: {
-      create: vi.fn(),
       deleteMany: vi.fn(),
     },
     userTravelPreference: {
@@ -20,7 +19,9 @@ const mocks = vi.hoisted(() => ({
     },
   },
   tx: {
+    $queryRawUnsafe: vi.fn(),
     trip: {
+      create: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
       findFirstOrThrow: vi.fn(),
@@ -36,8 +37,13 @@ const mocks = vi.hoisted(() => ({
       updateMany: vi.fn(),
     },
     tripPreference: {
+      findUnique: vi.fn(),
       upsert: vi.fn(),
       updateMany: vi.fn(),
+    },
+    preferenceProfileVersion: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
     },
   },
   itinerary: {
@@ -107,6 +113,16 @@ describe("trip actions", () => {
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
     mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
+    mocks.tx.tripPreference.findUnique.mockResolvedValue({
+      interests: [],
+      pace: "BALANCED",
+      updatedAt: new Date("2026-01-01T12:00:00.000Z"),
+    });
+    mocks.tx.preferenceProfileVersion.findFirst.mockResolvedValue(null);
+    mocks.tx.preferenceProfileVersion.create.mockResolvedValue({
+      id: "preference_version_1",
+      version: 1,
+    });
     mocks.itinerary.rebuildItineraryDraftForTripTx.mockResolvedValue({
       status: "rebuilt",
       itinerary: {
@@ -128,7 +144,7 @@ describe("trip actions", () => {
   });
 
   it("creates a draft trip for the authenticated user", async () => {
-    mocks.db.trip.create.mockResolvedValue(trip({ title: "Summer trip" }));
+    mocks.tx.trip.create.mockResolvedValue(trip({ title: "Summer trip" }));
 
     const result = await createTrip("user_1", {
       intent: "draft",
@@ -141,7 +157,7 @@ describe("trip actions", () => {
       travelStyle: "BALANCED",
     });
 
-    expect(mocks.db.trip.create).toHaveBeenCalledWith(
+    expect(mocks.tx.trip.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           userId: "user_1",
@@ -154,7 +170,7 @@ describe("trip actions", () => {
   });
 
   it("creates a planning trip with ordered destinations when continuing", async () => {
-    mocks.db.trip.create.mockResolvedValue(
+    mocks.tx.trip.create.mockResolvedValue(
       trip({
         title: "European route",
         status: "PLANNING",
@@ -205,7 +221,7 @@ describe("trip actions", () => {
       travelStyle: "BALANCED",
     });
 
-    expect(mocks.db.trip.create).toHaveBeenCalledWith(
+    expect(mocks.tx.trip.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           departureCity: "Bogota",
@@ -238,6 +254,22 @@ describe("trip actions", () => {
       }),
     );
     expect(result.status).toBe("PLANNING");
+    expect(mocks.tx.preferenceProfileVersion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tripId: "trip_1",
+        version: 1,
+        snapshot: expect.objectContaining({
+          pace: expect.objectContaining({
+            value: "BALANCED",
+            source: "EXPLICIT",
+          }),
+        }),
+      }),
+      select: {
+        id: true,
+        version: true,
+      },
+    });
   });
 
   it("uses saved profile preferences when creating a new trip with autofill enabled", async () => {
@@ -257,7 +289,7 @@ describe("trip actions", () => {
         sourceTripId: "trip_1",
       },
     });
-    mocks.db.trip.create.mockResolvedValue(
+    mocks.tx.trip.create.mockResolvedValue(
       trip({
         title: "Profile-backed trip",
         preference: {
@@ -277,7 +309,7 @@ describe("trip actions", () => {
         userId: "user_1",
       },
     });
-    expect(mocks.db.trip.create).toHaveBeenCalledWith(
+    expect(mocks.tx.trip.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           preference: {
@@ -297,12 +329,12 @@ describe("trip actions", () => {
   });
 
   it("allows duplicate trip titles by using generated ids as keys", async () => {
-    mocks.db.trip.create.mockResolvedValue(trip({ title: "Summer trip" }));
+    mocks.tx.trip.create.mockResolvedValue(trip({ title: "Summer trip" }));
 
     await createTrip("user_1", { title: "Summer trip" });
     await createTrip("user_1", { title: "Summer trip" });
 
-    expect(mocks.db.trip.create).toHaveBeenCalledTimes(2);
+    expect(mocks.tx.trip.create).toHaveBeenCalledTimes(2);
   });
 
   it("returns not_found when updating a trip not owned by the user", async () => {
@@ -337,6 +369,7 @@ describe("trip actions", () => {
         endDate: new Date("2026-07-07T00:00:00.000Z"),
         budgetAmount: "1500",
         budgetCurrency: "USD",
+        preference: { pace: "BALANCED" },
         destinations: [
           {
             id: "destination_1",
@@ -378,6 +411,7 @@ describe("trip actions", () => {
       endDate: "2026-07-07",
       budgetAmount: "1500",
       budgetCurrency: "USD",
+      travelStyle: "BALANCED",
     });
 
     expect(result.status).toBe("updated");

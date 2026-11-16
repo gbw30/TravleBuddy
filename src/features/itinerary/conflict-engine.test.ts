@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   tx: {
     trip: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       updateMany: vi.fn(),
       findUniqueOrThrow: vi.fn(),
     },
@@ -14,6 +15,9 @@ const mocks = vi.hoisted(() => ({
       findMany: vi.fn(),
     },
     itineraryItem: {
+      findMany: vi.fn(),
+    },
+    placeSuggestion: {
       findMany: vi.fn(),
     },
     conflict: {
@@ -44,6 +48,7 @@ import {
 
 const planningTrip = {
   id: "trip_1",
+  activeItineraryVersionId: "itinerary_version_1",
   title: "Barcelona",
   status: "PLANNING" as const,
   startDate: new Date("2026-07-01T00:00:00.000Z"),
@@ -79,6 +84,7 @@ function item(
 ) {
   return {
     id,
+    placeSuggestionId: id,
     title: input.title ?? `Place ${id}`,
     startTime: input.startTime ?? null,
     endTime: input.endTime ?? null,
@@ -124,6 +130,62 @@ describe("detectItineraryConflicts", () => {
           itineraryItemId: null,
         }),
       ]),
+    );
+  });
+
+  it("adds one medium warning when the budget total excludes mixed currencies", () => {
+    const conflicts = detectItineraryConflicts({
+      trip: planningTrip,
+      days: [
+        day(1, [
+          item("a", { estimatedCostAmount: 100, estimatedCostCurrency: "EUR" }),
+          item("b", { estimatedCostAmount: 90, estimatedCostCurrency: "USD" }),
+          item("c", { estimatedCostAmount: 80, estimatedCostCurrency: "USD" }),
+          item("d", { estimatedCostAmount: 70, estimatedCostCurrency: "GBP" }),
+        ]),
+      ],
+    });
+    const mixedCurrencyConflicts = conflicts.filter(
+      (conflict) =>
+        conflict.type === "BUDGET" &&
+        conflict.severity === "MEDIUM" &&
+        (conflict.metadata as { rule?: string } | undefined)?.rule ===
+          "mixed_currency_cost_exclusions",
+    );
+
+    expect(mixedCurrencyConflicts).toHaveLength(1);
+    expect(mixedCurrencyConflicts[0]?.metadata).toEqual(
+      expect.objectContaining({
+        excludedCostCurrencies: ["GBP", "USD"],
+      }),
+    );
+  });
+
+  it("keeps selected overflow visible as one low scheduling conflict", () => {
+    const conflicts = detectItineraryConflicts({
+      trip: {
+        ...planningTrip,
+        selectedPlaces: [
+          { id: "scheduled", name: "Scheduled museum" },
+          { id: "overflow_1", name: "Overflow market" },
+          { id: "overflow_2", name: "Overflow show" },
+        ],
+      },
+      days: [day(1, [item("scheduled")])],
+    });
+    const overflowConflicts = conflicts.filter(
+      (conflict) =>
+        conflict.severity === "LOW" &&
+        (conflict.metadata as { rule?: string } | undefined)?.rule ===
+          "unscheduled_selected_overflow",
+    );
+
+    expect(overflowConflicts).toHaveLength(1);
+    expect(overflowConflicts[0]?.metadata).toEqual(
+      expect.objectContaining({
+        unscheduledCount: 2,
+        placeSuggestionIds: ["overflow_1", "overflow_2"],
+      }),
     );
   });
 
@@ -253,6 +315,9 @@ describe("conflict service", () => {
     vi.clearAllMocks();
     mocks.db.$transaction.mockImplementation((callback) => callback(mocks.tx));
     mocks.tx.trip.findFirst.mockResolvedValue(planningTrip);
+    mocks.tx.trip.findUnique.mockResolvedValue({
+      activeItineraryVersionId: "itinerary_version_1",
+    });
     mocks.tx.trip.updateMany.mockResolvedValue({ count: 1 });
     mocks.tx.trip.findUniqueOrThrow.mockResolvedValue({ planningRevision: 1 });
     mocks.tx.itineraryDay.findMany.mockResolvedValue([
@@ -261,6 +326,7 @@ describe("conflict service", () => {
     mocks.tx.conflict.createMany.mockResolvedValue({ count: 2 });
     mocks.tx.conflict.deleteMany.mockResolvedValue({ count: 1 });
     mocks.tx.itineraryItem.findMany.mockResolvedValue([{ id: "museum" }]);
+    mocks.tx.placeSuggestion.findMany.mockResolvedValue([]);
     mocks.tx.conflict.findMany.mockResolvedValue([
       {
         id: "conflict_1",
@@ -284,6 +350,7 @@ describe("conflict service", () => {
     expect(mocks.tx.conflict.deleteMany).toHaveBeenCalledWith({
       where: {
         tripId: "trip_1",
+        itineraryVersionId: "itinerary_version_1",
         status: "OPEN",
       },
     });
@@ -291,6 +358,7 @@ describe("conflict service", () => {
       data: expect.arrayContaining([
         expect.objectContaining({
           tripId: "trip_1",
+          itineraryVersionId: "itinerary_version_1",
           status: "OPEN",
         }),
       ]),
@@ -320,6 +388,7 @@ describe("conflict service", () => {
       data: expect.arrayContaining([
         expect.objectContaining({
           tripId: "trip_1",
+          itineraryVersionId: "itinerary_version_1",
           itineraryItemId: null,
           status: "OPEN",
         }),

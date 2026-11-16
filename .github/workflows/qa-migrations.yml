@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       branch:
-        description: Remote branch whose head must equal commit_sha
+        description: Remote branch whose head must equal commit_sha; select the same branch under Use workflow from
         required: true
         default: qa
         type: string
@@ -25,7 +25,7 @@ on:
       migration_head:
         description: Exact final migration directory expected at repository HEAD
         required: true
-        default: 20260723120000_stage0_planning_mutation_fingerprint
+        default: 20260806070000_database_generated_uuid_defaults
         type: string
       confirmation:
         description: Type MIGRATE QA <database_fingerprint> TO <migration_head>
@@ -56,21 +56,22 @@ jobs:
       QA_MIGRATION_EXPECTED_DATABASE_FINGERPRINT: e6d10d0c10e8212e11f6c88d6e4747fd281edf273a592283bad6ae6a8f380586
       QA_MIGRATION_COMMIT_SHA: ${{ inputs.commit_sha }}
       QA_MIGRATION_BRANCH: ${{ inputs.branch }}
+      QA_MIGRATION_WORKFLOW_BRANCH: ${{ github.ref_name }}
       QA_MIGRATION_HEAD: ${{ inputs.migration_head }}
       QA_MIGRATION_CONFIRMATION: ${{ inputs.confirmation }}
 
     steps:
       - name: Checkout exact requested commit without credentials
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install locked dependencies
@@ -145,7 +146,7 @@ jobs:
 
       - name: Publish sanitized migration receipt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-migration-${{ github.run_id }}-${{ github.run_attempt }}
           path: |

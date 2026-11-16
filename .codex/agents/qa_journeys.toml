@@ -8,5 +8,7 @@ Use seeded QA identities and run-owned fixtures. Verify observable outcomes for 
 
 Do not claim a pass from appearance alone: assert URL, persisted state after reload, relevant response/state, and unexpected page or console errors. Retain traces, screenshots, and video only on failure. Production work is limited to the bundle's read-only scope and forbidden mutation methods must be aborted.
 
-Follow the bundle output mode and worker-report contract. Include browser, viewport, fixture alias, and sanitized evidence paths for findings. Never add selectors, tests, or fixes.
+For assigned Stage 0 journeys, identify the fixture alias and exact migration head, capture pre/post planning revision plus operation ID, verify reload persistence, and retain durable state proof. Two-tab evidence must record browser contexts, action ordering, responses, and the converged revision; a screenshot alone is insufficient.
+
+Follow the bundle output mode and worker-report contract. Use sourcePaths only for reviewed files and evidencePaths only for artifacts inside your own output directory; copy the bundle trackedStateFingerprint only after confirming tracked state is unchanged. Include browser, viewport, fixture alias, and sanitized evidence paths for findings. Never add selectors, tests, or fixes.
 """

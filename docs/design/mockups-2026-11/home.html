@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Home · redesign mockup</title>
+    <link rel="stylesheet" href="mock.css" />
+    <style>
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 520px;
+        gap: 56px;
+        align-items: center;
+        padding: 84px 0 96px;
+      }
+      .hero h1 {
+        font-size: 68px;
+        margin-top: 18px;
+      }
+      .hero p {
+        font-size: 20px;
+        color: #4a4239;
+        margin-top: 22px;
+        max-width: 470px;
+      }
+      .hero .cta {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        margin-top: 36px;
+      }
+      .hero .btn {
+        height: 46px;
+        padding: 0 24px;
+        font-size: 15px;
+      }
+
+      .collage {
+        position: relative;
+        height: 470px;
+      }
+      .collage .print {
+        position: absolute;
+        padding-bottom: 10px;
+      }
+      .collage .a {
+        width: 400px;
+        left: 20px;
+        top: 10px;
+        transform: rotate(-3deg);
+      }
+      .collage .b {
+        width: 230px;
+        right: 0;
+        top: 190px;
+        transform: rotate(5deg);
+      }
+      .collage .a .photo {
+        aspect-ratio: 4 / 3.2;
+      }
+      .collage .b .photo {
+        aspect-ratio: 1;
+      }
+      .collage .stub {
+        position: absolute;
+        left: 0;
+        bottom: 6px;
+        width: 350px;
+        transform: rotate(-1.5deg);
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-print);
+        --notch: var(--paper);
+      }
+      .collage .stamp {
+        position: absolute;
+        right: 24px;
+        bottom: 26px;
+        transform: rotate(-7deg);
+      }
+
+      .section {
+        padding: 56px 0 0;
+        border-top: 1px solid var(--line);
+      }
+      .section > header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 32px;
+      }
+      .section h2 {
+        font-size: 34px;
+      }
+
+      .trips {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 40px;
+      }
+      .tripcard {
+        text-decoration: none;
+        display: block;
+      }
+      .tripcard .photo {
+        aspect-ratio: 16 / 10;
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        outline: 1px solid rgba(0, 0, 0, 0.1);
+        outline-offset: -1px;
+      }
+      .tripcard .stamp {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        background: rgba(255, 253, 248, 0.9);
+        mix-blend-mode: normal;
+        opacity: 1;
+      }
+      .tripcard .label {
+        margin-top: 18px;
+      }
+      .tripcard h3 {
+        font-size: 27px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        margin-top: 6px;
+        line-height: 1.15;
+      }
+      .tripcard .meta {
+        font-family: var(--sans);
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
+      .memory {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 56px;
+        padding: 56px 0 110px;
+        margin-top: 72px;
+        border-top: 1px solid var(--line);
+      }
+      .memory h2 {
+        font-size: 34px;
+      }
+      .memory .intro {
+        color: var(--muted);
+        margin-top: 12px;
+        font-size: 16px;
+      }
+      .facts {
+        display: grid;
+      }
+      .fact {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: baseline;
+        padding: 18px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .fact:first-child {
+        padding-top: 4px;
+      }
+      .fact strong {
+        font-weight: 400;
+        font-size: 21px;
+        font-style: italic;
+      }
+      .fact span {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 0 20px;
+        }
+        .nav a:not(.on) {
+          display: none;
+        }
+        .top {
+          gap: 16px;
+          padding-top: 20px;
+        }
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 36px;
+          padding: 44px 0 56px;
+        }
+        .hero h1 {
+          font-size: 44px;
+        }
+        .hero p {
+          font-size: 18px;
+        }
+        .collage {
+          height: 330px;
+        }
+        .collage .a {
+          width: 76%;
+          left: 0;
+        }
+        .collage .b {
+          width: 44%;
+          top: 130px;
+        }
+        .collage .stub {
+          width: 78%;
+          bottom: 0;
+        }
+        .collage .stamp {
+          display: none;
+        }
+        .section h2,
+        .memory h2 {
+          font-size: 28px;
+        }
+        .trips {
+          grid-template-columns: 1fr;
+          gap: 36px;
+        }
+        .memory {
+          grid-template-columns: 1fr;
+          gap: 24px;
+          padding-bottom: 72px;
+          margin-top: 56px;
+        }
+        .fact {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+        .fact strong {
+          font-size: 19px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <a class="wordmark" href="#">Travle<span>Buddy</span></a>
+        <nav class="nav">
+          <a class="on" href="#">Trips</a><a href="#">Planning</a
+          ><a href="#">What I remember</a>
+        </nav>
+        <div class="avatar">G</div>
+      </div>
+
+      <section class="hero">
+        <div>
+          <div class="label">Welcome back · planning in progress</div>
+          <h1>Tokyo is waiting on <em>five choices.</em></h1>
+          <p>
+            Three slow days in May. Your flight, your hotel and your teamLab
+            ticket are already in place.
+          </p>
+          <div class="cta">
+            <a class="btn" href="#">Continue planning</a
+            ><a class="link" href="#">Start a new trip</a>
+          </div>
+        </div>
+        <div class="collage">
+          <div class="print a">
+            <div class="photo">
+              <img
+                src="../../../public/prototype/photos/yanaka-ginza.jpg"
+                alt=""
+              />
+            </div>
+          </div>
+          <div class="print b">
+            <div class="photo">
+              <img
+                src="../../../public/prototype/photos/nezu-shrine.jpg"
+                alt=""
+              />
+            </div>
+          </div>
+          <span class="stamp">Tokyo · May 2027</span>
+          <div class="stub">
+            <div class="time">14:05</div>
+            <div class="body">
+              <strong>NH 212 to Haneda</strong><span>Mon 10 May · flight</span>
+            </div>
+            <div class="tag">BOOKED</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <header>
+          <h2>Your other trips</h2>
+          <a class="link quiet" href="#">See all</a>
+        </header>
+        <div class="trips">
+          <a class="tripcard" href="#">
+            <div class="photo">
+              <img
+                src="../../../public/prototype/photos/alfama-tram.jpg"
+                alt=""
+              />
+            </div>
+            <div class="label"><b>Upcoming</b> · 2–7 August 2027</div>
+            <h3>Lisbon with the family</h3>
+            <div class="meta">4 travellers · fully planned</div>
+          </a>
+          <a class="tripcard" href="#">
+            <div class="photo">
+              <img
+                src="../../../public/prototype/photos/fushimi-inari.jpg"
+                alt=""
+              /><span class="stamp">Kyoto · 2026</span>
+            </div>
+            <div class="label">Past · 3–8 November 2026</div>
+            <h3>Kyoto in autumn</h3>
+            <div class="meta">Where I learned you like late starts</div>
+          </a>
+        </div>
+      </section>
+
+      <section class="memory">
+        <div>
+          <div class="label">What I remember</div>
+          <h2>Your taste, <em>so far</em></h2>
+          <p class="intro">
+            Every trip teaches me a little more. You can change or remove
+            anything.
+          </p>
+        </div>
+        <div class="facts">
+          <div class="fact">
+            <strong>Days that start late, around ten.</strong
+            ><span>From Kyoto, November 2026</span>
+          </div>
+          <div class="fact">
+            <strong>One main sight a day, then time to wander.</strong
+            ><span>From Kyoto, November 2026</span>
+          </div>
+          <div class="fact">
+            <strong>No shellfish, ever.</strong><span>You told me</span>
+          </div>
+          <div class="fact">
+            <strong
+              >Trains over taxis when the ride is under forty minutes.</strong
+            ><span>From Lisbon planning</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

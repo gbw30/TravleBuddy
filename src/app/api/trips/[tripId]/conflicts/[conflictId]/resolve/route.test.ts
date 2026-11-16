@@ -40,6 +40,18 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000010",
+};
+
+function mutationRequest(body: Record<string, unknown> = {}) {
+  return new Request("http://localhost", {
+    method: "PATCH",
+    body: JSON.stringify({ ...body, ...mutationControl }),
+  });
+}
+
 describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,7 +63,7 @@ describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
       status: "updated",
     });
 
-    const response = await PATCH(new Request("http://localhost"), context);
+    const response = await PATCH(mutationRequest(), context);
 
     expect(response.status).toBe(200);
     expect(mocks.conflicts.updateItineraryConflictStatus).toHaveBeenCalledWith(
@@ -61,6 +73,11 @@ describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
         conflictId: "conflict_1",
         status: "RESOLVED",
       },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "conflict_status_update",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
     expect(mocks.cache.revalidatePath).toHaveBeenCalledWith(
       "/trips/trip_1/itinerary",
@@ -77,10 +94,7 @@ describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
     });
 
     const response = await PATCH(
-      new Request("http://localhost", {
-        method: "PATCH",
-        body: JSON.stringify({ status: "IGNORED" }),
-      }),
+      mutationRequest({ status: "IGNORED" }),
       context,
     );
 
@@ -92,6 +106,11 @@ describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
         conflictId: "conflict_1",
         status: "IGNORED",
       },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "conflict_status_update",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
@@ -99,7 +118,7 @@ describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
     mocks.auth.assertAuthenticatedApiUser.mockRejectedValueOnce(
       new UnauthorizedError(),
     );
-    expect((await PATCH(new Request("http://localhost"), context)).status).toBe(
+    expect((await PATCH(mutationRequest(), context)).status).toBe(
       401,
     );
 
@@ -107,14 +126,14 @@ describe("/api/trips/[tripId]/conflicts/[conflictId]/resolve route", () => {
     mocks.conflicts.updateItineraryConflictStatus.mockResolvedValueOnce({
       status: "conflict_not_found",
     });
-    expect((await PATCH(new Request("http://localhost"), context)).status).toBe(
+    expect((await PATCH(mutationRequest(), context)).status).toBe(
       404,
     );
 
     mocks.conflicts.updateItineraryConflictStatus.mockResolvedValueOnce({
       status: "archived",
     });
-    expect((await PATCH(new Request("http://localhost"), context)).status).toBe(
+    expect((await PATCH(mutationRequest(), context)).status).toBe(
       409,
     );
   });

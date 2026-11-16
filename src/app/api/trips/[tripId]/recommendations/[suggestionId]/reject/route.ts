@@ -4,6 +4,15 @@ import {
 } from "@/lib/authorization";
 import { rejectRecommendation } from "@/features/recommendations/service";
 import { rejectRecommendationInputSchema } from "@/features/recommendations/schemas";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type RejectRouteContext = {
   params: Promise<{
@@ -17,14 +26,6 @@ function apiError(message: string, status: number, details?: unknown) {
     details ? { error: message, details } : { error: message },
     { status },
   );
-}
-
-async function readJson(request: Request) {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
 }
 
 function accessErrorResponse(
@@ -53,9 +54,14 @@ export async function POST(request: Request, context: RejectRouteContext) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId, suggestionId } = await context.params;
-    const parsed = rejectRecommendationInputSchema.safeParse(
-      await readJson(request),
-    );
+    const body = await readPlanningMutationJson(request);
+    const parsedControl = parsePlanningMutationControl(body);
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
+    const parsed = rejectRecommendationInputSchema.safeParse(body);
 
     if (!parsed.success) {
       return apiError("Invalid rejection payload.", 400, {
@@ -63,10 +69,16 @@ export async function POST(request: Request, context: RejectRouteContext) {
       });
     }
 
-    const result = await rejectRecommendation(userId, tripId, {
+    const input = {
       suggestionId,
       ...parsed.data,
-    });
+    };
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "recommendation_reject",
+      input,
+    );
+    const result = await rejectRecommendation(userId, tripId, input, control);
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -80,6 +92,9 @@ export async function POST(request: Request, context: RejectRouteContext) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to reject recommendation.", 500);
   }

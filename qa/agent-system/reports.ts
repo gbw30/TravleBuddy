@@ -21,6 +21,7 @@ import {
 import { featureRegistryById, isBlockingFeatureState } from "../contracts/features";
 import { scenarioCatalog } from "../scenarios";
 import { qaResultsDirectory } from "../runtime/fixtures";
+import { readTrackedStateFingerprint } from "./context";
 
 const textExtensions = new Set([
   ".json",
@@ -58,14 +59,17 @@ async function sha256File(filePath: string) {
   return hash.digest("hex");
 }
 
-function resolveEvidencePath(runRoot: string, evidencePath: string) {
-  if (path.isAbsolute(evidencePath)) {
-    throw new Error(`Evidence paths must be repository-relative: ${evidencePath}`);
+function resolveContainedPath(root: string, value: string, kind: string) {
+  if (value.includes("\0")) {
+    throw new Error(`${kind} paths must not contain null bytes.`);
   }
-  const resolved = path.resolve(process.cwd(), evidencePath);
-  const relative = path.relative(runRoot, resolved);
+  if (path.isAbsolute(value)) {
+    throw new Error(`${kind} paths must be repository-relative: ${value}`);
+  }
+  const resolved = path.resolve(process.cwd(), value);
+  const relative = path.relative(root, resolved);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error(`Evidence path is outside the active QA run: ${evidencePath}`);
+    throw new Error(`${kind} path is outside its allowed root: ${value}`);
   }
   return resolved;
 }
@@ -89,6 +93,11 @@ function evidenceScenarioMap(report: QaWorkerReport) {
       add(evidencePath, finding.scenarioId);
     }
   }
+  for (const performance of report.performanceEvidence) {
+    for (const evidencePath of performance.evidencePaths) {
+      add(evidencePath, performance.scenarioId);
+    }
+  }
   return map;
 }
 
@@ -97,10 +106,15 @@ export async function createEvidenceIndexEntries(options: {
   report: QaWorkerReport;
 }): Promise<QaEvidenceIndexEntry[]> {
   const entries: QaEvidenceIndexEntry[] = [];
+  const workerRoot = path.join(options.runRoot, "agents", options.report.agent);
   for (const [evidencePath, scenarioIds] of evidenceScenarioMap(
     options.report,
   )) {
-    const resolved = resolveEvidencePath(options.runRoot, evidencePath);
+    const resolved = resolveContainedPath(
+      workerRoot,
+      evidencePath,
+      "Evidence",
+    );
     const file = await stat(resolved);
     if (!file.isFile()) throw new Error(`Evidence is not a file: ${evidencePath}`);
 
@@ -128,6 +142,32 @@ export async function createEvidenceIndexEntries(options: {
     );
   }
   return entries.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+async function validateSourcePaths(report: QaWorkerReport) {
+  const repositoryRoot = path.resolve(process.cwd());
+  const evidence = new Set(
+    [...evidenceScenarioMap(report).keys()].map((value) =>
+      value.replaceAll("\\", "/"),
+    ),
+  );
+  for (const sourcePath of report.sourcePaths) {
+    const normalized = sourcePath.replaceAll("\\", "/");
+    if (evidence.has(normalized)) {
+      throw new Error(
+        `Source paths and evidence paths must be distinct: ${sourcePath}`,
+      );
+    }
+    const resolved = resolveContainedPath(
+      repositoryRoot,
+      sourcePath,
+      "Source",
+    );
+    const source = await stat(resolved);
+    if (!source.isFile()) {
+      throw new Error(`Source path is not a file: ${sourcePath}`);
+    }
+  }
 }
 
 function sameMembers(left: readonly string[], right: readonly string[]) {
@@ -218,6 +258,19 @@ function validateReportIdentity(options: {
   worker: QaWorkerAgent;
 }) {
   const { manifest, context, report, worker } = options;
+  if (context.agent !== worker) throw new Error(`Context agent must be ${worker}.`);
+  if (context.runId !== manifest.runId) throw new Error("Context run ID mismatch.");
+  if (context.commitSha !== manifest.commitSha) {
+    throw new Error("Context commit SHA mismatch.");
+  }
+  if (context.generatedAt !== manifest.generatedAt) {
+    throw new Error("Context and manifest timestamps must match.");
+  }
+  if (
+    context.trackedStateFingerprint !== manifest.trackedStateFingerprint
+  ) {
+    throw new Error("Context tracked-state fingerprint mismatch.");
+  }
   if (report.agent !== worker) throw new Error(`Report agent must be ${worker}.`);
   if (report.runId !== manifest.runId) throw new Error("Report run ID mismatch.");
   if (report.commitSha !== manifest.commitSha) {
@@ -227,9 +280,82 @@ function validateReportIdentity(options: {
   if (report.target.kind !== manifest.targetKind) {
     throw new Error("Report target kind mismatch.");
   }
+  if (
+    report.trackedStateFingerprint !== manifest.trackedStateFingerprint ||
+    readTrackedStateFingerprint() !== manifest.trackedStateFingerprint
+  ) {
+    throw new Error("Tracked repository state changed during worker review.");
+  }
+  const contextTime = Date.parse(context.generatedAt);
+  const reportTime = Date.parse(report.generatedAt);
+  if (reportTime < contextTime || reportTime > Date.now() + 5 * 60 * 1000) {
+    throw new Error(
+      "Report timestamp must follow context generation and cannot be in the future.",
+    );
+  }
   const expected = context.assignedScenarios.map((scenario) => scenario.id);
   if (!sameMembers(report.assignedScenarioIds, expected)) {
     throw new Error("Report assigned scenarios do not match its context bundle.");
+  }
+  if (
+    !sameMembers(
+      report.scenarioExecutions.map((execution) => execution.scenarioId),
+      expected,
+    )
+  ) {
+    throw new Error(
+      "Every assigned scenario must have exactly one worker execution result.",
+    );
+  }
+  const assigned = new Set(expected);
+  for (const finding of report.findings) {
+    if (!assigned.has(finding.scenarioId)) {
+      throw new Error(`Finding ${finding.id} is outside the worker assignment.`);
+    }
+  }
+  for (const performance of report.performanceEvidence) {
+    if (!assigned.has(performance.scenarioId)) {
+      throw new Error(
+        `Performance evidence for ${performance.scenarioId} is outside the worker assignment.`,
+      );
+    }
+  }
+  for (const blocker of report.environmentBlockers) {
+    if (
+      blocker.affectedScenarioIds.some((scenarioId) => !assigned.has(scenarioId))
+    ) {
+      throw new Error(`Blocker ${blocker.id} is outside the worker assignment.`);
+    }
+  }
+  for (const scenarioId of report.flakyScenarioIds) {
+    const execution = report.scenarioExecutions.find(
+      (entry) => entry.scenarioId === scenarioId,
+    );
+    if (!execution || execution.attempts < 2) {
+      throw new Error(
+        `Flaky scenario ${scenarioId} must have a retried execution.`,
+      );
+    }
+  }
+  const hasFailure = report.scenarioExecutions.some(
+    (execution) => execution.status === "failed",
+  );
+  const hasRequiredBlocker = report.environmentBlockers.some(
+    (blocker) => blocker.required,
+  );
+  if (hasFailure && report.verdict !== "FAIL") {
+    throw new Error("A failed scenario requires a FAIL worker verdict.");
+  }
+  if (!hasFailure && hasRequiredBlocker && report.verdict !== "BLOCKED") {
+    throw new Error("A required environment blocker requires BLOCKED.");
+  }
+  if (
+    report.verdict === "PASS" &&
+    report.scenarioExecutions.some((execution) =>
+      ["failed", "blocked"].includes(execution.status),
+    )
+  ) {
+    throw new Error("PASS cannot contain failed or blocked executions.");
   }
 }
 
@@ -281,6 +407,7 @@ export async function validateAndSummarizeWorkerReports(runId: string) {
       const report = qaWorkerReportSchema.parse(JSON.parse(rawReport));
       const context = await readAgentContext(manifest, worker);
       validateReportIdentity({ manifest, context, report, worker });
+      await validateSourcePaths(report);
       const entries = await createEvidenceIndexEntries({ runRoot, report });
       evidenceEntries.push(...entries);
       const primary = primaryEvidenceForReport(report);

@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motion storyboard</title>
+    <link rel="stylesheet" href="v2.css" />
+    <style>
+      .wrap {
+        max-width: 1200px;
+        padding: 56px 48px 64px;
+      }
+      h1 {
+        font-size: 72px;
+        margin-top: 18px;
+      }
+      .sub {
+        font-size: 18px;
+        color: var(--body);
+        margin-top: 16px;
+        max-width: 780px;
+      }
+      .seq {
+        margin-top: 34px;
+        background: var(--sheet);
+        border-radius: 18px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        padding: 28px 30px 26px;
+      }
+      .seq header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 30px;
+      }
+      .seq h2 {
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 38px;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+        margin-top: 8px;
+      }
+      .seq .spec {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--muted);
+        text-align: right;
+        line-height: 1.6;
+      }
+      .frames {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-top: 22px;
+      }
+      .frame {
+        background: var(--paper);
+        border-radius: 12px;
+        height: 214px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px var(--line);
+        padding: 18px;
+      }
+      .t {
+        position: absolute;
+        left: 12px;
+        bottom: 10px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--muted);
+      }
+      .cap {
+        font-size: 13px;
+        color: var(--body);
+        margin-top: 8px;
+        line-height: 1.4;
+      }
+      /* 1: arriving */
+      .a-h {
+        font-family: var(--display);
+        font-size: 40px;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .a-p {
+        height: 7px;
+        border-radius: 4px;
+        background: rgba(29, 26, 22, 0.16);
+        margin-top: 12px;
+        width: 78%;
+        box-shadow: 0 13px 0 rgba(29, 26, 22, 0.16);
+      }
+      .a-c {
+        display: flex;
+        gap: 8px;
+        margin-top: 34px;
+      }
+      .a-c u {
+        flex: 1;
+        height: 62px;
+        border-radius: 8px;
+        background: var(--sheet);
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 4px 10px rgba(29, 26, 22, 0.07);
+      }
+      .hide {
+        opacity: 0;
+      }
+      .half {
+        opacity: 0.45;
+        transform: translateY(10px);
+        filter: blur(2px);
+      }
+      /* 2: choosing */
+      .cc {
+        width: 176px;
+        margin: 8px auto 0;
+        background: var(--sheet);
+        border-radius: 12px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 4px 12px rgba(29, 26, 22, 0.06);
+        padding: 12px;
+      }
+      .cc u {
+        display: block;
+        height: 62px;
+        border-radius: 6px;
+        background: var(--tint);
+      }
+      .cc b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 23px;
+        margin-top: 10px;
+        line-height: 1;
+      }
+      .cc span {
+        display: block;
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+      .cc i {
+        float: right;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1.5px rgba(29, 26, 22, 0.25);
+        font-style: normal;
+        font-size: 12px;
+        display: grid;
+        place-items: center;
+        margin-top: -34px;
+      }
+      .cc.h {
+        transform: translateY(-6px);
+        box-shadow:
+          0 0 0 1px rgba(29, 26, 22, 0.25),
+          var(--shadow-lift);
+      }
+      .cc.h i,
+      .cc.s i {
+        background: var(--ink);
+        color: var(--paper);
+        box-shadow: none;
+      }
+      .cc.p {
+        transform: scale(0.97);
+      }
+      .cc.s {
+        box-shadow:
+          0 0 0 2px var(--ink),
+          0 4px 12px rgba(29, 26, 22, 0.06);
+      }
+      .cur {
+        position: absolute;
+        width: 16px;
+        height: 22px;
+        background: var(--ink);
+        clip-path: polygon(
+          0 0,
+          0 78%,
+          26% 60%,
+          46% 100%,
+          62% 92%,
+          42% 54%,
+          76% 54%
+        );
+      }
+      /* 3: confirming */
+      .g {
+        background: var(--sheet);
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 0 0 1.5px rgba(164, 80, 44, 0.5);
+        height: 150px;
+        position: relative;
+      }
+      .g.ok {
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 4px 12px rgba(29, 26, 22, 0.06);
+      }
+      .g b {
+        display: block;
+        font-family: var(--display);
+        font-style: italic;
+        font-weight: 400;
+        font-size: 23px;
+        line-height: 1.1;
+      }
+      .g .ask {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        background: rgba(164, 80, 44, 0.08);
+        border-radius: 9px;
+        padding: 8px 8px 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        font-weight: 500;
+      }
+      .g .ask span {
+        flex: 1;
+      }
+      .g .y,
+      .g .n {
+        height: 26px;
+        padding: 0 11px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        display: inline-flex;
+        align-items: center;
+      }
+      .g .y {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .g .n {
+        box-shadow: inset 0 0 0 1px rgba(29, 26, 22, 0.3);
+      }
+      .g .y.p {
+        transform: scale(0.94);
+        background: #000;
+      }
+      .g .stamp {
+        position: absolute;
+        right: 12px;
+        top: 54px;
+        font-size: 9.5px;
+        padding: 4px 8px;
+      }
+      .g .stamp.in {
+        transform: rotate(-14deg) scale(1.5);
+        opacity: 0.4;
+      }
+      .g .foot {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .g .dots {
+        display: flex;
+        gap: 3px;
+      }
+      .g .dots i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--ink);
+      }
+      /* 4: card to itinerary */
+      .lay {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        height: 100%;
+      }
+      .slot {
+        align-self: center;
+        border: 1.5px dashed var(--terracotta);
+        border-radius: 8px;
+        height: 44px;
+        background: rgba(164, 80, 44, 0.05);
+        font-size: 11px;
+        color: var(--terracotta);
+        display: grid;
+        place-items: center;
+      }
+      .slot.full {
+        border: 0;
+        background: var(--sheet);
+        box-shadow: 0 0 0 1px var(--line);
+        color: var(--ink);
+        font-family: var(--display);
+        font-size: 17px;
+      }
+      .pc {
+        align-self: center;
+        background: var(--sheet);
+        padding: 6px 6px 18px;
+        border-radius: 3px;
+        box-shadow: 0 6px 14px rgba(29, 26, 22, 0.16);
+      }
+      .pc div {
+        aspect-ratio: 4/3;
+        border-radius: 1px;
+        overflow: hidden;
+      }
+      .fly {
+        position: absolute;
+        left: 34%;
+        top: 30%;
+        width: 34%;
+        transform: rotate(8deg) scale(0.82);
+      }
+      .ghosted {
+        opacity: 0.25;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <span class="chip"><b>Proposal</b>What moves, when, and how fast</span>
+      <h1 class="display">Motion that <em>explains</em> something</h1>
+      <p class="sub">
+        Four moments, each drawn as four frames. Every animation here answers
+        “what just happened?”. Nothing moves for decoration. Speeds and curves
+        come from the sites measured.
+      </p>
+
+      <div class="seq">
+        <header>
+          <div>
+            <div class="label">1 · Arriving on a screen</div>
+            <h2>The page assembles in reading order</h2>
+          </div>
+          <div class="spec">
+            600 ms each · 100 ms apart<br />cubic-bezier(0.22, 1, 0.36, 1)
+          </div>
+        </header>
+        <div class="frames">
+          <div>
+            <div class="frame">
+              <div class="a-h half">Where to <em>next?</em></div>
+              <div class="a-p hide"></div>
+              <div class="a-c hide"><u></u><u></u></div>
+              <span class="t">0 ms</span>
+            </div>
+            <p class="cap">The headline rises 12px and sharpens.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="a-h">Where to <em>next?</em></div>
+              <div class="a-p half"></div>
+              <div class="a-c hide"><u></u><u></u></div>
+              <span class="t">150 ms</span>
+            </div>
+            <p class="cap">The explanation follows.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="a-h">Where to <em>next?</em></div>
+              <div class="a-p"></div>
+              <div class="a-c"><u class="half"></u><u class="hide"></u></div>
+              <span class="t">350 ms</span>
+            </div>
+            <p class="cap">Choices arrive one after another.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="a-h">Where to <em>next?</em></div>
+              <div class="a-p"></div>
+              <div class="a-c"><u></u><u></u></div>
+              <span class="t">900 ms</span>
+            </div>
+            <p class="cap">
+              Settled. It plays once per visit, never on every click.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="seq">
+        <header>
+          <div>
+            <div class="label">2 · Choosing</div>
+            <h2>A card lifts to meet you, then holds your choice</h2>
+          </div>
+          <div class="spec">
+            hover 300 ms · press 150 ms<br />cubic-bezier(0.22, 1, 0.36, 1)
+          </div>
+        </header>
+        <div class="frames">
+          <div>
+            <div class="frame">
+              <div class="cc">
+                <u></u><b>Plan together</b><span>About 15 minutes</span><i>→</i>
+              </div>
+              <span class="t">at rest</span>
+            </div>
+            <p class="cap">
+              A quiet outline and an arrow say “this can be picked”.
+            </p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="cc h">
+                <u></u><b>Plan together</b><span>About 15 minutes</span><i>→</i>
+              </div>
+              <span class="cur" style="right: 44px; bottom: 54px"></span
+              ><span class="t">pointer over</span>
+            </div>
+            <p class="cap">Rises 6px, shadow deepens, arrow fills.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="cc h p">
+                <u></u><b>Plan together</b><span>About 15 minutes</span><i>→</i>
+              </div>
+              <span class="cur" style="right: 44px; bottom: 54px"></span
+              ><span class="t">pressed</span>
+            </div>
+            <p class="cap">Dips slightly, like a real card under a finger.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="cc s">
+                <u></u><b>Plan together</b><span>About 15 minutes</span><i>✓</i>
+              </div>
+              <span class="t">chosen</span>
+            </div>
+            <p class="cap">
+              A dark ring and a tick stay. The main button below updates its
+              words.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="seq">
+        <header>
+          <div>
+            <div class="label">3 · Confirming a guess on Profile</div>
+            <h2>“Yes” lands a stamp, and the doubt disappears</h2>
+          </div>
+          <div class="spec">
+            stamp 300 ms · card 300 ms<br />cubic-bezier(0.22, 1, 0.36, 1)
+          </div>
+        </header>
+        <div class="frames">
+          <div>
+            <div class="frame">
+              <div class="g">
+                <b>Late starts, around ten</b>
+                <div class="ask">
+                  <span>Is this right?</span><span class="y">Yes</span
+                  ><span class="n">Not quite</span>
+                </div>
+              </div>
+              <span class="t">a guess</span>
+            </div>
+            <p class="cap">A terracotta edge marks what I am unsure of.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="g">
+                <b>Late starts, around ten</b>
+                <div class="ask">
+                  <span>Is this right?</span><span class="y p">Yes</span
+                  ><span class="n">Not quite</span>
+                </div>
+              </div>
+              <span class="cur" style="left: 54%; bottom: 44px"></span
+              ><span class="t">pressed</span>
+            </div>
+            <p class="cap">The button shrinks to 96%.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="g ok">
+                <b>Late starts, around ten</b
+                ><span class="stamp in">Confirmed</span>
+              </div>
+              <span class="t">+150 ms</span>
+            </div>
+            <p class="cap">A stamp drops in from above, large and faint.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="g ok">
+                <b>Late starts, around ten</b
+                ><span class="stamp">Confirmed</span>
+                <div class="foot">
+                  <span class="dots"><i></i><i></i><i></i></span>Certain · you
+                  told me
+                </div>
+              </div>
+              <span class="t">+450 ms</span>
+            </div>
+            <p class="cap">
+              It settles. The edge goes neutral and the dots fill to three.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="seq">
+        <header>
+          <div>
+            <div class="label">4 · Picking a place (already built, kept)</div>
+            <h2>The postcard travels to its place in the day</h2>
+          </div>
+          <div class="spec">500 ms<br />browser view transition</div>
+        </header>
+        <div class="frames">
+          <div>
+            <div class="frame">
+              <div class="lay">
+                <div class="pc">
+                  <div>
+                    <img
+                      src="../../../../public/prototype/photos/senso-ji.jpg"
+                      alt=""
+                    />
+                  </div>
+                </div>
+                <div class="slot">10:00 · choosing</div>
+              </div>
+              <span class="t">0 ms</span>
+            </div>
+            <p class="cap">You press Pick on a postcard.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="lay">
+                <div class="pc ghosted">
+                  <div>
+                    <img
+                      src="../../../../public/prototype/photos/senso-ji.jpg"
+                      alt=""
+                    />
+                  </div>
+                </div>
+                <div class="slot">10:00 · choosing</div>
+              </div>
+              <div class="pc fly">
+                <div>
+                  <img
+                    src="../../../../public/prototype/photos/senso-ji.jpg"
+                    alt=""
+                  />
+                </div>
+              </div>
+              <span class="t">200 ms</span>
+            </div>
+            <p class="cap">It lifts and crosses to the itinerary.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="lay">
+                <div></div>
+                <div
+                  class="slot full"
+                  style="
+                    transform: scale(1.04);
+                    box-shadow:
+                      0 0 0 1px var(--line),
+                      var(--shadow-lift);
+                  "
+                >
+                  Senso-ji Temple
+                </div>
+              </div>
+              <span class="t">400 ms</span>
+            </div>
+            <p class="cap">It becomes the row for 10:00.</p>
+          </div>
+          <div>
+            <div class="frame">
+              <div class="lay">
+                <div
+                  style="
+                    align-self: center;
+                    font-family: var(--display);
+                    font-style: italic;
+                    font-size: 19px;
+                    line-height: 1.15;
+                    color: var(--body);
+                  "
+                >
+                  Now for lunch…
+                </div>
+                <div class="slot full">Senso-ji Temple</div>
+              </div>
+              <span class="t">500 ms</span>
+            </div>
+            <p class="cap">
+              The next question appears. You always see where a choice went.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

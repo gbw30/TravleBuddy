@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create · redesign mockup</title>
+    <link rel="stylesheet" href="mock.css" />
+    <style>
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 440px;
+        gap: 72px;
+        padding: 64px 0 110px;
+        align-items: start;
+      }
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .steps i {
+        display: block;
+        width: 44px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--line);
+      }
+      .steps i.on {
+        background: var(--ink);
+      }
+      h1 {
+        font-size: 60px;
+        margin-top: 22px;
+      }
+      .lede {
+        font-size: 20px;
+        color: #4a4239;
+        margin-top: 18px;
+        max-width: 520px;
+      }
+
+      .done {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 44px;
+        padding: 16px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      .tick {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--paper);
+        display: grid;
+        place-items: center;
+        font-family: var(--sans);
+        font-size: 13px;
+        flex: none;
+      }
+      .done p {
+        flex: 1;
+        font-size: 17px;
+      }
+      .done p span {
+        color: var(--muted);
+      }
+
+      .q {
+        margin-top: 44px;
+      }
+      .q h2 {
+        font-size: 34px;
+        margin-top: 10px;
+      }
+      .q .hint {
+        color: var(--muted);
+        margin-top: 8px;
+        font-size: 17px;
+      }
+      .choices {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 28px;
+      }
+      .choice {
+        background: var(--sheet);
+        border-radius: 14px;
+        box-shadow: var(--shadow-sheet);
+        padding: 0 0 24px;
+        text-decoration: none;
+        display: block;
+        position: relative;
+        overflow: hidden;
+      }
+      .choice.pick {
+        box-shadow:
+          0 0 0 2px var(--ink),
+          var(--shadow-sheet);
+      }
+      .choice .art {
+        height: 150px;
+        background: #efe7d8;
+        position: relative;
+        overflow: hidden;
+      }
+      .choice .body {
+        padding: 22px 24px 0;
+      }
+      .choice h3 {
+        font-size: 24px;
+        font-weight: 500;
+        letter-spacing: -0.015em;
+      }
+      .choice p {
+        margin-top: 8px;
+        font-size: 16px;
+        color: #4a4239;
+        line-height: 1.5;
+      }
+      .choice .time {
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--sans);
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .choice .time b {
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .badge {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--sans);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        padding: 5px 10px;
+        border-radius: 999px;
+        z-index: 2;
+      }
+      .radio {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--sheet);
+        box-shadow: inset 0 0 0 1.5px rgba(29, 26, 22, 0.3);
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        font-family: var(--sans);
+        font-size: 12px;
+        color: var(--paper);
+      }
+      .pick .radio {
+        background: var(--ink);
+        box-shadow: none;
+      }
+
+      /* little pictures of what each way of planning looks like */
+      .mini-print {
+        position: absolute;
+        width: 86px;
+        background: var(--sheet);
+        padding: 5px 5px 16px;
+        border-radius: 3px;
+        box-shadow: 0 6px 14px rgba(29, 26, 22, 0.16);
+      }
+      .mini-print div {
+        aspect-ratio: 4/3;
+        border-radius: 1px;
+        overflow: hidden;
+      }
+      .mini-sheet {
+        position: absolute;
+        left: 50%;
+        top: 22px;
+        width: 190px;
+        transform: translateX(-50%) rotate(-2deg);
+        background: var(--sheet);
+        border-radius: 8px;
+        padding: 14px;
+        box-shadow: 0 6px 14px rgba(29, 26, 22, 0.16);
+        display: grid;
+        gap: 8px;
+      }
+      .mini-sheet span {
+        display: block;
+        height: 16px;
+        border-radius: 4px;
+        background: #efe7d8;
+      }
+      .mini-sheet span.t {
+        background: none;
+        box-shadow: inset 0 0 0 1px var(--line);
+        position: relative;
+      }
+      .mini-sheet span.t::after {
+        content: "BOOKED";
+        position: absolute;
+        right: 6px;
+        top: 3px;
+        font-family: var(--mono);
+        font-size: 6.5px;
+        letter-spacing: 0.14em;
+        color: var(--terracotta);
+      }
+      .mini-sheet span.d {
+        background: none;
+        border: 1px dashed rgba(29, 26, 22, 0.25);
+      }
+
+      .later {
+        margin-top: 26px;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .go {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        margin-top: 36px;
+      }
+      .go .btn {
+        height: 46px;
+        padding: 0 26px;
+        font-size: 15px;
+      }
+
+      .side {
+        position: sticky;
+        top: 40px;
+        height: 560px;
+      }
+      .side .print {
+        position: absolute;
+        padding-bottom: 10px;
+      }
+      .side .a {
+        width: 330px;
+        left: 30px;
+        top: 0;
+        transform: rotate(2.5deg);
+      }
+      .side .a .photo {
+        aspect-ratio: 3 / 3.6;
+      }
+      .blank {
+        position: absolute;
+        left: 0;
+        bottom: 20px;
+        width: 300px;
+        background: #f8f1e2;
+        border-radius: 4px;
+        box-shadow: var(--shadow-print);
+        padding: 22px 22px 26px;
+        transform: rotate(-4deg);
+      }
+      .blank .to {
+        font-style: italic;
+        font-size: 22px;
+        line-height: 1.3;
+      }
+      .blank .lines {
+        margin-top: 18px;
+        height: 1px;
+        background: var(--line);
+        box-shadow:
+          0 14px 0 var(--line),
+          0 28px 0 var(--line);
+        width: 62%;
+      }
+      .blank .box {
+        position: absolute;
+        right: 18px;
+        top: 18px;
+        width: 50px;
+        height: 60px;
+        border: 1.5px dashed rgba(29, 26, 22, 0.3);
+        border-radius: 2px;
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 7.5px;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.4;
+      }
+
+      body.s1 .done,
+      body.s1 .q2 {
+        display: none;
+      }
+      body:not(.s1) .q1 {
+        display: none;
+      }
+
+      @media (max-width: 860px) {
+        .wrap {
+          padding: 0 20px;
+        }
+        .nav a:not(.on) {
+          display: none;
+        }
+        .split {
+          grid-template-columns: 1fr;
+          gap: 0;
+          padding: 36px 0 72px;
+        }
+        h1 {
+          font-size: 42px;
+        }
+        .lede {
+          font-size: 18px;
+        }
+        .q h2 {
+          font-size: 28px;
+        }
+        .choices {
+          grid-template-columns: 1fr;
+        }
+        .side {
+          display: none;
+        }
+        .go {
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      if (location.search.includes("s=1")) document.body.classList.add("s1");
+    </script>
+    <div class="wrap">
+      <div class="top">
+        <a class="wordmark" href="#">Travle<span>Buddy</span></a>
+        <nav class="nav">
+          <a href="#">Home</a><a class="on" href="#">Create</a
+          ><a href="#">Profile</a>
+        </nav>
+        <div class="avatar">G</div>
+      </div>
+
+      <div class="split">
+        <div>
+          <div class="steps">
+            <i class="on"></i><i class="s2on"></i><span class="lbl"></span>
+          </div>
+          <h1>Where to <em>next?</em></h1>
+          <p class="lede">
+            Two quick questions, then we start. Nothing here is final. You can
+            change your mind at any point.
+          </p>
+
+          <!-- Step 1, already answered -->
+          <div class="done">
+            <span class="tick">✓</span>
+            <p>Tickets: <span>not booked yet</span></p>
+            <a class="link quiet" href="#">Change</a>
+          </div>
+
+          <!-- Step 1, active -->
+          <section class="q q1">
+            <div class="label">Question 1 of 2</div>
+            <h2>Do you already have <em>tickets?</em></h2>
+            <p class="hint">
+              Flights or trains you have booked decide your dates and cities, so
+              I start from them.
+            </p>
+            <div class="choices">
+              <a class="choice" href="#">
+                <span class="radio"></span>
+                <div class="art">
+                  <div
+                    class="stub"
+                    style="
+                      position: absolute;
+                      left: 50%;
+                      top: 44px;
+                      width: 250px;
+                      transform: translateX(-50%) rotate(-3deg);
+                      --notch: #efe7d8;
+                    "
+                  >
+                    <div class="time">14:05</div>
+                    <div class="body">
+                      <strong>NH 212</strong><span>to Haneda</span>
+                    </div>
+                    <div class="tag">BOOKED</div>
+                  </div>
+                </div>
+                <div class="body">
+                  <h3>Yes, I have tickets</h3>
+                  <p>
+                    Add them and I will build the trip around them. They cannot
+                    be moved by accident.
+                  </p>
+                </div>
+              </a>
+              <a class="choice" href="#">
+                <span class="radio"></span>
+                <div class="art">
+                  <div
+                    class="blank"
+                    style="
+                      left: 50%;
+                      bottom: auto;
+                      top: 26px;
+                      width: 210px;
+                      padding: 16px;
+                      transform: translateX(-50%) rotate(3deg);
+                    "
+                  >
+                    <div class="to" style="font-size: 17px">Somewhere new…</div>
+                    <div class="lines"></div>
+                    <div
+                      class="box"
+                      style="
+                        width: 36px;
+                        height: 44px;
+                        top: 12px;
+                        right: 12px;
+                        font-size: 6px;
+                      "
+                    >
+                      PLACE<br />STAMP
+                    </div>
+                  </div>
+                </div>
+                <div class="body">
+                  <h3>Not yet</h3>
+                  <p>
+                    Tell me roughly where and when. I will suggest dates that
+                    work.
+                  </p>
+                </div>
+              </a>
+            </div>
+          </section>
+
+          <!-- Step 2, active -->
+          <section class="q q2">
+            <div class="label">Question 2 of 2</div>
+            <h2>How would you like to <em>plan?</em></h2>
+            <p class="hint">
+              Both end in the same place: an itinerary you can keep changing.
+            </p>
+            <div class="choices">
+              <a class="choice pick" href="#">
+                <span class="badge">Best for a first trip</span>
+                <span class="radio">✓</span>
+                <div class="art">
+                  <div
+                    class="mini-print"
+                    style="
+                      left: calc(50% - 118px);
+                      top: 34px;
+                      transform: rotate(-7deg);
+                    "
+                  >
+                    <div>
+                      <img
+                        src="../../../public/prototype/photos/meiji-jingu.jpg"
+                        alt=""
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="mini-print"
+                    style="left: calc(50% - 43px); top: 22px; z-index: 1"
+                  >
+                    <div>
+                      <img
+                        src="../../../public/prototype/photos/senso-ji.jpg"
+                        alt=""
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="mini-print"
+                    style="
+                      left: calc(50% + 32px);
+                      top: 36px;
+                      transform: rotate(6deg);
+                    "
+                  >
+                    <div>
+                      <img
+                        src="../../../public/prototype/photos/nezu-shrine.jpg"
+                        alt=""
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div class="body">
+                  <h3>Plan it together</h3>
+                  <p>
+                    I ask a few questions, then show you three places at a time.
+                    You pick, and the trip takes shape.
+                  </p>
+                  <div class="time">
+                    <b>About 15 minutes</b> · you choose every stop
+                  </div>
+                </div>
+              </a>
+              <a class="choice" href="#">
+                <span class="radio"></span>
+                <div class="art">
+                  <div class="mini-sheet">
+                    <span style="width: 55%"></span><span class="t"></span
+                    ><span></span><span class="d"></span
+                    ><span style="width: 80%"></span>
+                  </div>
+                </div>
+                <div class="body">
+                  <h3>Build it for me</h3>
+                  <p>
+                    Fill in one short brief. I build the whole trip and tell you
+                    what I assumed. Then you refine it.
+                  </p>
+                  <div class="time">
+                    <b>About 3 minutes</b> · change anything after
+                  </div>
+                </div>
+              </a>
+            </div>
+            <p class="later">
+              Coming later: start from a template, or build on someone else’s
+              trip.
+            </p>
+            <div class="go">
+              <a class="btn" href="#">Start planning together</a
+              ><a class="link quiet" href="#">Back</a>
+            </div>
+          </section>
+        </div>
+
+        <aside class="side">
+          <div class="print a">
+            <div class="photo">
+              <img
+                src="../../../public/prototype/photos/alfama-tram.jpg"
+                alt=""
+              />
+            </div>
+          </div>
+          <div class="blank">
+            <div class="box">PLACE<br />STAMP<br />HERE</div>
+            <div class="to">Your next trip<br />starts here.</div>
+            <div class="lines"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <script>
+      const s1 = document.body.classList.contains("s1");
+      document.querySelector(".s2on").classList.toggle("on", !s1);
+      document.querySelector(".lbl").textContent = s1
+        ? "Step 1 of 2"
+        : "Step 2 of 2";
+    </script>
+  </body>
+</html>

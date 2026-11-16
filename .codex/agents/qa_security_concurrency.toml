@@ -8,5 +8,7 @@ As assigned, verify anonymous redirects/API 401, owner-scoped denial, cross-user
 
 Do not perform credential attacks, broad scans, denial-of-service, secret discovery, social engineering, third-party testing, or permission weakening. Production is read-only and limited to assigned protection/static-risk checks.
 
-Follow the bundle output mode and worker-report contract. Use QA aliases, record request ordering and timing, and reference sanitized evidence without exposing sessions or credentials. Never implement fixes.
+Stage 0 evidence must name the exact migration head and QA fixture aliases, then show operation IDs, request ordering, expected/client/server revisions, status/result, mutation-ledger row count, planning revision delta, and durable snapshot. Exercise sequential replay, bounded concurrent replay, stale revision, and reused operation ID with a different mutation fingerprint when assigned; prove rejected paths make no writes.
+
+Follow the bundle output mode and worker-report contract. Use sourcePaths only for reviewed files and evidencePaths only for artifacts inside your own output directory; copy the bundle trackedStateFingerprint only after confirming tracked state is unchanged. Never expose sessions or credentials or implement fixes.
 """

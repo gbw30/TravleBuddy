@@ -23,12 +23,18 @@ type ItineraryPageProps = {
 function money(value: {
   estimatedCostAmount: number | null;
   estimatedCostCurrency: string | null;
+  costIsComplete?: boolean;
+  excludedCostCurrencies?: string[];
 }) {
   if (!value.estimatedCostAmount || !value.estimatedCostCurrency) {
     return "Cost not estimated";
   }
 
-  return `${value.estimatedCostCurrency} ${value.estimatedCostAmount}`;
+  const estimate = `${value.estimatedCostCurrency} ${value.estimatedCostAmount}`;
+
+  return value.costIsComplete === false
+    ? `${estimate} (partial; excludes ${(value.excludedCostCurrencies ?? []).join(", ")})`
+    : estimate;
 }
 
 function locationLabel(item: ItineraryItemDto) {
@@ -40,7 +46,10 @@ function locationLabel(item: ItineraryItemDto) {
 }
 
 function groupItemsByLocation(items: readonly ItineraryItemDto[]) {
-  const groups = new Map<string, { label: string; items: ItineraryItemDto[] }>();
+  const groups = new Map<
+    string,
+    { label: string; items: ItineraryItemDto[] }
+  >();
 
   items.forEach((item) => {
     const label = locationLabel(item);
@@ -128,7 +137,11 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
   const { tripId } = await params;
   const result = await getItinerary(userId, tripId);
 
-  if (result.status === "not_found") {
+  if (
+    result.status === "not_found" ||
+    result.status === "version_not_found" ||
+    result.status === "invalid_version"
+  ) {
     notFound();
   }
 
@@ -200,7 +213,9 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
               <AlertTriangle
                 aria-hidden="true"
                 className={
-                  hasConflicts ? "mt-0.5 size-5 text-amber-600" : "mt-0.5 size-5 text-zinc-500"
+                  hasConflicts
+                    ? "mt-0.5 size-5 text-amber-600"
+                    : "mt-0.5 size-5 text-zinc-500"
                 }
               />
               <div>
@@ -236,7 +251,10 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className={tone.label}>
-                          {severityLabel(conflict)} - {conflict.type.toLocaleLowerCase().replaceAll("_", " ")}
+                          {severityLabel(conflict)} -{" "}
+                          {conflict.type
+                            .toLocaleLowerCase()
+                            .replaceAll("_", " ")}
                         </p>
                         <p className="mt-2 text-sm font-medium text-zinc-950">
                           {conflict.message}
@@ -295,7 +313,10 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
           <>
             <section className="mb-5 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2">
-                <CalendarDays aria-hidden="true" className="size-5 text-zinc-500" />
+                <CalendarDays
+                  aria-hidden="true"
+                  className="size-5 text-zinc-500"
+                />
                 <h2 className="text-base font-semibold text-zinc-950">
                   Trip summary
                 </h2>
@@ -305,6 +326,40 @@ export default async function ItineraryPage({ params }: ItineraryPageProps) {
                 {money(itinerary.totals)}
               </p>
             </section>
+
+            {(itinerary.unscheduledItems ?? []).length > 0 ? (
+              <section
+                aria-labelledby="unscheduled-items-title"
+                className="mb-5 rounded-lg border border-sky-200 bg-sky-50 p-5 shadow-sm"
+              >
+                <h2
+                  id="unscheduled-items-title"
+                  className="text-base font-semibold text-zinc-950"
+                >
+                  Selected but unscheduled
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  These selections remain part of your plan, but the current
+                  pace has no day capacity for them. No live scheduling is
+                  implied.
+                </p>
+                <ul className="mt-4 grid gap-3">
+                  {(itinerary.unscheduledItems ?? []).map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-md border border-sky-200 bg-white p-4"
+                    >
+                      <p className="text-sm font-semibold text-zinc-950">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-zinc-600">
+                        {item.reasonMessage}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             <ol className="grid gap-5">
               {itinerary.days.map((day) => (

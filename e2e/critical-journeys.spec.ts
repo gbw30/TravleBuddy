@@ -22,10 +22,16 @@ test.describe("critical authenticated journeys", () => {
   }) => {
     const manifest = await fixtureManifest();
     const checks = [
-      [`/trips/${manifest.ownerTripId}/preferences`, /travel preferences/i],
-      [`/trips/${manifest.ownerTripId}/logistics`, /logistics/i],
-      [`/trips/${manifest.ownerTripId}/planning`, /planning/i],
-      [`/trips/${manifest.ownerTripId}/itinerary`, /itinerary/i],
+      [
+        `/trips/${manifest.ownerTripId}/preferences`,
+        "Shape your planning profile",
+      ],
+      [`/trips/${manifest.ownerTripId}/logistics`, "I have tickets/timing"],
+      [`/trips/${manifest.ownerTripId}/planning`, "Planning timeline"],
+      [
+        `/trips/${manifest.ownerTripId}/itinerary`,
+        "Read-only itinerary draft",
+      ],
     ] as const;
 
     for (const [url, heading] of checks) {
@@ -60,4 +66,3 @@ test.describe("critical authenticated journeys", () => {
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
   });
 });
-

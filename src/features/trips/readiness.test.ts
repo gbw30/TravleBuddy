@@ -12,6 +12,7 @@ const completePlanningTrip = {
   endDate: new Date("2026-07-08"),
   budgetAmount: "2500.00",
   budgetCurrency: "USD",
+  travelStyle: "BALANCED",
   destinations: [{ city: "Paris", country: "France" }],
 } satisfies TripReadinessInput;
 
@@ -90,7 +91,26 @@ describe("trip readiness", () => {
     ).toBe(false);
   });
 
-  it("allows full planning when status, dates, budget, currency, and destinations exist", () => {
+  it("does not allow full planning when travel pace/style is missing", () => {
+    expect(
+      canUseFullPlanning({
+        ...completePlanningTrip,
+        travelStyle: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts travel pace from the persisted preference relation", () => {
+    expect(
+      canUseFullPlanning({
+        ...completePlanningTrip,
+        travelStyle: null,
+        preference: { pace: "RELAXED" },
+      }),
+    ).toBe(true);
+  });
+
+  it("allows full planning when status, dates, budget, currency, destinations, and pace exist", () => {
     expect(canUseFullPlanning(completePlanningTrip)).toBe(true);
   });
 
@@ -104,6 +124,7 @@ describe("trip readiness", () => {
       "at least one destination",
       "valid date range",
       "trip-level budget amount and currency",
+      "travel pace/style",
     ]);
   });
 });

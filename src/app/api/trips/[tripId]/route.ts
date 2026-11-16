@@ -5,6 +5,15 @@ import {
 import { deleteTrip, updateTrip } from "@/features/trips/actions";
 import { getTripByIdForUser } from "@/features/trips/queries";
 import { patchTripInputSchema } from "@/features/trips/schemas";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type TripRouteContext = {
   params: Promise<{
@@ -14,14 +23,6 @@ type TripRouteContext = {
 
 function apiError(message: string, status: number) {
   return Response.json({ error: message }, { status });
-}
-
-async function readJson(request: Request) {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
 }
 
 export async function GET(_request: Request, context: TripRouteContext) {
@@ -48,7 +49,13 @@ export async function PATCH(request: Request, context: TripRouteContext) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId } = await context.params;
-    const body = await readJson(request);
+    const body = await readPlanningMutationJson(request);
+    const parsedControl = parsePlanningMutationControl(body);
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
     const parsed = patchTripInputSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -61,7 +68,12 @@ export async function PATCH(request: Request, context: TripRouteContext) {
       );
     }
 
-    const result = await updateTrip(userId, tripId, parsed.data);
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "trip_settings_update",
+      parsed.data,
+    );
+    const result = await updateTrip(userId, tripId, parsed.data, control);
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -87,6 +99,9 @@ export async function PATCH(request: Request, context: TripRouteContext) {
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to update trip.", 500);
   }

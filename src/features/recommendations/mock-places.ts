@@ -1,28 +1,29 @@
 import { tripLocationCatalog } from "@/features/trips/location-catalog";
 import type { MockPlace, PlanningTopic } from "./types";
 
-const cityCoordinates: Record<string, { latitude: number; longitude: number }> = {
-  Amsterdam: { latitude: 52.3676, longitude: 4.9041 },
-  Bangkok: { latitude: 13.7563, longitude: 100.5018 },
-  Barcelona: { latitude: 41.3874, longitude: 2.1686 },
-  Berlin: { latitude: 52.52, longitude: 13.405 },
-  Bogota: { latitude: 4.711, longitude: -74.0721 },
-  "Buenos Aires": { latitude: -34.6037, longitude: -58.3816 },
-  Lisbon: { latitude: 38.7223, longitude: -9.1393 },
-  London: { latitude: 51.5072, longitude: -0.1276 },
-  "Los Angeles": { latitude: 34.0522, longitude: -118.2437 },
-  Madrid: { latitude: 40.4168, longitude: -3.7038 },
-  "Mexico City": { latitude: 19.4326, longitude: -99.1332 },
-  Miami: { latitude: 25.7617, longitude: -80.1918 },
-  "New York": { latitude: 40.7128, longitude: -74.006 },
-  Paris: { latitude: 48.8566, longitude: 2.3522 },
-  Prague: { latitude: 50.0755, longitude: 14.4378 },
-  Rome: { latitude: 41.9028, longitude: 12.4964 },
-  Seoul: { latitude: 37.5665, longitude: 126.978 },
-  Sydney: { latitude: -33.8688, longitude: 151.2093 },
-  Tokyo: { latitude: 35.6762, longitude: 139.6503 },
-  Vienna: { latitude: 48.2082, longitude: 16.3738 },
-};
+const cityCoordinates: Record<string, { latitude: number; longitude: number }> =
+  {
+    Amsterdam: { latitude: 52.3676, longitude: 4.9041 },
+    Bangkok: { latitude: 13.7563, longitude: 100.5018 },
+    Barcelona: { latitude: 41.3874, longitude: 2.1686 },
+    Berlin: { latitude: 52.52, longitude: 13.405 },
+    Bogota: { latitude: 4.711, longitude: -74.0721 },
+    "Buenos Aires": { latitude: -34.6037, longitude: -58.3816 },
+    Lisbon: { latitude: 38.7223, longitude: -9.1393 },
+    London: { latitude: 51.5072, longitude: -0.1276 },
+    "Los Angeles": { latitude: 34.0522, longitude: -118.2437 },
+    Madrid: { latitude: 40.4168, longitude: -3.7038 },
+    "Mexico City": { latitude: 19.4326, longitude: -99.1332 },
+    Miami: { latitude: 25.7617, longitude: -80.1918 },
+    "New York": { latitude: 40.7128, longitude: -74.006 },
+    Paris: { latitude: 48.8566, longitude: 2.3522 },
+    Prague: { latitude: 50.0755, longitude: 14.4378 },
+    Rome: { latitude: 41.9028, longitude: 12.4964 },
+    Seoul: { latitude: 37.5665, longitude: 126.978 },
+    Sydney: { latitude: -33.8688, longitude: 151.2093 },
+    Tokyo: { latitude: 35.6762, longitude: 139.6503 },
+    Vienna: { latitude: 48.2082, longitude: 16.3738 },
+  };
 
 type Template = Omit<
   MockPlace,
@@ -107,7 +108,8 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
       transportationModes: ["RIDE_SHARE", "MIXED"],
       accommodationTypes: ["HOTEL", "RESORT"],
       customMatches: ["Rooftop views", "Late checkout"],
-      description: "A polished high-comfort stay with strong views and amenities.",
+      description:
+        "A polished high-comfort stay with strong views and amenities.",
       rating: 4.9,
       priceLevel: 5,
       estimatedCostAmount: 390,
@@ -124,7 +126,8 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
       transportationModes: ["WALKING"],
       accommodationTypes: [],
       customMatches: ["Scenic walks", "Low-crowd attractions"],
-      description: "A walkable route through historic streets and local corners.",
+      description:
+        "A walkable route through historic streets and local corners.",
       rating: 4.6,
       priceLevel: 1,
       estimatedCostAmount: 25,
@@ -188,6 +191,69 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
       rating: 4.3,
       priceLevel: 1,
       estimatedCostAmount: 20,
+    },
+    {
+      name: "Riverside Heritage Lookout",
+      category: "ATTRACTION",
+      topic: "ACTIVITIES",
+      tags: ["HISTORY", "NATURE", "PHOTOGRAPHY"],
+      budgetLevels: ["BUDGET"],
+      pace: ["RELAXED", "BALANCED"],
+      transportationModes: ["WALKING", "PUBLIC_TRANSIT"],
+      accommodationTypes: [],
+      customMatches: ["Scenic walks", "Low-crowd attractions"],
+      description:
+        "A low-cost heritage viewpoint beside a walkable river route.",
+      rating: 4.2,
+      priceLevel: 1,
+      estimatedCostAmount: 10,
+    },
+    {
+      name: "Architecture Archive Tour",
+      category: "ATTRACTION",
+      topic: "ACTIVITIES",
+      tags: ["ARCHITECTURE", "HISTORY", "ART"],
+      budgetLevels: ["MODERATE"],
+      pace: ["BALANCED"],
+      transportationModes: ["WALKING", "PUBLIC_TRANSIT"],
+      accommodationTypes: [],
+      customMatches: ["Quiet mornings"],
+      description:
+        "A guided architecture collection with a timed indoor visit.",
+      rating: 4.5,
+      priceLevel: 3,
+      estimatedCostAmount: 55,
+    },
+    {
+      name: "Civic Monument Circuit",
+      category: "LANDMARK",
+      topic: "ACTIVITIES",
+      tags: ["HISTORY", "ARCHITECTURE", "PHOTOGRAPHY"],
+      budgetLevels: ["BUDGET"],
+      pace: ["RELAXED", "BALANCED"],
+      transportationModes: ["WALKING"],
+      accommodationTypes: [],
+      customMatches: ["Scenic walks"],
+      description: "A compact circuit of public monuments and civic squares.",
+      rating: 4.1,
+      priceLevel: 1,
+      estimatedCostAmount: 8,
+    },
+    {
+      name: "Hilltop Landmark Route",
+      category: "LANDMARK",
+      topic: "ACTIVITIES",
+      tags: ["HISTORY", "NATURE", "PHOTOGRAPHY"],
+      budgetLevels: ["MODERATE"],
+      pace: ["BALANCED", "PACKED"],
+      transportationModes: ["PUBLIC_TRANSIT", "MIXED"],
+      accommodationTypes: [],
+      customMatches: ["Rooftop views", "Scenic walks"],
+      description:
+        "A guided route connecting elevated landmarks and city views.",
+      rating: 4.7,
+      priceLevel: 3,
+      estimatedCostAmount: 70,
     },
   ],
   FOOD_NIGHTLIFE: [
@@ -266,6 +332,52 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
       priceLevel: 2,
       estimatedCostAmount: 35,
     },
+    {
+      name: "Acoustic Courtyard Show",
+      category: "ENTERTAINMENT",
+      topic: "FOOD_NIGHTLIFE",
+      tags: ["MUSIC", "LOCAL_CULTURE"],
+      budgetLevels: ["BUDGET", "MODERATE"],
+      pace: ["RELAXED", "BALANCED"],
+      transportationModes: ["WALKING", "PUBLIC_TRANSIT"],
+      accommodationTypes: [],
+      customMatches: ["Low-crowd attractions"],
+      description: "A small local performance in a relaxed open-air courtyard.",
+      rating: 4.2,
+      priceLevel: 1,
+      estimatedCostAmount: 25,
+    },
+    {
+      name: "Community Theater Night",
+      category: "ENTERTAINMENT",
+      topic: "FOOD_NIGHTLIFE",
+      tags: ["ART", "LOCAL_CULTURE", "NIGHTLIFE"],
+      budgetLevels: ["MODERATE"],
+      pace: ["RELAXED", "BALANCED"],
+      transportationModes: ["PUBLIC_TRANSIT", "MIXED"],
+      accommodationTypes: [],
+      customMatches: ["Flexible afternoons"],
+      description:
+        "An accessible evening performance by a local theater company.",
+      rating: 4.4,
+      priceLevel: 2,
+      estimatedCostAmount: 45,
+    },
+    {
+      name: "Premium Concert Lounge",
+      category: "ENTERTAINMENT",
+      topic: "FOOD_NIGHTLIFE",
+      tags: ["MUSIC", "NIGHTLIFE"],
+      budgetLevels: ["LUXURY"],
+      pace: ["BALANCED", "PACKED"],
+      transportationModes: ["RIDE_SHARE", "MIXED"],
+      accommodationTypes: [],
+      customMatches: ["Late checkout"],
+      description: "A premium reserved-seat concert venue with lounge service.",
+      rating: 4.8,
+      priceLevel: 5,
+      estimatedCostAmount: 140,
+    },
   ],
   BUDGET_PACE: [
     {
@@ -278,7 +390,8 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
       transportationModes: ["WALKING"],
       accommodationTypes: [],
       customMatches: ["Scenic walks"],
-      description: "A cost-conscious route with several free or low-cost stops.",
+      description:
+        "A cost-conscious route with several free or low-cost stops.",
       rating: 4.4,
       priceLevel: 1,
       estimatedCostAmount: 12,
@@ -308,7 +421,8 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
       transportationModes: ["MIXED", "PUBLIC_TRANSIT"],
       accommodationTypes: [],
       customMatches: ["Rooftop views"],
-      description: "A higher-energy route for covering major areas efficiently.",
+      description:
+        "A higher-energy route for covering major areas efficiently.",
       rating: 4.6,
       priceLevel: 2,
       estimatedCostAmount: 60,
@@ -347,14 +461,22 @@ const templatesByTopic: Record<PlanningTopic, Template[]> = {
 };
 
 function slug(value: string) {
-  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function currencyForCountry(country: string) {
   return country === "United States" ? "USD" : "EUR";
 }
 
-function withCity(template: Template, city: string, country: string, index: number) {
+function withCity(
+  template: Template,
+  city: string,
+  country: string,
+  index: number,
+) {
   const coordinates = cityCoordinates[city] ?? { latitude: 0, longitude: 0 };
 
   return {
@@ -387,4 +509,26 @@ export function getMockPlacesForCityTopic(
     (place) =>
       place.city === city && place.country === country && place.topic === topic,
   );
+}
+
+export function getMockPlacesForCityCategory(
+  city: string,
+  country: string,
+  category: MockPlace["category"],
+  maximum = 10,
+) {
+  const boundedMaximum = Math.max(1, Math.min(20, Math.trunc(maximum)));
+
+  return mockPlaces
+    .filter(
+      (place) =>
+        place.city === city &&
+        place.country === country &&
+        place.category === category,
+    )
+    .sort(
+      (left, right) =>
+        left.id.localeCompare(right.id) || left.name.localeCompare(right.name),
+    )
+    .slice(0, boundedMaximum);
 }

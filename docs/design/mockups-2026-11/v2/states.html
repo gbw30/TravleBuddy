@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Interaction states</title>
+    <link rel="stylesheet" href="v2.css" />
+    <style>
+      .wrap {
+        max-width: 1200px;
+        padding: 56px 48px 64px;
+      }
+      h1 {
+        font-size: 72px;
+        margin-top: 18px;
+      }
+      .sub {
+        font-size: 18px;
+        color: var(--body);
+        margin-top: 16px;
+        max-width: 780px;
+      }
+      .sheet {
+        background: var(--sheet);
+        border-radius: 18px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        margin-top: 34px;
+        overflow: hidden;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 190px repeat(5, minmax(0, 1fr));
+        border-top: 1px solid var(--line);
+      }
+      .row.head {
+        border-top: 0;
+        background: var(--tint);
+      }
+      .row.head span {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 14px 18px;
+      }
+      .name {
+        padding: 24px 22px;
+      }
+      .name b {
+        display: block;
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 1.25;
+      }
+      .name small {
+        display: block;
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.4;
+      }
+      .cell {
+        padding: 22px 16px;
+        display: grid;
+        place-items: center;
+        border-left: 1px solid var(--line);
+        position: relative;
+        min-height: 110px;
+      }
+      .cell .btn,
+      .cell .ghost {
+        height: 44px;
+        font-size: 14px;
+      }
+      .cell .btn {
+        padding: 0 6px 0 18px;
+        gap: 10px;
+      }
+      .cell .btn .go {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+      }
+      .cell .ghost {
+        padding: 0 20px;
+      }
+      .cursor::after {
+        content: "";
+        position: absolute;
+        right: 22px;
+        bottom: 14px;
+        width: 16px;
+        height: 22px;
+        background: var(--ink);
+        clip-path: polygon(
+          0 0,
+          0 78%,
+          26% 60%,
+          46% 100%,
+          62% 92%,
+          42% 54%,
+          76% 54%
+        );
+      }
+      .card {
+        width: 148px;
+        background: var(--sheet);
+        border-radius: 12px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 4px 12px rgba(29, 26, 22, 0.06);
+        padding: 12px 12px 10px;
+        transition: transform var(--state) var(--ease);
+      }
+      .card u {
+        display: block;
+        height: 44px;
+        border-radius: 6px;
+        background: var(--tint);
+      }
+      .card b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 19px;
+        margin-top: 9px;
+        line-height: 1;
+      }
+      .card i {
+        float: right;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1.5px rgba(29, 26, 22, 0.25);
+        font-style: normal;
+        font-size: 11px;
+        display: grid;
+        place-items: center;
+        margin-top: -19px;
+      }
+      .card.h {
+        transform: translateY(-4px);
+        box-shadow:
+          0 0 0 1px rgba(29, 26, 22, 0.25),
+          var(--shadow-lift);
+      }
+      .card.h i,
+      .card.s i {
+        background: var(--ink);
+        color: var(--paper);
+        box-shadow: none;
+      }
+      .card.p {
+        transform: scale(0.98);
+        box-shadow: 0 0 0 1px rgba(29, 26, 22, 0.3);
+      }
+      .card.f {
+        outline: 2px solid var(--terracotta);
+        outline-offset: 3px;
+      }
+      .card.s {
+        box-shadow:
+          0 0 0 2px var(--ink),
+          0 4px 12px rgba(29, 26, 22, 0.06);
+      }
+      .in {
+        width: 150px;
+        height: 44px;
+        border-radius: 10px;
+        box-shadow: inset 0 0 0 1px rgba(29, 26, 22, 0.28);
+        background: #fff;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        font-size: 14.5px;
+      }
+      .in.h {
+        box-shadow: inset 0 0 0 1px rgba(29, 26, 22, 0.6);
+      }
+      .in.f {
+        box-shadow:
+          inset 0 0 0 2px var(--ink),
+          0 0 0 4px rgba(164, 80, 44, 0.18);
+      }
+      .in.e {
+        box-shadow: inset 0 0 0 2px var(--stamp);
+      }
+      .in.d {
+        background: var(--tint);
+        color: var(--muted);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .err {
+        position: absolute;
+        bottom: 10px;
+        font-size: 11.5px;
+        color: var(--stamp);
+        font-weight: 500;
+      }
+      .k {
+        width: 130px;
+        position: relative;
+        height: 24px;
+      }
+      .k::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 10px;
+        height: 4px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, var(--ink) 60%, var(--tint) 60%);
+      }
+      .k i {
+        position: absolute;
+        left: 60%;
+        top: 1px;
+        width: 22px;
+        height: 22px;
+        margin-left: -11px;
+        border-radius: 50%;
+        background: var(--sheet);
+        box-shadow:
+          0 0 0 2px var(--ink),
+          0 3px 8px rgba(29, 26, 22, 0.25);
+      }
+      .k.h i {
+        box-shadow:
+          0 0 0 2px var(--ink),
+          0 0 0 8px rgba(29, 26, 22, 0.08);
+      }
+      .k.p i {
+        transform: scale(1.18);
+        background: var(--ink);
+      }
+      .k.f i {
+        box-shadow:
+          0 0 0 2px var(--ink),
+          0 0 0 5px rgba(164, 80, 44, 0.45);
+      }
+      .k.d {
+        opacity: 0.4;
+      }
+      .tip {
+        position: absolute;
+        top: 12px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        background: var(--ink);
+        color: var(--paper);
+        padding: 3px 7px;
+        border-radius: 5px;
+      }
+      .rules {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        margin-top: 22px;
+      }
+      .rules div {
+        padding: 0 22px;
+        border-left: 1px solid var(--line);
+      }
+      .rules div:first-child {
+        padding-left: 0;
+        border-left: 0;
+      }
+      .rules b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 27px;
+        line-height: 1.1;
+      }
+      .rules span {
+        display: block;
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <span class="chip"><b>Proposal</b>How every control responds</span>
+      <h1 class="display">Nothing on screen stays <em>silent</em></h1>
+      <p class="sub">
+        Today no button, link or card reacts to the pointer or the keyboard.
+        This sheet defines five states for each control, so the same behaviour
+        is used everywhere.
+      </p>
+
+      <div class="sheet">
+        <div class="row head">
+          <span>Control</span><span>At rest</span><span>Pointer over</span
+          ><span>Pressed</span><span>Keyboard focus</span
+          ><span>Not available</span>
+        </div>
+        <div class="row">
+          <div class="name">
+            <b>Main button</b
+            ><small>Darkens, lifts, and the arrow slides 4px. 150 ms.</small>
+          </div>
+          <div class="cell">
+            <a class="btn">Continue<span class="go">→</span></a>
+          </div>
+          <div class="cell cursor">
+            <a class="btn is-hover">Continue<span class="go">→</span></a>
+          </div>
+          <div class="cell">
+            <a class="btn is-press">Continue<span class="go">→</span></a>
+          </div>
+          <div class="cell">
+            <a class="btn is-focus">Continue<span class="go">→</span></a>
+          </div>
+          <div class="cell">
+            <a class="btn is-off">Continue<span class="go">→</span></a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="name">
+            <b>Second button</b><small>Fills with ink on hover. 150 ms.</small>
+          </div>
+          <div class="cell"><a class="ghost">Not quite</a></div>
+          <div class="cell cursor"><a class="ghost is-hover">Not quite</a></div>
+          <div class="cell"><a class="ghost is-press">Not quite</a></div>
+          <div class="cell"><a class="ghost is-focus">Not quite</a></div>
+          <div class="cell">
+            <a class="ghost" style="opacity: 0.38">Not quite</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="name">
+            <b>Text link</b
+            ><small
+              >Turns terracotta; the underline redraws from the left. 300
+              ms.</small
+            >
+          </div>
+          <div class="cell"><a class="link quiet">Change</a></div>
+          <div class="cell cursor"><a class="link is-hover">Change</a></div>
+          <div class="cell">
+            <a class="link is-hover" style="opacity: 0.7">Change</a>
+          </div>
+          <div class="cell"><a class="link quiet is-focus">Change</a></div>
+          <div class="cell">
+            <a class="link quiet" style="opacity: 0.38">Change</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="name">
+            <b>Choice card</b
+            ><small
+              >Rises 4px with a deeper shadow; the arrow fills. 300 ms. Chosen
+              cards keep a dark ring.</small
+            >
+          </div>
+          <div class="cell">
+            <div class="card"><u></u><b>Plan together</b><i>→</i></div>
+          </div>
+          <div class="cell cursor">
+            <div class="card h"><u></u><b>Plan together</b><i>→</i></div>
+          </div>
+          <div class="cell">
+            <div class="card p"><u></u><b>Plan together</b><i>→</i></div>
+          </div>
+          <div class="cell">
+            <div class="card f"><u></u><b>Plan together</b><i>→</i></div>
+          </div>
+          <div class="cell">
+            <div class="card s"><u></u><b>Plan together</b><i>✓</i></div>
+            <span class="tip" style="top: 6px">chosen</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="name">
+            <b>Text field</b
+            ><small
+              >Border darkens on hover; focus adds a soft ring. The last column
+              shows an error.</small
+            >
+          </div>
+          <div class="cell"><div class="in">Tokyo</div></div>
+          <div class="cell cursor"><div class="in h">Tokyo</div></div>
+          <div class="cell"><div class="in f">Tokyo</div></div>
+          <div class="cell"><div class="in f">Tokyo</div></div>
+          <div class="cell">
+            <div class="in e"></div>
+            <span class="err">Where are you going?</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="name">
+            <b>Habit slider</b
+            ><small
+              >The knob grows a halo, fills while dragged, and shows its
+              value.</small
+            >
+          </div>
+          <div class="cell">
+            <div class="k"><i></i></div>
+          </div>
+          <div class="cell cursor">
+            <div class="k h"><i></i></div>
+          </div>
+          <div class="cell">
+            <span class="tip">10:00</span>
+            <div class="k p"><i></i></div>
+          </div>
+          <div class="cell">
+            <div class="k f"><i></i></div>
+          </div>
+          <div class="cell">
+            <div class="k d"><i></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet" style="padding: 28px 30px 30px">
+        <div class="label">The rules behind the sheet</div>
+        <div class="rules">
+          <div>
+            <b>Hover is a bonus</b
+            ><span
+              >Phones have no pointer. Every hover effect only adds to a control
+              that already looks clickable.</span
+            >
+          </div>
+          <div>
+            <b>Press always shrinks</b
+            ><span
+              >Buttons scale to 96% while held, so a tap feels physical on a
+              phone too.</span
+            >
+          </div>
+          <div>
+            <b>Focus is always visible</b
+            ><span
+              >A terracotta ring 3px outside the control, for people who use a
+              keyboard.</span
+            >
+          </div>
+          <div>
+            <b>Less motion on request</b
+            ><span
+              >If the device asks for reduced motion, movement becomes a short
+              fade.</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

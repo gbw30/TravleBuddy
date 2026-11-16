@@ -294,6 +294,7 @@ describe("trip Stage 4 schemas", () => {
         endDate: new Date("2026-07-07"),
         budgetAmount: "1500",
         budgetCurrency: "USD",
+        travelStyle: "BALANCED",
         destinations: [{ city: "New York", country: "United States" }],
       }),
     ).toBe("PLANNING");

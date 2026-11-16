@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TravleBuddy planning screen: visual direction</title>
+</head>
+<body style="margin:0;padding:24px;font-family:system-ui,sans-serif;background:#f3ece0;color:#2b2622">
+<!-- Rough sketch agreed on 2026-11-12. Fixes the visual direction only; see docs/prd.md section 15. Coloured blocks stand in for photos. -->
+<style>
+  .tb { border-radius: 14px; padding: 26px; margin: 10px 0 26px; color: #2b2622; font-family: Georgia, 'Times New Roman', serif;
+        background: #d9c3a0 repeating-linear-gradient(45deg, rgba(120,85,45,.07) 0 2px, transparent 2px 9px); }
+  .tb * { box-sizing: border-box; }
+  .tb-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 26px; }
+  @media (max-width: 800px) { .tb-grid { grid-template-columns: 1fr; } }
+  .tb-agent { font-size: 15px; font-style: italic; margin-bottom: 14px; line-height: 1.45; }
+  .tb-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .tb-pc { background: #fff; padding: 7px 7px 0; box-shadow: 0 3px 10px rgba(60,40,20,.25); position: relative; }
+  .tb-pc::before { content: "✈"; position: absolute; right: 12px; top: 12px; z-index: 2; width: 26px; height: 30px; background: #fdf8ec; border: 2px dotted #b4542f; color: #b4542f; font-size: 13px; display: grid; place-items: center; }
+  .tb-art { height: 120px; position: relative; overflow: hidden; }
+  .art1 { background: linear-gradient(180deg, #f4b56a 0%, #e9825a 45%, #7a3f4f 46%, #4a2c45 100%); }
+  .art2 { background: linear-gradient(180deg, #9fd3d6 0%, #f3e2b8 55%, #3f7f6e 56%, #2b5a4f 100%); }
+  .art3 { background: linear-gradient(180deg, #f6d4a8 0%, #f09a6b 50%, #c2463c 51%, #7d2a2e 100%); }
+  .tb-art::after { content: ""; position: absolute; left: 50%; top: 22%; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,244,214,.9); transform: translateX(-50%); }
+  .tb-cap { padding: 9px 10px 11px; }
+  .tb-name { font-weight: 700; font-size: 15px; }
+  .tb-meta { font-size: 12px; opacity: .7; }
+  .tb-it h4 { margin: 0 0 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+  .tb-row { display: flex; gap: 10px; align-items: center; font-size: 13px; padding: 8px 10px; margin-bottom: 8px; background: #fffaf0; border: 1px solid #cdbb98; border-radius: 6px; }
+  .tb-row.fixed { background: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(60,40,20,.2); border-left: 2px dashed #b4542f; padding-left: 16px; }
+  .tb-row.fixed .tag { margin-left: auto; font: 700 10px system-ui; letter-spacing: .12em; color: #b4542f; }
+  .tb-row.open { background: rgba(255,250,240,.5); border: 2px dashed #b4542f; color: #8f3f20; }
+  .tb-time { font-variant-numeric: tabular-nums; font-weight: 700; width: 46px; }
+  .tb-walk { font-size: 11px; opacity: .7; margin: -2px 0 6px 56px; }
+  .stamp { display: inline-block; border: 3px double #a3312b; color: #a3312b; padding: 6px 8px; font: 700 10px monospace; transform: rotate(8deg); float: right; }
+</style>
+
+<h2>Planning screen: agreed visual direction</h2>
+<p>Paper background, postcard cards, ticket-stub bookings, a stamp for each day, serif type.</p>
+
+<div class="tb">
+  <div class="tb-grid">
+    <div>
+      <div class="tb-agent">For lunch on Day 2 at 12:30, I'd suggest one of these. All three are a short walk from Senso-ji.</div>
+      <div class="tb-cards">
+        <div class="tb-pc"><div class="tb-art art1"></div><div class="tb-cap"><div class="tb-name">Asakusa Imahan</div><div class="tb-meta">Sukiyaki · ¥¥¥ · 6 min walk</div></div></div>
+        <div class="tb-pc"><div class="tb-art art2"></div><div class="tb-cap"><div class="tb-name">Sometaro</div><div class="tb-meta">Okonomiyaki · ¥ · 9 min walk</div></div></div>
+        <div class="tb-pc"><div class="tb-art art3"></div><div class="tb-cap"><div class="tb-name">Daikokuya</div><div class="tb-meta">Tempura · ¥¥ · 4 min walk</div></div></div>
+      </div>
+    </div>
+    <div class="tb-it">
+      <span class="stamp">TOKYO · DAY 2</span>
+      <h4>Day 2 · Asakusa</h4>
+      <div class="tb-row fixed"><span class="tb-time">09:00</span> Hotel check-out <span class="tag">BOOKED</span></div>
+      <div class="tb-row"><span class="tb-time">10:00</span> Senso-ji Temple</div>
+      <div class="tb-walk">time to wander Nakamise street</div>
+      <div class="tb-row open"><span class="tb-time">12:30</span> Lunch: choosing now</div>
+      <div class="tb-row"><span class="tb-time">14:30</span> Sumida River walk</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -27,6 +27,11 @@ const context = {
   }),
 };
 
+const mutationControl = {
+  expectedRevision: 0,
+  operationId: "00000000-0000-4000-8000-000000000007",
+};
+
 function jsonRequest(body: unknown) {
   return new Request(
     "http://localhost/api/trips/trip_1/recommendations/suggestion_1/reject",
@@ -50,6 +55,7 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/reject route", () =
       jsonRequest({
         reason: "TOO_EXPENSIVE",
         note: "Too much for this trip.",
+        ...mutationControl,
       }),
       context,
     );
@@ -63,11 +69,19 @@ describe("/api/trips/[tripId]/recommendations/[suggestionId]/reject route", () =
         reason: "TOO_EXPENSIVE",
         note: "Too much for this trip.",
       },
+      expect.objectContaining({
+        ...mutationControl,
+        mutationKind: "recommendation_reject",
+        requestFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
     );
   });
 
   it("returns 400 for non-recommendation feedback reasons", async () => {
-    const response = await POST(jsonRequest({ reason: "GOOD_MATCH" }), context);
+    const response = await POST(
+      jsonRequest({ reason: "GOOD_MATCH", ...mutationControl }),
+      context,
+    );
 
     expect(response.status).toBe(400);
     expect(mocks.service.rejectRecommendation).not.toHaveBeenCalled();

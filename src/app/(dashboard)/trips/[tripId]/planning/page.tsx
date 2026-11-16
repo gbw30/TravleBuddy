@@ -102,6 +102,9 @@ export default async function PlanningPage({
       timelineEvents={result.timelineEvents}
       placeActionLog={result.placeActionLog}
       itineraryPreview={result.itineraryPreview}
+      planningRevision={result.snapshot.revision}
+      activeJobs={result.activeJobs}
+      itineraryVersions={result.itineraryVersions}
       activeTopic={topic}
       activeDestinationId={destinationId ?? undefined}
       activeDayNumber={planningDayNumber}

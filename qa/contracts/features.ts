@@ -31,7 +31,8 @@ const registryMetadata = [
     id: "trip-preferences",
     label: "Trip preferences",
     documentedStage: "existing foundation",
-    description: "Trip-local preference validation, inheritance, and overrides.",
+    description:
+      "Trip-local preference validation, inheritance, and overrides.",
   },
   {
     id: "mock-recommendations",
@@ -61,13 +62,29 @@ const registryMetadata = [
     id: "logistics",
     label: "Trip logistics",
     documentedStage: "existing foundation",
-    description: "Flexible and ticketed segments, city windows, and travel blocks.",
+    description:
+      "Flexible and ticketed segments, city windows, and travel blocks.",
   },
   {
     id: "planning-revision-contracts",
     label: "Planning revision contracts",
     documentedStage: "Stage 0",
-    description: "Revision checks, replay-safe mutations, snapshots, and telemetry.",
+    description:
+      "Revision checks, replay-safe mutations, snapshots, and telemetry.",
+  },
+  {
+    id: "adaptive-planning",
+    label: "Versioned adaptive planning",
+    documentedStage: "Adaptive planning vertical slice",
+    description:
+      "Immutable item feedback, source-aware preferences, deterministic replacement, and copy-on-write itinerary activation.",
+  },
+  {
+    id: "durable-planning-jobs",
+    label: "Durable planning jobs",
+    documentedStage: "Adaptive planning vertical slice",
+    description:
+      "PostgreSQL claims, leases, heartbeats, retries, recovery, progress, and stale-result protection.",
   },
   {
     id: "conversation-persistence",
@@ -79,7 +96,8 @@ const registryMetadata = [
     id: "ai-intent",
     label: "Conversational intelligence",
     documentedStage: "Stage 1B",
-    description: "Schema-validated intent extraction and deterministic fallback.",
+    description:
+      "Schema-validated intent extraction and deterministic fallback.",
   },
   {
     id: "live-scheduling",
@@ -97,13 +115,15 @@ const registryMetadata = [
     id: "interaction-performance",
     label: "Interaction performance",
     documentedStage: "Stage 3A",
-    description: "Measured latency, compact reads, and refresh-free interactions.",
+    description:
+      "Measured latency, compact reads, and refresh-free interactions.",
   },
   {
     id: "cache-rate-limits",
     label: "Cache and production hardening",
     documentedStage: "Stage 3B",
-    description: "Optional Redis, rate limits, resilience, and safe invalidation.",
+    description:
+      "Optional Redis, rate limits, resilience, and safe invalidation.",
   },
   {
     id: "maps",

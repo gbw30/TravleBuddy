@@ -3,6 +3,15 @@ import {
   assertAuthenticatedApiUser,
 } from "@/lib/authorization";
 import { rebuildItinerary } from "@/features/itinerary/builder";
+import {
+  bindPlanningMutationControl,
+  parsePlanningMutationControl,
+} from "@/features/planning/request-control";
+import {
+  invalidPlanningMutationControlResponse,
+  planningMutationConflictResponse,
+  readPlanningMutationJson,
+} from "@/app/api/trips/planning-mutation";
 
 type ItineraryBuildRouteContext = {
   params: Promise<{
@@ -39,13 +48,26 @@ function accessErrorResponse(
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: ItineraryBuildRouteContext,
 ) {
   try {
     const userId = await assertAuthenticatedApiUser();
     const { tripId } = await context.params;
-    const result = await rebuildItinerary(userId, tripId);
+    const parsedControl = parsePlanningMutationControl(
+      await readPlanningMutationJson(request),
+    );
+
+    if (!parsedControl.success) {
+      return invalidPlanningMutationControlResponse(parsedControl.issues);
+    }
+
+    const control = bindPlanningMutationControl(
+      parsedControl.data,
+      "itinerary_rebuild",
+      {},
+    );
+    const result = await rebuildItinerary(userId, tripId, control);
 
     if (result.status === "stale_revision") {
       return Response.json(result, { status: 409 });
@@ -72,6 +94,9 @@ export async function POST(
     if (error instanceof UnauthorizedError) {
       return apiError("Unauthorized", 401);
     }
+
+    const conflict = planningMutationConflictResponse(error);
+    if (conflict) return conflict;
 
     return apiError("Unable to rebuild itinerary.", 500);
   }

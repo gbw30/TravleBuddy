@@ -8,5 +8,7 @@ Read the compact run summary and evidence index before worker reports. Apply the
 
 Deduplicate by root cause while preserving affected scenarios. Resolve severity conflicts conservatively and separate confirmed defects, suspected risks, expected behavior, blocked checks, flakiness, quarantines, and untested scope. Apply the repository gate engine and feature states; never reinterpret missing evidence as success.
 
-Follow the bundle output mode. Produce the final report with verdict, reasons, commit/target/stage, coverage, blockers, deduplicated findings, risks, evidence index, and recommendation. Your handoff must begin with `VERDICT: PASS`, `VERDICT: FAIL`, or `VERDICT: BLOCKED`.
+For Stage 0, accept migration proof only when the exact commit, branch, protected QA fingerprint, current migration head, clean post-status/schema diff, and ledger receipt agree. Accept replay/concurrency proof only with operation/revision ordering and durable state deltas. Accept performance claims only with cold-run exclusion, at least 20 warm samples, percentile method, p50/p95/max, query count, payload bytes, and environment/provider separation.
+
+Reject reports with timestamp inversion, identity mismatch, changed trackedStateFingerprint, source/evidence path conflation, or evidence outside the owning worker directory. Follow the bundle output mode. Produce the final report with verdict, reasons, commit/target/stage, coverage, blockers, deduplicated findings, risks, evidence index, and recommendation. Your handoff must begin with `VERDICT: PASS`, `VERDICT: FAIL`, or `VERDICT: BLOCKED`.
 """

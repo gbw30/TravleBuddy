@@ -1,7 +1,6 @@
 name: QA - Production Read-only Smoke
 
 on:
-  deployment_status:
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -12,6 +11,11 @@ on:
         description: HTTPS production URL to verify
         required: true
         type: string
+      run_codex_review:
+        description: Run the optional Codex production-risk review
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -23,22 +27,18 @@ concurrency:
 jobs:
   authorize:
     name: Authorize production commit
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.deployment_status.state == 'success' &&
-      github.event.deployment_status.environment == 'production')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
-      QA_BASE_URL: ${{ inputs.production_url || github.event.deployment_status.environment_url }}
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      QA_BASE_URL: ${{ inputs.production_url }}
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
     steps:
       - name: Checkout exact production commit without credentials
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.commit_sha || github.sha }}
+          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -68,7 +68,7 @@ jobs:
     env:
       CI: "true"
       QA_TARGET: production-readonly
-      QA_BASE_URL: ${{ inputs.production_url || github.event.deployment_status.environment_url }}
+      QA_BASE_URL: ${{ inputs.production_url }}
       QA_RUN_ID: production-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       QA_ALLOW_WRITES: "false"
       QA_RUN_TYPE: production
@@ -76,16 +76,16 @@ jobs:
 
     steps:
       - name: Checkout exact production commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.commit_sha || github.sha }}
+          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -106,14 +106,14 @@ jobs:
         run: npm run qa:e2e:production
 
       - name: Generate production audit context
-        if: always()
+        if: always() && inputs.run_codex_review
         run: npm run qa:context
 
       - name: Write production summary
         if: always()
         shell: bash
         env:
-          COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
         run: |
           {
             echo "### TravleBuddy production read-only smoke"
@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload production smoke evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-production-smoke-${{ github.run_id }}
           path: |
@@ -139,7 +139,10 @@ jobs:
   codex-risk-review:
     name: Codex production-risk review
     needs: deterministic
-    if: ${{ always() && needs.deterministic.result != 'cancelled' }}
+    if: >-
+      always() &&
+      inputs.run_codex_review &&
+      needs.deterministic.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production-readonly
@@ -148,14 +151,14 @@ jobs:
 
     steps:
       - name: Checkout exact production commit
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.commit_sha || github.sha }}
+          ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Download production smoke evidence
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: qa-production-smoke-${{ github.run_id }}
@@ -199,7 +202,7 @@ jobs:
 
       - name: Upload Codex production-risk review
         if: always() && env.HAS_OPENAI_API_KEY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codex-production-risk-review-${{ github.run_id }}
           path: codex-production-risk-review.md

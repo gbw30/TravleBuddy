@@ -1,22 +1,23 @@
 # Stage 2B - Real Place Recommendations
 
-Status: not started  
-Depends on: Stage 1B mock conversational loop passing QA; may run in parallel with Stage 2A  
-Estimated effort: 2-4 working days
+Status: stage-plan
+Authority: Primary recommendation-provider integration intent
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [preceding stage](04-live-itinerary-scheduling.md)
+Last reviewed: 2026-08-09
 
 ## Goal
 
-Replace mock-only discovery with validated Google Places results while preserving deterministic scoring, persistence, feedback, and mock fallback behavior.
+Reuse and extend the implemented Google/mock `PlaceProvider` boundary from adaptive replacement into the primary conversational recommendation flow while preserving deterministic scoring, persistence, feedback, and mock fallback behavior.
 
 ## Architecture Decision
 
-### Provider calls inside recommendation service or behind an adapter
+### Extend the existing adapter rather than duplicate it
 
 Options:
 
-- Call Google directly from recommendation logic: fewer files, but provider response shapes and failures spread into domain code.
-- Replace mocks entirely with Google: simple production path, but makes tests and outage behavior brittle.
-- Add a provider interface with Google and mock implementations. Recommended.
+- Call Google directly from primary recommendation logic: fewer calls across modules, but duplicates the existing boundary and spreads provider failures into domain code.
+- Replace mocks entirely with Google: a simple live path, but brittle tests and outage behavior.
+- Reuse the implemented provider interface and extend its query/normalization needs for the primary flow. Required.
 
 The recommendation service owns preference-aware scoring. Providers own external search and normalization.
 
@@ -86,7 +87,7 @@ Purpose: retain explainable product logic.
 1. Convert normalized results into the current scoring input.
 2. Score interest match, budget fit, rating, pace fit, practicality, and feedback penalties.
 3. Exclude rejected and selected provider IDs from rerolls unless the user explicitly restores them.
-4. Select the top five stable results.
+4. Rank a bounded candidate pool and present the top three stable results.
 5. Upsert by `(tripId, provider, providerPlaceId)`.
 6. Persist score breakdown and planning context in metadata.
 
@@ -128,7 +129,7 @@ Create cache keys from provider, normalized city, topic, and query hash. Use a n
 ## Exit Criteria
 
 - Conversational recommendations use real places when configured.
-- Five normalized and scored results appear in the existing chat UI.
+- Exactly three normalized and scored cards appear in each user-facing batch; the persisted ranking pool may be larger.
 - Mock tests remain deterministic.
 - Provider outages do not crash or corrupt planning state.
 - Full verification passes.
@@ -143,5 +144,5 @@ Create cache keys from provider, normalized city, topic, and query hash. Use a n
 ## Fresh-Chat Handoff Prompt
 
 ```text
-Implement Stage 2B from docs/conversational-planning/05-real-place-recommendations.md only after the Stage 1B mock loop passes. Add the provider interface, Google Places adapter, schema validation, stable upserts, deterministic scoring, and explicit fallback behavior. Do not modify scheduler rules or implement Routes, maps, or Redis activation in this stage.
+Implement Stage 2B from docs/conversational-planning/05-real-place-recommendations.md only after the Stage 1B mock loop passes. Reuse the existing provider interface, Google Places adapter, schema validation, stable upserts, deterministic scoring, and explicit fallback behavior in the primary recommendation pipeline. Do not modify scheduler rules or implement Routes, maps, or cache activation in this stage.
 ```

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Type options</title>
+    <link rel="stylesheet" href="v2.css" />
+    <style>
+      .wrap {
+        max-width: 1200px;
+        padding: 56px 48px 64px;
+      }
+      h1 {
+        font-size: 72px;
+        margin-top: 18px;
+      }
+      .sub {
+        font-size: 18px;
+        color: var(--body);
+        margin-top: 16px;
+        max-width: 760px;
+      }
+      .opt {
+        background: var(--sheet);
+        border-radius: 18px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: 230px minmax(0, 1fr) 330px;
+        overflow: hidden;
+        position: relative;
+      }
+      .opt.rec {
+        box-shadow:
+          0 0 0 2px var(--ink),
+          var(--shadow-sheet);
+      }
+      .meta {
+        padding: 30px 28px;
+        background: var(--tint);
+      }
+      .meta .letter {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+      }
+      .meta b {
+        display: block;
+        font-size: 21px;
+        font-weight: 500;
+        margin-top: 12px;
+        line-height: 1.2;
+      }
+      .meta p {
+        font-size: 14px;
+        color: var(--body);
+        margin-top: 10px;
+        line-height: 1.45;
+      }
+      .meta .tag {
+        display: inline-block;
+        margin-top: 14px;
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 6px 10px;
+        border-radius: 999px;
+      }
+      .show {
+        padding: 30px 34px 32px;
+      }
+      .show .h {
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+      .show .p {
+        font-size: 16.5px;
+        color: var(--body);
+        margin-top: 16px;
+        max-width: 480px;
+      }
+      .mini {
+        padding: 28px;
+        border-left: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .mini .t {
+        font-size: 30px;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+      }
+      .mini .s {
+        font-style: italic;
+        font-size: 21px;
+        line-height: 1.25;
+        color: var(--body);
+      }
+      .mini .l {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .a .h,
+      .a .t,
+      .a .s,
+      .a .p {
+        font-family: "Lora", serif;
+      }
+      .a .h {
+        font-size: 62px;
+        font-weight: 500;
+        letter-spacing: -0.025em;
+        line-height: 1.04;
+      }
+      .a .t {
+        font-weight: 500;
+        font-size: 26px;
+      }
+      .b .h,
+      .b .t,
+      .b .s {
+        font-family: "Instrument Serif", serif;
+      }
+      .b .h {
+        font-size: 84px;
+      }
+      .b .t {
+        font-size: 34px;
+      }
+      .b .s {
+        font-size: 25px;
+      }
+      .c .h,
+      .c .t,
+      .c .s {
+        font-family: "Fraunces", serif;
+        font-variation-settings: "opsz" 144;
+      }
+      .c .h {
+        font-size: 66px;
+        font-weight: 400;
+        letter-spacing: -0.035em;
+      }
+      .c .t {
+        font-size: 28px;
+      }
+      .c .s {
+        font-variation-settings: "opsz" 40;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <span class="chip"><b>Decision</b>Pick a headline typeface</span>
+      <h1 class="display">Three ways the words could <em>look</em></h1>
+      <p class="sub">
+        The same headline, sentence and card in each. Small labels stay in Geist
+        Mono in all three. Your earlier choice was A.
+      </p>
+
+      <div class="opt a">
+        <div class="meta">
+          <span class="letter">OPTION A · TODAY</span><b>Lora for everything</b>
+          <p>
+            Warm and bookish. Reads as a letter. Long explanations and controls
+            feel heavy, because nothing is plain.
+          </p>
+        </div>
+        <div class="show">
+          <div class="h">Where to <em>next?</em></div>
+          <p class="p">
+            Nothing here is final. You can change your mind at any point, and I
+            will rebuild around it.
+          </p>
+        </div>
+        <div class="mini">
+          <span class="l">Day 2 · Morning</span
+          ><span class="t">Senso-ji Temple</span
+          ><span class="s">You like slow mornings with one main sight.</span>
+        </div>
+      </div>
+      <div class="opt b rec">
+        <div class="meta">
+          <span class="letter">OPTION B</span
+          ><b>Instrument Serif headlines, Geist for reading</b>
+          <p>
+            Tall, narrow and elegant, so headlines can be much larger. Plain
+            sans underneath keeps forms and explanations light.
+          </p>
+          <span class="tag">Recommended</span>
+        </div>
+        <div class="show">
+          <div class="h">Where to <em>next?</em></div>
+          <p class="p" style="font-family: var(--sans)">
+            Nothing here is final. You can change your mind at any point, and I
+            will rebuild around it.
+          </p>
+        </div>
+        <div class="mini">
+          <span class="l">Day 2 · Morning</span
+          ><span class="t">Senso-ji Temple</span
+          ><span class="s">You like slow mornings with one main sight.</span>
+        </div>
+      </div>
+      <div class="opt c">
+        <div class="meta">
+          <span class="letter">OPTION C</span
+          ><b>Fraunces headlines, Geist for reading</b>
+          <p>
+            Soft and friendly, with a hand-made feel that suits postcards. More
+            playful, less refined than B.
+          </p>
+        </div>
+        <div class="show">
+          <div class="h">Where to <em>next?</em></div>
+          <p class="p" style="font-family: var(--sans)">
+            Nothing here is final. You can change your mind at any point, and I
+            will rebuild around it.
+          </p>
+        </div>
+        <div class="mini">
+          <span class="l">Day 2 · Morning</span
+          ><span class="t">Senso-ji Temple</span
+          ><span class="s">You like slow mornings with one main sight.</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

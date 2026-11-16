@@ -1,12 +1,13 @@
 # Stage 3A - Interaction Performance
 
-Status: not started  
-Depends on: Stages 0 through 2B  
-Estimated effort: 2-3 working days
+Status: stage-plan
+Authority: Measurement-first interaction performance intent
+Related: [Canonical target](../requirements.md), [current implementation](../status/current-implementation.md), [active roadmap](../roadmap.md), [preceding stage](05-real-place-recommendations.md), [polling ADR](../architecture/adr-004-resilient-polling.md)
+Last reviewed: 2026-08-09
 
 ## Goal
 
-Remove unnecessary database work, route refreshes, and payload size from the planning interaction path. Improvements must be demonstrated against Stage 0 measurements rather than assumed.
+Remove unnecessary database work, route refreshes, and payload size from the planning interaction path. Reuse compact snapshot and resilient-polling foundations already present. Improvements must be demonstrated against measured complete planning turns rather than assumed; caching and streaming are not promised before evidence.
 
 ## Architecture Decisions
 
@@ -126,4 +127,3 @@ Provider and model latency must be displayed through immediate pending/streaming
 ```text
 Implement Stage 3A from docs/conversational-planning/06-interaction-performance.md. Use the Stage 0 measurements and inspect actual query/route behavior before changing it. Remove read-time conflict writes and broad chat revalidation, split critical/deferred reads, and optimize measured bottlenecks only. Preserve correctness and record before/after latency, query count, and payload results.
 ```
-

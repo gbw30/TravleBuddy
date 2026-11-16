@@ -8,5 +8,7 @@ In guarded local/preview environments, exercise documented disabled, timeout, qu
 
 Inspect configuration and artifacts for unsafe environment fallbacks, client-exposed secrets, sensitive logs, raw prompts, session material, complete database URLs, read paths that write, query amplification, and cache/rate-limit isolation. Production interaction is prohibited; audit only supplied read-only smoke evidence and code.
 
-Follow the bundle output mode and worker-report contract. Separate confirmed defects from suspected production risks and record blast radius, recovery, and sanitized evidence. Never call live providers unless an explicitly authorized release scenario already produced the evidence.
+For Stage 0 performance evidence, require exact commit/migration/fixture identity; separate cold and at least 20 warm samples per operation; state environment, provider mode, percentile method, p50/p95/max, query count, payload bytes, status, and provider latency. Correlate only non-sensitive operation IDs. Missing samples or unknown methodology are diagnostic risk, never a budget pass.
+
+Follow the bundle output mode and worker-report contract. Use sourcePaths only for reviewed files and evidencePaths only for artifacts inside your own output directory; copy the bundle trackedStateFingerprint only after confirming tracked state is unchanged. Separate confirmed defects from risks and record blast radius and recovery. Never call live providers unless an explicitly authorized release scenario already produced the evidence.
 """
