@@ -3,7 +3,7 @@
 Status: operational
 Authority: How to review the clickable prototype, and the record of its approval (roadmap Milestone 1, TB-DSN-08 and TB-DSN-09)
 Related: [PRD section 15](../prd.md#15-visual-and-interaction-design), [roadmap](../roadmap.md), [visual direction mockup](planning-screen-mockup.html), [provider decision](../architecture/adr-009-place-data-provider.md)
-Last reviewed: 2026-11-15
+Last reviewed: 2026-11-16
 
 The prototype shows the main screens in the keepsake look with sample data. It has no sign-in, no database and no AI model. Nothing in it is saved beyond the browser tab. Its purpose is to let the product owner judge the look and the experience before the full build.
 
@@ -20,10 +20,10 @@ To see the phone layout, narrow the browser window or open it on a phone.
 | Screen     | Address                 | What to judge                                                                                                                               |
 | ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Home       | `/prototype`            | The opening headline and collage, trip cards with photos, the stamp on a finished trip, what the site remembers                             |
-| New trip   | `/prototype/new`        | The tickets question, a ticket shown as a stub, the two ways to plan                                                                        |
+| New trip   | `/prototype/new`        | The two ways to plan as picture cards, the main button that follows your choice, adding a ticket on the boarding-pass form                  |
 | Planning   | `/prototype/trip`       | The agent's voice, three postcards, the flip, the closer look, picking a card and watching it land, show me others, the shelf, moving items |
 | Quick plan | `/prototype/quick-plan` | The five steps, answers filled in from memory with their source, the review, the build, the report                                          |
-| Profile    | `/prototype/profile`    | What the site remembers, hard limits, where each memory came from, editing and deleting                                                     |
+| Profile    | `/prototype/profile`    | The opening sentence, rules against habits, dragging a habit, confirming a guess, what a memory did to the Tokyo trip, adding one in words  |
 
 Things to try on the planning screen:
 
@@ -76,9 +76,11 @@ Defined in `src/app/globals.css` and checked for readable contrast by `src/app/k
 | `stamp`           | `#8a2420` | Stamps and warnings                        |
 | `stamp-paper`     | `#f8f1e2` | The back of a postcard                     |
 
-Type: Lora (serif) for headings and body, Geist for small labels, Geist Mono for stamps and times. Headings are large and medium weight, and pick out one word in italic terracotta.
+Type, decided on 2026-11-16: Fraunces (serif) for headlines, place names and the agent's voice; Geist for reading text and controls; Geist Mono for small labels, stamps and times. Headlines are large, regular weight and tightly spaced, and pick out one word in italic terracotta.
 
-Controls: one dark button per decision; every other control is a quiet underlined link. The shared class strings are in `src/components/keepsake/styles.ts`.
+Controls: one dark button per decision; every other control is a quiet underlined link. Every control has a hover, pressed, keyboard-focus and unavailable state. The shared class strings are in `src/components/keepsake/styles.ts`.
+
+Motion: about 150 ms for hover and press, 300 ms for a change of state, 600 ms for content arriving, all on the curve `cubic-bezier(0.22, 1, 0.36, 1)`. With reduced motion requested, movement becomes a short fade. The figures come from twelve sites measured on 2026-11-15; the research board, the typeface options, the control states and the motion storyboard are in `docs/design/mockups-2026-11/images/`.
 
 ## Components
 

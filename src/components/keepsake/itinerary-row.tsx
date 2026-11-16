@@ -33,7 +33,7 @@ export function ItineraryRow({
         {time}
       </span>
       <span
-        className={`min-w-0 flex-1 text-[16px] leading-snug [overflow-wrap:anywhere] ${variant === "wander" ? "text-ink/80 italic" : ""}`}
+        className={`min-w-0 flex-1 font-serif text-[17px] leading-snug [overflow-wrap:anywhere] ${variant === "wander" ? "text-ink/80 italic" : ""}`}
       >
         {variant === "open" && active && (
           <span

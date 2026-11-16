@@ -37,7 +37,7 @@ export function Postcard({
   return (
     <article
       data-qa="postcard"
-      className="relative flex h-full min-w-0 flex-col rounded-[4px] bg-card p-2.5 shadow-print"
+      className="relative flex h-full min-w-0 flex-col rounded-[4px] bg-card p-2.5 shadow-print transition-[translate,box-shadow] duration-300 ease-settle hover:-translate-y-1 hover:shadow-lift"
     >
       <button
         type="button"
@@ -64,7 +64,7 @@ export function Postcard({
               {placeKind(place)}
             </span>
             <span className="block px-1.5 pt-4 pb-2">
-              <span className="block text-[21px] leading-[1.15] font-medium tracking-[-0.015em] [overflow-wrap:anywhere]">
+              <span className="block font-serif text-[23px] leading-[1.1] tracking-[-0.02em] [overflow-wrap:anywhere]">
                 {place.name}
               </span>
               <span
@@ -90,7 +90,9 @@ export function Postcard({
               <span className="mt-3 block font-sans text-[10.5px] font-medium tracking-[0.14em] text-terracotta uppercase">
                 Why it suits you
               </span>
-              <span className="block italic">{place.reason}</span>
+              <span className="block font-serif text-[16px] italic">
+                {place.reason}
+              </span>
             </span>
           </span>
         </span>

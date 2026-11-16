@@ -1,0 +1,331 @@
+@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");
+
+:root {
+  --paper: #f4eee3;
+  --sheet: #fffdf8;
+  --ink: #1d1a16;
+  --muted: #6f665b;
+  --line: rgba(29, 26, 22, 0.12);
+  --terracotta: #a4502c;
+  --stamp: #8a2420;
+  --serif: "Lora", Georgia, serif;
+  --sans: "Geist", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
+  --shadow-print:
+    0 1px 1px rgba(29, 26, 22, 0.06), 0 6px 14px rgba(29, 26, 22, 0.08),
+    0 22px 40px rgba(29, 26, 22, 0.1);
+  --shadow-sheet:
+    0 1px 2px rgba(29, 26, 22, 0.05), 0 12px 32px rgba(29, 26, 22, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.55;
+  position: relative;
+}
+/* Real paper grain instead of a printed pattern. */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .28 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a {
+  color: inherit;
+}
+img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+em {
+  font-style: italic;
+  color: var(--terracotta);
+  font-weight: 400;
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 40px;
+  position: relative;
+}
+
+/* ---------- top bar ---------- */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 28px 0 0;
+}
+.wordmark {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.wordmark span {
+  color: var(--terracotta);
+  font-style: italic;
+  font-weight: 500;
+}
+.nav {
+  display: flex;
+  gap: 28px;
+  margin-left: auto;
+  font-family: var(--sans);
+  font-size: 14px;
+}
+.nav a {
+  text-decoration: none;
+  color: var(--muted);
+  padding-bottom: 4px;
+}
+.nav a.on {
+  color: var(--ink);
+  border-bottom: 1.5px solid var(--ink);
+}
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  display: grid;
+  place-items: center;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ---------- shared type ---------- */
+.label {
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.label b {
+  color: var(--terracotta);
+  font-weight: 600;
+}
+h1 {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+h2 {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.sans {
+  font-family: var(--sans);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.link {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1.5px;
+}
+.link.quiet {
+  color: var(--muted);
+}
+
+/* ---------- photo print ---------- */
+.print {
+  background: var(--sheet);
+  padding: 10px 10px 0;
+  border-radius: 4px;
+  box-shadow: var(--shadow-print);
+  position: relative;
+}
+.print .photo {
+  aspect-ratio: 4 / 3;
+  border-radius: 2px;
+  overflow: hidden;
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
+.print .caption {
+  padding: 16px 6px 18px;
+}
+.print h3 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+.print .meta {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.print .why {
+  font-style: italic;
+  font-size: 15.5px;
+  line-height: 1.45;
+  margin-top: 12px;
+  color: #3a342c;
+}
+.print .actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+}
+.print .actions .btn {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13.5px;
+}
+.print .actions .link {
+  font-size: 13px;
+}
+
+/* postage stamp in the corner of a print */
+.postage {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 46px;
+  height: 54px;
+  background: var(--sheet);
+  border: 3px dotted var(--sheet);
+  background-clip: padding-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+  line-height: 1.3;
+  transform: rotate(3deg);
+}
+.postage::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--terracotta);
+  opacity: 0.5;
+}
+
+/* ink stamp */
+.stamp {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  border: 1.5px solid var(--stamp);
+  padding: 6px 12px;
+  outline: 1px solid var(--stamp);
+  outline-offset: 2px;
+  transform: rotate(-5deg);
+  opacity: 0.82;
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+}
+
+/* ---------- ticket stub ---------- */
+.stub {
+  display: grid;
+  grid-template-columns: 78px 1fr auto;
+  align-items: center;
+  background: var(--sheet);
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 2px 6px rgba(29, 26, 22, 0.05);
+  position: relative;
+}
+.stub .time {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 16px 0 16px 18px;
+}
+.stub .body {
+  padding: 14px 16px;
+  border-left: 1.5px dashed var(--line);
+}
+.stub .body strong {
+  display: block;
+  font-weight: 500;
+  font-size: 16.5px;
+  line-height: 1.25;
+}
+.stub .body span {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.stub .tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--terracotta);
+  padding-right: 18px;
+}
+.stub::before,
+.stub::after {
+  content: "";
+  position: absolute;
+  left: 71px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--notch, var(--sheet));
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.stub::before {
+  top: -8px;
+  clip-path: inset(50% 0 0 0);
+}
+.stub::after {
+  bottom: -8px;
+  clip-path: inset(0 0 50% 0);
+}

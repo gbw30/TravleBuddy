@@ -1,0 +1,1010 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile · proposal 2</title>
+    <link rel="stylesheet" href="v2.css" />
+    <style>
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 72px;
+        align-items: end;
+        padding: 60px 0 56px;
+      }
+      .hero h1 {
+        font-size: 92px;
+        margin-top: 24px;
+      }
+      .hero .lede {
+        font-size: 19px;
+        color: var(--body);
+        margin-top: 24px;
+        max-width: 540px;
+      }
+
+      /* a passport page: who this is and where the knowledge came from */
+      .passport {
+        background: var(--sheet);
+        border-radius: 16px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        overflow: hidden;
+      }
+      .passport .id {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 22px 24px;
+        border-bottom: 1.5px dashed var(--line);
+      }
+      .passport .face {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--paper);
+        display: grid;
+        place-items: center;
+        font-family: var(--display);
+        font-size: 30px;
+        line-height: 1;
+        flex: none;
+      }
+      .passport .id strong {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 26px;
+        line-height: 1.1;
+      }
+      .passport .id span {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .passport .stamps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px 8px;
+        padding: 24px 22px 18px;
+      }
+      .passport .stamps .stamp:nth-child(2) {
+        transform: rotate(4deg);
+      }
+      .passport .count {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-top: 1px solid var(--line);
+      }
+      .passport .count div {
+        padding: 16px 24px 18px;
+      }
+      .passport .count div + div {
+        border-left: 1px solid var(--line);
+      }
+      .passport .count b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 40px;
+        line-height: 1;
+      }
+      .passport .count span {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+
+      .how {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      .how div {
+        padding: 26px 30px 28px 0;
+      }
+      .how div + div {
+        padding-left: 30px;
+        border-left: 1px solid var(--line);
+      }
+      .how b {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 25px;
+        line-height: 1.1;
+        margin-top: 12px;
+      }
+      .how p {
+        color: var(--muted);
+        font-size: 15px;
+        margin-top: 8px;
+      }
+      .how .n {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--terracotta);
+      }
+
+      .sec {
+        padding-top: 76px;
+      }
+      .sec > header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 40px;
+        margin-bottom: 28px;
+      }
+      .sec h2 {
+        font-size: 56px;
+        margin-top: 10px;
+      }
+      .sec .note {
+        color: var(--muted);
+        font-size: 15.5px;
+        max-width: 380px;
+        text-align: right;
+      }
+
+      .rules {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      .rule {
+        background: var(--sheet);
+        border-radius: 16px;
+        padding: 24px 26px;
+        box-shadow:
+          0 0 0 1.5px rgba(138, 36, 32, 0.35),
+          var(--shadow-sheet);
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 18px;
+        align-items: start;
+        position: relative;
+        transition:
+          transform var(--state) var(--ease),
+          box-shadow var(--state) var(--ease);
+      }
+      .rule .icon {
+        background: rgba(138, 36, 32, 0.09);
+        color: var(--stamp);
+        width: 52px;
+        height: 52px;
+      }
+      .rule .icon svg {
+        width: 26px;
+        height: 26px;
+      }
+      .rule strong {
+        display: block;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 34px;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      .rule p {
+        font-size: 14.5px;
+        color: var(--body);
+        margin-top: 8px;
+      }
+      .rule .meta {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 18px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .rule .meta .acts {
+        margin-left: auto;
+        display: flex;
+        gap: 16px;
+      }
+      .rule .stamp {
+        position: absolute;
+        top: 20px;
+        right: 22px;
+        font-size: 9.5px;
+        padding: 4px 8px;
+      }
+
+      /* preferences you can see and drag, not labels you have to decode */
+      .dials {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .dial {
+        background: var(--sheet);
+        border-radius: 16px;
+        padding: 22px 24px 20px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        display: flex;
+        flex-direction: column;
+        transition:
+          transform var(--state) var(--ease),
+          box-shadow var(--state) var(--ease);
+      }
+      .dial:hover,
+      .dial.is-hover,
+      .like:hover {
+        transform: translateY(-3px);
+        box-shadow:
+          0 0 0 1px rgba(29, 26, 22, 0.22),
+          var(--shadow-lift);
+      }
+      .dial strong {
+        font-family: var(--display);
+        font-weight: 400;
+        font-style: italic;
+        font-size: 31px;
+        letter-spacing: -0.015em;
+        line-height: 1.08;
+        margin-top: 10px;
+        display: block;
+      }
+      .scale {
+        margin-top: 24px;
+        position: relative;
+        height: 34px;
+      }
+      .scale .track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 9px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--tint);
+      }
+      .scale .fill {
+        position: absolute;
+        left: 0;
+        top: 9px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--ink);
+      }
+      .scale .knob {
+        position: absolute;
+        top: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--sheet);
+        box-shadow:
+          0 0 0 2px var(--ink),
+          0 3px 8px rgba(29, 26, 22, 0.25);
+        transform: translateX(-50%);
+      }
+      .scale .ticks {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 30px;
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .scale .ticks .on {
+        color: var(--ink);
+      }
+      .foot {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-top: 34px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .foot .src {
+        margin-left: auto;
+      }
+      .dots {
+        display: flex;
+        gap: 4px;
+      }
+      .dots i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--tint);
+      }
+      .dots i.on {
+        background: var(--ink);
+      }
+      .ask {
+        margin-top: 22px;
+        padding: 12px 12px 12px 16px;
+        background: rgba(164, 80, 44, 0.08);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13.5px;
+      }
+      .ask b {
+        font-weight: 500;
+        flex: 1;
+        line-height: 1.35;
+      }
+      .ask b small {
+        display: block;
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+      .guess {
+        box-shadow:
+          0 0 0 1.5px rgba(164, 80, 44, 0.5),
+          var(--shadow-sheet);
+      }
+
+      .likes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+      .like {
+        background: var(--sheet);
+        border-radius: 16px;
+        padding: 20px 22px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 16px;
+        align-items: start;
+        transition:
+          transform var(--state) var(--ease),
+          box-shadow var(--state) var(--ease);
+      }
+      .like strong {
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 27px;
+        letter-spacing: -0.015em;
+        line-height: 1.1;
+        display: block;
+      }
+      .like .why {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .like .foot {
+        margin-top: 16px;
+        grid-column: 1 / -1;
+      }
+      .like .ask {
+        grid-column: 1 / -1;
+        margin-top: 4px;
+      }
+      .like .acts {
+        margin-left: auto;
+        display: flex;
+        gap: 16px;
+      }
+
+      /* show the consequence: memory is only understandable if you can see what it did */
+      .shaped {
+        background: var(--ink);
+        color: var(--paper);
+        border-radius: 20px;
+        padding: 44px 48px 40px;
+        margin-top: 84px;
+        display: grid;
+        grid-template-columns: 330px minmax(0, 1fr);
+        gap: 64px;
+      }
+      .shaped h2 {
+        font-size: 50px;
+      }
+      .shaped h2 em {
+        color: #e2a07c;
+      }
+      .shaped .label {
+        color: rgba(244, 238, 227, 0.6);
+      }
+      .shaped p.note {
+        color: rgba(244, 238, 227, 0.7);
+        font-size: 15.5px;
+        margin-top: 14px;
+      }
+      .shaped .link {
+        color: var(--paper);
+        margin-top: 22px;
+        display: inline-block;
+      }
+      .cause {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 20px;
+        align-items: center;
+        padding: 18px 0;
+        border-bottom: 1px solid rgba(244, 238, 227, 0.16);
+      }
+      .cause:first-child {
+        padding-top: 4px;
+      }
+      .cause .from {
+        font-family: var(--display);
+        font-style: italic;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+      .cause .to {
+        font-size: 15px;
+        color: rgba(244, 238, 227, 0.85);
+      }
+      .cause .to b {
+        display: block;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 400;
+        color: rgba(244, 238, 227, 0.55);
+        margin-bottom: 3px;
+      }
+      .cause .arr {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1.5px rgba(244, 238, 227, 0.35);
+        display: grid;
+        place-items: center;
+      }
+
+      .tell {
+        margin-top: 28px;
+        background: var(--sheet);
+        border-radius: 20px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+        padding: 40px 48px;
+        display: grid;
+        grid-template-columns: 330px minmax(0, 1fr);
+        gap: 64px;
+      }
+      .tell h2 {
+        font-size: 50px;
+        margin-top: 10px;
+      }
+      .tell .note {
+        color: var(--muted);
+        font-size: 15.5px;
+        margin-top: 12px;
+      }
+      .tell label {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+      }
+      .tell .input {
+        margin-top: 8px;
+        box-shadow: inset 0 0 0 1px rgba(29, 26, 22, 0.28);
+        border-radius: 12px;
+        padding: 16px 18px;
+        font-family: var(--display);
+        font-style: italic;
+        font-size: 24px;
+        min-height: 92px;
+        background: #fff;
+        line-height: 1.25;
+      }
+      .tell .input span {
+        display: inline-block;
+        width: 1.5px;
+        height: 24px;
+        background: var(--terracotta);
+        vertical-align: -4px;
+        margin-left: 2px;
+      }
+      .tell .eg {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .tell .heard {
+        margin-top: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px 6px 8px;
+        border-radius: 999px;
+        background: var(--tint);
+        font-size: 13px;
+        color: var(--body);
+      }
+      .tell .heard b {
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .tell .row {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        margin-top: 22px;
+        flex-wrap: wrap;
+      }
+      .switch {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+      }
+      .switch i {
+        width: 38px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--tint);
+        box-shadow: inset 0 0 0 1px rgba(29, 26, 22, 0.2);
+        position: relative;
+      }
+      .switch i::after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--sheet);
+        box-shadow: 0 1px 3px rgba(29, 26, 22, 0.3);
+      }
+      .end {
+        padding: 34px 0 110px;
+      }
+
+      @media (max-width: 860px) {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 34px;
+          padding: 34px 0 40px;
+        }
+        .hero h1 {
+          font-size: 56px;
+        }
+        .hero .lede {
+          font-size: 17px;
+        }
+        .how {
+          grid-template-columns: 1fr;
+        }
+        .how div,
+        .how div + div {
+          padding: 20px 0;
+          border-left: 0;
+        }
+        .how div + div {
+          border-top: 1px solid var(--line);
+        }
+        .sec {
+          padding-top: 52px;
+        }
+        .sec > header {
+          display: block;
+        }
+        .sec h2 {
+          font-size: 40px;
+        }
+        .sec .note {
+          text-align: left;
+          margin-top: 10px;
+        }
+        .rules,
+        .dials,
+        .likes {
+          grid-template-columns: 1fr;
+        }
+        .rule strong {
+          font-size: 30px;
+        }
+        .shaped,
+        .tell {
+          grid-template-columns: 1fr;
+          gap: 26px;
+          padding: 28px 22px;
+          border-radius: 16px;
+        }
+        .shaped {
+          margin-top: 56px;
+        }
+        .shaped h2,
+        .tell h2 {
+          font-size: 38px;
+        }
+        .cause {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .cause .arr {
+          transform: rotate(90deg);
+          width: 28px;
+          height: 28px;
+        }
+        .ask {
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <a class="wordmark" href="#">Travle<i>Buddy</i></a>
+        <nav class="nav">
+          <a href="#">Home</a><a href="#">Create</a
+          ><a class="on" href="#">Profile</a>
+        </nav>
+        <div class="avatar">G</div>
+      </div>
+
+      <section class="hero">
+        <div>
+          <span class="chip"
+            ><b>What I remember</b>Learned from 2 trips · last updated in
+            Tokyo</span
+          >
+          <h1 class="display">
+            You travel <em>slowly,</em> start late, and never eat shellfish.
+          </h1>
+          <p class="lede">
+            This is my picture of you so far. I use it to make better first
+            suggestions, and you can correct any of it.
+          </p>
+        </div>
+        <div class="passport">
+          <div class="id">
+            <span class="face">G</span>
+            <div>
+              <strong>Gabriel</strong
+              ><span>Travelling with TravleBuddy since 2026</span>
+            </div>
+          </div>
+          <div class="stamps">
+            <span class="stamp">Kyoto · 2026</span
+            ><span class="stamp">Lisbon · 2027</span
+            ><span
+              class="stamp"
+              style="opacity: 0.35; border-style: dashed; outline: 0"
+              >Tokyo · soon</span
+            >
+          </div>
+          <div class="count">
+            <div><b>2</b><span>rules I never break</span></div>
+            <div><b>7</b><span>things you usually like</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="how">
+        <div>
+          <span class="n">01</span><b>I learn as we plan</b>
+          <p>When you pick, skip or correct something, I notice the pattern.</p>
+        </div>
+        <div>
+          <span class="n">02</span><b>It is only a starting point</b>
+          <p>
+            What you say about one trip always wins, and does not change this
+            page.
+          </p>
+        </div>
+        <div>
+          <span class="n">03</span><b>You are in charge</b>
+          <p>Correct anything that is wrong, or remove it. I will not argue.</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <header>
+          <div>
+            <div class="label"><b>2 rules</b> · apply to every trip</div>
+            <h2 class="display">Rules I <em>never</em> break</h2>
+          </div>
+          <p class="note">
+            I will not suggest a place that breaks one of these, however well it
+            fits otherwise.
+          </p>
+        </header>
+        <div class="rules">
+          <div class="rule">
+            <span class="icon"
+              ><svg viewBox="0 0 24 24">
+                <path d="M4 14c0-5 3.5-9 8-9s8 4 8 9c-2 3-5 4-8 4s-6-1-8-4Z" />
+                <path d="M12 5v13M8 7l-1 9M16 7l1 9" />
+                <path d="M3 3l18 18" stroke-width="1.8" /></svg
+            ></span>
+            <div>
+              <strong>No shellfish</strong>
+              <p>
+                An allergy. I check menus and skip places where it is hard to
+                avoid.
+              </p>
+              <div class="meta">
+                You told me
+                <div class="acts">
+                  <a class="link quiet" href="#">Change</a
+                  ><a class="link quiet" href="#">Remove</a>
+                </div>
+              </div>
+            </div>
+            <span class="stamp">Never</span>
+          </div>
+          <div class="rule">
+            <span class="icon"
+              ><svg viewBox="0 0 24 24">
+                <path d="M5 19c0-8 5-13 14-14 0 9-4 14-12 14" />
+                <path d="M5 19c2-4 5-7 9-9" /></svg
+            ></span>
+            <div>
+              <strong>Vegetarian food</strong>
+              <p>
+                Every meal I suggest has proper vegetarian choices, not one side
+                dish.
+              </p>
+              <div class="meta">
+                You told me
+                <div class="acts">
+                  <a class="link quiet" href="#">Change</a
+                  ><a class="link quiet" href="#">Remove</a>
+                </div>
+              </div>
+            </div>
+            <span class="stamp">Always</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <header>
+          <div>
+            <div class="label"><b>3 habits</b> · drag to correct</div>
+            <h2 class="display">How you like your <em>days</em></h2>
+          </div>
+          <p class="note">
+            Habits, not rules. I lean this way unless a trip calls for something
+            else.
+          </p>
+        </header>
+        <div class="dials">
+          <div class="dial">
+            <span class="label">Pace</span><strong>A relaxed pace</strong>
+            <div class="scale">
+              <div class="track"></div>
+              <div class="fill" style="width: 82%"></div>
+              <div class="knob" style="left: 82%"></div>
+              <div class="ticks">
+                <span>Packed</span><span>Balanced</span
+                ><span class="on">Relaxed</span>
+              </div>
+            </div>
+            <div class="foot">
+              <span class="dots"
+                ><i class="on"></i><i class="on"></i><i></i></span
+              >Fairly sure<span class="src">from Kyoto</span>
+            </div>
+          </div>
+          <div class="dial guess">
+            <span class="label">Start of the day</span
+            ><strong>Late starts, around ten</strong>
+            <div class="scale">
+              <div class="track"></div>
+              <div class="fill" style="width: 60%"></div>
+              <div class="knob" style="left: 60%"></div>
+              <div class="ticks">
+                <span>7:00</span><span>8:00</span><span>9:00</span
+                ><span class="on">10:00</span><span>11:00</span
+                ><span>12:00</span>
+              </div>
+            </div>
+            <div class="ask">
+              <b
+                >Still a guess. Is this right?<small
+                  >I noticed it in Kyoto</small
+                ></b
+              ><a class="btn sm plain" href="#">Yes</a
+              ><a class="ghost sm" href="#">Not quite</a>
+            </div>
+          </div>
+          <div class="dial guess">
+            <span class="label">Daily budget</span
+            ><strong>About ¥15,000 a day</strong>
+            <div class="scale">
+              <div class="track"></div>
+              <div class="fill" style="width: 45%"></div>
+              <div class="knob" style="left: 45%"></div>
+              <div class="ticks">
+                <span>Lean</span><span class="on">Comfortable</span
+                ><span>Generous</span>
+              </div>
+            </div>
+            <div class="ask">
+              <b
+                >Still a guess. Is this right?<small
+                  >Worked out from Kyoto</small
+                ></b
+              ><a class="btn sm plain" href="#">Yes</a
+              ><a class="ghost sm" href="#">Not quite</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <header>
+          <div>
+            <div class="label"><b>4 tastes</b></div>
+            <h2 class="display">What you <em>gravitate</em> to</h2>
+          </div>
+          <p class="note">
+            The dots show how sure I am. Three dots means you told me yourself.
+          </p>
+        </header>
+        <div class="likes">
+          <div class="like">
+            <span class="icon"
+              ><svg viewBox="0 0 24 24">
+                <path
+                  d="M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 20h18"
+                /></svg
+            ></span>
+            <div>
+              <strong>Museums and gardens over shopping</strong>
+              <p class="why">I noticed this in Kyoto · used for Tokyo</p>
+            </div>
+            <div class="foot">
+              <span class="dots"
+                ><i class="on"></i><i class="on"></i><i></i></span
+              >Fairly sure
+              <div class="acts">
+                <a class="link quiet" href="#">Change</a
+                ><a class="link quiet" href="#">Remove</a>
+              </div>
+            </div>
+          </div>
+          <div class="like">
+            <span class="icon"
+              ><svg viewBox="0 0 24 24">
+                <rect x="6" y="3" width="12" height="14" rx="3" />
+                <path d="M6 11h12M9 21l2-4M15 21l-2-4" />
+                <circle cx="9.5" cy="14" r=".6" />
+                <circle cx="14.5" cy="14" r=".6" /></svg
+            ></span>
+            <div>
+              <strong>Trains and walking</strong>
+              <p class="why">You told me</p>
+            </div>
+            <div class="foot">
+              <span class="dots"
+                ><i class="on"></i><i class="on"></i><i class="on"></i></span
+              >Certain
+              <div class="acts">
+                <a class="link quiet" href="#">Change</a
+                ><a class="link quiet" href="#">Remove</a>
+              </div>
+            </div>
+          </div>
+          <div class="like">
+            <span class="icon"
+              ><svg viewBox="0 0 24 24">
+                <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" /></svg
+            ></span>
+            <div>
+              <strong>Quiet places</strong>
+              <p class="why">I noticed this in Kyoto</p>
+            </div>
+            <div class="foot">
+              <span class="dots"
+                ><i class="on"></i><i class="on"></i><i></i></span
+              >Fairly sure
+              <div class="acts">
+                <a class="link quiet" href="#">Change</a
+                ><a class="link quiet" href="#">Remove</a>
+              </div>
+            </div>
+          </div>
+          <div class="like guess">
+            <span class="icon"
+              ><svg viewBox="0 0 24 24">
+                <path
+                  d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 15h18M3 18v2M21 18v2M7 9V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"
+                /></svg
+            ></span>
+            <div>
+              <strong>Small hotels in quiet neighbourhoods</strong>
+              <p class="why">I noticed this in Kyoto</p>
+            </div>
+            <div class="ask">
+              <b>Still a guess. Is this right?</b
+              ><a class="btn sm plain" href="#">Yes</a
+              ><a class="ghost sm" href="#">Not quite</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="shaped">
+        <div>
+          <div class="label">Why this matters</div>
+          <h2 class="display" style="margin-top: 10px">
+            How this shaped <em>Tokyo</em>
+          </h2>
+          <p class="note">
+            Every suggestion can be traced back to something on this page.
+          </p>
+          <a class="link" href="#">Open the Tokyo trip</a>
+        </div>
+        <div>
+          <div class="cause">
+            <span class="from">Late starts, around ten</span
+            ><span class="arr">→</span
+            ><span class="to"><b>So in Tokyo</b>Every day begins at 10:00</span>
+          </div>
+          <div class="cause">
+            <span class="from">Vegetarian food</span><span class="arr">→</span
+            ><span class="to"
+              ><b>So in Tokyo</b>All eleven meals have vegetarian choices</span
+            >
+          </div>
+          <div class="cause">
+            <span class="from">A relaxed pace</span><span class="arr">→</span
+            ><span class="to"
+              ><b>So in Tokyo</b>One main sight each morning, then time to
+              wander</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="tell">
+        <div>
+          <div class="label">Add something</div>
+          <h2 class="display">Tell me something <em>new</em></h2>
+          <p class="note">
+            Say it however you like. I work out where it belongs and show you
+            before I save it.
+          </p>
+        </div>
+        <div>
+          <label>What should I remember?</label>
+          <div class="input">
+            I get tired of museums after two hours<span></span>
+          </div>
+          <span class="heard"
+            >I would file this under <b>Pace</b> · a habit, not a rule</span
+          >
+          <div class="row">
+            <a class="btn" href="#">Remember this<span class="go">→</span></a
+            ><span class="switch"><i></i>Make it a rule I never break</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="end">
+        <a class="link quiet" href="#">Forget everything and start again</a>
+      </div>
+    </div>
+  </body>
+</html>

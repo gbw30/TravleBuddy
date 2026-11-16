@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
   BRIEF_STEPS,
@@ -84,6 +84,13 @@ export function TripBrief() {
     prefillFromProfile(emptyBrief(), profileEntries),
   );
   const [brief, setBrief] = useState<Brief>(prefilled);
+  // False on the server, true once the form can take input. Text typed before
+  // that is lost, so browser tests wait for it.
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [step, setStep] = useState(0);
   const [tried, setTried] = useState(false);
   const [builtDays, setBuiltDays] = useState<number | null>(null);
@@ -153,7 +160,11 @@ export function TripBrief() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl py-10 md:py-14">
+    <div
+      data-qa="trip-brief"
+      data-ready={ready}
+      className="mx-auto max-w-2xl py-10 md:py-14"
+    >
       <h1 className={pageTitle}>Quick plan</h1>
       <p className="mt-3 text-lg text-ink/75 italic">
         A short trip brief. Only the first step is needed; I fill the rest from

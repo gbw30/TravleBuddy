@@ -70,6 +70,10 @@ export type ProfileEntry = {
   kind: "hard limit" | "taste";
   sureness: "I think" | "usually" | "always";
   source: string;
+  /** For a hard limit: what the agent does about it. */
+  detail?: string;
+  /** A habit that is a point on a scale. `say` holds "{stop}" for the chosen stop. */
+  scale?: { stops: string[]; index: number; say: string };
 };
 
 export const profileEntries: ProfileEntry[] = [
@@ -79,6 +83,8 @@ export const profileEntries: ProfileEntry[] = [
     kind: "hard limit",
     sureness: "always",
     source: "you told me",
+    detail:
+      "Every meal I suggest has proper vegetarian choices, not one side dish.",
   },
   {
     topic: "food",
@@ -86,6 +92,7 @@ export const profileEntries: ProfileEntry[] = [
     kind: "hard limit",
     sureness: "always",
     source: "you told me",
+    detail: "I check menus and skip places where it is hard to avoid.",
   },
   {
     topic: "pace",
@@ -93,6 +100,11 @@ export const profileEntries: ProfileEntry[] = [
     kind: "taste",
     sureness: "usually",
     source: "from your Kyoto trip",
+    scale: {
+      stops: ["Packed", "Balanced", "Relaxed"],
+      index: 2,
+      say: "A {stop} pace",
+    },
   },
   {
     topic: "day shape",
@@ -100,6 +112,11 @@ export const profileEntries: ProfileEntry[] = [
     kind: "taste",
     sureness: "I think",
     source: "from your Kyoto trip",
+    scale: {
+      stops: ["7:00", "8:00", "9:00", "10:00", "11:00", "12:00"],
+      index: 3,
+      say: "Days start around {stop}",
+    },
   },
   {
     topic: "interests",
@@ -121,6 +138,11 @@ export const profileEntries: ProfileEntry[] = [
     kind: "taste",
     sureness: "I think",
     source: "from your Kyoto trip",
+    scale: {
+      stops: ["¥8,000", "¥15,000", "¥25,000"],
+      index: 1,
+      say: "About {stop} a day",
+    },
   },
   {
     topic: "getting around",

@@ -55,7 +55,7 @@ export function CloserLook({
           )}
           <h2
             id="closer-look-title"
-            className="mt-4 text-[28px] leading-tight font-medium tracking-[-0.02em] [overflow-wrap:anywhere]"
+            className="mt-4 text-[32px] leading-[1.06] tracking-[-0.025em] [overflow-wrap:anywhere]"
           >
             {place.name}
           </h2>
@@ -64,7 +64,9 @@ export function CloserLook({
           </p>
           <p className="mt-3">{place.summary}</p>
           <p className={`${eyebrow} mt-5 text-terracotta`}>Why it suits you</p>
-          <p className="italic">{place.reason}</p>
+          <p className="font-serif text-[19px] leading-snug italic">
+            {place.reason}
+          </p>
           <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 border-t border-ink/12 pt-4 text-[15px]">
             <dt className="font-sans text-[13px] leading-6 text-muted">
               Address

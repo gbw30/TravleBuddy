@@ -12,7 +12,7 @@
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 
   /* Keepsake design tokens (docs/prd.md section 15). Text pairs are contrast-checked in keepsake-tokens.test.ts. */
-  --font-serif: var(--font-lora), Georgia, serif;
+  --font-serif: var(--font-fraunces), Georgia, serif;
   --color-paper: #f4eee3;
   --color-ink: #1d1a16;
   --color-muted: #6f665b;
@@ -28,6 +28,11 @@
     0 22px 40px rgb(29 26 22 / 0.1);
   --shadow-sheet:
     0 1px 2px rgb(29 26 22 / 0.05), 0 12px 32px rgb(29 26 22 / 0.08);
+  --shadow-lift:
+    0 2px 4px rgb(29 26 22 / 0.06), 0 18px 44px rgb(29 26 22 / 0.14);
+  --color-tint: #ece3d3;
+  /* Fast start, soft landing: the curve measured on the reference sites. */
+  --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,8 +53,121 @@ body {
   isolation: isolate;
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-serif);
+  /* Plain sans for reading; the serif is for headlines and the agent's voice. */
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+.keepsake-paper :is(h1, h2, h3) {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+/* Keyboard users always see where they are. Text fields draw their own ring. */
+.keepsake-paper
+  :focus-visible:not(input:not([type="range"]), textarea, select) {
+  outline: 2px solid var(--color-terracotta);
+  outline-offset: 3px;
+}
+
+/* Content arrives in reading order: set --i to 0, 1, 2… on each block.
+   No blur: animating a blur filter crashed WebKit in testing. */
+@keyframes keepsake-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes keepsake-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* A stamp drops in large and faint, then settles. */
+@keyframes keepsake-stamp {
+  from {
+    opacity: 0;
+    scale: 1.5;
+    rotate: -14deg;
+  }
+}
+.rise,
+.stamp-in {
+  animation: keepsake-fade 200ms ease-out both;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: keepsake-rise 600ms var(--ease-settle) both;
+    animation-delay: calc(var(--i, 0) * 100ms);
+  }
+  .stamp-in {
+    animation: keepsake-stamp 300ms var(--ease-settle) both;
+  }
+}
+
+/* The habit slider on the profile: a native range input, restyled. */
+.keepsake-range {
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: grab;
+}
+.keepsake-range:active {
+  cursor: grabbing;
+}
+.keepsake-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-ink) var(--fill, 50%),
+    var(--color-tint) var(--fill, 50%)
+  );
+}
+.keepsake-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-ink) var(--fill, 50%),
+    var(--color-tint) var(--fill, 50%)
+  );
+}
+.keepsake-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow:
+    0 0 0 2px var(--color-ink),
+    0 3px 8px rgb(29 26 22 / 0.25);
+  transition:
+    box-shadow 150ms var(--ease-settle),
+    background-color 150ms var(--ease-settle),
+    scale 150ms var(--ease-settle);
+}
+.keepsake-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow:
+    0 0 0 2px var(--color-ink),
+    0 3px 8px rgb(29 26 22 / 0.25);
+}
+@media (hover: hover) {
+  .keepsake-range:hover::-webkit-slider-thumb {
+    box-shadow:
+      0 0 0 2px var(--color-ink),
+      0 0 0 8px rgb(29 26 22 / 0.08);
+  }
+}
+.keepsake-range:active::-webkit-slider-thumb {
+  background: var(--color-ink);
+  scale: 1.18;
 }
 
 /* Paper grain. A real texture you barely notice, not a printed pattern. */

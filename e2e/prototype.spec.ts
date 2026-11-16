@@ -58,8 +58,8 @@ test.describe("prototype walkthrough", () => {
   test("walks from Home to a picked card", async ({ page }) => {
     await page.goto("/prototype");
     await page.getByRole("link", { name: "New trip" }).click();
-    await page.getByRole("button", { name: "Not yet" }).click();
-    await page.getByRole("link", { name: /Guided planning/ }).click();
+    await page.getByRole("radio", { name: /Plan it together/ }).click();
+    await page.getByRole("link", { name: "Start planning together" }).click();
     await page
       .locator('[data-qa="prototype-workspace"][data-ready="true"]')
       .waitFor();
@@ -150,7 +150,7 @@ test.describe("prototype walkthrough", () => {
       await document.fonts.ready;
       return [...document.fonts].some(
         (face) =>
-          /lora/i.test(face.family) &&
+          /fraunces/i.test(face.family) &&
           face.style === "italic" &&
           face.status === "loaded",
       );
@@ -220,6 +220,7 @@ test.describe("prototype walkthrough", () => {
 
   test("Quick plan builds from step 1 alone", async ({ page }) => {
     await page.goto("/prototype/quick-plan");
+    await page.locator('[data-qa="trip-brief"][data-ready="true"]').waitFor();
     await page.getByLabel("City 1", { exact: true }).fill("Tokyo");
     await page.getByLabel("Nights in city 1").fill("3");
     await page.getByLabel("Start date").fill("2027-05-10");

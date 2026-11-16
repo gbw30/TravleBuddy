@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Planning · redesign mockup</title>
+    <link rel="stylesheet" href="mock.css" />
+    <style>
+      .trip {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 40px;
+        padding: 56px 0 36px;
+        border-bottom: 1px solid var(--line);
+      }
+      .trip h1 {
+        font-size: 60px;
+        margin-top: 14px;
+      }
+      .progress {
+        text-align: right;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .progress .bar {
+        width: 220px;
+        height: 3px;
+        background: var(--line);
+        border-radius: 2px;
+        margin: 10px 0 14px auto;
+        overflow: hidden;
+      }
+      .progress .bar i {
+        display: block;
+        width: 55%;
+        height: 100%;
+        background: var(--ink);
+      }
+      .progress .links {
+        display: flex;
+        gap: 20px;
+        justify-content: flex-end;
+      }
+
+      .main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 400px;
+        gap: 64px;
+        padding: 44px 0 96px;
+        align-items: start;
+      }
+
+      .agent {
+        display: grid;
+        grid-template-columns: 40px 1fr;
+        gap: 18px;
+        max-width: 620px;
+      }
+      .seal {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1.5px solid var(--terracotta);
+        color: var(--terracotta);
+        display: grid;
+        place-items: center;
+        font-style: italic;
+        font-size: 17px;
+      }
+      .agent p {
+        font-size: 20px;
+        line-height: 1.5;
+        font-style: italic;
+        color: #2c2721;
+      }
+      .agent .source {
+        display: block;
+        margin-top: 10px;
+        font-family: var(--sans);
+        font-style: normal;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .agent .source u {
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+      }
+
+      .slot {
+        margin-top: 56px;
+      }
+      .slot h2 {
+        font-size: 40px;
+        margin-top: 12px;
+      }
+      .slot .sub {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 17px;
+        max-width: 520px;
+      }
+
+      .fan {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        align-items: start;
+        gap: 0;
+        margin: 44px -8px 0;
+        padding-bottom: 12px;
+      }
+      .fan .print:nth-child(1) {
+        transform: rotate(-2.2deg) translate(10px, 14px);
+      }
+      .fan .print:nth-child(2) {
+        transform: translateY(-6px);
+        z-index: 2;
+      }
+      .fan .print:nth-child(3) {
+        transform: rotate(2deg) translate(-10px, 16px);
+      }
+      .fan .print h3 {
+        font-size: 20px;
+      }
+
+      .after {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        margin-top: 44px;
+      }
+
+      .shelf {
+        margin-top: 64px;
+        padding-top: 28px;
+        border-top: 1px solid var(--line);
+      }
+      .shelf .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 18px;
+      }
+      .mini {
+        display: grid;
+        grid-template-columns: 92px 1fr;
+        gap: 16px;
+        align-items: center;
+        background: var(--sheet);
+        padding: 8px;
+        border-radius: 4px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 4px 12px rgba(29, 26, 22, 0.05);
+      }
+      .mini .thumb {
+        aspect-ratio: 1;
+        border-radius: 2px;
+        overflow: hidden;
+        outline: 1px solid rgba(0, 0, 0, 0.1);
+        outline-offset: -1px;
+      }
+      .mini strong {
+        font-weight: 500;
+        font-size: 16px;
+        display: block;
+        line-height: 1.25;
+      }
+      .mini span {
+        font-family: var(--sans);
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      /* A place with no photo: the back of a postcard, not a placeholder picture. */
+      .back {
+        background: #f8f1e2;
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+      .back::before {
+        content: "";
+        position: absolute;
+        inset: 14px 12px auto;
+        height: 1px;
+        background: var(--line);
+        box-shadow:
+          0 9px 0 var(--line),
+          0 18px 0 var(--line);
+        top: auto;
+        bottom: 16px;
+      }
+      .postmark {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 1.5px solid var(--stamp);
+        outline: 1px solid var(--stamp);
+        outline-offset: 2px;
+        opacity: 0.7;
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 7.5px;
+        letter-spacing: 0.1em;
+        color: var(--stamp);
+        text-align: center;
+        line-height: 1.25;
+        transform: rotate(-12deg) translateY(-8px);
+      }
+
+      .say {
+        margin-top: 56px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border-bottom: 1.5px solid var(--ink);
+        padding-bottom: 12px;
+        max-width: 620px;
+      }
+      .say span {
+        flex: 1;
+        font-style: italic;
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .say b {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--paper);
+        display: grid;
+        place-items: center;
+        font-family: var(--sans);
+        font-weight: 400;
+      }
+
+      /* ---------- itinerary sheet ---------- */
+      .sheet {
+        background: var(--sheet);
+        border-radius: 14px;
+        box-shadow: var(--shadow-sheet);
+        padding: 28px 26px 26px;
+        position: sticky;
+        top: 28px;
+        --notch: var(--sheet);
+      }
+      .sheet header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+      .sheet header h2 {
+        font-size: 24px;
+      }
+      .days {
+        display: flex;
+        gap: 18px;
+        font-family: var(--sans);
+        font-size: 13px;
+        margin-top: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+      }
+      .days .on {
+        color: var(--ink);
+        font-weight: 500;
+        box-shadow: 0 15px 0 -13.5px var(--ink);
+      }
+      .dayhead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 24px 0 18px;
+      }
+      .timeline {
+        display: grid;
+        gap: 0;
+      }
+      .leg {
+        font-family: var(--sans);
+        font-size: 12px;
+        color: var(--muted);
+        padding: 9px 0 9px 96px;
+        position: relative;
+      }
+      .leg::before {
+        content: "";
+        position: absolute;
+        left: 39px;
+        top: 0;
+        bottom: 0;
+        border-left: 1.5px dotted rgba(29, 26, 22, 0.25);
+      }
+      .open {
+        display: grid;
+        grid-template-columns: 78px 1fr auto;
+        align-items: center;
+        border: 1.5px dashed rgba(29, 26, 22, 0.22);
+        border-radius: 8px;
+      }
+      .open .time {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--muted);
+        padding: 15px 0 15px 18px;
+      }
+      .open .what {
+        padding: 0 16px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+      .open .link {
+        margin-right: 16px;
+        font-size: 13px;
+      }
+      .open.now {
+        border-color: var(--terracotta);
+        background: rgba(164, 80, 44, 0.05);
+      }
+      .open.now .time,
+      .open.now .what {
+        color: var(--terracotta);
+      }
+      .open.now .what::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--terracotta);
+        margin-right: 10px;
+        vertical-align: 2px;
+      }
+      .wander {
+        display: grid;
+        grid-template-columns: 78px 1fr;
+        align-items: center;
+      }
+      .wander .time {
+        font-family: var(--mono);
+        font-size: 14px;
+        padding: 12px 0 12px 18px;
+        color: var(--muted);
+      }
+      .wander i {
+        padding: 0 16px;
+        font-size: 15.5px;
+        color: #4a4239;
+      }
+      .rest {
+        margin-top: 22px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 10px;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .rest div {
+        display: flex;
+        justify-content: space-between;
+      }
+      .rest b {
+        color: var(--ink);
+        font-weight: 500;
+      }
+
+      .dock {
+        display: none;
+      }
+
+      @media (max-width: 760px) {
+        .wrap {
+          padding: 0 20px;
+        }
+        .nav a:not(.on) {
+          display: none;
+        }
+        .top {
+          gap: 16px;
+          padding-top: 20px;
+        }
+        .trip {
+          grid-template-columns: 1fr;
+          gap: 20px;
+          padding: 36px 0 26px;
+        }
+        .trip h1 {
+          font-size: 40px;
+        }
+        .progress {
+          text-align: left;
+        }
+        .progress .bar {
+          margin-left: 0;
+          width: 100%;
+        }
+        .progress .links {
+          justify-content: flex-start;
+        }
+        .main {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+          padding: 30px 0 120px;
+        }
+        .main > div {
+          min-width: 0;
+        }
+        body {
+          overflow-x: hidden;
+        }
+        .agent {
+          grid-template-columns: 32px 1fr;
+          gap: 14px;
+        }
+        .seal {
+          width: 32px;
+          height: 32px;
+          font-size: 14px;
+        }
+        .agent p {
+          font-size: 18px;
+        }
+        .slot {
+          margin-top: 40px;
+        }
+        .slot h2 {
+          font-size: 31px;
+        }
+        .fan {
+          display: flex;
+          gap: 14px;
+          margin: 30px -20px 0;
+          padding: 6px 20px 26px;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+        }
+        .fan .print {
+          flex: 0 0 78%;
+          scroll-snap-align: center;
+          transform: none !important;
+        }
+        .after {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 14px;
+          margin-top: 18px;
+        }
+        .shelf {
+          margin-top: 40px;
+        }
+        .shelf .row {
+          grid-template-columns: 1fr;
+        }
+        .sheet {
+          display: none;
+        }
+        .dock {
+          z-index: 10;
+          display: flex;
+          position: fixed;
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          align-items: center;
+          justify-content: space-between;
+          background: var(--ink);
+          color: var(--paper);
+          border-radius: 16px;
+          padding: 14px 18px;
+          box-shadow: 0 10px 30px rgba(29, 26, 22, 0.3);
+          font-family: var(--sans);
+          font-size: 14px;
+        }
+        .dock small {
+          display: block;
+          color: rgba(244, 238, 227, 0.6);
+          font-size: 12px;
+          margin-top: 2px;
+        }
+        .dock b {
+          font-weight: 500;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <a class="wordmark" href="#">Travle<span>Buddy</span></a>
+        <nav class="nav">
+          <a href="#">Trips</a><a class="on" href="#">Planning</a
+          ><a href="#">What I remember</a>
+        </nav>
+        <div class="avatar">G</div>
+      </div>
+
+      <section class="trip">
+        <div>
+          <div class="label">Tokyo · 10–12 May 2027 · 1 traveller</div>
+          <h1>Three <em>slow</em> days in Tokyo</h1>
+        </div>
+        <div class="progress">
+          6 of 11 moments planned
+          <div class="bar"><i></i></div>
+          <div class="links">
+            <a class="link quiet" href="#">Undo</a
+            ><a class="link" href="#">Build the rest for me</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="main">
+        <div>
+          <div class="agent">
+            <div class="seal">tb</div>
+            <p>
+              Your flight, your hotel and your teamLab ticket are in place. You
+              like late starts, so each day begins at ten.
+              <span class="source"
+                >Remembered from <u>Kyoto, November 2026</u></span
+              >
+            </p>
+          </div>
+
+          <div class="slot">
+            <div class="label"><b>Day 2</b> · Morning · 10:00</div>
+            <h2>Where should the <em>morning</em> go?</h2>
+            <p class="sub">
+              Each of these leaves you an easy ride to teamLab at 15:00.
+            </p>
+          </div>
+
+          <div class="fan">
+            <article class="print">
+              <div class="photo">
+                <img
+                  src="../../../public/prototype/photos/meiji-jingu.jpg"
+                  alt=""
+                />
+              </div>
+              <div class="postage">Shrine<br />Forest</div>
+              <div class="caption">
+                <h3>Meiji Jingu</h3>
+                <div class="meta">Shrine · 20 min by train · Free</div>
+                <p class="why">A forest walk before the city wakes up.</p>
+                <div class="actions">
+                  <a class="btn" href="#">Pick</a
+                  ><a class="link quiet" href="#">Save</a
+                  ><a class="link quiet" href="#">Closer look</a>
+                </div>
+              </div>
+            </article>
+            <article class="print">
+              <div class="photo">
+                <img
+                  src="../../../public/prototype/photos/senso-ji.jpg"
+                  alt=""
+                />
+              </div>
+              <div class="postage">Temple<br />Asakusa</div>
+              <div class="caption">
+                <h3>Senso-ji Temple</h3>
+                <div class="meta">Temple · 25 min by train · Free</div>
+                <p class="why">One main sight, then a slow lunch nearby.</p>
+                <div class="actions">
+                  <a class="btn" href="#">Pick</a
+                  ><a class="link quiet" href="#">Save</a
+                  ><a class="link quiet" href="#">Closer look</a>
+                </div>
+              </div>
+            </article>
+            <article class="print">
+              <div class="photo">
+                <img
+                  src="../../../public/prototype/photos/national-museum.jpg"
+                  alt=""
+                />
+              </div>
+              <div class="postage">Museum<br />Ueno</div>
+              <div class="caption">
+                <h3>Tokyo National Museum</h3>
+                <div class="meta">Museum · 15 min on foot · ¥1,000</div>
+                <p class="why">Quiet rooms, close to your hotel.</p>
+                <div class="actions">
+                  <a class="btn" href="#">Pick</a
+                  ><a class="link quiet" href="#">Save</a
+                  ><a class="link quiet" href="#">Closer look</a>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="after">
+            <a class="link" href="#">None of these. Show me three others →</a>
+          </div>
+
+          <div class="say">
+            <span>Tell me what you would rather do…</span><b>↑</b>
+          </div>
+
+          <div class="shelf">
+            <div class="label">On your shelf · 2 saved for later</div>
+            <div class="row">
+              <div class="mini">
+                <div class="thumb">
+                  <img
+                    src="../../../public/prototype/photos/nezu-shrine.jpg"
+                    alt=""
+                  />
+                </div>
+                <div>
+                  <strong>Nezu Shrine</strong
+                  ><span>Shrine · 8 min on foot</span>
+                </div>
+              </div>
+              <div class="mini">
+                <div class="thumb back">
+                  <div class="postmark">YANAKA<br />TOKYO</div>
+                </div>
+                <div>
+                  <strong>Kayaba Coffee</strong
+                  ><span>Café · 10 min on foot · no photo yet</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="sheet">
+          <header>
+            <h2>Itinerary</h2>
+            <span class="stamp">Tokyo · Day 2</span>
+          </header>
+          <div class="days">
+            <span>Mon 10</span><span class="on">Tue 11</span><span>Wed 12</span>
+          </div>
+          <div class="dayhead">
+            <div class="label">Tuesday 11 May</div>
+            <div class="label">2 of 5 planned</div>
+          </div>
+
+          <div class="timeline">
+            <div class="open now">
+              <div class="time">10:00</div>
+              <div class="what">Morning: choosing now</div>
+            </div>
+            <div class="leg">Train · about 25 min</div>
+            <div class="open">
+              <div class="time">12:30</div>
+              <div class="what">Lunch</div>
+              <a class="link" href="#">Choose</a>
+            </div>
+            <div class="leg">Train · about 35 min</div>
+            <div class="stub">
+              <div class="time">15:00</div>
+              <div class="body">
+                <strong>teamLab Planets</strong
+                ><span>Ticket · until 17:00</span>
+              </div>
+              <div class="tag">BOOKED</div>
+            </div>
+            <div class="leg">Walk · about 9 min</div>
+            <div class="wander">
+              <div class="time">17:15</div>
+              <i>Time to wander the Toyosu waterfront · 60 min</i>
+            </div>
+            <div class="leg">Train · about 20 min</div>
+            <div class="open">
+              <div class="time">19:30</div>
+              <div class="what">Dinner</div>
+              <a class="link" href="#">Choose</a>
+            </div>
+          </div>
+
+          <div class="rest">
+            <div><span>Mon 10 · arrival day</span><b>3 of 4 planned</b></div>
+            <div><span>Wed 12 · last day</span><b>1 of 2 planned</b></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="dock">
+      <div>
+        <b>Itinerary · Tue 11 May</b><small>2 of 5 planned · next: lunch</small>
+      </div>
+      <span>▲</span>
+    </div>
+  </body>
+</html>

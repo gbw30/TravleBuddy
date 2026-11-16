@@ -45,7 +45,7 @@ export function Shelf({
                 <button
                   type="button"
                   onClick={() => onLook(place.id)}
-                  className="block text-left text-base leading-tight font-medium underline decoration-ink/25 underline-offset-4 [overflow-wrap:anywhere]"
+                  className="block text-left font-serif text-[19px] leading-tight underline decoration-ink/25 underline-offset-4 [overflow-wrap:anywhere]"
                 >
                   {place.name}
                 </button>

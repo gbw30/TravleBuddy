@@ -187,7 +187,7 @@ export function PrototypeWorkspace({
             {trip.days[0].city} · {trip.days[0].date} to{" "}
             {trip.days.at(-1)!.date} · 1 traveller
           </p>
-          <h1 className="mt-3 text-[40px] leading-[1.04] font-medium tracking-[-0.025em] text-balance md:text-[60px]">
+          <h1 className="mt-3 text-[42px] leading-[1.02] tracking-[-0.035em] text-balance md:text-[68px]">
             {trip.title}
           </h1>
         </div>
@@ -233,7 +233,7 @@ export function PrototypeWorkspace({
         >
           <h2
             id="report-heading"
-            className="text-[28px] leading-tight font-medium tracking-[-0.02em]"
+            className="text-[32px] leading-[1.06] tracking-[-0.03em]"
           >
             Your trip is <em>built</em>
           </h2>
@@ -320,7 +320,7 @@ export function PrototypeWorkspace({
             <div className="grid max-w-[620px] grid-cols-[2rem_minmax(0,1fr)] gap-3.5 md:grid-cols-[2.5rem_minmax(0,1fr)] md:gap-[18px]">
               <span
                 aria-hidden
-                className="grid size-8 place-items-center rounded-full border-[1.5px] border-terracotta text-sm text-terracotta italic md:size-10 md:text-[17px]"
+                className="grid size-8 place-items-center rounded-full border-[1.5px] border-terracotta font-serif text-sm text-terracotta italic md:size-10 md:text-[17px]"
               >
                 tb
               </span>
@@ -369,7 +369,7 @@ export function PrototypeWorkspace({
                   </span>{" "}
                   · {activeSlot.label} · {activeSlot.start}
                 </p>
-                <h2 className="mt-3 text-[31px] leading-[1.1] font-medium tracking-[-0.02em] text-balance md:text-[40px]">
+                <h2 className="mt-3 text-[32px] leading-[1.06] tracking-[-0.03em] text-balance md:text-[46px]">
                   Choosing your <em>{activeSlot.label.toLowerCase()}</em>
                 </h2>
               </div>
@@ -448,7 +448,7 @@ export function PrototypeWorkspace({
                 name="message"
                 aria-label="Message the agent"
                 placeholder="Tell me what you would rather do…"
-                className="min-w-0 flex-1 bg-transparent text-lg italic placeholder:text-muted"
+                className="min-w-0 flex-1 bg-transparent font-serif text-xl italic placeholder:text-muted"
               />
               <button
                 type="submit"
@@ -525,7 +525,7 @@ export function PrototypeWorkspace({
 const sheet =
   "rounded-[14px] bg-card [--notch:var(--color-card)] lg:shadow-sheet";
 const sheetTitle = (
-  <h2 className="mb-6 hidden text-2xl font-medium tracking-[-0.02em] lg:block">
+  <h2 className="mb-6 hidden text-[30px] leading-none tracking-[-0.025em] lg:block">
     Itinerary
   </h2>
 );

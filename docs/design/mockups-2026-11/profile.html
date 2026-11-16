@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile · redesign mockup</title>
+    <link rel="stylesheet" href="mock.css" />
+    <style>
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 64px;
+        align-items: end;
+        padding: 72px 0 56px;
+      }
+      .hero h1 {
+        font-size: 58px;
+        margin-top: 18px;
+      }
+      .hero .lede {
+        font-size: 20px;
+        color: #4a4239;
+        margin-top: 20px;
+        max-width: 560px;
+      }
+      .passport {
+        background: var(--sheet);
+        border-radius: 14px;
+        box-shadow: var(--shadow-sheet);
+        padding: 24px;
+      }
+      .passport .stamps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px 10px;
+        margin-top: 18px;
+        padding: 6px 0 4px;
+      }
+      .passport .stamps .stamp:nth-child(2) {
+        transform: rotate(4deg);
+      }
+      .passport .count {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .passport .count b {
+        display: block;
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        line-height: 1;
+      }
+      .passport .count span {
+        font-family: var(--sans);
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+
+      .how {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      .how div {
+        padding: 26px 28px 28px 0;
+      }
+      .how div + div {
+        padding-left: 28px;
+        border-left: 1px solid var(--line);
+      }
+      .how b {
+        display: block;
+        font-weight: 500;
+        font-size: 19px;
+        margin-top: 12px;
+      }
+      .how p {
+        color: var(--muted);
+        font-size: 15.5px;
+        margin-top: 6px;
+        line-height: 1.5;
+      }
+      .how .n {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--terracotta);
+      }
+
+      .sec {
+        padding-top: 64px;
+      }
+      .sec > header {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        gap: 56px;
+        align-items: start;
+      }
+      .sec h2 {
+        font-size: 34px;
+        margin-top: 8px;
+      }
+      .sec .note {
+        color: var(--muted);
+        font-size: 16px;
+        margin-top: 12px;
+        line-height: 1.5;
+      }
+
+      .rules {
+        display: grid;
+        gap: 14px;
+      }
+      .rule {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 18px;
+        align-items: center;
+        background: var(--sheet);
+        border-radius: 12px;
+        padding: 18px 22px;
+        box-shadow:
+          0 0 0 1.5px rgba(138, 36, 32, 0.35),
+          0 2px 6px rgba(29, 26, 22, 0.05);
+      }
+      .rule .never {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        color: var(--stamp);
+        border: 1.5px solid var(--stamp);
+        padding: 5px 8px;
+        border-radius: 2px;
+        transform: rotate(-4deg);
+      }
+      .rule strong {
+        font-weight: 500;
+        font-size: 21px;
+        display: block;
+        line-height: 1.2;
+      }
+      .rule span.src {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .acts {
+        display: flex;
+        gap: 16px;
+      }
+
+      .likes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .like {
+        background: var(--sheet);
+        border-radius: 12px;
+        padding: 20px 22px 18px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 2px 6px rgba(29, 26, 22, 0.04);
+        display: flex;
+        flex-direction: column;
+      }
+      .like .topic {
+        font-family: var(--sans);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .like strong {
+        font-weight: 400;
+        font-style: italic;
+        font-size: 22px;
+        line-height: 1.25;
+        margin-top: 8px;
+        display: block;
+      }
+      .like .why {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .sure {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+        font-family: var(--sans);
+        font-size: 13px;
+      }
+      .dots {
+        display: flex;
+        gap: 4px;
+      }
+      .dots i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--line);
+      }
+      .dots i.on {
+        background: var(--ink);
+      }
+      .sure .acts {
+        margin-left: auto;
+      }
+      .like.guess {
+        box-shadow:
+          0 0 0 1.5px rgba(164, 80, 44, 0.45),
+          0 2px 6px rgba(29, 26, 22, 0.04);
+      }
+      .ask {
+        margin-top: 16px;
+        padding: 12px 14px;
+        background: rgba(164, 80, 44, 0.07);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--sans);
+        font-size: 13.5px;
+      }
+      .ask b {
+        font-weight: 500;
+        flex: 1;
+      }
+      .yn {
+        height: 32px;
+        padding: 0 14px;
+        border-radius: 999px;
+        font-family: var(--sans);
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+      }
+      .yn.y {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .yn.n {
+        box-shadow: inset 0 0 0 1px rgba(29, 26, 22, 0.3);
+      }
+
+      .tell {
+        margin-top: 72px;
+        background: var(--sheet);
+        border-radius: 14px;
+        box-shadow: var(--shadow-sheet);
+        padding: 34px 36px 32px;
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        gap: 56px;
+      }
+      .tell h2 {
+        font-size: 30px;
+        margin-top: 8px;
+      }
+      .tell .note {
+        color: var(--muted);
+        font-size: 15.5px;
+        margin-top: 10px;
+      }
+      .tell label {
+        font-family: var(--sans);
+        font-size: 13.5px;
+        font-weight: 500;
+        display: block;
+      }
+      .tell .input {
+        margin-top: 8px;
+        border: 1px solid rgba(29, 26, 22, 0.3);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-style: italic;
+        font-size: 18px;
+        color: var(--muted);
+        min-height: 84px;
+        background: #fff;
+      }
+      .tell .eg {
+        font-family: var(--sans);
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .tell .row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--sans);
+        font-size: 13.5px;
+      }
+      .check i {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        box-shadow: inset 0 0 0 1.5px rgba(29, 26, 22, 0.4);
+      }
+      .foot {
+        padding: 36px 0 110px;
+        display: flex;
+        gap: 24px;
+      }
+
+      @media (max-width: 860px) {
+        .wrap {
+          padding: 0 20px;
+        }
+        .nav a:not(.on) {
+          display: none;
+        }
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 32px;
+          padding: 40px 0 40px;
+        }
+        .hero h1 {
+          font-size: 40px;
+        }
+        .hero .lede {
+          font-size: 18px;
+        }
+        .how {
+          grid-template-columns: 1fr;
+        }
+        .how div,
+        .how div + div {
+          padding: 20px 0;
+          border-left: 0;
+        }
+        .how div + div {
+          border-top: 1px solid var(--line);
+        }
+        .sec {
+          padding-top: 44px;
+        }
+        .sec > header,
+        .tell {
+          grid-template-columns: 1fr;
+          gap: 22px;
+        }
+        .sec h2 {
+          font-size: 28px;
+        }
+        .likes {
+          grid-template-columns: 1fr;
+        }
+        .rule {
+          grid-template-columns: 1fr;
+          gap: 10px;
+          justify-items: start;
+        }
+        .tell {
+          padding: 24px 20px;
+          margin-top: 48px;
+        }
+        .ask {
+          flex-wrap: wrap;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <a class="wordmark" href="#">Travle<span>Buddy</span></a>
+        <nav class="nav">
+          <a href="#">Home</a><a href="#">Create</a
+          ><a class="on" href="#">Profile</a>
+        </nav>
+        <div class="avatar">G</div>
+      </div>
+
+      <section class="hero">
+        <div>
+          <div class="label">What I remember about you</div>
+          <h1>
+            You travel <em>slowly,</em> start late, and never eat shellfish.
+          </h1>
+          <p class="lede">
+            This is what I have learned so far. I use it to make better first
+            suggestions on every new trip.
+          </p>
+        </div>
+        <div class="passport">
+          <div class="label">Learned from</div>
+          <div class="stamps">
+            <span class="stamp">Kyoto · 2026</span
+            ><span class="stamp">Lisbon · 2027</span>
+          </div>
+          <div class="count">
+            <div><b>7</b><span>things you usually like</span></div>
+            <div><b>2</b><span>rules I never break</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="how">
+        <div>
+          <span class="n">01</span><b>I learn as we plan</b>
+          <p>When you pick, skip or correct something, I notice the pattern.</p>
+        </div>
+        <div>
+          <span class="n">02</span><b>It is only a starting point</b>
+          <p>
+            What you say about one trip always wins, and does not change this
+            page.
+          </p>
+        </div>
+        <div>
+          <span class="n">03</span><b>You are in charge</b>
+          <p>Correct anything that is wrong, or remove it. I will not argue.</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <header>
+          <div>
+            <div class="label">2 rules</div>
+            <h2>Rules I <em>never</em> break</h2>
+            <p class="note">
+              I will not suggest a place that breaks one of these, on any trip.
+            </p>
+          </div>
+          <div class="rules">
+            <div class="rule">
+              <span class="never">NEVER</span>
+              <div>
+                <strong>No shellfish</strong
+                ><span class="src">Allergy · you told me</span>
+              </div>
+              <div class="acts">
+                <a class="link quiet" href="#">Change</a
+                ><a class="link quiet" href="#">Remove</a>
+              </div>
+            </div>
+            <div class="rule">
+              <span class="never">ALWAYS</span>
+              <div>
+                <strong>Vegetarian food</strong
+                ><span class="src">You told me</span>
+              </div>
+              <div class="acts">
+                <a class="link quiet" href="#">Change</a
+                ><a class="link quiet" href="#">Remove</a>
+              </div>
+            </div>
+          </div>
+        </header>
+      </section>
+
+      <section class="sec">
+        <header>
+          <div>
+            <div class="label">7 preferences</div>
+            <h2>What you <em>usually</em> like</h2>
+            <p class="note">
+              Habits, not rules. I lean this way unless a trip calls for
+              something else. The dots show how sure I am.
+            </p>
+          </div>
+          <div class="likes">
+            <div class="like guess">
+              <span class="topic">Your days</span>
+              <strong>Late starts, around ten</strong>
+              <span class="why">I noticed this in Kyoto · used for Tokyo</span>
+              <div class="ask">
+                <b>I am still guessing. Is this right?</b
+                ><a class="yn y" href="#">Yes</a
+                ><a class="yn n" href="#">Not quite</a>
+              </div>
+            </div>
+            <div class="like">
+              <span class="topic">Pace</span>
+              <strong>A relaxed pace</strong>
+              <span class="why">I noticed this in Kyoto · used for Tokyo</span>
+              <div class="sure">
+                <span class="dots"
+                  ><i class="on"></i><i class="on"></i><i></i></span
+                >Fairly sure
+                <div class="acts">
+                  <a class="link quiet" href="#">Change</a
+                  ><a class="link quiet" href="#">Remove</a>
+                </div>
+              </div>
+            </div>
+            <div class="like">
+              <span class="topic">What you enjoy</span>
+              <strong>Museums and gardens over shopping</strong>
+              <span class="why">I noticed this in Kyoto</span>
+              <div class="sure">
+                <span class="dots"
+                  ><i class="on"></i><i class="on"></i><i></i></span
+                >Fairly sure
+                <div class="acts">
+                  <a class="link quiet" href="#">Change</a
+                  ><a class="link quiet" href="#">Remove</a>
+                </div>
+              </div>
+            </div>
+            <div class="like">
+              <span class="topic">Getting around</span>
+              <strong>Trains and walking</strong>
+              <span class="why">You told me</span>
+              <div class="sure">
+                <span class="dots"
+                  ><i class="on"></i><i class="on"></i><i class="on"></i></span
+                >Certain
+                <div class="acts">
+                  <a class="link quiet" href="#">Change</a
+                  ><a class="link quiet" href="#">Remove</a>
+                </div>
+              </div>
+            </div>
+            <div class="like">
+              <span class="topic">Atmosphere</span>
+              <strong>Quiet places</strong>
+              <span class="why">I noticed this in Kyoto</span>
+              <div class="sure">
+                <span class="dots"
+                  ><i class="on"></i><i class="on"></i><i></i></span
+                >Fairly sure
+                <div class="acts">
+                  <a class="link quiet" href="#">Change</a
+                  ><a class="link quiet" href="#">Remove</a>
+                </div>
+              </div>
+            </div>
+            <div class="like guess">
+              <span class="topic">Where you stay</span>
+              <strong>Small hotels in quiet neighbourhoods</strong>
+              <span class="why">I noticed this in Kyoto</span>
+              <div class="ask">
+                <b>I am still guessing. Is this right?</b
+                ><a class="yn y" href="#">Yes</a
+                ><a class="yn n" href="#">Not quite</a>
+              </div>
+            </div>
+            <div class="like guess">
+              <span class="topic">Budget</span>
+              <strong>About ¥15,000 a day</strong>
+              <span class="why">I worked this out from Kyoto</span>
+              <div class="ask">
+                <b>I am still guessing. Is this right?</b
+                ><a class="yn y" href="#">Yes</a
+                ><a class="yn n" href="#">Not quite</a>
+              </div>
+            </div>
+          </div>
+        </header>
+      </section>
+
+      <section class="tell">
+        <div>
+          <div class="label">Add something</div>
+          <h2>Tell me something <em>new</em></h2>
+          <p class="note">
+            Say it however you like. I will work out where it belongs.
+          </p>
+        </div>
+        <div>
+          <label>What should I remember?</label>
+          <div class="input">&nbsp;</div>
+          <p class="eg">
+            For example: “I get tired of museums after two hours” or “I need a
+            lift, I can’t do stairs”.
+          </p>
+          <div class="row">
+            <a class="btn" href="#">Remember this</a>
+            <span class="check"><i></i>This is a rule. Never break it.</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="foot">
+        <a class="link quiet" href="#">Forget everything and start again</a>
+      </div>
+    </div>
+  </body>
+</html>

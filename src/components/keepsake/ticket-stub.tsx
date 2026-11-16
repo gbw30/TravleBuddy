@@ -29,7 +29,7 @@ export function TicketStub({
         {time}
       </span>
       <span className="min-w-0 border-l-[1.5px] border-dashed border-ink/15 px-4 py-3 [overflow-wrap:anywhere]">
-        <span className="block text-[16.5px] leading-tight font-medium">
+        <span className="block font-serif text-[19px] leading-tight">
           {title}
         </span>
         {note && (

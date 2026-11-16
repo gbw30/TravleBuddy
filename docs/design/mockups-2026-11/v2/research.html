@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Research board</title>
+    <link rel="stylesheet" href="v2.css" />
+    <style>
+      .wrap {
+        max-width: 1200px;
+        padding: 56px 48px 64px;
+      }
+      h1 {
+        font-size: 84px;
+        margin-top: 18px;
+      }
+      .sub {
+        font-size: 19px;
+        color: var(--body);
+        margin-top: 18px;
+        max-width: 760px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 44px;
+      }
+      .card {
+        background: var(--sheet);
+        border-radius: 18px;
+        padding: 30px 32px;
+        box-shadow:
+          0 0 0 1px var(--line),
+          var(--shadow-sheet);
+      }
+      .card.wide {
+        grid-column: 1 / -1;
+      }
+      .card h2 {
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: 40px;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+        margin-top: 8px;
+      }
+      .card p {
+        color: var(--body);
+        font-size: 16px;
+        margin-top: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+        font-size: 14.5px;
+      }
+      th {
+        text-align: left;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 400;
+        padding: 0 0 8px;
+      }
+      td {
+        padding: 9px 0;
+        border-top: 1px solid var(--line);
+      }
+      td.n {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .big {
+        font-family: var(--display);
+        font-size: 74px;
+        line-height: 1;
+        letter-spacing: -0.03em;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        margin-top: 20px;
+      }
+      .stats div {
+        padding: 0 20px;
+        border-left: 1px solid var(--line);
+      }
+      .stats div:first-child {
+        padding-left: 0;
+        border-left: 0;
+      }
+      .stats span {
+        display: block;
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 6px;
+        line-height: 1.4;
+      }
+      .stats .big {
+        font-size: 74px;
+        line-height: 1;
+        color: var(--ink);
+        margin-top: 0;
+      }
+      .bars {
+        display: grid;
+        gap: 12px;
+        margin-top: 22px;
+      }
+      .bar {
+        display: grid;
+        grid-template-columns: 76px 1fr 190px;
+        gap: 14px;
+        align-items: center;
+        font-size: 14px;
+      }
+      .bar b {
+        font-family: var(--mono);
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .bar i {
+        display: block;
+        height: 12px;
+        border-radius: 6px;
+        background: var(--ink);
+      }
+      .bar span {
+        color: var(--muted);
+      }
+      .curves {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+        margin-top: 20px;
+      }
+      .curve svg {
+        width: 100%;
+        height: auto;
+        background: var(--tint);
+        border-radius: 12px;
+      }
+      .curve b {
+        display: block;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        margin-top: 10px;
+      }
+      .curve span {
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+      .gap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 40px;
+        margin-top: 14px;
+      }
+      .gap div {
+        display: grid;
+        grid-template-columns: 22px 1fr;
+        gap: 10px;
+        padding: 12px 0;
+        border-top: 1px solid var(--line);
+        font-size: 15.5px;
+      }
+      .gap div b {
+        color: var(--stamp);
+        font-weight: 600;
+      }
+      .src {
+        margin-top: 26px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <span class="chip"
+        ><b>Research</b>curated.design · 12 featured sites opened and measured
+        in a browser</span
+      >
+      <h1 class="display">What premium sites <em>actually</em> do</h1>
+      <p class="sub">
+        Not opinions. These are computed values read from the live pages: fonts,
+        sizes, button styles, hover changes and animation timings.
+      </p>
+
+      <div class="grid">
+        <div class="card">
+          <div class="label">Typography</div>
+          <h2>Headlines are large, tight and <em>not bold</em></h2>
+          <table>
+            <tr>
+              <th>Site</th>
+              <th>Headline font</th>
+              <th>Size</th>
+              <th>Spacing</th>
+              <th>Weight</th>
+            </tr>
+            <tr>
+              <td>Subframe</td>
+              <td>PP Neue Montreal</td>
+              <td class="n">96px</td>
+              <td class="n">−3.5%</td>
+              <td class="n">500</td>
+            </tr>
+            <tr>
+              <td>Planes</td>
+              <td>System sans</td>
+              <td class="n">90px</td>
+              <td class="n">−5.0%</td>
+              <td class="n">600</td>
+            </tr>
+            <tr>
+              <td>Inflight</td>
+              <td>Inter</td>
+              <td class="n">89px</td>
+              <td class="n">−4.5%</td>
+              <td class="n">580</td>
+            </tr>
+            <tr>
+              <td>Squarespace</td>
+              <td>Clarkson</td>
+              <td class="n">64px</td>
+              <td class="n">−6.0%</td>
+              <td class="n">300</td>
+            </tr>
+            <tr>
+              <td>Meltkit</td>
+              <td>Geist</td>
+              <td class="n">64px</td>
+              <td class="n">−3.0%</td>
+              <td class="n">500</td>
+            </tr>
+            <tr>
+              <td>Mintlify</td>
+              <td>Arizona Flare</td>
+              <td class="n">50px</td>
+              <td class="n">−4.0%</td>
+              <td class="n">400</td>
+            </tr>
+            <tr>
+              <td>Aren</td>
+              <td>Sprig Sans</td>
+              <td class="n">50px</td>
+              <td class="n">−2.0%</td>
+              <td class="n">400</td>
+            </tr>
+            <tr>
+              <td>By Association Only</td>
+              <td>ITC Galliard (serif)</td>
+              <td class="n">40px</td>
+              <td class="n">−3.6%</td>
+              <td class="n">400</td>
+            </tr>
+          </table>
+          <p>
+            Our prototype: 40 to 60px at −2.5%. That is looser than seven of
+            these eight, so our headlines look less deliberate.
+          </p>
+        </div>
+        <div class="card">
+          <div class="label">Font pairing</div>
+          <h2>A plain sans for <em>reading</em>, character in the headline</h2>
+          <div class="stats">
+            <div>
+              <span class="big">12</span
+              ><span>of 12 set all reading text in a plain sans-serif</span>
+            </div>
+            <div>
+              <span class="big">6</span
+              ><span>of 12 add a monospace for small labels and numbers</span>
+            </div>
+            <div>
+              <span class="big">4</span
+              ><span>of 12 use a serif for headlines or one accent word</span>
+            </div>
+          </div>
+          <p style="margin-top: 22px">
+            Body text is 15 to 18px and softened to 60 to 85% strength, never
+            pure black. Emphasis comes from darker ink on key words, not from
+            bold.
+          </p>
+          <p>
+            Our prototype sets everything in one serif, including long
+            explanations and button-adjacent text. That is the main reason
+            Create and Profile read as heavy.
+          </p>
+        </div>
+        <div class="card">
+          <div class="label">Buttons</div>
+          <h2>Every button <em>answers</em> the pointer</h2>
+          <div class="stats">
+            <div>
+              <span class="big">9</span
+              ><span>of 11 main buttons declare a hover transition</span>
+            </div>
+            <div>
+              <span class="big">150</span
+              ><span
+                >milliseconds is the most common hover speed (range 100 to
+                300)</span
+              >
+            </div>
+            <div>
+              <span class="big">500</span
+              ><span
+                >is the most common label weight. None of the twelve is
+                bold</span
+              >
+            </div>
+          </div>
+          <p style="margin-top: 22px">
+            Heights run from 24 to 64px. Four are full pills; most others have a
+            small corner of 4 to 17px. On hover the fill changes; Subframe
+            inverts from pale grey to black.
+          </p>
+          <p>
+            Our prototype:
+            <b style="color: var(--stamp)"
+              >no hover state on any button, link or card.</b
+            >
+          </p>
+        </div>
+        <div class="card">
+          <div class="label">Animation speed</div>
+          <h2>Three speeds, used <em>consistently</em></h2>
+          <div class="bars">
+            <div class="bar">
+              <b>150 ms</b><i style="width: 22%"></i
+              ><span>hover and press</span>
+            </div>
+            <div class="bar">
+              <b>300 ms</b><i style="width: 44%"></i
+              ><span>a state changing</span>
+            </div>
+            <div class="bar">
+              <b>500–700</b><i style="width: 88%"></i
+              ><span>content arriving on screen</span>
+            </div>
+          </div>
+          <p style="margin-top: 22px">
+            0.3s was the most used duration on 5 sites and 0.15s on 4. Three of
+            the twelve also smooth the page scroll with the Lenis library.
+          </p>
+          <p>
+            Our prototype: two animations in total, the card flip and the picked
+            card moving to its slot.
+          </p>
+        </div>
+        <div class="card wide">
+          <div class="label">Animation feel</div>
+          <h2>
+            Fast start, soft landing. Almost nothing moves at a
+            <em>constant</em> speed.
+          </h2>
+          <div class="curves">
+            <div class="curve">
+              <svg viewBox="0 0 300 150">
+                <path
+                  d="M20 130 C 82 0, 114 20, 280 20"
+                  fill="none"
+                  stroke="#1d1a16"
+                  stroke-width="2.5"
+                />
+                <path
+                  d="M20 130 L 280 20"
+                  stroke="#1d1a16"
+                  stroke-opacity=".18"
+                  stroke-dasharray="3 5"
+                /></svg
+              ><b>cubic-bezier(0.22, 1, 0.36, 1)</b
+              ><span
+                >Found on 5 sites. Used for arrivals: quick, then settles.</span
+              >
+            </div>
+            <div class="curve">
+              <svg viewBox="0 0 300 150">
+                <path
+                  d="M20 130 C 124 130, 72 20, 280 20"
+                  fill="none"
+                  stroke="#1d1a16"
+                  stroke-width="2.5"
+                />
+                <path
+                  d="M20 130 L 280 20"
+                  stroke="#1d1a16"
+                  stroke-opacity=".18"
+                  stroke-dasharray="3 5"
+                /></svg
+              ><b>cubic-bezier(0.4, 0, 0.2, 1)</b
+              ><span
+                >Found on 6 sites. The everyday curve for hover and state.</span
+              >
+            </div>
+            <div class="curve">
+              <svg viewBox="0 0 300 150">
+                <path
+                  d="M20 130 C 20 130, 72 20, 280 20"
+                  fill="none"
+                  stroke="#1d1a16"
+                  stroke-width="2.5"
+                />
+                <path
+                  d="M20 130 L 280 20"
+                  stroke="#1d1a16"
+                  stroke-opacity=".18"
+                  stroke-dasharray="3 5"
+                /></svg
+              ><b>cubic-bezier(0, 0, 0.2, 1)</b
+              ><span>Found on 4 sites. Things entering: no slow start.</span>
+            </div>
+          </div>
+        </div>
+        <div class="card wide">
+          <div class="label">The gap</div>
+          <h2>Where Create and Profile fall <em>short</em> today</h2>
+          <div class="gap">
+            <div>
+              <b>1</b
+              ><span
+                >No feedback: nothing reacts to hover, press or keyboard
+                focus.</span
+              >
+            </div>
+            <div>
+              <b>5</b
+              ><span
+                >Everything has the same weight, so the eye has no first place
+                to land.</span
+              >
+            </div>
+            <div>
+              <b>2</b
+              ><span
+                >Create shows both questions at once, with no picture of what
+                each choice gives you.</span
+              >
+            </div>
+            <div>
+              <b>6</b
+              ><span
+                >Profile never shows what a memory did, so it reads as a
+                settings list.</span
+              >
+            </div>
+            <div>
+              <b>3</b
+              ><span
+                >Profile uses coded labels: “Taste · usually · from your Kyoto
+                trip”.</span
+              >
+            </div>
+            <div>
+              <b>7</b
+              ><span
+                >No imagery on either screen, on a product whose look depends on
+                it.</span
+              >
+            </div>
+            <div>
+              <b>4</b
+              ><span
+                >A preference such as pace is a point on a scale, but it is
+                shown as a word.</span
+              >
+            </div>
+            <div>
+              <b>8</b
+              ><span
+                >Adding a memory is a form with a topic menu, not a
+                sentence.</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="src">
+        Sites measured: Aren, Vendredi Society, Planes, Inflight, By Association
+        Only, Bridge, Subframe, VS Goods, Pryzm, Meltkit, Squarespace, Mintlify.
+        Counts come from an automated reading of each home page and may miss
+        styles applied only by script.
+      </p>
+    </div>
+  </body>
+</html>

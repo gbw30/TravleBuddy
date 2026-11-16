@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Stamp } from "@/components/keepsake/day-stamp";
 import {
+  buttonArrow,
   buttonLarge,
   eyebrow,
   quiet,
@@ -25,7 +26,7 @@ export default function PrototypeHome() {
           <p className={eyebrow}>
             Welcome back · {stateLabel[current.state]} · {current.dates}
           </p>
-          <h1 className="mt-4 text-[44px] leading-[1.04] font-medium tracking-[-0.025em] text-balance md:text-[68px]">
+          <h1 className="mt-4 text-[46px] leading-[1.02] tracking-[-0.035em] text-balance md:text-[76px]">
             Tokyo is waiting on <em>five choices.</em>
           </h1>
           <p className="mt-5 max-w-[30rem] text-lg text-ink/80 md:text-xl">
@@ -35,6 +36,9 @@ export default function PrototypeHome() {
           <div className="mt-8 flex flex-wrap items-center gap-6">
             <Link href="/prototype/trip" className={buttonLarge}>
               Continue planning
+              <span aria-hidden className={buttonArrow}>
+                →
+              </span>
             </Link>
             <Link href="/prototype/new" className={quietLarge}>
               New trip
@@ -77,7 +81,7 @@ export default function PrototypeHome() {
       >
         <h2
           id="trips-heading"
-          className="text-[28px] leading-tight font-medium tracking-[-0.02em] md:text-[34px]"
+          className="text-[30px] leading-[1.06] tracking-[-0.03em] md:text-[44px]"
         >
           Your other trips
         </h2>
@@ -113,7 +117,7 @@ export default function PrototypeHome() {
                 </span>{" "}
                 · {trip.dates}
               </p>
-              <h3 className="mt-1.5 text-[27px] leading-[1.15] font-medium tracking-[-0.02em] [overflow-wrap:anywhere]">
+              <h3 className="mt-1.5 text-[27px] leading-[1.12] tracking-[-0.02em] [overflow-wrap:anywhere]">
                 {trip.title}
               </h3>
             </li>
@@ -129,7 +133,7 @@ export default function PrototypeHome() {
           <p className={eyebrow}>What I remember</p>
           <h2
             id="memory-heading"
-            className="mt-1 text-[28px] leading-tight font-medium tracking-[-0.02em] md:text-[34px]"
+            className="mt-1 text-[30px] leading-[1.06] tracking-[-0.03em] md:text-[44px]"
           >
             Your taste, <em>so far</em>
           </h2>
@@ -147,7 +151,7 @@ export default function PrototypeHome() {
               key={`${entry.topic}-${entry.value}`}
               className="grid gap-x-6 gap-y-1 border-b border-ink/12 py-4 first:pt-1 md:grid-cols-[minmax(0,1fr)_auto] md:items-baseline"
             >
-              <span className="text-[19px] italic first-letter:uppercase md:text-[21px]">
+              <span className="font-serif text-[21px] italic first-letter:uppercase md:text-[24px]">
                 {entry.value}
               </span>
               <span className="font-sans text-[13px] text-muted">

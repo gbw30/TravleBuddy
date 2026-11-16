@@ -19,9 +19,9 @@ export default function PrototypeLayout({ children }: { children: ReactNode }) {
       <header className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-2 px-5 pt-6 md:px-10 md:pt-7">
         <Link
           href="/prototype"
-          className="text-[21px] font-semibold tracking-[-0.01em]"
+          className="font-serif text-[24px] tracking-[-0.02em]"
         >
-          Travle<em className="font-medium">Buddy</em>
+          Travle<em>Buddy</em>
         </Link>
         <span className="font-sans text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
           Prototype · sample data
