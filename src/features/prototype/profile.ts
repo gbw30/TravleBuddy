@@ -11,7 +11,12 @@ export function sureness(entry: Pick<ProfileEntry, "sureness">) {
 
 /** The sentence a habit on a scale reads as, such as "A relaxed pace". */
 export function habitText(scale: NonNullable<ProfileEntry["scale"]>): string {
-  return scale.say.replace("{stop}", scale.stops[scale.index].toLowerCase());
+  const stop = scale.stops[scale.index];
+  // Words join the sentence in lower case; times and money stay as written.
+  return scale.say.replace(
+    "{stop}",
+    /\d/.test(stop) ? stop : stop.toLowerCase(),
+  );
 }
 
 /** The traveller said so: the entry becomes certain. */

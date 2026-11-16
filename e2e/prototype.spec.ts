@@ -170,7 +170,7 @@ test.describe("prototype walkthrough", () => {
   });
 
   for (const look of ["enlarged", "overlay"]) {
-    test(`closer look (${look}) traps focus and closes on Escape`, async ({
+    test(`closer look (${look}) traps focus and closes on Escape and Close`, async ({
       page,
     }) => {
       await openTrip(page, `?look=${look}`);
@@ -187,8 +187,24 @@ test.describe("prototype walkthrough", () => {
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
       await expect(opener).toBeFocused();
+
+      await page.keyboard.press("Enter");
+      await dialog.getByRole("button", { name: "Close" }).click();
+      await expect(dialog).toBeHidden();
     });
   }
+
+  test("profile budget switches currency", async ({ page }) => {
+    await page.goto("/prototype/profile");
+    const currency = page.getByLabel("Currency for your daily budget");
+    test.skip(await currency.isDisabled(), "exchange rates unavailable");
+    const budget = page.getByRole("heading", { name: /^About .+ a day$/ });
+    // Retried because a choice made before the page hydrates is lost.
+    await expect(async () => {
+      await currency.selectOption("USD");
+      await expect(budget).toHaveText(/^About \$\d+ a day$/, { timeout: 1000 });
+    }).toPass();
+  });
 
   test("keeps picks after a reload", async ({ page }) => {
     await openTrip(page);

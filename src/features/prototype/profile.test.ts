@@ -18,6 +18,10 @@ describe("profile", () => {
     const pace = profileEntries.find((e) => e.topic === "pace")!;
     expect(habitText(pace.scale!)).toBe("A relaxed pace");
     expect(habitText(start.scale!)).toBe("Days start around 10:00");
+    // A currency code keeps its capitals.
+    expect(
+      habitText({ stops: ["SGD 120"], index: 0, say: "About {stop} a day" }),
+    ).toBe("About SGD 120 a day");
   });
 
   it("confirming a guess makes it certain and credits the traveller", () => {

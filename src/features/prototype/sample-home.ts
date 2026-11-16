@@ -72,8 +72,12 @@ export type ProfileEntry = {
   source: string;
   /** For a hard limit: what the agent does about it. */
   detail?: string;
-  /** A habit that is a point on a scale. `say` holds "{stop}" for the chosen stop. */
-  scale?: { stops: string[]; index: number; say: string };
+  /**
+   * A habit that is a point on a scale. `say` holds "{stop}" for the chosen
+   * stop. With `yen`, the stops are amounts of money and `stops` is how they
+   * read in yen.
+   */
+  scale?: { stops: string[]; index: number; say: string; yen?: number[] };
 };
 
 export const profileEntries: ProfileEntry[] = [
@@ -140,6 +144,7 @@ export const profileEntries: ProfileEntry[] = [
     source: "from your Kyoto trip",
     scale: {
       stops: ["¥8,000", "¥15,000", "¥25,000"],
+      yen: [8000, 15000, 25000],
       index: 1,
       say: "About {stop} a day",
     },

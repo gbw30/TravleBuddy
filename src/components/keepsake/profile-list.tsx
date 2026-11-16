@@ -10,6 +10,13 @@ import {
 } from "react";
 
 import {
+  CURRENCIES,
+  budgetStops,
+  formatMoney,
+  type Currency,
+  type Rates,
+} from "@/features/prototype/currency";
+import {
   confirm,
   guessTopic,
   habitText,
@@ -28,6 +35,7 @@ import {
   buttonLarge,
   buttonSecond,
   eyebrow,
+  field,
   fieldLarge,
   lift,
   pageTitle,
@@ -103,7 +111,15 @@ function Sure({ entry }: { entry: Entry }) {
   );
 }
 
-export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
+export function ProfileList({
+  initial,
+  rates,
+}: {
+  initial: ProfileEntry[];
+  /** Today's exchange rates, or null when they could not be fetched. */
+  rates: Rates | null;
+}) {
+  const [currency, setCurrency] = useState<Currency>("JPY");
   const [entries, setEntries] = useState<Entry[]>(() =>
     initial.map((entry, id) => ({ ...entry, id })),
   );
@@ -221,9 +237,9 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
     </div>
   );
 
-  const confirmed = (entry: Entry) =>
+  const confirmed = (entry: Entry, place = "top-4 right-4") =>
     stamped.includes(entry.id) && (
-      <span className="stamp-in absolute top-4 right-4">
+      <span className={`stamp-in absolute ${place}`}>
         <Stamp label="CONFIRMED" spoken="Confirmed by you" />
       </span>
     );
@@ -389,7 +405,11 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
           </SectionHead>
           <ul className="grid gap-[18px] md:grid-cols-3">
             {habits.map((entry) => {
-              const scale = entry.scale!;
+              // Money is kept in yen and written in the traveller's currency.
+              const yen = entry.scale!.yen;
+              const scale = yen
+                ? { ...entry.scale!, stops: budgetStops(yen, currency, rates) }
+                : entry.scale!;
               const name = topicName[entry.topic] ?? entry.topic;
               const guess = entry.sureness === "I think";
               return (
@@ -397,11 +417,37 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
                   key={entry.id}
                   className={`relative flex flex-col px-6 pt-[22px] pb-5 ${lift} ${guess ? guessCard : card}`}
                 >
-                  <p className={eyebrow}>{name}</p>
+                  <div className="flex min-h-8 items-center justify-between gap-3">
+                    <p className={eyebrow}>{name}</p>
+                    {yen && (
+                      <select
+                        aria-label="Currency for your daily budget"
+                        value={rates ? currency : "JPY"}
+                        disabled={!rates}
+                        onChange={(event) => {
+                          const next = event.target.value as Currency;
+                          setCurrency(next);
+                          // The saved sentence follows the currency shown.
+                          change(entry.id, (e) => ({
+                            ...e,
+                            value: habitText({
+                              ...scale,
+                              stops: budgetStops(yen, next, rates),
+                            }),
+                          }));
+                        }}
+                        className={`${field} h-8 cursor-pointer py-0 font-mono tracking-[0.06em] disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        {CURRENCIES.map((code) => (
+                          <option key={code}>{code}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <h3 className="mt-2.5 text-[28px] leading-[1.1] tracking-[-0.015em] italic">
                     {habitText(scale)}
                   </h3>
-                  {confirmed(entry)}
+                  {confirmed(entry, "top-14 right-4")}
                   <input
                     type="range"
                     id={`habit-${entry.id}`}
@@ -412,9 +458,13 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
                     aria-label={name}
                     aria-valuetext={scale.stops[scale.index]}
                     onChange={(event) =>
-                      change(entry.id, (e) =>
-                        moveHabit(e, Number(event.target.value)),
-                      )
+                      change(entry.id, (e) => {
+                        const index = Number(event.target.value);
+                        const moved = moveHabit(e, index);
+                        return yen
+                          ? { ...moved, value: habitText({ ...scale, index }) }
+                          : moved;
+                      })
                     }
                     className="keepsake-range mt-6"
                     style={
@@ -436,6 +486,18 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
                       </span>
                     ))}
                   </p>
+                  {yen && (
+                    <p
+                      aria-live="polite"
+                      className="mt-3 text-[12.5px] leading-snug text-muted"
+                    >
+                      {!rates
+                        ? "Exchange rates are unavailable right now, so amounts stay in yen."
+                        : currency === "JPY"
+                          ? "Choose a currency above to see this converted at today’s rate."
+                          : `1 ${currency} = ${formatMoney(Number((1 / rates.perYen[currency]).toPrecision(3)), "JPY")} · European Central Bank rate of ${rateDay(rates.date)}. Amounts are rounded.`}
+                    </p>
+                  )}
                   <div className="mt-auto pt-6">
                     {guess ? (
                       ask(entry, () =>
@@ -652,6 +714,19 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
       </button>
     </div>
   );
+}
+
+/** "2026-11-13" as "13 Nov 2026", the same on the server and in the browser. */
+function rateDay(date: string) {
+  const day = new Date(`${date}T00:00:00Z`);
+  return Number.isNaN(day.getTime())
+    ? date
+    : day.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      });
 }
 
 function SectionHead({

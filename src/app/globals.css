@@ -104,6 +104,51 @@ body {
   }
 }
 
+/* The closer look rises into place and settles back on close, with the page
+   dimming behind it. Opening takes 300 ms, closing 150 ms. */
+.closer-look {
+  transition:
+    opacity 300ms var(--ease-settle),
+    translate 300ms var(--ease-settle),
+    scale 300ms var(--ease-settle);
+}
+.closer-look::backdrop {
+  background-color: rgb(29 26 22 / 0.5);
+  transition: background-color 300ms ease-out;
+}
+@starting-style {
+  .closer-look[open] {
+    opacity: 0;
+    translate: 0 16px;
+    scale: 0.96;
+  }
+  .closer-look[open]::backdrop {
+    background-color: rgb(29 26 22 / 0);
+  }
+}
+.closer-look[data-closing] {
+  opacity: 0;
+  translate: 0 8px;
+  scale: 0.98;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+.closer-look[data-closing]::backdrop {
+  background-color: rgb(29 26 22 / 0);
+  transition-duration: 150ms;
+}
+/* Less motion: the card only fades. (A @starting-style nested in this block
+   made the build drop every rule above, so the movement is switched off by
+   not transitioning it.) */
+@media (prefers-reduced-motion: reduce) {
+  .closer-look,
+  .closer-look[data-closing] {
+    transition-property: opacity;
+    translate: none;
+    scale: none;
+  }
+}
+
 /* The habit slider on the profile: a native range input, restyled. */
 .keepsake-range {
   appearance: none;
