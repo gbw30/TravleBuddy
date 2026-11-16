@@ -1,10 +1,7 @@
-import type { ArtStyle } from "@/components/keepsake/types";
-
 import type { SamplePlace, SampleTrip } from "./types";
 
 // Sample data for the prototype only. Places are real Tokyo names, but hours,
 // prices, ratings and distances here are illustrative, not provider data.
-const arts: ArtStyle[] = ["sunset", "sea", "brick"];
 const places: Record<string, SamplePlace> = {};
 
 function add(
@@ -27,7 +24,6 @@ function add(
     rating: null,
     photo: null,
     photoCredit: null,
-    art: arts[Object.keys(places).length % arts.length],
     visitMinutes: 90,
     ...details,
   };
@@ -93,6 +89,8 @@ add(
     priceLevel: 2,
     rating: 4.4,
     visitMinutes: 150,
+    photo: "/prototype/photos/national-museum.jpg",
+    photoCredit: "Photo: Wiiii, CC BY-SA 3.0, via Wikimedia Commons",
   },
 );
 add(

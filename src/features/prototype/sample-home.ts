@@ -1,12 +1,11 @@
-import type { ArtStyle } from "@/components/keepsake/types";
-
 export type HomeTrip = {
   id: string;
   title: string;
   dates: string;
   state: "planning" | "upcoming" | "past";
   progress: string | null;
-  art: ArtStyle;
+  photo: string;
+  photoCredit: string;
   /** Stamp shown on a finished trip. */
   stamp: string | null;
 };
@@ -18,7 +17,8 @@ export const homeTrips: HomeTrip[] = [
     dates: "10–12 May 2027",
     state: "planning",
     progress: "5 of 11 slots still open",
-    art: "sunset",
+    photo: "/prototype/photos/yanaka-ginza.jpg",
+    photoCredit: "Yoshikazu Takada, CC BY 2.0",
     stamp: null,
   },
   {
@@ -27,7 +27,8 @@ export const homeTrips: HomeTrip[] = [
     dates: "2–7 August 2027",
     state: "upcoming",
     progress: null,
-    art: "sea",
+    photo: "/prototype/photos/alfama-tram.jpg",
+    photoCredit: "Sonse, CC BY 2.0",
     stamp: null,
   },
   {
@@ -36,7 +37,8 @@ export const homeTrips: HomeTrip[] = [
     dates: "3–8 November 2026",
     state: "past",
     progress: null,
-    art: "brick",
+    photo: "/prototype/photos/fushimi-inari.jpg",
+    photoCredit: "Basile Morin, CC BY-SA 4.0",
     stamp: "KYOTO · 2026",
   },
 ];

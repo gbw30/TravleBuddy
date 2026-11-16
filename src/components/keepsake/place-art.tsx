@@ -1,13 +1,9 @@
-import type { ArtStyle, CardPlace } from "./types";
+import { placeKind, type CardPlace } from "./types";
 
-const ART: Record<ArtStyle, string> = {
-  sunset:
-    "linear-gradient(180deg, #f4b56a 0%, #e9825a 45%, #7a3f4f 46%, #4a2c45 100%)",
-  sea: "linear-gradient(180deg, #9fd3d6 0%, #f3e2b8 55%, #3f7f6e 56%, #2b5a4f 100%)",
-  brick:
-    "linear-gradient(180deg, #f6d4a8 0%, #f09a6b 50%, #c2463c 51%, #7d2a2e 100%)",
-};
-
+/**
+ * A place's photo. Where there is none, the back of a postcard: a postmark and
+ * ruled lines, never a made-up picture.
+ */
 export function PlaceArt({
   place,
   showPhoto,
@@ -23,33 +19,22 @@ export function PlaceArt({
       <img
         src={place.photo}
         alt={place.name}
-        className={`block w-full object-cover ${className}`}
+        className={`block w-full rounded-[2px] object-cover outline outline-1 -outline-offset-1 outline-black/10 ${className}`}
       />
     );
   }
 
-  return <Art art={place.art} label={place.name} className={className} />;
-}
-
-/** The poster-style illustration used wherever there is no photo. */
-export function Art({
-  art,
-  label,
-  className = "",
-}: {
-  art: ArtStyle;
-  label: string;
-  className?: string;
-}) {
   return (
     <span
-      data-art={art}
+      data-qa="postcard-back"
       role="img"
-      aria-label={label}
-      className={`relative block w-full overflow-hidden ${className}`}
-      style={{ background: ART[art] }}
+      aria-label={`${place.name}. No photo yet`}
+      className={`relative block w-full overflow-hidden rounded-[2px] bg-stamp-paper ${className}`}
     >
-      <span className="absolute top-[22%] left-1/2 size-8 -translate-x-1/2 rounded-full bg-[rgb(255_244_214/0.9)]" />
+      <span className="absolute inset-x-[12%] bottom-[16%] h-px bg-ink/15 shadow-[0_10px_0_rgb(29_26_22/0.15),0_-10px_0_rgb(29_26_22/0.15)]" />
+      <span className="absolute top-1/2 left-1/2 grid aspect-square h-[46%] max-h-24 min-h-9 -translate-x-1/2 -translate-y-[62%] -rotate-12 place-items-center rounded-full border-[1.5px] border-stamp/70 px-1 text-center font-mono text-[clamp(6px,0.6rem,10px)] leading-tight tracking-[0.1em] text-stamp/80 uppercase outline outline-1 outline-offset-2 outline-stamp/60">
+        {placeKind(place)}
+      </span>
     </span>
   );
 }

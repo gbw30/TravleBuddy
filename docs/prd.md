@@ -369,18 +369,18 @@ Every proposal and every change the agent makes to the plan has a reason the tra
 
 Clean and premium, with a travel-keepsake character. The reference is [design/planning-screen-mockup.html](design/planning-screen-mockup.html). It is a rough sketch that fixes the direction, not a finished design.
 
-| Element              | Treatment                                                                   |
-| -------------------- | --------------------------------------------------------------------------- |
-| Page background      | Warm paper tone with a faint texture                                        |
-| Type                 | Serif for headings and body; a plain sans-serif for small labels            |
-| Recommendation cards | Postcards: white border, picture, a stamp in the corner; the back is ruled  |
-| Agent messages       | Set in italic, in a calm voice                                              |
-| Booked items         | Ticket stubs: white, a dashed tear line, a BOOKED mark                      |
-| Day marker           | A passport-style stamp, slightly rotated, for example TOKYO · DAY 2         |
-| Itinerary rows       | Cream rows with a clear edge against the paper; the open slot is dashed     |
-| Accent colour        | Terracotta                                                                  |
-| Pictures             | Real photos from the provider; a poster-style illustration when none exists |
-| Layout               | Calm and spacious. Keepsakes are the objects handled, not decoration        |
+| Element              | Treatment                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| Page background      | Warm paper tone with a faint texture                                                  |
+| Type                 | Serif for headings and body; a plain sans-serif for small labels                      |
+| Recommendation cards | Postcards: white border, picture, a stamp in the corner; the back is ruled            |
+| Agent messages       | Set in italic, in a calm voice                                                        |
+| Booked items         | Ticket stubs: white, a dashed tear line, a BOOKED mark                                |
+| Day marker           | A passport-style stamp, slightly rotated, for example TOKYO · DAY 2                   |
+| Itinerary rows       | Cream rows with a clear edge against the paper; the open slot is dashed               |
+| Accent colour        | Terracotta                                                                            |
+| Pictures             | Real photos where a freely licensed one exists; the back of a postcard when none does |
+| Layout               | Calm and spacious. Keepsakes are the objects handled, not decoration                  |
 
 ### 15.2 Motion
 
@@ -420,7 +420,7 @@ Because the look can only be judged by seeing it, a clickable prototype of the m
 
 - **AI model:** Anthropic Claude Haiku 5.5 (`claude-haiku-5-5`), chosen for low cost. It is used for reading typed answers, wording the agent's messages and wording reasons.
 - **Place data:** the first version runs on **OpenStreetMap data**. Google Places and Routes were preferred but do not fit: under the usage model they cost about 83 US dollars a month against the cap of 20, and Google's terms do not allow saving the place details a saved itinerary needs. Google stays as a second provider behind the same layer, to switch on when there are funds. See [ADR-009](architecture/adr-009-place-data-provider.md).
-- **What OpenStreetMap means for the product:** there are no photos, so cards use poster-style illustrations; ratings and price levels are absent and shown as unknown, so ranking cannot use them; opening hours exist only where mappers entered them; travel times are estimated from distance. Every screen showing place data credits OpenStreetMap contributors.
+- **What OpenStreetMap means for the product:** it has no photos, so cards show a freely licensed Wikimedia Commons photo where one exists and the back of a postcard where none does; ratings and price levels are absent and shown as unknown, so ranking cannot use them; opening hours exist only where mappers entered them; travel times are estimated from distance. Every screen showing place data credits OpenStreetMap contributors.
 - **What exists today:** the Google adapter covers text search only. Pictures, hours, travel times and the OpenStreetMap adapter all still have to be built.
 - **Verified on 2026-11-12.** Official prices and terms are recorded in [ADR-009](architecture/adr-009-place-data-provider.md). Expected running cost at 30 trips a month is under one US dollar, nearly all of it the AI model.
 - **Spending cap (default):** 20 US dollars a month in total at the portfolio stage, enforced by a cap on each paid account and by a limit in the app. With OpenStreetMap as the provider, the only paid account is the AI model's.

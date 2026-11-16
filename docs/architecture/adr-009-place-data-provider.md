@@ -76,7 +76,7 @@ How OpenStreetMap is used:
 
 ## Consequences
 
-- **No photos.** Cards use poster-style illustrations. OpenStreetMap's `image` tag cannot be relied on.
+- **No photos from OpenStreetMap.** Its `image` tag cannot be relied on. Updated 2026-11-15: where a place has a freely licensed photo on Wikimedia Commons, the card shows it with a credit to the photographer; where it has none, the card shows the back of a postcard, never a made-up picture. Famous sights usually have a photo and small restaurants often do not, which the product owner accepted for now. How often a photo exists has not been measured, and the lookup is not built yet.
 - **No ratings and almost no price levels.** These are shown as unknown, and ranking cannot use them. Ranking must rest on the traveller's preferences, distance, kind of place and what OpenStreetMap does record. This is the largest risk to itinerary quality, and the sample-traveller check in Milestone 8 is where it is judged.
 - **Opening hours are present only where mappers entered them.** Missing hours are flagged as unknown (TB-ITN-05).
 - **Travel times are rougher** than a routing service would give.

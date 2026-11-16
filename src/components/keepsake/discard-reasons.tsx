@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { fieldLarge, pill, pillPrimary } from "./styles";
+import { button, chip, fieldLarge, panel, quiet } from "./styles";
 
 export const DISCARD_REASONS: readonly string[] = [
   "Too expensive",
@@ -26,10 +26,7 @@ export function DiscardReasons({
   const [note, setNote] = useState("");
 
   return (
-    <div
-      data-qa="discard-reasons"
-      className="rounded-lg border border-row-edge bg-row p-4"
-    >
+    <div data-qa="discard-reasons" className={`p-5 ${panel}`}>
       <p className="italic">
         What was wrong with these? Tell me if you like, and I will do better.
       </p>
@@ -46,7 +43,7 @@ export function DiscardReasons({
                   : [...list, reason],
               )
             }
-            className={`${pill} aria-pressed:bg-terracotta-deep aria-pressed:text-white`}
+            className={chip}
           >
             {reason}
           </button>
@@ -63,14 +60,14 @@ export function DiscardReasons({
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          className={pillPrimary}
+          className={button}
           onClick={() =>
             onConfirm(note.trim() ? [...chosen, note.trim()] : chosen)
           }
         >
           Show new places
         </button>
-        <button type="button" className={pill} onClick={onCancel}>
+        <button type="button" className={quiet} onClick={onCancel}>
           Cancel
         </button>
       </div>

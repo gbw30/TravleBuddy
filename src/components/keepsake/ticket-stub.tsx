@@ -1,3 +1,8 @@
+// The half-circle notches take the colour of the surface behind the stub.
+// A surface that is not the page sets --notch to its own colour.
+const notch =
+  "absolute left-[4.4rem] size-3.5 rounded-full bg-(--notch,var(--color-paper)) shadow-[inset_0_0_0_1px_rgb(29_26_22/0.12)]";
+
 export function TicketStub({
   time,
   title,
@@ -10,14 +15,30 @@ export function TicketStub({
   return (
     <div
       data-qa="ticket-stub"
-      className="flex items-center gap-3 rounded-lg border-l-2 border-dashed border-terracotta bg-card py-2 pr-3 pl-4 text-sm text-ink shadow-[0_2px_6px_rgb(60_40_20/0.2)]"
+      className="relative grid grid-cols-[4.85rem_minmax(0,1fr)_auto] items-center rounded-lg bg-card text-ink shadow-[0_0_0_1px_rgb(29_26_22/0.12),0_2px_6px_rgb(29_26_22/0.05)]"
     >
-      <span className="w-12 shrink-0 font-bold tabular-nums">{time}</span>
-      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-        <span className="block">{title}</span>
-        {note && <span className="block text-xs opacity-75">{note}</span>}
+      <span
+        aria-hidden
+        className={`${notch} -top-2 [clip-path:inset(50%_0_0_0)]`}
+      />
+      <span
+        aria-hidden
+        className={`${notch} -bottom-2 [clip-path:inset(0_0_50%_0)]`}
+      />
+      <span className="py-4 pl-4 font-mono text-sm font-medium tabular-nums">
+        {time}
       </span>
-      <span className="font-sans text-[10px] font-bold tracking-widest text-terracotta">
+      <span className="min-w-0 border-l-[1.5px] border-dashed border-ink/15 px-4 py-3 [overflow-wrap:anywhere]">
+        <span className="block text-[16.5px] leading-tight font-medium">
+          {title}
+        </span>
+        {note && (
+          <span className="mt-0.5 block font-sans text-[12.5px] text-muted">
+            {note}
+          </span>
+        )}
+      </span>
+      <span className="pr-4 font-mono text-[10px] tracking-[0.16em] text-terracotta">
         BOOKED
       </span>
     </div>

@@ -3,7 +3,7 @@ import type { PlanningState, SampleTrip } from "@/features/prototype/types";
 import { DayStamp } from "./day-stamp";
 import { ItineraryRow } from "./itinerary-row";
 import { MoveMenu } from "./move-menu";
-import { pill } from "./styles";
+import { eyebrow, quiet } from "./styles";
 import { TicketStub } from "./ticket-stub";
 
 export function LiveItinerary({
@@ -36,16 +36,16 @@ export function LiveItinerary({
   };
 
   return (
-    <div data-qa="live-itinerary" className="space-y-6">
+    <div data-qa="live-itinerary" className="space-y-9">
       {trip.days.map((day) => (
         <section key={day.day} aria-label={`Day ${day.day}, ${day.date}`}>
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="font-sans text-xs font-bold tracking-widest uppercase">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h3 className={eyebrow}>
               Day {day.day} · {day.date}
             </h3>
             <DayStamp city={day.city} day={day.day} />
           </div>
-          <ol className="mt-2 space-y-2">
+          <ol>
             {trip.slots
               .filter((slot) => slot.day === day.day)
               .map((slot) => {
@@ -57,6 +57,7 @@ export function LiveItinerary({
                 return (
                   <li
                     key={slot.id}
+                    className={slot.travelIn ? "" : "mt-2.5 first:mt-0"}
                     style={
                       transit?.slotId === slot.id &&
                       entry.type === "item" &&
@@ -75,8 +76,9 @@ export function LiveItinerary({
                     }}
                   >
                     {slot.travelIn && (
-                      <p className="mb-1 ml-14 text-xs opacity-75">
-                        {slot.travelIn.means} · {slot.travelIn.minutes} min
+                      <p className="relative py-2 pl-[5.6rem] font-sans text-xs text-muted before:absolute before:inset-y-0 before:left-[2.45rem] before:border-l-[1.5px] before:border-dotted before:border-ink/25">
+                        {slot.travelIn.means} · about {slot.travelIn.minutes}{" "}
+                        min
                       </p>
                     )}
                     {entry.type === "item" && place && locked && (
@@ -93,10 +95,10 @@ export function LiveItinerary({
                         variant="item"
                         flag={entry.flag}
                       >
-                        <span className="flex basis-full flex-wrap items-center gap-2">
+                        <span className="flex basis-full flex-wrap items-center gap-x-3 gap-y-1">
                           <button
                             type="button"
-                            className={pill}
+                            className={quiet}
                             aria-label={`Details for ${place.name}`}
                             onClick={() => onLook(place.id)}
                           >
@@ -104,7 +106,7 @@ export function LiveItinerary({
                           </button>
                           <button
                             type="button"
-                            className={pill}
+                            className={quiet}
                             aria-label={`Swap ${place.name}`}
                             aria-pressed={active}
                             onClick={() => onActivate(slot.id)}
@@ -128,7 +130,7 @@ export function LiveItinerary({
                           />
                           <button
                             type="button"
-                            className={pill}
+                            className={quiet}
                             aria-label={`Remove ${place.name}`}
                             onClick={() => onRemove(slot.id)}
                           >
@@ -154,7 +156,7 @@ export function LiveItinerary({
                         {!active && (
                           <button
                             type="button"
-                            className={pill}
+                            className={quiet}
                             aria-label={`Choose ${slotLabel(slot.id)}`}
                             onClick={() => onActivate(slot.id)}
                           >

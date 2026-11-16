@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { field, pill } from "./styles";
+import { field, quiet } from "./styles";
 
 /**
  * Choose a slot, then confirm. A native select keeps this usable by keyboard
@@ -29,7 +29,7 @@ export function MoveMenu({
   const [value, setValue] = useState("");
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-2">
       <select
         aria-label={label}
         value={value}
@@ -45,7 +45,7 @@ export function MoveMenu({
       </select>
       <button
         type="button"
-        className={pill}
+        className={quiet}
         aria-label={actionLabel}
         disabled={!value}
         onClick={() => {

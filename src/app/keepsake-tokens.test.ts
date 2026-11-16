@@ -19,6 +19,10 @@ const textPairs = [
   ["terracotta", "stamp-paper"],
   ["terracotta-deep", "paper"],
   ["stamp", "paper"],
+  ["terracotta", "paper"],
+  ["muted", "paper"],
+  ["muted", "card"],
+  ["paper", "ink"],
 ] as const;
 
 describe("keepsake tokens", () => {

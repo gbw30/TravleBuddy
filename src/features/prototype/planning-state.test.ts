@@ -29,7 +29,6 @@ const place = (id: string): SamplePlace => ({
   rating: null,
   photo: null,
   photoCredit: null,
-  art: "sea",
   visitMinutes: 60,
 });
 

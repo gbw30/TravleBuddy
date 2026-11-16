@@ -20,7 +20,6 @@ const place: CardPlace = {
   rating: null,
   photo: null,
   photoCredit: null,
-  art: "sea",
 };
 
 describe("keepsake components", () => {
@@ -51,9 +50,10 @@ describe("keepsake components", () => {
     expect(html).toContain('aria-live="polite"');
   });
 
-  it("uses the illustration when there is no photo", () => {
+  it("uses the postcard back when there is no photo", () => {
     const html = renderToStaticMarkup(<PlaceArt place={place} showPhoto />);
-    expect(html).toContain('data-art="sea"');
+    expect(html).toContain('data-qa="postcard-back"');
+    expect(html).toContain("No photo yet");
     expect(html).not.toContain("<img");
   });
 

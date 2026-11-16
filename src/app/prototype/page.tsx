@@ -1,63 +1,168 @@
 import Link from "next/link";
 
 import { Stamp } from "@/components/keepsake/day-stamp";
-import { Art } from "@/components/keepsake/place-art";
-import { homeTrips } from "@/features/prototype/sample-home";
+import {
+  buttonLarge,
+  eyebrow,
+  quiet,
+  quietLarge,
+} from "@/components/keepsake/styles";
+import { TicketStub } from "@/components/keepsake/ticket-stub";
+import { homeTrips, profileEntries } from "@/features/prototype/sample-home";
 
 const stateLabel = { planning: "Planning", upcoming: "Upcoming", past: "Past" };
+const print = "absolute rounded-[4px] bg-card p-2.5 shadow-print";
+const photo =
+  "block size-full rounded-[2px] object-cover outline outline-1 -outline-offset-1 outline-black/10";
 
 export default function PrototypeHome() {
+  const [current, ...others] = homeTrips;
+
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-4 py-4">
+      <section className="grid items-center gap-10 py-12 md:grid-cols-[minmax(0,1fr)_min(42vw,520px)] md:gap-14 md:py-20">
         <div>
-          <h1 className="text-3xl font-bold">Your trips</h1>
-          <p className="mt-1 italic">
-            Welcome back. Tokyo is waiting on five choices.
+          <p className={eyebrow}>
+            Welcome back · {stateLabel[current.state]} · {current.dates}
           </p>
+          <h1 className="mt-4 text-[44px] leading-[1.04] font-medium tracking-[-0.025em] text-balance md:text-[68px]">
+            Tokyo is waiting on <em>five choices.</em>
+          </h1>
+          <p className="mt-5 max-w-[30rem] text-lg text-ink/80 md:text-xl">
+            {current.title}. Your flight, your hotel and your teamLab ticket are
+            already in place. {current.progress}.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-6">
+            <Link href="/prototype/trip" className={buttonLarge}>
+              Continue planning
+            </Link>
+            <Link href="/prototype/new" className={quietLarge}>
+              New trip
+            </Link>
+          </div>
         </div>
-        <Link
-          href="/prototype/new"
-          className="rounded-full bg-terracotta-deep px-5 py-2 font-sans text-sm font-semibold text-white"
-        >
-          New trip
-        </Link>
-      </div>
-      <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {homeTrips.map((trip) => (
-          <li
-            key={trip.id}
-            className="relative bg-card p-2 shadow-[0_3px_10px_rgb(60_40_20/0.25)]"
+        {/* Keepsakes from the trip in progress, laid out like things on a table. */}
+        <div className="relative h-[330px] md:h-[470px]">
+          <div className={`${print} top-2 left-0 w-[76%] -rotate-3 md:left-5`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- static sample photos */}
+            <img
+              src={current.photo}
+              alt=""
+              className={`${photo} aspect-[4/3.2]`}
+            />
+          </div>
+          <div
+            className={`${print} top-[130px] right-0 w-[44%] rotate-[5deg] md:top-[190px]`}
           >
-            <Art art={trip.art} label={trip.title} className="h-36" />
-            {trip.stamp && (
-              <span className="absolute top-5 right-5 bg-stamp-paper">
-                <Stamp label={trip.stamp} spoken={`Visited: ${trip.title}`} />
-              </span>
-            )}
-            <div className="px-1 py-3">
-              <p className="font-sans text-[10px] font-bold tracking-widest text-terracotta uppercase">
-                {stateLabel[trip.state]}
+            {/* eslint-disable-next-line @next/next/no-img-element -- static sample photos */}
+            <img
+              src="/prototype/photos/nezu-shrine.jpg"
+              alt=""
+              className={`${photo} aspect-square`}
+            />
+          </div>
+          <div className="absolute bottom-0 left-0 w-[80%] -rotate-[1.5deg] shadow-print md:w-[350px]">
+            <TicketStub
+              time="14:05"
+              title="NH 212 to Haneda"
+              note="Mon 10 May · flight"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="trips-heading"
+        className="border-t border-ink/12 pt-12"
+      >
+        <h2
+          id="trips-heading"
+          className="text-[28px] leading-tight font-medium tracking-[-0.02em] md:text-[34px]"
+        >
+          Your other trips
+        </h2>
+        <ul className="mt-8 grid gap-10 md:grid-cols-[1.25fr_1fr]">
+          {others.map((trip) => (
+            <li key={trip.id}>
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- static sample photos */}
+                <img
+                  src={trip.photo}
+                  alt=""
+                  className={`${photo} aspect-[16/10] rounded-md`}
+                />
+                {trip.stamp && (
+                  <span className="absolute right-3 bottom-4">
+                    <Stamp
+                      label={trip.stamp}
+                      spoken={`Visited: ${trip.title}`}
+                      solid
+                    />
+                  </span>
+                )}
+              </div>
+              <p className={`${eyebrow} mt-4`}>
+                <span
+                  className={
+                    trip.state === "upcoming"
+                      ? "font-semibold text-terracotta"
+                      : ""
+                  }
+                >
+                  {stateLabel[trip.state]}
+                </span>{" "}
+                · {trip.dates}
               </p>
-              <h2 className="text-lg font-bold [overflow-wrap:anywhere]">
+              <h3 className="mt-1.5 text-[27px] leading-[1.15] font-medium tracking-[-0.02em] [overflow-wrap:anywhere]">
                 {trip.title}
-              </h2>
-              <p className="text-sm opacity-75">{trip.dates}</p>
-              {trip.state === "planning" && (
-                <p className="mt-2 text-sm">
-                  {trip.progress}.{" "}
-                  <Link
-                    href="/prototype/trip"
-                    className="font-semibold text-terracotta underline"
-                  >
-                    Continue planning
-                  </Link>
-                </p>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+              </h3>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section
+        aria-labelledby="memory-heading"
+        className="mt-16 grid gap-6 border-t border-ink/12 pt-12 md:grid-cols-[300px_minmax(0,1fr)] md:gap-14"
+      >
+        <div>
+          <p className={eyebrow}>What I remember</p>
+          <h2
+            id="memory-heading"
+            className="mt-1 text-[28px] leading-tight font-medium tracking-[-0.02em] md:text-[34px]"
+          >
+            Your taste, <em>so far</em>
+          </h2>
+          <p className="mt-3 text-base text-muted">
+            Every trip teaches me a little more. You can change or remove
+            anything.
+          </p>
+          <Link href="/prototype/profile" className={`${quiet} mt-3`}>
+            See everything I remember
+          </Link>
+        </div>
+        <ul>
+          {profileEntries.slice(0, 4).map((entry) => (
+            <li
+              key={`${entry.topic}-${entry.value}`}
+              className="grid gap-x-6 gap-y-1 border-b border-ink/12 py-4 first:pt-1 md:grid-cols-[minmax(0,1fr)_auto] md:items-baseline"
+            >
+              <span className="text-[19px] italic first-letter:uppercase md:text-[21px]">
+                {entry.value}
+              </span>
+              <span className="font-sans text-[13px] text-muted">
+                {entry.topic} · {entry.source}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className="mt-16 font-sans text-[11px] text-muted">
+        Photographs from Wikimedia Commons:{" "}
+        {homeTrips.map((trip) => trip.photoCredit).join("; ")}; BWard 1997, CC
+        BY 4.0.
+      </p>
     </>
   );
 }

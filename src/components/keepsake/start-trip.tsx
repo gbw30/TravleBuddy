@@ -4,15 +4,22 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { TicketStub } from "./ticket-stub";
+import {
+  buttonLarge,
+  cardTitle,
+  chip,
+  eyebrow,
+  fieldLarge,
+  pageTitle,
+  panel,
+  sectionTitle,
+} from "./styles";
 
 type Ticket = { time: string; title: string; note?: string };
 
-const field =
-  "mt-1 block w-full rounded-md border border-row-edge bg-card px-3 py-2 font-sans text-sm text-ink";
-const choice =
-  "block rounded-lg border border-row-edge bg-row p-4 shadow-[0_2px_6px_rgb(60_40_20/0.15)]";
-const toggle =
-  "rounded-full border border-terracotta-deep px-5 py-2 font-sans text-sm font-semibold text-terracotta-deep aria-pressed:bg-terracotta-deep aria-pressed:text-white";
+const field = `${fieldLarge} mt-1 block w-full`;
+const choice = `block h-full p-6 ${panel}`;
+const toggle = chip;
 
 export function StartTrip() {
   const [hasTickets, setHasTickets] = useState<boolean | null>(null);
@@ -37,17 +44,17 @@ export function StartTrip() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl py-4">
-      <h1 className="text-3xl font-bold">Start a trip</h1>
+    <div className="mx-auto max-w-2xl py-10 md:py-14">
+      <h1 className={pageTitle}>
+        Start a <em>trip</em>
+      </h1>
 
-      <section aria-labelledby="tickets-heading" className="mt-6">
-        <p className="font-sans text-[10px] font-bold tracking-widest text-terracotta-deep uppercase">
-          Step 1 of 2
-        </p>
-        <h2 id="tickets-heading" className="text-xl font-bold">
+      <section aria-labelledby="tickets-heading" className="mt-10">
+        <p className={eyebrow}>Step 1 of 2</p>
+        <h2 id="tickets-heading" className={`mt-2 ${sectionTitle}`}>
           Do you already have tickets?
         </h2>
-        <p className="mt-1 italic">
+        <p className="mt-2 text-ink/75 italic">
           Flights or trains you have booked set your dates and cities.
         </p>
         <div className="mt-3 flex gap-3">
@@ -82,7 +89,7 @@ export function StartTrip() {
             )}
             <form
               onSubmit={addTicket}
-              className="mt-4 grid gap-3 rounded-lg border border-row-edge bg-row p-4 sm:grid-cols-2"
+              className={`mt-5 grid gap-4 p-6 sm:grid-cols-2 ${panel}`}
             >
               <label className="text-sm">
                 Type
@@ -123,7 +130,7 @@ export function StartTrip() {
               </label>
               <button
                 type="submit"
-                className="justify-self-start rounded-full bg-terracotta-deep px-5 py-2 font-sans text-sm font-semibold text-white sm:col-span-2"
+                className={`${buttonLarge} justify-self-start sm:col-span-2`}
               >
                 Add ticket
               </button>
@@ -132,19 +139,19 @@ export function StartTrip() {
         )}
       </section>
 
-      <section aria-labelledby="plan-heading" className="mt-10">
-        <p className="font-sans text-[10px] font-bold tracking-widest text-terracotta-deep uppercase">
-          Step 2 of 2
-        </p>
-        <h2 id="plan-heading" className="text-xl font-bold">
+      <section aria-labelledby="plan-heading" className="mt-14">
+        <p className={eyebrow}>Step 2 of 2</p>
+        <h2 id="plan-heading" className={`mt-2 ${sectionTitle}`}>
           How do you want to plan?
         </h2>
-        <p className="mt-1 italic">You can switch between these at any time.</p>
+        <p className="mt-2 text-ink/75 italic">
+          You can switch between these at any time.
+        </p>
         <ul className="mt-4 grid gap-4 sm:grid-cols-2">
           <li>
             <Link href="/prototype/trip" className={choice}>
-              <span className="block text-lg font-bold">Guided planning</span>
-              <span className="block text-sm">
+              <span className={`block ${cardTitle}`}>Guided planning</span>
+              <span className="mt-1.5 block text-[15px] text-ink/75">
                 Talk it through. I get to know you, then suggest places slot by
                 slot.
               </span>
@@ -152,8 +159,8 @@ export function StartTrip() {
           </li>
           <li>
             <Link href="/prototype/quick-plan" className={choice}>
-              <span className="block text-lg font-bold">Quick plan</span>
-              <span className="block text-sm">
+              <span className={`block ${cardTitle}`}>Quick plan</span>
+              <span className="mt-1.5 block text-[15px] text-ink/75">
                 Fill in a short trip brief and I build the whole trip for you to
                 refine.
               </span>
@@ -162,12 +169,10 @@ export function StartTrip() {
           {["Start from a template", "Build on someone's trip"].map((later) => (
             <li
               key={later}
-              className="rounded-lg border-2 border-dashed border-row-edge p-4 opacity-80"
+              className="rounded-[14px] border-[1.5px] border-dashed border-ink/25 p-6 text-muted"
             >
-              <span className="block text-lg font-bold">{later}</span>
-              <span className="block font-sans text-xs font-semibold">
-                Coming later
-              </span>
+              <span className={`block ${cardTitle}`}>{later}</span>
+              <span className="mt-1 block font-sans text-xs">Coming later</span>
             </li>
           ))}
         </ul>

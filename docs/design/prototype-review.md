@@ -3,7 +3,7 @@
 Status: operational
 Authority: How to review the clickable prototype, and the record of its approval (roadmap Milestone 1, TB-DSN-08 and TB-DSN-09)
 Related: [PRD section 15](../prd.md#15-visual-and-interaction-design), [roadmap](../roadmap.md), [visual direction mockup](planning-screen-mockup.html), [provider decision](../architecture/adr-009-place-data-provider.md)
-Last reviewed: 2026-11-12
+Last reviewed: 2026-11-15
 
 The prototype shows the main screens in the keepsake look with sample data. It has no sign-in, no database and no AI model. Nothing in it is saved beyond the browser tab. Its purpose is to let the product owner judge the look and the experience before the full build.
 
@@ -19,7 +19,7 @@ To see the phone layout, narrow the browser window or open it on a phone.
 
 | Screen     | Address                 | What to judge                                                                                                                               |
 | ---------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Home       | `/prototype`            | Trip cards, the three trip states, the stamp on a finished trip                                                                             |
+| Home       | `/prototype`            | The opening headline and collage, trip cards with photos, the stamp on a finished trip, what the site remembers                             |
 | New trip   | `/prototype/new`        | The tickets question, a ticket shown as a stub, the two ways to plan                                                                        |
 | Planning   | `/prototype/trip`       | The agent's voice, three postcards, the flip, the closer look, picking a card and watching it land, show me others, the shelf, moving items |
 | Quick plan | `/prototype/quick-plan` | The five steps, answers filled in from memory with their source, the review, the build, the report                                          |
@@ -39,16 +39,16 @@ Things to try on the planning screen:
 
 Each has two versions you can compare by adding a switch to the address.
 
-| Decision                 | Version A                                                 | Version B                                         |
-| ------------------------ | --------------------------------------------------------- | ------------------------------------------------- |
-| The closer look          | `/prototype/trip` (the card picked up and enlarged)       | `/prototype/trip?look=overlay` (a centred panel)  |
-| The itinerary on a phone | `/prototype/trip` (a sheet that pulls up from the bottom) | `/prototype/trip?phone=tab` (a second tab)        |
-| Cards without photos     | `/prototype/trip` (photos where they exist)               | `/prototype/trip?photos=off` (illustrations only) |
-| Navigation               | Top bar on wide screens, bottom bar on phones             | Tell us if you want something else                |
+| Decision                 | Version A                                                 | Version B                                          |
+| ------------------------ | --------------------------------------------------------- | -------------------------------------------------- |
+| The closer look          | `/prototype/trip` (the card picked up and enlarged)       | `/prototype/trip?look=overlay` (a centred panel)   |
+| The itinerary on a phone | `/prototype/trip` (a sheet that pulls up from the bottom) | `/prototype/trip?phone=tab` (a second tab)         |
+| Cards without photos     | `/prototype/trip` (photos where they exist)               | `/prototype/trip?photos=off` (postcard backs only) |
+| Navigation               | Top bar on every screen size                              | Tell us if you want something else                 |
 
 Switches combine, for example `/prototype/trip?look=overlay&phone=tab&photos=off`.
 
-**About photos.** The first version runs on OpenStreetMap data, which has no photos, ratings or price levels ([ADR-009](../architecture/adr-009-place-data-provider.md)). The `?photos=off` version is therefore the one the first version will look like. In the prototype, three places have photos and some have sample ratings and prices, to show how the screens look if Google is switched on later.
+**About photos.** The first version runs on OpenStreetMap data, which has no photos, ratings or price levels ([ADR-009](../architecture/adr-009-place-data-provider.md)). Decided on 2026-11-15: a place shows a freely licensed Wikimedia Commons photo where one exists, and the back of a postcard where none does. Small restaurants will often have none, which is accepted for now. In the prototype, four places and the three Home trips have photos; every other place shows the postcard back. `?photos=off` shows the postcard back everywhere. Some places have sample ratings and prices, to show how the screens look if Google is switched on later.
 
 ## What the prototype does not show
 
@@ -63,19 +63,22 @@ Switches combine, for example `/prototype/trip?look=overlay&phone=tab&photos=off
 
 Defined in `src/app/globals.css` and checked for readable contrast by `src/app/keepsake-tokens.test.ts`.
 
-| Token             | Value     | Used for                                    |
-| ----------------- | --------- | ------------------------------------------- |
-| `paper`           | `#d9c3a0` | Page background, with a faint diagonal line |
-| `ink`             | `#2b2622` | Text                                        |
-| `card`            | `#ffffff` | Postcards and ticket stubs                  |
-| `row`             | `#fffaf0` | Itinerary rows and panels                   |
-| `row-edge`        | `#cdbb98` | Row and field borders                       |
-| `terracotta`      | `#b4542f` | Accents on white or cream                   |
-| `terracotta-deep` | `#7a3319` | Buttons, and accents on the paper           |
-| `stamp`           | `#8a2420` | Stamps and warnings                         |
-| `stamp-paper`     | `#fdf8ec` | The back of a postcard, the stamp corner    |
+| Token             | Value     | Used for                                   |
+| ----------------- | --------- | ------------------------------------------ |
+| `paper`           | `#f4eee3` | Page background, with a faint paper grain  |
+| `ink`             | `#1d1a16` | Text, and the one dark button per decision |
+| `muted`           | `#6f665b` | Labels and secondary text                  |
+| `card`            | `#fffdf8` | Postcards, ticket stubs, the itinerary     |
+| `row`             | `#fffdf8` | Kept for older markup; same as `card`      |
+| `row-edge`        | `#d8cfbf` | Kept for older markup                      |
+| `terracotta`      | `#a4502c` | The one word a heading picks out, accents  |
+| `terracotta-deep` | `#7a3319` | Kept for older markup                      |
+| `stamp`           | `#8a2420` | Stamps and warnings                        |
+| `stamp-paper`     | `#f8f1e2` | The back of a postcard                     |
 
-Type: Lora (serif) for headings and body, Geist for small labels, Geist Mono for stamps.
+Type: Lora (serif) for headings and body, Geist for small labels, Geist Mono for stamps and times. Headings are large and medium weight, and pick out one word in italic terracotta.
+
+Controls: one dark button per decision; every other control is a quiet underlined link. The shared class strings are in `src/components/keepsake/styles.ts`.
 
 ## Components
 
@@ -84,7 +87,7 @@ All in `src/components/keepsake/`. The first six are built for reuse in the real
 | Component       | What it is                                                                  |
 | --------------- | --------------------------------------------------------------------------- |
 | `Postcard`      | A recommendation card that flips, with Pick, Save for later and Closer look |
-| `PlaceArt`      | A place's photo, or a poster-style illustration when there is none          |
+| `PlaceArt`      | A place's photo, or the back of a postcard when there is none               |
 | `TicketStub`    | A booked item                                                               |
 | `DayStamp`      | The passport-style stamp for a day, and `Stamp` for other labels            |
 | `ItineraryRow`  | A scheduled item, an open slot or time to wander                            |
@@ -107,7 +110,7 @@ If port 3000 is in use, start the app on another port and pass it, for example `
 
 ## Known gaps from the code review
 
-A review on 2026-11-12 found these smaller problems. They were left as they are and should be revisited before the keepsake components are reused in the real product.
+A review on 2026-11-12 found these smaller problems. They were left as they are and should be revisited before the keepsake components are reused in the real product. The visual rework on 2026-11-15 changed the look, not the behaviour, so most still apply; it did make travel times read as estimates ("about 25 min") and removed the Home illustrations.
 
 **Accessibility**
 

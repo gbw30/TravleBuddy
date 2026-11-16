@@ -1,6 +1,15 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import {
+  buttonLarge,
+  cardTitle,
+  eyebrow,
+  fieldLarge,
+  pageTitle,
+  panel,
+  quiet,
+} from "./styles";
 
 import {
   profileTopics,
@@ -8,10 +17,8 @@ import {
   type ProfileTopic,
 } from "@/features/prototype/sample-home";
 
-const field =
-  "rounded-md border border-row-edge bg-card px-3 py-1.5 font-sans text-sm text-ink";
-const small =
-  "rounded-full border border-terracotta-deep px-3 py-1 font-sans text-xs font-semibold text-terracotta-deep";
+const field = fieldLarge;
+const small = quiet;
 
 export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
   const [entries, setEntries] = useState(initial);
@@ -36,15 +43,15 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl py-4">
-      <h1 className="text-3xl font-bold">What I remember about you</h1>
-      <p className="mt-1 italic">
+    <div className="mx-auto max-w-3xl py-10 md:py-14">
+      <h1 className={pageTitle}>What I remember about you</h1>
+      <p className="mt-3 text-lg text-ink/75 italic">
         A starting point for each new trip. What you say about a trip always
         wins over this.
       </p>
 
       {entries.length === 0 && (
-        <p className="mt-6">
+        <p className="mt-9">
           Nothing yet. I will start fresh on your next trip.
         </p>
       )}
@@ -52,17 +59,15 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
       {profileTopics
         .filter((topic) => entries.some((e) => e.topic === topic))
         .map((topic) => (
-          <section key={topic} className="mt-6">
-            <h2 className="font-sans text-xs font-bold tracking-widest text-terracotta-deep uppercase">
-              {topic}
-            </h2>
-            <ul className="mt-2 space-y-2">
+          <section key={topic} className="mt-9">
+            <h2 className={eyebrow}>{topic}</h2>
+            <ul className="mt-1">
               {entries
                 .filter((e) => e.topic === topic)
                 .map((entry) => (
                   <li
                     key={entry.value}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-row-edge bg-row px-3 py-2"
+                    className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-ink/12 py-4"
                   >
                     {editing === entry ? (
                       <form
@@ -99,10 +104,12 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
                       </form>
                     ) : (
                       <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                        <span className="font-bold">{entry.value}</span>
-                        <span className="block text-sm">
+                        <span className="block text-[19px] leading-snug italic first-letter:uppercase">
+                          {entry.value}
+                        </span>
+                        <span className="mt-0.5 block font-sans text-[13px] text-muted">
                           {entry.kind === "hard limit" ? (
-                            <strong className="font-sans text-xs tracking-wide text-stamp uppercase">
+                            <strong className="font-sans text-[11px] font-medium tracking-[0.14em] text-stamp uppercase">
                               Hard limit
                             </strong>
                           ) : (
@@ -140,9 +147,9 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
 
       <form
         onSubmit={addEntry}
-        className="mt-8 flex flex-wrap items-end gap-3 rounded-lg border border-row-edge bg-row p-4"
+        className={`mt-12 flex flex-wrap items-end gap-4 p-6 ${panel}`}
       >
-        <h2 className="basis-full text-lg font-bold">Add your own</h2>
+        <h2 className={`basis-full ${cardTitle}`}>Add your own</h2>
         <label className="text-sm">
           Topic
           <select name="topic" className={`${field} mt-1 block`}>
@@ -162,10 +169,7 @@ export function ProfileList({ initial }: { initial: ProfileEntry[] }) {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="hard" /> Never break this
         </label>
-        <button
-          type="submit"
-          className="rounded-full bg-terracotta-deep px-5 py-2 font-sans text-sm font-semibold text-white"
-        >
+        <button type="submit" className={buttonLarge}>
           Add
         </button>
       </form>

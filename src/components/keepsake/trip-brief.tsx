@@ -19,15 +19,16 @@ import { write } from "@/features/prototype/session-store";
 
 import { CommitmentsPanel } from "./commitments-panel";
 import {
+  buttonLarge,
+  chip,
   eyebrow,
   fieldLarge,
-  pill,
-  pillLarge,
-  pillLargePrimary,
+  pageTitle,
+  quiet,
+  quietLarge,
 } from "./styles";
 
 const input = `${fieldLarge} mt-1 block w-full`;
-const chip = `${pill} aria-pressed:bg-terracotta-deep aria-pressed:text-white`;
 const error = "mt-1 font-sans text-xs font-semibold text-stamp";
 
 function Chips({
@@ -47,7 +48,7 @@ function Chips({
   const all = [...options, ...selected.filter((v) => !options.includes(v))];
   return (
     <fieldset>
-      <legend className="font-bold">
+      <legend className="text-[19px] font-medium">
         {label}
         {source && (
           <span className="ml-2 font-sans text-xs font-normal italic">
@@ -131,16 +132,16 @@ export function TripBrief() {
 
   if (builtDays !== null) {
     return (
-      <div className="mx-auto max-w-2xl py-10" aria-live="polite">
-        <h1 className="text-3xl font-bold">Building your trip</h1>
-        <p className="mt-1 italic">
+      <div className="mx-auto max-w-2xl py-10 md:py-14" aria-live="polite">
+        <h1 className={pageTitle}>Building your trip</h1>
+        <p className="mt-3 text-lg text-ink/75 italic">
           One day at a time. You can leave and come back; I keep what is built.
         </p>
         <ol className="mt-6 space-y-2">
           {sampleTrip.days.map((day) => (
             <li
               key={day.day}
-              className="rounded-md border border-row-edge bg-row px-3 py-2"
+              className="rounded-lg bg-card shadow-[0_0_0_1px_rgb(29_26_22/0.12)] px-4 py-3"
             >
               Day {day.day} · {day.date}:{" "}
               {day.day <= builtDays ? `Day ${day.day} built` : "working on it…"}
@@ -152,9 +153,9 @@ export function TripBrief() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl py-4">
-      <h1 className="text-3xl font-bold">Quick plan</h1>
-      <p className="mt-1 italic">
+    <div className="mx-auto max-w-2xl py-10 md:py-14">
+      <h1 className={pageTitle}>Quick plan</h1>
+      <p className="mt-3 text-lg text-ink/75 italic">
         A short trip brief. Only the first step is needed; I fill the rest from
         what I remember, and tell you what I assumed.
       </p>
@@ -166,7 +167,7 @@ export function TripBrief() {
         {BRIEF_STEPS.map((name, index) => (
           <span
             key={name}
-            className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-terracotta-deep" : "bg-row-edge"}`}
+            className={`h-[3px] flex-1 rounded-full ${index <= step ? "bg-ink" : "bg-ink/12"}`}
           />
         ))}
       </div>
@@ -175,7 +176,9 @@ export function TripBrief() {
         {step === 0 && (
           <>
             <fieldset className="space-y-3">
-              <legend className="font-bold">Where are you going?</legend>
+              <legend className="text-[19px] font-medium">
+                Where are you going?
+              </legend>
               {brief.cities.map((city, index) => (
                 <div key={index} className="flex flex-wrap items-end gap-3">
                   <label className="min-w-40 flex-1 text-sm">
@@ -215,7 +218,7 @@ export function TripBrief() {
                   {brief.cities.length > 1 && (
                     <button
                       type="button"
-                      className={pill}
+                      className={quiet}
                       aria-label={`Remove city ${index + 1}`}
                       onClick={() =>
                         set({
@@ -234,7 +237,7 @@ export function TripBrief() {
               {errors.cities && <p className={error}>{errors.cities}</p>}
               <button
                 type="button"
-                className={pill}
+                className={quiet}
                 onClick={() =>
                   set({ cities: [...brief.cities, { name: "", nights: 1 }] })
                 }
@@ -455,13 +458,13 @@ export function TripBrief() {
             {briefSections(brief).map((section) => (
               <section
                 key={section.step}
-                className="rounded-md border border-row-edge bg-row px-4 py-3"
+                className="rounded-lg bg-card shadow-[0_0_0_1px_rgb(29_26_22/0.12)] px-4 py-3"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h2 className={eyebrow}>{BRIEF_STEPS[section.step]}</h2>
                   <button
                     type="button"
-                    className={pill}
+                    className={quiet}
                     aria-label={`Edit ${BRIEF_STEPS[section.step]}`}
                     onClick={() => setStep(section.step)}
                   >
@@ -496,25 +499,22 @@ export function TripBrief() {
         {step > 0 && (
           <button
             type="button"
-            className={pillLarge}
+            className={quietLarge}
             onClick={() => setStep(step - 1)}
           >
             Back
           </button>
         )}
         {step < BRIEF_STEPS.length - 1 ? (
-          <button type="button" className={pillLargePrimary} onClick={next}>
+          <button type="button" className={buttonLarge} onClick={next}>
             Next
           </button>
         ) : (
-          <button type="button" className={pillLargePrimary} onClick={build}>
+          <button type="button" className={buttonLarge} onClick={build}>
             Build my trip
           </button>
         )}
-        <Link
-          href="/prototype/trip"
-          className="ml-auto font-sans text-sm font-semibold text-terracotta-deep underline"
-        >
+        <Link href="/prototype/trip" className={`ml-auto ${quietLarge}`}>
           Talk it through instead
         </Link>
       </div>

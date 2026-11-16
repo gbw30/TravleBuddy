@@ -1,5 +1,3 @@
-export type ArtStyle = "sunset" | "sea" | "brick";
-
 /** What a postcard needs to know about a place. Null means unknown, never a guess. */
 export type CardPlace = {
   id: string;
@@ -13,5 +11,9 @@ export type CardPlace = {
   rating: number | null;
   photo: string | null;
   photoCredit: string | null;
-  art: ArtStyle;
 };
+
+/** "Temple · 25 min by train" gives "Temple". */
+export function placeKind(place: Pick<CardPlace, "essentials">): string {
+  return place.essentials.split(" · ")[0];
+}

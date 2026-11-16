@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 
 import type { Commitment } from "@/features/prototype/types";
 
-import { eyebrow, field, pillPrimary } from "./styles";
+import { eyebrow, field, button } from "./styles";
 import { TicketStub } from "./ticket-stub";
 
 const kinds: Commitment["kind"][] = [
@@ -51,11 +51,11 @@ export function CommitmentsPanel({ initial }: { initial: Commitment[] }) {
                 note={`${c.date} · ${c.kind}`}
               />
             ) : (
-              <div className="rounded-lg border border-dashed border-terracotta bg-row px-4 py-2 text-sm">
+              <div className="rounded-lg border-[1.5px] border-dashed border-ink/25 px-4 py-3 text-[15px]">
                 <span className="block [overflow-wrap:anywhere]">
                   {c.title}
                 </span>
-                <span className="block text-xs opacity-75">
+                <span className="block font-sans text-xs text-muted">
                   {c.date} · {c.kind} · no time yet, I will fit it in first
                 </span>
               </div>
@@ -64,7 +64,7 @@ export function CommitmentsPanel({ initial }: { initial: Commitment[] }) {
         ))}
       </ul>
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer font-sans text-xs font-semibold text-terracotta-deep">
+        <summary className="cursor-pointer font-sans text-[13px] text-ink underline decoration-ink/25 underline-offset-4">
           Add something already decided
         </summary>
         <form onSubmit={add} className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -100,7 +100,7 @@ export function CommitmentsPanel({ initial }: { initial: Commitment[] }) {
               className={`${field} mt-1 block w-full`}
             />
           </label>
-          <button type="submit" className={`${pillPrimary} justify-self-start`}>
+          <button type="submit" className={`${button} justify-self-start`}>
             Add
           </button>
         </form>
