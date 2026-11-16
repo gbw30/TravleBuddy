@@ -23,9 +23,6 @@ export default function PrototypeLayout({ children }: { children: ReactNode }) {
         >
           Travle<em>Buddy</em>
         </Link>
-        <span className="font-sans text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
-          Prototype · sample data
-        </span>
         <div className="ml-auto">
           <KeepsakeNav />
         </div>

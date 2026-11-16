@@ -33,10 +33,10 @@ describe("prototype pages", () => {
     expect(() => PrototypeLayout({ children: null })).toThrow();
   });
 
-  it("layout shows the prototype banner and navigation without Discover", () => {
+  it("layout shows the navigation without a prototype label or Discover", () => {
     vi.stubEnv("VERCEL_ENV", "preview");
     const html = renderToStaticMarkup(PrototypeLayout({ children: null }));
-    expect(html).toContain("Prototype · sample data");
+    expect(html).not.toContain("sample data");
     expect(html).toContain('href="/prototype/new"');
     expect(html).not.toContain("Discover");
   });
