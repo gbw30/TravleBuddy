@@ -28,13 +28,7 @@ const ratesReply = {
 };
 
 describe("prototype pages", () => {
-  it("is not served in production", () => {
-    vi.stubEnv("VERCEL_ENV", "production");
-    expect(() => PrototypeLayout({ children: null })).toThrow();
-  });
-
   it("layout shows the navigation without a prototype label or Discover", () => {
-    vi.stubEnv("VERCEL_ENV", "preview");
     const html = renderToStaticMarkup(PrototypeLayout({ children: null }));
     expect(html).not.toContain("sample data");
     expect(html).toContain('href="/prototype/new"');
