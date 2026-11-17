@@ -11,7 +11,7 @@ The prototype shows the main screens in the keepsake look with sample data. It h
 
 - **Locally:** run `npm run dev`, then open `/prototype` on the address it prints, for example `http://localhost:3000/prototype`.
 - **QA preview:** once the `qa` branch is pushed, open `/prototype` on the existing QA preview address.
-- **Production:** the prototype returns "not found" there by design.
+- **Production:** `https://travle-buddy.vercel.app/prototype`, live since 2026-11-17 so the approved design can be shown while the working site is rebuilt to match it.
 
 To see the phone layout, narrow the browser window or open it on a phone.
 

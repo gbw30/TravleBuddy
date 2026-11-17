@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { KeepsakeNav } from "@/components/keepsake/keepsake-nav";
 
 export const metadata: Metadata = {
-  title: "TravleBuddy prototype",
+  title: "TravleBuddy",
   robots: { index: false },
 };
 
 export default function PrototypeLayout({ children }: { children: ReactNode }) {
-  // The prototype is sample data for design review; it must not ship to production.
-  if (process.env.VERCEL_ENV === "production") notFound();
-
   return (
     <div className="keepsake-paper min-h-screen flex-1 text-[17px] leading-[1.55]">
       <header className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-2 px-5 pt-6 md:px-10 md:pt-7">
@@ -23,9 +19,6 @@ export default function PrototypeLayout({ children }: { children: ReactNode }) {
         >
           Travle<em>Buddy</em>
         </Link>
-        <span className="font-sans text-[11px] font-medium tracking-[0.14em] text-muted uppercase">
-          Prototype · sample data
-        </span>
         <div className="ml-auto">
           <KeepsakeNav />
         </div>
