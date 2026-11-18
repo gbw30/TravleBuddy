@@ -3,6 +3,7 @@
 // code imports directly.
 export {
   appendMessages,
+  lastQuestionTopic,
   readConversation,
   readSkippedFacts,
   skipFact,
@@ -33,3 +34,12 @@ export {
   type Readiness,
   type ScriptState,
 } from "./script";
+export {
+  decide,
+  intentOfTap,
+  labelsOf,
+  readinessNote,
+  stateAfter,
+  type Change,
+  type Decision,
+} from "./turn";

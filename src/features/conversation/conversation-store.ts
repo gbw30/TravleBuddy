@@ -64,6 +64,20 @@ export async function readConversation(
   });
 }
 
+/** The topic of the question most recently saved in the thread, if any. */
+export async function lastQuestionTopic(
+  client: Client,
+  tripId: string,
+): Promise<string | null> {
+  const row = await client.conversationMessage.findFirst({
+    where: { tripId, body: { path: ["kind"], equals: "question" } },
+    orderBy: { id: "desc" },
+    select: { body: true },
+  });
+  const body = messageBodySchema.safeParse(row?.body);
+  return body.success && body.data.kind === "question" ? body.data.topic : null;
+}
+
 export async function readSkippedFacts(
   client: Client,
   tripId: string,

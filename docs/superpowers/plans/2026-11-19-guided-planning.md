@@ -14,16 +14,17 @@
 
 The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 branch. Each piece is a feature branch merged by pull request into it; the pull request names the requirement IDs it covers and its check results, and its number is written here.
 
-| Piece                                                        | Branch                           | Requirements                                      | Pull request |
-| ------------------------------------------------------------ | -------------------------------- | ------------------------------------------------- | ------------ |
-| 0. Plan                                                      | `feature/m5-plan`                | none (process)                                    | #22          |
-| 1. The script: questions, readiness, reading answers by rule | `feature/m5-script`              | TB-AGT-01 to 05, TB-AGT-07, TB-AGT-08, TB-AGT-15  | #23          |
-| 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)   | #24          |
-| 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                         | #25          |
-| 4. Taking a turn                                             | `feature/m5-turns`               | TB-AGT-09 to 11, TB-FIX-05, TB-ITN-14 (the offer) |              |
-| 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                        |              |
-| 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15        |              |
-| 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                      |              |
+| Piece                                                        | Branch                           | Requirements                                                                                                   | Pull request |
+| ------------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
+| 0. Plan                                                      | `feature/m5-plan`                | none (process)                                                                                                 | #22          |
+| 1. The script: questions, readiness, reading answers by rule | `feature/m5-script`              | TB-AGT-01 to 05, TB-AGT-07, TB-AGT-08, TB-AGT-15                                                               | #23          |
+| 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)                                                                | #24          |
+| 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                                                                                      | #25          |
+| 4a. Taking a turn                                            | `feature/m5-turns`               | TB-AGT-08, TB-AGT-11 (typed), TB-AGT-13, TB-AGT-14, TB-AGT-15, TB-FIX-05, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI) | #26          |
+| 4b. Proposals in conversation                                | `feature/m5-proposals`           | TB-AGT-07, TB-AGT-09, TB-AGT-10, TB-ITN-14 (the offer)                                                         |              |
+| 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                                                                                     |              |
+| 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15                                                                     |              |
+| 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                                                                                   |              |
 
 ## Global Constraints
 
@@ -48,6 +49,9 @@ Not stated in the PRD. Each is open to change.
 6. **The AI cap** is a monthly amount in US dollars, `AI_MONTHLY_CAP_USD`, default 10. Spend is worked out from the token counts each reply reports, at the published price of the model, and kept per month. At the cap the model is off until the month ends.
 7. **Where to stay** is asked as a topic, and the agent says how many nights have no booked stay. Proposing hotels as cards is not in this milestone.
 8. **A typed message that is not an answer** can do three things: set a fact, add a fixed commitment (TB-FIX-05), or point the agent at a day or slot (TB-AGT-11). Anything else gets a plain reply that the agent did not understand, with what it can do.
+9. **The waiting question is worked out, not saved,** from the trip each time the conversation is read. It joins the saved thread the first time the traveller responds to it. Reading the conversation therefore never writes, and a fact changed in a form changes the question.
+10. **The conversation sets a trip's cities only when it has none.** Saving cities replaces the whole list, and a typed "also Kyoto" must not do that. Each typed city is looked up and the best match is saved; the reply names it in full so a wrong match is seen.
+11. **A turn makes at most one change.** A message that states several kinds of thing (a fact and a booking) is read as one of them.
 
 ## Review Focus
 
@@ -87,9 +91,21 @@ The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go wi
 - Memory service, new folder `src/features/memory`: `contracts.ts` (the taste topics, `TripAnswer`, `TripTaste`), `trip-profile-store.ts` with `readTripTaste`, `saveTripAnswer`.
 - Checked once against the development database inside a transaction that was rolled back: order, skipped questions, taste and spend all read back as written, and nothing was left behind.
 
-### Piece 4: Taking a turn
+### Piece 4a: Taking a turn
 
-**Produces:** `src/use-cases/conversation.ts` with `takeTurn` for an answer, a skip or typed text; `POST /api/v1/trips/{tripId}/conversation`; the agent's offer of a shelved place that fits the slot in focus; a saved message for each proposal.
+**Produced (pull request 26):**
+
+- `conversation/turn.ts` (pure): `intentOfTap`, `decide` (the one change a turn leads to and what the agent says back), `nightsWithoutStay`, `stateAfter`, `readinessNote`.
+- `src/use-cases/conversation.ts`: `loadConversation` and `takeTurn`. A typed message is read by the model when it is on and under its cap, otherwise by the rules; a reply that cannot be used, or a failed call, falls back to the rules in the same turn. The change goes through `saveTripFacts`, `addCommitment`, `saveTripAnswer` or `skipFact` inside the replay ledger, with the messages, in one transaction.
+- `GET` and `POST /api/v1/trips/{tripId}/conversation`, documented in `docs/api/v1.md`.
+- A fix found on the way: the trip's date check accepted a day the month does not have ("2027-02-30"), because parsing rolls it into March. It now refuses it, for the forms as well.
+- Walked through the real routes on the development server with the model off and sample places: the whole script from "where" to the last taste question, by tapping, typing and skipping; a repeated request returned its first answer and added nothing; a different request under the same operation id, a stale revision and an answer to the wrong question were each refused.
+
+**Not verified:** any turn read by the real model.
+
+### Piece 4b: Proposals in conversation
+
+**Produces:** meals proposed only once the food question is answered or skipped; a saved message for each proposal, naming the slot with its day and time; the agent's offer of a shelved place that fits the slot in focus; the pace answer setting the plan's pace.
 
 ### Piece 5: Taste in the ranking and the reasons
 

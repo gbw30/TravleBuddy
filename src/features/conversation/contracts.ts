@@ -135,3 +135,37 @@ export type ConversationMessage = {
   body: MessageBody;
   at: string;
 };
+
+/** One thing the traveller does in the conversation. */
+export const turnSchema = z.discriminatedUnion("type", [
+  /** A tapped choice, or several, for the question that is waiting. */
+  z.object({
+    type: z.literal("answer"),
+    topic: z.enum([...FACT_TOPICS, ...TASTE_TOPICS]),
+    values: z.array(text(80)).min(1).max(8),
+  }),
+  z.object({
+    type: z.literal("skip"),
+    topic: z.enum([...FACT_TOPICS, ...TASTE_TOPICS]),
+  }),
+  /** A typed message. */
+  z.object({ type: z.literal("say"), text: text(600) }),
+]);
+export type Turn = z.infer<typeof turnSchema>;
+
+/** What a turn answers. The screen then reads the conversation again. */
+export type TurnResult = {
+  /** The slot the traveller asked to work on, when they named a day. */
+  focus: string | null;
+};
+
+/** Everything the conversation screen needs. */
+export type ConversationSnapshot = {
+  messages: ConversationMessage[];
+  /** The question waiting for an answer. It is worked out, not saved, until it is answered. */
+  waiting: Question | null;
+  /** What the agent still needs before it can propose anything (TB-AGT-08). */
+  needs: string[];
+  /** The AI model is off or at its cap: only tap choices and simple typed answers are read (TB-AGT-15). */
+  limited: boolean;
+};

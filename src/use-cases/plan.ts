@@ -254,6 +254,16 @@ function chosenCards(
   return cards;
 }
 
+/** The plan's days as they stand, without proposals. Empty while a fact is missing. */
+export async function planDays(
+  userId: string,
+  trip: TripDetail,
+): Promise<PlanDay[]> {
+  const saved = await readPlanState(db, trip.id);
+  const state = withProvisionalStart(saved.state, trip);
+  return buildPlanView(state, await contextFor(trip, state, userId)).days;
+}
+
 /**
  * The plan as it stands, with the cards for one slot, or null when the trip
  * is not the traveller's. Reading can gather a city's places (one provider
