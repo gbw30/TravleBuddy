@@ -1041,10 +1041,16 @@ model ConversationMessage {
 
 /// What the traveller said about their taste for one trip (Memory service).
 model TripProfile {
-  tripId    String   @id @map("trip_id")
+  tripId         String   @id @map("trip_id")
   /// Topic to answer: the values chosen and whether they were told or a default.
-  taste     Json     @default("{}")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  taste          Json     @default("{}")
+  /// Whether the traveller marked this trip as different from their usual.
+  /// Null until they are asked. A trip marked different teaches the personal
+  /// profile nothing through behaviour.
+  differs        Boolean?
+  /// Why it is different, in the traveller's words or one of the purposes.
+  differsBecause String?  @map("differs_because") @db.VarChar(120)
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   trip    Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
   history ProfileHistory[]

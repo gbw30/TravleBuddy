@@ -36,6 +36,7 @@ export {
 } from "./script";
 export {
   decide,
+  decideDifference,
   intentOfTap,
   labelsOf,
   readinessNote,

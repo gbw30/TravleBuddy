@@ -26,7 +26,10 @@ export type FactTopic = (typeof FACT_TOPICS)[number];
 // The topics of taste belong to the Memory service; the conversation asks
 // about them one at a time (PRD 7.3).
 export { TASTE_TOPICS, type AnswerSource, type TasteTopic, type TripAnswer };
-export type Topic = FactTopic | TasteTopic;
+/** Asked once, when an answer goes against the personal profile (PRD 7.6). */
+export const DIFFERENCE_TOPIC = "difference";
+export type Topic = FactTopic | TasteTopic | typeof DIFFERENCE_TOPIC;
+const ALL_TOPICS = [...FACT_TOPICS, ...TASTE_TOPICS, DIFFERENCE_TOPIC] as const;
 
 /** How a question is answered by tapping (PRD 7.1). Typing is always allowed too. */
 export type QuestionForm =
@@ -39,7 +42,7 @@ export type Choice = { value: string; label: string };
 
 export type Question = {
   topic: Topic;
-  stage: "facts" | "taste";
+  stage: "facts" | "taste" | "memory";
   form: QuestionForm;
   prompt: string;
   choices: Choice[];
@@ -121,7 +124,7 @@ export const messageBodySchema = z.discriminatedUnion("kind", [
   /** A question the agent asked. The topic finds its choices in the script. */
   z.object({
     kind: z.literal("question"),
-    topic: z.enum([...FACT_TOPICS, ...TASTE_TOPICS]),
+    topic: z.enum(ALL_TOPICS),
     text: text(600),
   }),
   /** The cards the agent offered for a slot. */
@@ -146,12 +149,12 @@ export const turnSchema = z.discriminatedUnion("type", [
   /** A tapped choice, or several, for the question that is waiting. */
   z.object({
     type: z.literal("answer"),
-    topic: z.enum([...FACT_TOPICS, ...TASTE_TOPICS]),
+    topic: z.enum(ALL_TOPICS),
     values: z.array(text(80)).min(1).max(8),
   }),
   z.object({
     type: z.literal("skip"),
-    topic: z.enum([...FACT_TOPICS, ...TASTE_TOPICS]),
+    topic: z.enum(ALL_TOPICS),
   }),
   /** A typed message. */
   z.object({ type: z.literal("say"), text: text(600) }),

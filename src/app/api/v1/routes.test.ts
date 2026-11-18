@@ -577,6 +577,24 @@ describe("the conversation", () => {
     });
   });
 
+  it("accepts an answer to why this trip is different", async () => {
+    mocks.takeTurn.mockResolvedValue({
+      status: "ok",
+      data: { focus: null, changed: true },
+      revision: 7,
+    });
+    mocks.loadConversation.mockResolvedValue(conversation);
+    const different = { type: "answer", topic: "difference", values: ["Work"] };
+    const answer = await takeTurn(
+      request("POST", { turn: different, ...control }),
+      trip,
+    );
+    expect(answer.status).toBe(200);
+    expect(mocks.takeTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ turn: different }),
+    );
+  });
+
   it("answers 409 for a stale revision or a refused turn, without reading the thread", async () => {
     mocks.takeTurn
       .mockResolvedValueOnce({ status: "stale" })

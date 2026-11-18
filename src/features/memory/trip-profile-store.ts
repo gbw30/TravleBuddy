@@ -64,3 +64,59 @@ export async function saveTripAnswer(
   });
   return taste;
 }
+
+/** Whether the traveller marked this trip as different from their usual, and why. */
+export type TripDifference = {
+  /** Null until the traveller has been asked. */
+  differs: boolean | null;
+  because: string | null;
+};
+
+export async function readTripDifference(
+  client: Client,
+  tripId: string,
+): Promise<TripDifference> {
+  const row = await client.tripProfile.findUnique({
+    where: { tripId },
+    select: { differs: true, differsBecause: true },
+  });
+  return {
+    differs: row?.differs ?? null,
+    because: row?.differsBecause ?? null,
+  };
+}
+
+/**
+ * Records the traveller's answer to "is this trip different?" (TB-AGT-12).
+ * A trip marked as different teaches the personal profile nothing through
+ * behaviour (TB-MEM-09).
+ */
+export async function saveTripDifference(
+  client: Client,
+  tripId: string,
+  because: string | null,
+): Promise<TripDifference> {
+  const next = {
+    differs: because !== null,
+    differsBecause: because?.trim().slice(0, 120) || null,
+  };
+  if (because !== null && !next.differsBecause) {
+    throw new Error("A trip marked as different needs its reason.");
+  }
+  const before = await readTripDifference(client, tripId);
+  await client.tripProfile.upsert({
+    where: { tripId },
+    create: { tripId, ...next },
+    update: next,
+  });
+  await client.profileHistory.create({
+    data: {
+      tripId,
+      topic: "difference",
+      ...(before.differs === null ? {} : { before }),
+      after: { differs: next.differs, because: next.differsBecause },
+      cause: "conversation",
+    },
+  });
+  return { differs: next.differs, because: next.differsBecause };
+}

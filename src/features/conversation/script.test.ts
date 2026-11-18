@@ -249,8 +249,8 @@ describe("a traveller the site already knows", () => {
     expect(readiness(state({ facts })).meals).toBe(false);
   });
 
-  it("is not asked again about a topic answered for this trip", () => {
-    const profile = { taste: { pace: told(["packed"]) }, skippedFacts: [] };
+  it("is not asked again about a topic answered the same way for this trip", () => {
+    const profile = { taste: { pace: told(["relaxed"]) }, skippedFacts: [] };
     expect(
       nextQuestion(
         state({
@@ -261,6 +261,79 @@ describe("a traveller the site already knows", () => {
         }),
       )?.topic,
     ).toBe("day_shape");
+  });
+
+  it("is asked once why this trip is different when an answer goes against the memory", () => {
+    const profile = { taste: { pace: told(["packed"]) }, skippedFacts: [] };
+    const remembered = [fromTokyo("pace", "relaxed")];
+    const question = nextQuestion(
+      state({ facts, commitments: done, profile, remembered }),
+    );
+    expect(question).toMatchObject({
+      topic: "difference",
+      stage: "memory",
+      prompt:
+        "Pace: you chose packed for this trip, and I remember relaxed. Is this trip different from your usual?",
+    });
+    expect(question?.choices.map((choice) => choice.value)).toEqual([
+      "Honeymoon",
+      "Family visit",
+      "Celebration",
+      "Work",
+      "ordinary",
+    ]);
+    // Once answered, either way, the script moves on and does not ask again.
+    for (const differs of [true, false]) {
+      expect(
+        nextQuestion(
+          state({ facts, commitments: done, profile, remembered, differs }),
+        )?.topic,
+      ).toBe("day_shape");
+    }
+  });
+
+  it("does not take a skipped question, or an answer that shares a value, as going against the memory", () => {
+    const remembered = [
+      fromTokyo("pace", "relaxed"),
+      said("interests", "museums"),
+    ];
+    const skipped = {
+      taste: { pace: { values: ["balanced"], source: "default" as const } },
+      skippedFacts: [],
+    };
+    expect(
+      nextQuestion(
+        state({ facts, commitments: done, profile: skipped, remembered }),
+      )?.topic,
+    ).toBe("day_shape");
+    const overlap = {
+      taste: {
+        pace: told(["relaxed"]),
+        day_shape: told(["early"]),
+        interests: told(["museums", "markets"]),
+      },
+      skippedFacts: [],
+    };
+    expect(
+      nextQuestion(
+        state({ facts, commitments: done, profile: overlap, remembered }),
+      )?.topic,
+    ).toBe("atmosphere");
+  });
+
+  it("asks about the difference before going on with the facts-free questions, but after the facts", () => {
+    const profile = { taste: { pace: told(["packed"]) }, skippedFacts: [] };
+    const remembered = [fromTokyo("pace", "relaxed")];
+    expect(
+      nextQuestion(
+        state({
+          facts: { ...facts, purpose: null },
+          commitments: done,
+          profile,
+          remembered,
+        }),
+      )?.topic,
+    ).toBe("purpose");
   });
 });
 
