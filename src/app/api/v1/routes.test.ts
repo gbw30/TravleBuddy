@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => {
     findCities: vi.fn(),
     runPlanAction: vi.fn(),
     loadPlan: vi.fn(),
+    findTripPlaces: vi.fn(),
+    addTripPlace: vi.fn(),
   };
 });
 vi.mock("@/lib/authorization", () => ({
@@ -38,6 +40,8 @@ vi.mock("@/features/places", () => ({ findCities: mocks.findCities }));
 vi.mock("@/use-cases/plan", () => ({
   runPlanAction: mocks.runPlanAction,
   loadPlan: mocks.loadPlan,
+  findTripPlaces: mocks.findTripPlaces,
+  addTripPlace: mocks.addTripPlace,
 }));
 
 import { GET as cities } from "./places/cities/route";
@@ -54,6 +58,10 @@ import {
   GET as getPlan,
   POST as changePlan,
 } from "./trips/[tripId]/plan/route";
+import {
+  GET as findPlaces,
+  POST as addPlace,
+} from "./trips/[tripId]/places/route";
 import { POST as createTrip } from "./trips/route";
 
 const control = {
@@ -423,5 +431,73 @@ describe("the plan", () => {
       (await changePlan(request("POST", { action: pick, ...control }), trip))
         .status,
     ).toBe(401);
+  });
+});
+
+describe("a place of the traveller's own", () => {
+  const search = (query: string) =>
+    findPlaces(
+      new Request(`http://localhost/api/v1/trips/trip-1/places?${query}`),
+      trip,
+    );
+
+  it("searches by name in the city of the slot named", async () => {
+    mocks.findTripPlaces.mockResolvedValue({
+      status: "ok",
+      cards: [{ placeId: "p9" }],
+    });
+    const answer = await search("q=Ichiran&slot=d2-lunch");
+    expect(await answer.json()).toEqual({ cards: [{ placeId: "p9" }] });
+    expect(mocks.findTripPlaces).toHaveBeenCalledWith(
+      "user-1",
+      "trip-1",
+      "d2-lunch",
+      "Ichiran",
+    );
+  });
+
+  it("answers 404 for another traveller's trip and 503 when the lookup cannot answer", async () => {
+    mocks.findTripPlaces.mockResolvedValueOnce({ status: "not_found" });
+    expect((await search("q=x")).status).toBe(404);
+    mocks.findTripPlaces.mockResolvedValueOnce({ status: "unavailable" });
+    const down = await search("q=x");
+    expect([down.status, (await down.json()).error]).toEqual([
+      503,
+      "lookup_unavailable",
+    ]);
+    mocks.findTripPlaces.mockResolvedValueOnce({ status: "capped" });
+    expect((await (await search("q=x")).json()).error).toBe("lookup_capped");
+  });
+
+  it("adds a place by hand and answers its card", async () => {
+    mocks.addTripPlace.mockResolvedValue({ placeId: "own" });
+    const answer = await addPlace(
+      request("POST", {
+        name: " Aunt Keiko's flat ",
+        kind: "sight",
+        slotId: "d1-dinner",
+      }),
+      trip,
+    );
+    expect(answer.status).toBe(201);
+    expect(mocks.addTripPlace).toHaveBeenCalledWith(
+      "user-1",
+      "trip-1",
+      "d1-dinner",
+      {
+        name: "Aunt Keiko's flat",
+        kind: "sight",
+      },
+    );
+  });
+
+  it("refuses a place with no name or an unknown kind", async () => {
+    for (const body of [
+      { name: "  ", kind: "sight" },
+      { name: "x", kind: "spaceport" },
+    ]) {
+      expect((await addPlace(request("POST", body), trip)).status).toBe(422);
+    }
+    expect(mocks.addTripPlace).not.toHaveBeenCalled();
   });
 });

@@ -22,7 +22,7 @@ The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on
 | 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              | #15          |
 | 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         | #16          |
 | 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    | #17          |
-| 6. The workspace screen                 | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         |              |
+| 6. The workspace screen                 | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         | #18          |
 | 7. Retire the earlier planner           | `feature/m4-retire-earlier-planner` | none (removal); border exceptions fall                                                              |              |
 | 8. Evidence                             | `feature/m4-evidence`               | all of the above, re-checked                                                                        |              |
 
@@ -98,7 +98,14 @@ Ranking, in order of weight: distance from the stop before (heavier once "too fa
 
 ### Piece 6: The workspace screen
 
-**Produces:** the approved workspace on the trip page, fed by the server: cards with flip and closer look, the live itinerary, the shelf, move by drag and by keyboard menu, swap, remove, undo, and progress while a city's places are gathered. The sample prototype keeps working from the same components.
+**Produced (pull request 18):** `trip-workspace.tsx` and `plan-itinerary.tsx` on the trip page, above the facts. They reuse the approved `Postcard`, `CloserLook`, `Shelf`, `MoveMenu`, `ItineraryRow`, `DiscardReasons`, `TicketStub` and `DayStamp` unchanged; the sample prototype is untouched. Also `GET` and `POST /api/v1/trips/{tripId}/places` for a place of the traveller's own.
+
+- The page loads without waiting for the place provider; the workspace then asks once and shows "Looking for places…" meanwhile.
+- A picked card moves to its slot with a view transition where the browser supports it and motion is not reduced.
+- Moving works by drag and by a keyboard menu. Booked items have no move or remove control.
+- Checked in a browser against the development database with sample places: pick, flip, show me others with a reason, save, place from the shelf by keyboard, move, undo, visit length, pace, a place added by hand, reload, and phone width. No serious accessibility findings.
+
+Found and fixed while checking: hidden screen-reader text inside the sideways card row widened the page by 208 px on a phone.
 
 ### Piece 7: Retire the earlier planner
 
