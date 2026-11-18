@@ -26,7 +26,7 @@ const fallback = "That did not work. Please try again.";
 
 export async function callApi<T>(
   path: string,
-  init: { method: "GET" | "POST" | "PATCH" | "DELETE"; body?: object },
+  init: { method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: object },
 ): Promise<ApiResult<T>> {
   try {
     const response = await fetch(path, {
@@ -66,7 +66,7 @@ const latestRevision = new Map<string, number>();
 export async function changeTrip<T>(
   tripId: string,
   revision: number,
-  method: "POST" | "PATCH" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   body: object = {},
   subPath = "",
 ): Promise<ApiResult<T>> {

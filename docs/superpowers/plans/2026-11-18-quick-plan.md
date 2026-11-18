@@ -19,7 +19,7 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 | 0. Plan                                       | `feature/m7-plan`         | none (process)               | #45          |
 | 1. The brief as a view, and its checks (pure) | `feature/m7-brief-rules`  | TB-QPL-02, 03, 05, 07        | #46          |
 | 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     | #48          |
-| 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          |              |
+| 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          | #49          |
 | 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                |              |
 | 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            |              |
 | 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                |              |
@@ -88,7 +88,21 @@ Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 3: The brief on screen
 
-**Produces:** the five-step brief at `/trips/{tripId}/brief` in the approved prototype's look, filled in from the trip and the profile with sources, checked as the traveller types, saved at every step, with the review and its edit links.
+**Produced (pull request 49):**
+
+- The page `/trips/{tripId}/brief` and `src/components/keepsake/brief-steps.tsx`: five steps with a progress marker, in the site's own type, fields and chips.
+  1. **Where and when:** cities with nights, dates or a length and month, travellers. A problem is said beside its field as soon as the traveller has touched that field, and all of them when Next is pressed.
+  2. **Already decided:** the trip page's own commitments panel.
+  3. **This trip:** purpose as chips, budget, and how firm the budget and dates are.
+  4. **Your style:** the eight questions as chips, worded as the agent asks them. Each says where its answer comes from: "What I remember (from your trip …)", "For this trip", or what will be assumed if it is left.
+  5. **Review:** the brief in sentences with an Edit link per part, and the "anything else" box. "Show me how you understood it" saves the words and lists what was understood, each with "Use this" until it is in use, what was kept as said, and any allergy with a link to the profile.
+- A step is saved when the traveller leaves it (Next, Back, an Edit link, or "Open the trip"). A save names only what changed.
+- A new Quick plan trip opens on its brief. The trip page of a Quick plan trip links to it.
+- The fields for a trip's facts moved to `facts-fields.tsx`, shared by the trip page's facts form and the brief.
+
+**Changed from the decisions above:** the address names only the step to open at (`?step=3`); moving between steps does not change it. On a page that reads its address, changing the query rebuilt the form from a cached copy and lost what was typed. Without a step in the address, the brief opens at the review once step 1 is complete.
+
+**Left for later pieces:** the last step ends with "Open the trip"; piece 5 makes it "Build my trip". "Talk it through instead" comes with piece 6.
 
 ### Piece 4: Building one day at a time
 

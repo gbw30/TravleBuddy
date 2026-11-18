@@ -63,6 +63,7 @@ function styleOf(taste: TasteInUse): BriefAnswer[] {
     return {
       topic,
       name: TOPIC_NAMES[topic],
+      asks: question.prompt,
       several: MULTI_TOPICS.includes(topic),
       choices: question.choices,
       values: inUse?.values ?? [],
@@ -257,6 +258,7 @@ export function briefOf(
     tripId: trip.id,
     revision: trip.revision,
     title: trip.title,
+    archived: trip.archived,
     facts: trip.facts,
     commitments: trip.commitments,
     clashes: trip.clashes,

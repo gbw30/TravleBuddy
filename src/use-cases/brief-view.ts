@@ -21,6 +21,8 @@ export const BRIEF_STEPS = [
 export type BriefAnswer = {
   topic: TasteTopic;
   name: string;
+  /** The question, as the agent asks it in conversation. */
+  asks: string;
   /** Whether the topic holds several values at once. */
   several: boolean;
   choices: { value: string; label: string }[];
@@ -77,6 +79,8 @@ export type BriefView = {
   tripId: string;
   revision: number;
   title: string;
+  /** An archived trip refuses changes, so its brief cannot be filled in. */
+  archived: boolean;
   facts: TripFacts;
   commitments: CommitmentDto[];
   clashes: Clash[];
@@ -142,4 +146,49 @@ export function step1Problems(facts: TripFacts): BriefProblem[] {
     });
   }
   return problems;
+}
+
+/** The facts that differ from the saved ones: a save names only these. */
+export function changedFacts(
+  saved: TripFacts,
+  draft: TripFacts,
+): TripFactsInput {
+  const changed: Record<string, unknown> = {};
+  for (const key of Object.keys(draft) as (keyof TripFacts)[]) {
+    if (JSON.stringify(draft[key]) !== JSON.stringify(saved[key])) {
+      changed[key] = draft[key];
+    }
+  }
+  return changed as TripFactsInput;
+}
+
+/**
+ * A style answer after a chip is pressed. A topic that holds one value
+ * swaps it; pressing the chosen value again takes the answer away. "No
+ * restrictions" and a food rule cannot both be chosen.
+ */
+export function toggleStyle(
+  answer: Pick<BriefAnswer, "several">,
+  selected: string[],
+  value: string,
+): string[] {
+  if (selected.includes(value))
+    return selected.filter((item) => item !== value);
+  if (!answer.several || value === "none") return [value];
+  return [...selected.filter((item) => item !== "none"), value];
+}
+
+/**
+ * The step the brief opens at, counted from 0. The review when step 1 is
+ * complete, unless the address names another step; step 1 otherwise.
+ */
+export function openingStep(
+  brief: Pick<BriefView, "canBuild">,
+  asked?: string,
+): number {
+  if (!brief.canBuild) return 0;
+  const step = Number(asked);
+  return Number.isInteger(step) && step >= 1 && step <= BRIEF_STEPS.length
+    ? step - 1
+    : BRIEF_STEPS.length - 1;
 }

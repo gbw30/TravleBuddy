@@ -9,7 +9,12 @@ import type {
 } from "@/features/trips/contracts";
 
 import { briefOf, briefSaveSchema, readSaid } from "./brief";
-import { step1Problems } from "./brief-view";
+import {
+  changedFacts,
+  openingStep,
+  step1Problems,
+  toggleStyle,
+} from "./brief-view";
 
 const city = (name: string) => ({
   name,
@@ -406,5 +411,62 @@ describe("what a save of the brief may carry", () => {
     expect(
       accepts({ facts: { startDate: "2027-05-10", endDate: "2027-05-09" } }),
     ).toBe(false);
+  });
+});
+
+describe("what the brief's screen works out", () => {
+  it("names only the facts that changed in a save", () => {
+    expect(changedFacts(tokyoInMay, tokyoInMay)).toEqual({});
+    expect(
+      changedFacts(tokyoInMay, {
+        ...tokyoInMay,
+        adults: 3,
+        endDate: null,
+        purpose: "Work",
+      }),
+    ).toEqual({ adults: 3, endDate: null, purpose: "Work" });
+    const cities = [{ city: city("Tokyo"), nights: 2 }];
+    expect(changedFacts(tokyoInMay, { ...tokyoInMay, cities })).toEqual({
+      cities,
+    });
+    // The same cities entered again are not a change.
+    expect(
+      changedFacts(tokyoInMay, {
+        ...tokyoInMay,
+        cities: [{ city: city("Tokyo"), nights: 4 }],
+      }),
+    ).toEqual({});
+  });
+
+  it("swaps the value of a topic that holds one, and takes it away when pressed again", () => {
+    const one = { several: false };
+    expect(toggleStyle(one, [], "relaxed")).toEqual(["relaxed"]);
+    expect(toggleStyle(one, ["relaxed"], "packed")).toEqual(["packed"]);
+    expect(toggleStyle(one, ["packed"], "packed")).toEqual([]);
+  });
+
+  it("adds to and removes from a topic that holds several, and keeps “no restrictions” apart", () => {
+    const several = { several: true };
+    expect(toggleStyle(several, ["museums"], "views")).toEqual([
+      "museums",
+      "views",
+    ]);
+    expect(toggleStyle(several, ["museums", "views"], "museums")).toEqual([
+      "views",
+    ]);
+    expect(toggleStyle(several, ["vegetarian", "halal"], "none")).toEqual([
+      "none",
+    ]);
+    expect(toggleStyle(several, ["none"], "vegan")).toEqual(["vegan"]);
+  });
+
+  it("opens at step 1 until it is complete, then at the review or the step asked for", () => {
+    expect(openingStep({ canBuild: false })).toBe(0);
+    expect(openingStep({ canBuild: false }, "4")).toBe(0);
+    expect(openingStep({ canBuild: true })).toBe(4);
+    expect(openingStep({ canBuild: true }, "2")).toBe(1);
+    for (const odd of ["0", "6", "2.5", "review", ""]) {
+      expect(openingStep({ canBuild: true }, odd), odd).toBe(4);
+    }
   });
 });
