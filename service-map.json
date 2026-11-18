@@ -37,11 +37,11 @@
         "src/lib/providers/places/**",
         "src/lib/google/**"
       ],
-      "tables": ["CityLookup"]
+      "tables": ["CityLookup", "Place", "PlaceFetch", "ProviderCall"]
     },
     "recommendations": {
       "code": ["src/features/recommendations/**", "src/features/adaptation/**"],
-      "tables": ["PlaceSuggestion", "PlanningFeedback"]
+      "tables": ["PlaceSuggestion", "PlanningFeedback", "CardEvent"]
     },
     "itinerary": {
       "code": ["src/features/itinerary/**"],
@@ -50,7 +50,9 @@
         "ItineraryDay",
         "ItineraryCityWindow",
         "ItineraryItem",
-        "Conflict"
+        "Conflict",
+        "Plan",
+        "PlanVersion"
       ]
     },
     "jobs": {
@@ -59,6 +61,7 @@
     }
   },
   "crossBorderForeignKeys": [
+    "CardEvent.trip -> Trip (recommendations -> trips)",
     "Conflict.trip -> Trip (itinerary -> trips)",
     "GenerationJob.feedback -> PlanningFeedback (jobs -> recommendations)",
     "GenerationJob.parentItineraryVersion -> ItineraryVersion (jobs -> itinerary)",
@@ -75,6 +78,7 @@
     "ItineraryVersion.trip -> Trip (itinerary -> trips)",
     "PlaceSuggestion.destination -> TripDestination (recommendations -> trips)",
     "PlaceSuggestion.trip -> Trip (recommendations -> trips)",
+    "Plan.trip -> Trip (itinerary -> trips)",
     "PlanningEvent.trip -> Trip (conversation -> trips)",
     "PlanningFeedback.capturedItineraryVersion -> ItineraryVersion (recommendations -> itinerary)",
     "PlanningFeedback.capturedPreferenceProfileVersion -> PreferenceProfileVersion (recommendations -> memory)",

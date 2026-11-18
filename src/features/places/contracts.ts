@@ -1,6 +1,8 @@
 // What the Places service returns. Safe to import in the browser.
 import { z } from "zod";
 
+import type { PlaceKind } from "./kinds";
+
 export const citySchema = z.object({
   name: z.string().trim().min(1).max(80),
   region: z.string().trim().max(80).nullable(),
@@ -11,6 +13,21 @@ export const citySchema = z.object({
   timeZone: z.string().max(64).nullable(),
 });
 export type City = z.infer<typeof citySchema>;
+
+/** A saved place. A null fact is unknown, never a guess (TB-TRU-05). */
+export type PlaceDto = {
+  id: string;
+  /** SAMPLE and USER places are shown as such (TB-TRU-01). */
+  origin: "OSM" | "SAMPLE" | "USER";
+  name: string;
+  kind: PlaceKind;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+  /** In OpenStreetMap's notation, as the provider wrote it. */
+  openingHours: string | null;
+  notable: boolean;
+};
 
 /** "unavailable" means the lookup could not be reached, not that nothing matched. */
 export type CityLookupOutcome =
