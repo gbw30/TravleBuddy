@@ -21,7 +21,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)                                                                | #24          |
 | 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                                                                                      | #25          |
 | 4a. Taking a turn                                            | `feature/m5-turns`               | TB-AGT-08, TB-AGT-11 (typed), TB-AGT-13, TB-AGT-14, TB-AGT-15, TB-FIX-05, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI) | #26          |
-| 4b. Proposals in conversation                                | `feature/m5-proposals`           | TB-AGT-07, TB-AGT-09, TB-AGT-10, TB-ITN-14 (the offer)                                                         |              |
+| 4b. Proposals in conversation                                | `feature/m5-proposals`           | TB-AGT-07, TB-AGT-09, TB-AGT-10, TB-ITN-14 (the offer)                                                         | #27          |
 | 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                                                                                     |              |
 | 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15                                                                     |              |
 | 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                                                                                   |              |
@@ -105,7 +105,19 @@ The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go wi
 
 ### Piece 4b: Proposals in conversation
 
-**Produces:** meals proposed only once the food question is answered or skipped; a saved message for each proposal, naming the slot with its day and time; the agent's offer of a shelved place that fits the slot in focus; the pace answer setting the plan's pace.
+**Produced (pull request 27):**
+
+- `loadPlan` holds back a meal proposal in guided planning until the food question is answered or skipped. The plan answer then carries `holding: "food"` and no proposal, and the workspace says what the agent is waiting for (TB-AGT-07, TB-AGT-08).
+- A proposal joins the saved conversation the first time its cards are shown, naming the slot with its day and time: "For day 1, lunch at 12:30, I suggest one of these." (TB-AGT-09, TB-AGT-13). `recordPresented` now answers which cards were new, so a proposal is saved once.
+- The plan answer carries `shelfOffer`: a shelved place that fits the open slot in focus, in the same city (TB-ITN-14). The screen that shows the offer is piece 6.
+- The pace answer sets the plan's pace in the same transaction (`setPlanPace`), and the agent says so.
+- The slot words ("Late morning") had two copies; there is now one, `SLOT_WORDS` in the Itinerary contracts.
+- `src/use-cases/plan.test.ts`: the plan loader's first unit tests.
+- Walked through the real routes on the development server, model off, sample places: the first proposal was saved once; lunch was held back before the food answer and proposed after it; a relaxed pace took a slot off each day; a saved place was offered for the open morning and placed there.
+
+**TB-AGT-10** (the order of filling) is met by what Milestone 4 built plus this piece: fixed commitments are laid out first, sights are proposed before meals, and gaps become time to wander. Stays are covered by the agent saying how many nights have no booked stay (decision 7), not by proposing hotels.
+
+**Not built:** the day-shape answer (early starts or late nights) does not move the day's start time yet.
 
 ### Piece 5: Taste in the ranking and the reasons
 

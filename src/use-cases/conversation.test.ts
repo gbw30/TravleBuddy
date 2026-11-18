@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   saveTripAnswer: vi.fn(),
   findCities: vi.fn(),
   planDays: vi.fn(),
+  setPlanPace: vi.fn(),
   modelCall: vi.fn(),
   readUsage: vi.fn(),
   addUsage: vi.fn(),
@@ -36,7 +37,10 @@ vi.mock("@/features/memory", () => ({
   saveTripAnswer: mocks.saveTripAnswer,
 }));
 vi.mock("@/features/places", () => ({ findCities: mocks.findCities }));
-vi.mock("./plan", () => ({ planDays: mocks.planDays }));
+vi.mock("./plan", () => ({
+  planDays: mocks.planDays,
+  setPlanPace: mocks.setPlanPace,
+}));
 vi.mock("./trip-action", async (actual) => ({
   ...(await actual<typeof import("./trip-action")>()),
   runTripAction: mocks.runTripAction,
@@ -244,6 +248,27 @@ describe("a tapped answer", () => {
       ["agent", "text", "Noted: relaxed."],
     ]);
     expect(mocks.modelCall).not.toHaveBeenCalled();
+  });
+
+  it("sets the plan's pace from the pace answer, and says so only when it changed", async () => {
+    const turn = {
+      type: "answer" as const,
+      topic: "pace" as const,
+      values: ["relaxed"],
+    };
+    mocks.setPlanPace.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    await takeTurn({ userId: "user-1", tripId: "trip-1", control, turn });
+    expect(mocks.setPlanPace).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ id: "trip-1" }),
+      "user-1",
+      "relaxed",
+    );
+    expect(saved().at(-1)?.[2]).toBe(
+      "Noted: relaxed. The plan now follows a relaxed pace.",
+    );
+    await takeTurn({ userId: "user-1", tripId: "trip-1", control, turn });
+    expect(saved().at(-1)?.[2]).toBe("Noted: relaxed.");
   });
 
   it("does not save the question a second time", async () => {

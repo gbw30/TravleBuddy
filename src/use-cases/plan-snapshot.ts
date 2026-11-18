@@ -17,5 +17,13 @@ export type PlanSnapshot = {
   chosen: Record<string, CardDto>;
   /** The cards for the slot in focus. Null when there is no slot to fill. */
   proposal: (CardSet & { status: ProposalStatus; cityName: string }) | null;
+  /**
+   * Guided planning proposes meals once the food question is answered or
+   * skipped (TB-AGT-07). "food" means the slot in focus is a meal and the
+   * agent is waiting for that answer; there is then no proposal.
+   */
+  holding: "food" | null;
+  /** A shelved place that fits the open slot in focus, for the agent to offer (TB-ITN-14). */
+  shelfOffer: { placeId: string; name: string; slotId: string } | null;
   canUndo: boolean;
 };
