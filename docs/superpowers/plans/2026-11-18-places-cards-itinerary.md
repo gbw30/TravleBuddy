@@ -19,7 +19,7 @@ The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on
 | 0. Plan and branch workflow             | `feature/m4-plan`                   | none (process)                                                                                      | #12          |
 | 1. Place rules                          | `feature/m4-place-rules`            | TB-ITN-05, TB-ITN-06, TB-ITN-20, TB-TRU-05                                                          | #13          |
 | 2. Place source and saved places        | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 | #14          |
-| 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              |              |
+| 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              | #15          |
 | 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         |              |
 | 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    |              |
 | 6. The workspace screen                 | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         |              |
@@ -80,7 +80,9 @@ Not done: Google is not behind this adapter. Its terms forbid saving the names a
 
 ### Piece 3: Slots and scheduling rules (pure)
 
-**Produces, in `src/features/itinerary/`:** `daySlots(day, pace)`; `checkPlan(plan, context)` returning one flag per broken rule of PRD 9.3; `provisionalDates(facts)`; `assumedTransfers(cities, commitments)`; placement of fixed commitments first.
+**Produced (pull request 15), in `src/features/itinerary/`:** `contracts.ts` with `PlanState` (the traveller's choices) and `PlanView` (the laid-out plan); `buildPlanView(state, context)`, which lays out days, slots by pace, fixed commitments, assumed transfers, time to wander, start times and travel, and flags each broken rule of PRD 9.3; `provisionalStart(facts, today)`; `kindSuitsSlot(kind, slot)`.
+
+How the rules are met: a plan stores only choices and is laid out afresh each time, so it is repeatable. Start times are worked out from the previous item, the estimated travel and the pace buffer, so items cannot overlap each other; a visit that runs into something fixed is flagged. Commitments are placed first and nothing moves them. A commitment with no time takes its slot without looking at the traveller's picks, so it always lands in the same place; a pick it displaces goes to the shelf with the reason.
 
 ### Piece 4: Plan versions and actions
 

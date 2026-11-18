@@ -30,6 +30,7 @@ function toDto(row: PlaceRow): PlaceDto {
     id: row.id,
     origin: row.origin,
     name: row.name,
+    cityKey: row.cityKey,
     kind: (PLACE_KINDS as readonly string[]).includes(row.kind)
       ? (row.kind as PlaceKind)
       : "sight",
