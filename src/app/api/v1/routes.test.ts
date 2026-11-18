@@ -348,7 +348,7 @@ describe("the plan", () => {
     const found = await getPlan(request("GET"), trip);
     expect(await found.json()).toEqual({ plan });
     expect((await getPlan(request("GET"), trip)).status).toBe(404);
-    expect(mocks.loadPlan).toHaveBeenCalledWith("user-1", "trip-1");
+    expect(mocks.loadPlan).toHaveBeenCalledWith("user-1", "trip-1", undefined);
   });
 
   it("applies one action and answers the plan as it stands afterwards", async () => {

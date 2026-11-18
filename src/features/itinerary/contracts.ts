@@ -79,6 +79,19 @@ export const planActionSchema = z.discriminatedUnion("type", [
     start: clock,
   }),
   z.object({ type: z.literal("undo") }),
+  /** "Show me others": turn down a whole set or one card, with reasons (TB-CRD-07). */
+  z.object({
+    type: z.literal("others"),
+    slotId: slot,
+    placeIds: z.array(placeId).min(1).max(3),
+    reasons: z.array(z.string().max(40)).max(8),
+    note: z
+      .string()
+      .trim()
+      .max(300)
+      .nullish()
+      .transform((value) => value || null),
+  }),
 ]);
 export type PlanAction = z.infer<typeof planActionSchema>;
 
@@ -92,11 +105,19 @@ export type PlanFlag = {
 export type TravelLeg = { means: TravelMeans; minutes: number };
 
 export type PlanEntry =
-  | { type: "open"; slotId: string; kind: SlotKind; start: string }
+  | {
+      type: "open";
+      slotId: string;
+      kind: SlotKind;
+      start: string;
+      /** The city the traveller is in at this slot: lower-case "name|country". */
+      cityKey: string;
+    }
   | {
       type: "place";
       slotId: string;
       kind: SlotKind;
+      cityKey: string;
       placeId: string;
       start: string;
       minutes: number;
