@@ -18,7 +18,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | ------------------------------------------------------------ | -------------------------------- | ------------------------------------------------- | ------------ |
 | 0. Plan                                                      | `feature/m5-plan`                | none (process)                                    | #22          |
 | 1. The script: questions, readiness, reading answers by rule | `feature/m5-script`              | TB-AGT-01 to 05, TB-AGT-07, TB-AGT-08, TB-AGT-15  | #23          |
-| 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)   |              |
+| 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)   | #24          |
 | 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                         |              |
 | 4. Taking a turn                                             | `feature/m5-turns`               | TB-AGT-09 to 11, TB-FIX-05, TB-ITN-14 (the offer) |              |
 | 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                        |              |
@@ -67,7 +67,16 @@ Each piece gets its task list in its pull request. What is fixed here is what ea
 
 ### Piece 2: The AI model boundary
 
-**Produces, in `src/lib/ai/` replaced by `src/features/conversation/model/`:** `aiMode()`; `readTypedInput(input)` returning a validated intent or null; token accounting against the monthly cap; a stand-in client for tests. The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go with piece 7b of Milestone 4.
+**Produced (pull request 24), in `src/features/conversation/model/`:**
+
+- `mode.ts`: `aiMode()` is off without `ANTHROPIC_API_KEY` or with `AI_MODE=off`. `modelCall()` returns the one way to call the model, or null when it is off. The client gives up after ten seconds and one retry.
+- `read-typed.ts`: `readTypedInput(input, call)` sends the typed text, the waiting question, today's date and the trip's dates to `claude-haiku-5-5`, asks for a reply in the `Intent` schema, and answers `read` (with the checked intent), `discarded` (the reply does not fit, was refused or was cut short) or `failed` (the call itself failed). It never throws and never writes.
+- `budget.ts`: `costUsd(usage)` from token counts at the model's published price, `monthlyCapUsd()`, `underCap(spentThisMonth)`, `usageMonth(date)`. Where the month's spend is kept is piece 3.
+- `index.ts`: the service's server interface.
+
+The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go with piece 7b of Milestone 4.
+
+**Not verified:** no request has been sent to the real model. The request's shape comes from the SDK's types and the published documentation.
 
 ### Piece 3: Saved conversation and trip profile
 
