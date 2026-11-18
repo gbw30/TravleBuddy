@@ -489,6 +489,10 @@ model Place {
   openingHours  String?     @map("opening_hours") @db.VarChar(400)
   /// Known beyond its neighbourhood: it has an encyclopedia entry.
   notable       Boolean     @default(false)
+  /// Dietary rules its listing says it serves, such as "vegetarian".
+  serves        String[]    @default([])
+  /// Dietary rules its listing says it does not serve. Neither list: unknown.
+  servesNot     String[]    @default([]) @map("serves_not")
   /// The traveller who entered it. Set only when origin is USER.
   addedByUserId String?     @map("added_by_user_id")
   createdAt     DateTime    @default(now()) @map("created_at")

@@ -29,6 +29,12 @@ export type PlaceDto = {
   /** In OpenStreetMap's notation, as the provider wrote it. */
   openingHours: string | null;
   notable: boolean;
+  /**
+   * Dietary rules the listing says it serves, and those it says it does
+   * not. A rule in neither list is unknown: most listings say nothing.
+   */
+  serves: string[];
+  servesNot: string[];
 };
 
 /** "unavailable" means the lookup could not be reached, not that nothing matched. */

@@ -44,6 +44,12 @@ export type CardDto = {
   visitMinutes: number;
   /** Estimated travel from the stop before it. Null when a position is unknown. */
   travel: { means: TravelMeans; minutes: number } | null;
+  /**
+   * The traveller's hard limits the place's listing cannot confirm, such as
+   * "vegetarian" or "shellfish allergy" (TB-MEM-05). The card is marked, and
+   * no card ever says a place is safe for an allergy. Absent or empty: none.
+   */
+  unconfirmed?: string[];
 };
 
 /** The proposal for one slot. */

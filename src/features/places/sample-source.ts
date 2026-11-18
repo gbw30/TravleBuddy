@@ -74,6 +74,18 @@ const food: [string, PlaceKind, number, number, string | null][] = [
   ],
 ];
 
+// What the sample food places' listings say about dietary rules. The ones
+// not named here say nothing, like most real listings.
+const diets: Record<string, Pick<FoundPlace, "serves" | "servesNot">> = {
+  "Corner Noodles": { serves: ["vegetarian"], servesNot: [] },
+  "Lantern Grill": { serves: [], servesNot: ["vegetarian", "vegan"] },
+  "Market Kitchen": {
+    serves: ["vegetarian", "vegan", "gluten-free"],
+    servesNot: [],
+  },
+  "Harbour Canteen": { serves: [], servesNot: ["vegan"] },
+};
+
 const slug = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 const place = (
@@ -89,6 +101,7 @@ const place = (
   address: null,
   openingHours,
   notable: kind !== "restaurant" && kind !== "cafe",
+  ...(diets[name] ?? { serves: [], servesNot: [] }),
 });
 
 const offset = (

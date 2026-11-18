@@ -40,6 +40,8 @@ const found = {
   address: null,
   openingHours: null,
   notable: true,
+  serves: [],
+  servesNot: [],
 };
 const row = (over: object = {}) => ({
   id: "p1",
@@ -53,6 +55,8 @@ const row = (over: object = {}) => ({
   address: null,
   openingHours: null,
   notable: true,
+  serves: [],
+  servesNot: [],
   addedByUserId: null,
   ...over,
 });
@@ -261,6 +265,8 @@ describe("adding a place by name or by hand", () => {
         longitude: null,
         addedByUserId: "user-1",
         notable: false,
+        serves: [],
+        servesNot: [],
       }),
     );
 

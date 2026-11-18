@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isMealKind,
+  dietsFromOsmTags,
   kindFromOsmTags,
   kindLabel,
   PLACE_KINDS,
@@ -43,6 +44,38 @@ describe("kinds of place", () => {
     expect(visitMinutes("museum")).toBe(120);
     expect(isMealKind("restaurant")).toBe(true);
     expect(isMealKind("museum")).toBe(false);
+  });
+});
+
+describe("what a listing says about dietary rules", () => {
+  it("reads yes and only as serving, no as not serving, and anything else as unknown", () => {
+    expect(
+      dietsFromOsmTags({
+        "diet:vegetarian": "yes",
+        "diet:halal": "only",
+        "diet:kosher": "no",
+        "diet:gluten_free": "limited",
+        cuisine: "ramen",
+      }),
+    ).toEqual({ serves: ["vegetarian", "halal"], servesNot: ["kosher"] });
+    expect(dietsFromOsmTags({})).toEqual({ serves: [], servesNot: [] });
+  });
+
+  it("knows the gluten-free tag by its underscore, and that vegan food is vegetarian", () => {
+    expect(dietsFromOsmTags({ "diet:gluten_free": "yes" }).serves).toEqual([
+      "gluten-free",
+    ]);
+    expect(dietsFromOsmTags({ "diet:vegan": "only" })).toEqual({
+      serves: ["vegetarian", "vegan"],
+      servesNot: [],
+    });
+    // A listing that contradicts itself is not taken as refusing what it serves.
+    expect(
+      dietsFromOsmTags({ "diet:vegan": "yes", "diet:vegetarian": "no" }),
+    ).toEqual({
+      serves: ["vegetarian", "vegan"],
+      servesNot: [],
+    });
   });
 });
 

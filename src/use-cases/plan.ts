@@ -22,6 +22,7 @@ import {
 import {
   readProfile,
   readTripTaste,
+  limitsInUse,
   tasteInUse,
   type TasteInUse,
 } from "@/features/memory";
@@ -120,7 +121,9 @@ function focusSlot(
 }
 
 /** The trip's taste in the form the ranking understands (TB-RSN-02). */
-function cardTaste(taste: TasteInUse): CardTaste {
+type Limits = ReturnType<typeof limitsInUse>;
+
+function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
   // The trip a remembered value was learned from, so a reason can name it (TB-MEM-06).
   const tripOf = (entries: ProfileEntry[] = [], value?: string) => {
     const entry = entries.find(
@@ -142,9 +145,10 @@ function cardTaste(taste: TasteInUse): CardTaste {
     atmosphere:
       atmosphere === "lively" || atmosphere === "quiet" ? atmosphere : null,
     onFoot: taste.getting_around?.values[0] === "walk",
-    food: taste.food
-      ? taste.food.values.filter((value) => value !== "none")
-      : null,
+    // The dietary rules are hard limits: those remembered always apply,
+    // with any given for this trip (TB-MEM-05).
+    food: taste.food ? limits.dietaryRules : null,
+    allergies: limits.allergies,
     rememberedFrom: {
       atmosphere: tripOf(taste.atmosphere?.entries),
       onFoot: tripOf(taste.getting_around?.entries),
@@ -189,6 +193,7 @@ async function proposalFor(
   userId: string,
   { day, entry }: { day: PlanDay; entry: SlotEntry },
   taste: TasteInUse,
+  limits: Limits,
   gather: boolean,
 ): Promise<PlanSnapshot["proposal"]> {
   const city = trip.facts.cities.find(
@@ -249,7 +254,7 @@ async function proposalFor(
       e.type === "place" && places[e.placeId] ? [places[e.placeId].kind] : [],
     ),
     history: await historyFor(trip.id, userId),
-    taste: cardTaste(taste),
+    taste: cardTaste(taste, limits),
   });
   const fresh = await recordPresented(
     db,
@@ -345,12 +350,13 @@ export async function loadPlan(
   const focus = trip.archived ? null : focusSlot(view, wanted);
   // The taste a trip goes by starts from the personal profile; what was
   // said for this trip wins (TB-MEM-02).
-  const taste: TasteInUse = focus
-    ? tasteInUse(
-        (await readProfile(db, userId)).entries,
-        await readTripTaste(db, tripId),
-      )
-    : {};
+  const personal = focus ? (await readProfile(db, userId)).entries : [];
+  const said = focus ? await readTripTaste(db, tripId) : {};
+  const taste: TasteInUse = tasteInUse(personal, said);
+  const limits = limitsInUse(
+    personal,
+    said.food?.source === "told" ? said.food.values : [],
+  );
   // Guided planning proposes meals once the food question is answered or
   // skipped (TB-AGT-07). Until then the agent says what it is waiting for.
   const holding =
@@ -370,6 +376,7 @@ export async function loadPlan(
           userId,
           focus,
           taste,
+          limits,
           gather,
         )
       : null,

@@ -78,6 +78,8 @@ const place = (id: string, kind: PlaceDto["kind"], name = id): PlaceDto => ({
   address: null,
   openingHours: null,
   notable: false,
+  serves: [],
+  servesNot: [],
 });
 const sights = [
   place("s1", "temple", "Senso-ji"),
@@ -217,6 +219,37 @@ describe("proposals in guided planning", () => {
     expect(plan?.proposal?.cards[0].reason).toContain(
       "You eat vegetarian food",
     );
+  });
+
+  it("keeps the remembered hard limits on every meal: no conflicting place, and the rest marked", async () => {
+    const limit = (topic: string, value: string) => ({
+      id: `${topic}-${value}`,
+      topic,
+      value,
+      sureness: "always",
+      source: { type: "told" },
+    });
+    mocks.readProfile.mockResolvedValue({
+      entries: [
+        limit("dietary_rules", "vegetarian"),
+        limit("allergies", "shellfish"),
+      ],
+    });
+    mocks.listFoodNear.mockResolvedValue([
+      { ...food[0], servesNot: ["vegetarian"] },
+      { ...food[1], serves: ["vegetarian"] },
+    ]);
+    // The trip's own food answer cannot take a remembered rule away.
+    mocks.readTripTaste.mockResolvedValue({
+      food: { values: ["none"], source: "told" },
+    });
+    const cards = (await load("d1-lunch"))!.proposal!.cards;
+    expect(cards.map((card) => card.name)).toEqual(["Kissa Ko"]);
+    expect(cards[0].unconfirmed).toEqual(["shellfish allergy"]);
+    expect(cards[0].reason).toContain(
+      "Its listing says it serves vegetarian food",
+    );
+    expect(cards[0].essentials).toContain("not confirmed: shellfish allergy");
   });
 
   it("does not save the same proposal twice", async () => {
