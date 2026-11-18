@@ -2,6 +2,13 @@
 // file must not import server code.
 import { z } from "zod";
 
+import {
+  TASTE_TOPICS,
+  type AnswerSource,
+  type TasteTopic,
+  type TripAnswer,
+  type TripTaste,
+} from "@/features/memory/contracts";
 import { COMMITMENT_KINDS } from "@/features/trips/contracts";
 import { CURRENCIES } from "@/lib/currency";
 
@@ -15,19 +22,10 @@ export const FACT_TOPICS = [
   "decided",
   "purpose",
 ] as const;
-/** The traveller's taste for this trip, one topic at a time (PRD 7.3). */
-export const TASTE_TOPICS = [
-  "pace",
-  "day_shape",
-  "interests",
-  "atmosphere",
-  "food",
-  "getting_around",
-  "stay",
-  "budget_priorities",
-] as const;
 export type FactTopic = (typeof FACT_TOPICS)[number];
-export type TasteTopic = (typeof TASTE_TOPICS)[number];
+// The topics of taste belong to the Memory service; the conversation asks
+// about them one at a time (PRD 7.3).
+export { TASTE_TOPICS, type AnswerSource, type TasteTopic, type TripAnswer };
 export type Topic = FactTopic | TasteTopic;
 
 /** How a question is answered by tapping (PRD 7.1). Typing is always allowed too. */
@@ -49,15 +47,12 @@ export type Question = {
   skipSays: string;
 };
 
-/** Where an answer about taste came from. */
-export type AnswerSource = "told" | "default";
-export type TripAnswer = { values: string[]; source: AnswerSource };
 /**
- * What the traveller has said about their taste for this trip, by topic, and
+ * What the script goes by: the traveller's taste for this trip, by topic, and
  * the fact questions they chose to skip.
  */
 export type TripProfile = {
-  taste: Partial<Record<TasteTopic, TripAnswer>>;
+  taste: TripTaste;
   skippedFacts: FactTopic[];
 };
 export const emptyTripProfile: TripProfile = { taste: {}, skippedFacts: [] };

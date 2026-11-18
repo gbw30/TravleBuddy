@@ -58,6 +58,11 @@ enum CardAction {
   DISCARDED
 }
 
+enum MessageAuthor {
+  AGENT
+  TRAVELLER
+}
+
 enum BudgetLevel {
   BUDGET
   MODERATE
@@ -389,6 +394,9 @@ model Trip {
   commitments                    FixedCommitment[]
   plan                           Plan?
   cardEvents                     CardEvent[]
+  conversation                   Conversation?
+  conversationMessages           ConversationMessage[]
+  profile                        TripProfile?
   preference                     TripPreference?
   suggestions                    PlaceSuggestion[]
   planningFeedback               PlanningFeedback[]
@@ -1000,4 +1008,55 @@ model Conflict {
   @@index([severity])
   @@index([status])
   @@map("conflicts")
+}
+
+/// The guided conversation's own state for a trip (Conversation service).
+model Conversation {
+  tripId       String   @id @map("trip_id")
+  /// Fact questions the traveller chose to skip, so they are not asked again.
+  skippedFacts String[] @default([]) @map("skipped_facts")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("conversations")
+}
+
+/// One entry in a trip's saved conversation. The id gives the order: rows
+/// written in one transaction share a timestamp.
+model ConversationMessage {
+  id        Int           @id @default(autoincrement())
+  tripId    String        @map("trip_id")
+  author    MessageAuthor
+  /// A text, a question or a proposal; checked against messageBodySchema.
+  body      Json
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, id])
+  @@map("conversation_messages")
+}
+
+/// What the traveller said about their taste for one trip (Memory service).
+model TripProfile {
+  tripId    String   @id @map("trip_id")
+  /// Topic to answer: the values chosen and whether they were told or a default.
+  taste     Json     @default("{}")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_profiles")
+}
+
+/// Tokens spent on the AI model in one calendar month, for the spending cap.
+model AiUsage {
+  /// "2026-11"
+  month        String @id @db.VarChar(7)
+  inputTokens  Int    @default(0) @map("input_tokens")
+  outputTokens Int    @default(0) @map("output_tokens")
+  calls        Int    @default(0)
+
+  @@map("ai_usage")
 }
