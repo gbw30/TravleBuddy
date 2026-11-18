@@ -529,6 +529,7 @@ export function buildPlanView(
           type: "place",
           slotId: slot.id,
           kind: slot.kind,
+          cityKey: cityKeyOf(slot.city),
           placeId: place.id,
           start: toClock(start),
           minutes,
@@ -545,6 +546,7 @@ export function buildPlanView(
           slotId: slot.id,
           kind: slot.kind,
           start: toClock(Math.max(slot.earliest, clock)),
+          cityKey: cityKeyOf(slot.city),
         });
       }
 

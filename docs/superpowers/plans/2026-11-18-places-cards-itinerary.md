@@ -21,7 +21,7 @@ The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on
 | 2. Place source and saved places        | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 | #14          |
 | 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              | #15          |
 | 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         | #16          |
-| 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    |              |
+| 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    | #17          |
 | 6. The workspace screen                 | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         |              |
 | 7. Retire the earlier planner           | `feature/m4-retire-earlier-planner` | none (removal); border exceptions fall                                                              |              |
 | 8. Evidence                             | `feature/m4-evidence`               | all of the above, re-checked                                                                        |              |
@@ -92,7 +92,9 @@ The active pointer lives in the Itinerary service's own `plans` table, not on `t
 
 ### Piece 5: Cards
 
-**Produces, in `src/features/recommendations/`:** table `card_events`; `proposeCards(plan, slot)` returning up to three places with the factors that ranked them and a reason built from those factors; "show me others" with reasons; discarded places kept out for the trip.
+**Produced (pull request 17), in `src/features/recommendations/`:** `propose.ts` (`proposeCards`, pure: eligibility, ranking and a reason built from the ranking factors; `toCard`); `card-store.ts` (the record of cards shown, picked, saved and turned down); `contracts.ts` (the eight common reasons, `CardDto`, `CardSet`). `src/use-cases/plan.ts` now returns the cards for the slot in focus with every plan, gathers places when a slot needs them, and handles the `others` action.
+
+Ranking, in order of weight: distance from the stop before (heavier once "too far" has been said), a well-known place (lighter once "too touristy" has been said), known opening hours, a kind not yet in the day, and a step back from a kind turned down as "not my taste". Preferences from memory join in Milestone 6.
 
 ### Piece 6: The workspace screen
 

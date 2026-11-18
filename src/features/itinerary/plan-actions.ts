@@ -7,7 +7,8 @@ import type { PlanAction, PlanState, PlanView } from "./contracts";
 export type Refused = { refused: string };
 export type Applied = { state: PlanState; summary: string };
 
-type Change = Exclude<PlanAction, { type: "undo" }>;
+/** The actions that change the traveller's choices. */
+export type Change = Exclude<PlanAction, { type: "undo" | "others" }>;
 
 function slotIn(view: PlanView, slotId: string) {
   for (const day of view.days) {

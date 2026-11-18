@@ -358,6 +358,7 @@ describe("a picked place", () => {
       type: "place",
       slotId: "d2-morning",
       kind: "morning",
+      cityKey: "tokyo|japan",
       placeId: "museum",
       start: "09:30",
       minutes: 120,
