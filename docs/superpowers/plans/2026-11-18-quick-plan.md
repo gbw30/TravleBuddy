@@ -16,8 +16,8 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 
 | Piece                                         | Branch                    | Requirements                 | Pull request |
 | --------------------------------------------- | ------------------------- | ---------------------------- | ------------ |
-| 0. Plan                                       | `feature/m7-plan`         | none (process)               |              |
-| 1. The brief as a view, and its checks (pure) | `feature/m7-brief-rules`  | TB-QPL-02, 03, 05, 07        |              |
+| 0. Plan                                       | `feature/m7-plan`         | none (process)               | #45          |
+| 1. The brief as a view, and its checks (pure) | `feature/m7-brief-rules`  | TB-QPL-02, 03, 05, 07        | #46          |
 | 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     |              |
 | 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          |              |
 | 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                |              |
@@ -64,7 +64,12 @@ Each piece gets its task list in its pull request. What is fixed here is what ea
 
 ### Piece 1: The brief as a view, and its checks (pure)
 
-**Produces:** `src/use-cases/brief-view.ts` (types the browser may import) and pure functions: the brief of a trip from its facts, commitments and the taste in use, each answer with its source (said for this trip, remembered from a named trip, or a default); the problems of step 1 in plain words; whether it can be built; the review as plain sentences.
+**Produced (pull request 46):**
+
+- `src/use-cases/brief-view.ts`, safe for the browser: the shapes of the brief (`BriefView`, `BriefAnswer`, `BriefProblem`), the five step names, and `step1Problems(facts)`, the checks said beside the fields: no city, nights missing where there are several cities, no dates and no length with a time of year, an end before the start, an open-ended one-city trip, nobody travelling. They are the same things the itinerary needs before it can lay out the days.
+- `src/use-cases/brief.ts`: `briefOf(trip, tasteInUse, personal)`. Each of the eight style answers carries the value in use and where it comes from: said for this trip, filled in from the profile with its source ("from your trip “Lisbon, April 2027”", "you told me"), a default, or not answered, with what the agent will assume. The review is the whole brief in plain sentences, one part per step. Allergies from the profile are carried as hard limits.
+
+Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 2: Saving the brief
 
