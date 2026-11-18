@@ -95,3 +95,33 @@ export const sourceWords = (source: EntrySource): string =>
   source.type === "told"
     ? "you told me"
     : `from your trip “${source.tripTitle}”`;
+
+/** Each topic in the words the traveller reads. */
+export const TOPIC_NAMES: Record<ProfileTopic, string> = {
+  pace: "Pace",
+  day_shape: "Shape of the day",
+  interests: "Interests",
+  atmosphere: "Atmosphere",
+  food: "Food",
+  getting_around: "Getting around",
+  stay: "Where you stay",
+  budget_priorities: "Spending",
+  budget: "Budget",
+  dietary_rules: "Dietary rules",
+  allergies: "Allergies",
+};
+
+/** What a topic can hold, for the profile page and for filing what is said. */
+export type ProfileTopicInfo = {
+  topic: ProfileTopic;
+  name: string;
+  kind: "hard_limit" | "taste";
+  /** Whether the topic holds several values at once. */
+  several: boolean;
+  /** The values the ranking understands, with the words to show them. */
+  choices: { value: string; label: string }[];
+  /** The topic takes the traveller's own words, such as an allergy. */
+  freeText: boolean;
+};
+
+export { fileUnder, type Filed } from "./profile-filing";
