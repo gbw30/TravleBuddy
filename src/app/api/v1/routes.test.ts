@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => {
     loadPlan: vi.fn(),
     findTripPlaces: vi.fn(),
     addTripPlace: vi.fn(),
+    takeTurn: vi.fn(),
+    loadConversation: vi.fn(),
   };
 });
 vi.mock("@/lib/authorization", () => ({
@@ -44,12 +46,21 @@ vi.mock("@/use-cases/plan", () => ({
   addTripPlace: mocks.addTripPlace,
 }));
 
+vi.mock("@/use-cases/conversation", () => ({
+  takeTurn: mocks.takeTurn,
+  loadConversation: mocks.loadConversation,
+}));
+
 import { GET as cities } from "./places/cities/route";
 import {
   DELETE as deleteCommitment,
   PATCH as patchCommitment,
 } from "./trips/[tripId]/commitments/[commitmentId]/route";
 import { POST as addCommitment } from "./trips/[tripId]/commitments/route";
+import {
+  GET as getConversation,
+  POST as takeTurn,
+} from "./trips/[tripId]/conversation/route";
 import {
   DELETE as deleteTrip,
   PATCH as patchTrip,
@@ -499,5 +510,91 @@ describe("a place of the traveller's own", () => {
       expect((await addPlace(request("POST", body), trip)).status).toBe(422);
     }
     expect(mocks.addTripPlace).not.toHaveBeenCalled();
+  });
+});
+
+describe("the conversation", () => {
+  const conversation = {
+    messages: [],
+    waiting: null,
+    needs: [],
+    limited: true,
+  };
+  const turn = { type: "answer", topic: "pace", values: ["relaxed"] };
+
+  it("answers the conversation, or 404 when the trip is not the traveller's", async () => {
+    mocks.loadConversation
+      .mockResolvedValueOnce(conversation)
+      .mockResolvedValueOnce(null);
+    const found = await getConversation(request("GET"), trip);
+    expect(await found.json()).toEqual({ conversation });
+    expect((await getConversation(request("GET"), trip)).status).toBe(404);
+    expect(mocks.loadConversation).toHaveBeenCalledWith("user-1", "trip-1");
+  });
+
+  it("takes one turn and answers the conversation as it stands afterwards", async () => {
+    mocks.takeTurn.mockResolvedValue({
+      status: "ok",
+      data: { focus: null },
+      revision: 6,
+    });
+    mocks.loadConversation.mockResolvedValue(conversation);
+
+    const answer = await takeTurn(request("POST", { turn, ...control }), trip);
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({
+      data: { focus: null, conversation },
+      revision: 6,
+    });
+    expect(mocks.takeTurn).toHaveBeenCalledWith({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      turn,
+    });
+  });
+
+  it("answers 409 for a stale revision or a refused turn, without reading the thread", async () => {
+    mocks.takeTurn
+      .mockResolvedValueOnce({ status: "stale" })
+      .mockResolvedValueOnce({
+        status: "refused",
+        message: "That is not one of the choices.",
+      });
+    const stale = await takeTurn(request("POST", { turn, ...control }), trip);
+    const refused = await takeTurn(request("POST", { turn, ...control }), trip);
+    expect(stale.status).toBe(409);
+    expect(await refused.json()).toEqual({
+      error: "refused",
+      message: "That is not one of the choices.",
+    });
+    expect(mocks.loadConversation).not.toHaveBeenCalled();
+  });
+
+  it("answers 422 for a turn it does not know, an empty or overlong message, or a missing revision", async () => {
+    for (const body of [
+      { turn: { type: "shout", text: "hello" }, ...control },
+      { turn: { type: "say", text: "   " }, ...control },
+      { turn: { type: "say", text: "x".repeat(601) }, ...control },
+      {
+        turn: { type: "answer", topic: "weather", values: ["sunny"] },
+        ...control,
+      },
+      { turn: { type: "answer", topic: "pace", values: [] }, ...control },
+      { turn },
+    ]) {
+      expect((await takeTurn(request("POST", body), trip)).status).toBe(422);
+    }
+    expect(mocks.takeTurn).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 signed out", async () => {
+    mocks.user.mockRejectedValue(new mocks.UnauthorizedError());
+    expect((await getConversation(request("GET"), trip)).status).toBe(401);
+    expect(
+      (await takeTurn(request("POST", { turn, ...control }), trip)).status,
+    ).toBe(401);
+    expect(mocks.takeTurn).not.toHaveBeenCalled();
   });
 });

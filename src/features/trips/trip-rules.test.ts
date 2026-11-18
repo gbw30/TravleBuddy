@@ -165,6 +165,17 @@ describe("tripFactsSchema and tripActionSchema", () => {
     ).toBe(false);
   });
 
+  it("refuses a day the month does not have, which parsing alone would roll into the next month", () => {
+    for (const startDate of ["2027-02-30", "2027-04-31", "2027-02-29"]) {
+      expect(tripFactsSchema.safeParse({ startDate }).success, startDate).toBe(
+        false,
+      );
+    }
+    expect(tripFactsSchema.safeParse({ startDate: "2028-02-29" }).success).toBe(
+      true,
+    );
+  });
+
   it("needs an operation id and the expected revision on every change", () => {
     const operationId = "3f0f0d4c-6f0e-4c58-9d3e-6a3f1f2b7c11";
     expect(
