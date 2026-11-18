@@ -116,6 +116,7 @@ export type PlanningMutationKind =
   | "plan_transfer"
   | "plan_undo"
   | "plan_others"
+  | "plan_build"
   | "conversation_turn"
   | "trip_mode_set"
   | "brief_save"

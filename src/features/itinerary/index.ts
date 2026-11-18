@@ -10,8 +10,11 @@ export {
 } from "./day-plan";
 export { applyPlanAction, settle, type Change } from "./plan-actions";
 export {
+  builtPlaceIds,
   copyPlan,
+  readBuild,
   readPlanState,
   undoPlan,
+  writeBuild,
   writePlanVersion,
 } from "./plan-store";

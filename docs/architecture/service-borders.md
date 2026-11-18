@@ -59,6 +59,7 @@ A shared transaction is the part that needs rework when a service moves out (ADR
 | `src/use-cases/plan.ts`         | Trips, Itinerary, Conversation         | A change to a plan: the check that the trip may be changed, the new plan version and the ledger entry. Places are read outside the transaction.                                                                                                           |
 | `src/use-cases/conversation.ts` | Trips, Memory, Conversation            | One turn of the conversation: the change it leads to (trip facts, a fixed commitment, a taste answer or a skipped question), the messages said, and the ledger entry. The AI model, the city lookup and the plan's days are read outside the transaction. |
 | `src/use-cases/save-brief.ts`   | Trips, Memory, Itinerary, Conversation | One save of the trip brief: the trip's facts, its taste answers for this trip, the "anything else" box, the plan's pace when the pace answer changes, and the ledger entry.                                                                               |
+| `src/use-cases/build.ts`        | Trips, Itinerary, Conversation         | One day of a Quick plan build: the check that the trip may be changed, the new plan version, the build's progress and the ledger entry. The day is worked out before the transaction, because it reads places and may ask the place provider.             |
 
 `src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip.
 

@@ -57,6 +57,7 @@ import {
 import {
   discardReason,
   type CardDto,
+  type CardSet,
   type DiscardReason,
 } from "@/features/recommendations/contracts";
 import { findEditable, getTrip } from "@/features/trips";
@@ -70,21 +71,24 @@ import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 // facts and commitments, Places the saved places, Itinerary the choices and
 // the rules that lay them out, and Recommendations the cards.
 
-type SlotEntry = Extract<PlanEntry, { type: "open" | "place" }>;
+export type SlotEntry = Extract<PlanEntry, { type: "open" | "place" }>;
 
 const today = () => new Date().toISOString().slice(0, 10);
-const isSlot = (entry: PlanEntry): entry is SlotEntry =>
+export const isSlot = (entry: PlanEntry): entry is SlotEntry =>
   entry.type === "open" || entry.type === "place";
-const isMeal = (entry: SlotEntry) =>
+export const isMeal = (entry: SlotEntry) =>
   entry.kind === "lunch" || entry.kind === "dinner";
 
 /** A trip with no dates is laid out from provisional ones (PRD 9.7). */
-function withProvisionalStart(state: PlanState, trip: TripDetail): PlanState {
+export function withProvisionalStart(
+  state: PlanState,
+  trip: TripDetail,
+): PlanState {
   if (trip.facts.startDate || state.provisionalStart) return state;
   return { ...state, provisionalStart: provisionalStart(trip.facts, today()) };
 }
 
-async function contextFor(
+export async function contextFor(
   trip: TripDetail,
   state: PlanState,
   userId: string,
@@ -121,7 +125,7 @@ function focusSlot(
 }
 
 /** The trip's taste in the form the ranking understands (TB-RSN-02). */
-type Limits = ReturnType<typeof limitsInUse>;
+export type Limits = ReturnType<typeof limitsInUse>;
 
 function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
   // The trip a remembered value was learned from, so a reason can name it (TB-MEM-06).
@@ -157,7 +161,7 @@ function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
 }
 
 /** What the traveller's discards on this trip say about what to offer next (TB-CRD-08). */
-async function historyFor(
+export async function historyFor(
   tripId: string,
   userId: string,
 ): Promise<CardHistory> {
@@ -186,7 +190,12 @@ async function historyFor(
   };
 }
 
-async function proposalFor(
+/**
+ * The ranked cards for one slot, from the saved places of its city. With
+ * `gather`, the provider is asked first: one request at most, and a failure
+ * leaves the saved places usable. Null when the slot's city is not known.
+ */
+export async function cardsFor(
   trip: TripDetail,
   view: PlanView,
   places: Record<string, PlaceDto>,
@@ -195,7 +204,12 @@ async function proposalFor(
   taste: TasteInUse,
   limits: Limits,
   gather: boolean,
-): Promise<PlanSnapshot["proposal"]> {
+  history?: CardHistory,
+): Promise<{
+  set: CardSet;
+  cityName: string;
+  gathered: GatherOutcome | null;
+} | null> {
   const city = trip.facts.cities.find(
     ({ city }) => cityKeyOf(city) === entry.cityKey,
   )?.city;
@@ -223,7 +237,6 @@ async function proposalFor(
       : { latitude: city.latitude, longitude: city.longitude };
   const near = from ?? centre;
 
-  // One provider request at most; a failure leaves saved places usable.
   const gathered: GatherOutcome | null = !gather
     ? null
     : isMeal(entry) && near
@@ -253,9 +266,40 @@ async function proposalFor(
     kindsInDay: day.entries.flatMap((e) =>
       e.type === "place" && places[e.placeId] ? [places[e.placeId].kind] : [],
     ),
-    history: await historyFor(trip.id, userId),
+    namesInPlan: view.days.flatMap((d) =>
+      d.entries.flatMap((e) =>
+        e.type === "place" && places[e.placeId] ? [places[e.placeId].name] : [],
+      ),
+    ),
+    history: history ?? (await historyFor(trip.id, userId)),
     taste: cardTaste(taste, limits),
   });
+  return { set, cityName: city.name, gathered };
+}
+
+async function proposalFor(
+  trip: TripDetail,
+  view: PlanView,
+  places: Record<string, PlaceDto>,
+  userId: string,
+  slot: { day: PlanDay; entry: SlotEntry },
+  taste: TasteInUse,
+  limits: Limits,
+  gather: boolean,
+): Promise<PlanSnapshot["proposal"]> {
+  const found = await cardsFor(
+    trip,
+    view,
+    places,
+    userId,
+    slot,
+    taste,
+    limits,
+    gather,
+  );
+  if (!found) return null;
+  const { set, cityName, gathered } = found;
+  const { day, entry } = slot;
   const fresh = await recordPresented(
     db,
     trip.id,
@@ -279,7 +323,7 @@ async function proposalFor(
   }
   return {
     ...set,
-    cityName: city.name,
+    cityName,
     // Without gathering, an empty set may only mean nobody has asked yet.
     status: gathered?.status ?? (set.cards.length === 0 ? "pending" : "ready"),
   };

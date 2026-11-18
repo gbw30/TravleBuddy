@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
     takeTurn: vi.fn(),
     loadConversation: vi.fn(),
     loadBrief: vi.fn(),
+    buildNextDay: vi.fn(),
     saveBrief: vi.fn(),
     loadProfile: vi.fn(),
     tellProfile: vi.fn(),
@@ -65,6 +66,7 @@ vi.mock("@/use-cases/save-brief", () => ({
   loadBrief: mocks.loadBrief,
   saveBrief: mocks.saveBrief,
 }));
+vi.mock("@/use-cases/build", () => ({ buildNextDay: mocks.buildNextDay }));
 vi.mock("@/use-cases/learning", () => ({ learnQuietly: mocks.learnQuietly }));
 vi.mock("@/use-cases/profile", () => ({
   loadProfile: mocks.loadProfile,
@@ -88,6 +90,7 @@ import {
   PATCH as patchCommitment,
 } from "./trips/[tripId]/commitments/[commitmentId]/route";
 import { GET as getBrief, PUT as putBrief } from "./trips/[tripId]/brief/route";
+import { POST as buildDay } from "./trips/[tripId]/build/route";
 import { POST as addCommitment } from "./trips/[tripId]/commitments/route";
 import {
   GET as getConversation,
@@ -774,6 +777,60 @@ describe("the trip brief", () => {
         .status,
     ).toBe(401);
     expect(mocks.saveBrief).not.toHaveBeenCalled();
+  });
+});
+
+describe("building a trip", () => {
+  const step = { day: 1, days: 3, filled: 4, done: false };
+
+  it("builds the first day with start, the next without, and answers how far it is", async () => {
+    mocks.buildNextDay.mockResolvedValue({
+      status: "ok",
+      data: step,
+      revision: 5,
+    });
+    const first = await buildDay(
+      request("POST", { start: true, ...control }),
+      trip,
+    );
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ data: step, revision: 5 });
+    expect(mocks.buildNextDay).toHaveBeenLastCalledWith({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      start: true,
+    });
+    await buildDay(request("POST", control), trip);
+    expect(mocks.buildNextDay).toHaveBeenLastCalledWith(
+      expect.objectContaining({ start: false }),
+    );
+  });
+
+  it("answers 409 with the reason when no build is in progress, and for a stale revision", async () => {
+    mocks.buildNextDay.mockResolvedValueOnce({
+      status: "refused",
+      message: "No build is in progress.",
+    });
+    const refused = await buildDay(request("POST", control), trip);
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({
+      error: "refused",
+      message: "No build is in progress.",
+    });
+    mocks.buildNextDay.mockResolvedValueOnce({ status: "stale" });
+    expect((await buildDay(request("POST", control), trip)).status).toBe(409);
+  });
+
+  it("answers 422 without a revision, 404 for another traveller's trip and 401 signed out", async () => {
+    expect(
+      (await buildDay(request("POST", { start: true }), trip)).status,
+    ).toBe(422);
+    mocks.buildNextDay.mockResolvedValueOnce({ status: "not_found" });
+    expect((await buildDay(request("POST", control), trip)).status).toBe(404);
+    mocks.user.mockRejectedValue(new mocks.UnauthorizedError());
+    expect((await buildDay(request("POST", control), trip)).status).toBe(401);
+    expect(mocks.buildNextDay).toHaveBeenCalledTimes(1);
   });
 });
 
