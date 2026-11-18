@@ -14,17 +14,18 @@
 
 The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on its own feature branch and merged by a pull request into the milestone branch. The pull request names the requirement IDs it covers and gives its check results. When it merges, its number is written into the table below, so a requirement can be followed to its piece, its pull request and its commits.
 
-| Piece                                   | Branch                              | Requirements                                                                                        | Pull request |
-| --------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- | ------------ |
-| 0. Plan and branch workflow             | `feature/m4-plan`                   | none (process)                                                                                      | #12          |
-| 1. Place rules                          | `feature/m4-place-rules`            | TB-ITN-05, TB-ITN-06, TB-ITN-20, TB-TRU-05                                                          | #13          |
-| 2. Place source and saved places        | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 | #14          |
-| 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              | #15          |
-| 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         | #16          |
-| 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    | #17          |
-| 6. The workspace screen                 | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         | #18          |
-| 7. Retire the earlier planner           | `feature/m4-retire-earlier-planner` | none (removal); border exceptions fall                                                              |              |
-| 8. Evidence                             | `feature/m4-evidence`               | all of the above, re-checked                                                                        |              |
+| Piece                                      | Branch                              | Requirements                                                                                        | Pull request |
+| ------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------- | ------------ |
+| 0. Plan and branch workflow                | `feature/m4-plan`                   | none (process)                                                                                      | #12          |
+| 1. Place rules                             | `feature/m4-place-rules`            | TB-ITN-05, TB-ITN-06, TB-ITN-20, TB-TRU-05                                                          | #13          |
+| 2. Place source and saved places           | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 | #14          |
+| 3. Slots and scheduling rules              | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              | #15          |
+| 4. Plan versions and actions               | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         | #16          |
+| 5. Cards: eligibility, ranking, reasons    | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    | #17          |
+| 6. The workspace screen                    | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         | #18          |
+| 7a. Retire the earlier planner's screens   | `feature/m4-retire-earlier-screens` | none (removal); border exceptions fall from 188 to 164                                              | #19          |
+| 7b. Retire its routes, services and tables | waits for the developer             | none (removal)                                                                                      |              |
+| 8. Evidence                                | `feature/m4-evidence`               | all of the above, re-checked                                                                        |              |
 
 ## Global Constraints
 
@@ -51,7 +52,7 @@ Not stated in the PRD. Each is open to change.
 7. **Gathering a city's places** is one request per group of kinds, shown as progress and resumable, because one query can take several seconds.
 8. **Pictures** are the postcard back until the Wikimedia Commons lookup exists. It is not in this milestone unless time allows.
 9. **The place-data cap** counts requests to OpenStreetMap services per day. At the cap, proposals use saved and sample places and say so.
-10. **The earlier planner goes last** (piece 7): its pages, the `/api/trips` routes, the old recommendation, itinerary and ticket-timing code and their tables, with the QA catalogue updated in the same piece. Dropping tables needs the developer's approval before production.
+10. **The earlier planner goes last**, in two parts. Piece 7a removes its screens. Piece 7b removes its routes, services and tables and updates the QA catalogue; it waits for the developer, because it changes what QA checks and drops tables.
 
 ## Review Focus
 
@@ -107,9 +108,20 @@ Ranking, in order of weight: distance from the stop before (heavier once "too fa
 
 Found and fixed while checking: hidden screen-reader text inside the sideways card row widened the page by 208 px on a phone.
 
-### Piece 7: Retire the earlier planner
+### Piece 7a: Retire the earlier planner's screens
 
-**Produces:** removal of the earlier pages, routes, code and tables named in decision 10; `eslint-suppressions.json` pruned; `qa/` catalogue and feature states updated.
+**Produced (pull request 19):** removal of the earlier preferences, places and itinerary pages under `/trips/{tripId}/`, and of the components only they used (`src/components/recommendations`, `preferences`, `trips`, `forms`, `ui`, and four empty folders). `eslint-suppressions.json` pruned: 188 to 164 exceptions, 45 to 35 files. The browser test that opened those pages now checks the trip page.
+
+### Piece 7b: Retire its routes, services and tables (waits for the developer)
+
+Not done, on purpose. What remains of the earlier planner:
+
+- the `/api/trips` routes;
+- the older code in `src/features/trips` (`actions`, `queries`, `schemas`, `readiness`, `logistics`, `location-catalog`, `planning-feedback`, `types`), `src/features/recommendations` (`service`, `scoring`, `extraction`, `feedback-policy`, `mock-places`, `schemas`, `types`), `src/features/adaptation`, `src/features/itinerary` (`builder`, `conflict-engine`, `conflict-actions`, `schemas`, `types`), `src/features/preferences`, `src/features/jobs`, `src/worker`, `src/lib/google`, `src/lib/ai`, `src/lib/export`, and the older adapter in `src/lib/providers/places`;
+- their tables: `place_suggestions`, `planning_feedback`, `planning_events`, `itinerary_versions`, `itinerary_days`, `itinerary_items`, `itinerary_city_windows`, `conflicts`, `trip_travel_segments`, `trip_preferences`, `preference_profile_versions`, `generation_jobs`, `job_attempts`, `job_events`;
+- the QA catalogue entries that describe them (`qa/feature-states.json`, `qa/contracts/features.ts`, `qa/scenarios/catalog.ts`).
+
+Why it waits: removing it changes what the QA gate checks, and dropping the tables destroys data, which needs the developer's approval. The Profile page still uses `src/features/profile` and stays until Milestone 6 rebuilds it. `src/features/planning` (the replay ledger) stays; its link to the earlier recommendation service goes with 7b.
 
 ### Piece 8: Evidence
 
