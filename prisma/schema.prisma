@@ -530,6 +530,9 @@ model ProviderCall {
 model Plan {
   tripId          String  @id @map("trip_id")
   activeVersionId String? @map("active_version_id")
+  /// Progress of a Quick plan build: the next day to build, what the build
+  /// put where, and what it was unsure of. Null when no build was started.
+  build           Json?
 
   trip     Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
   versions PlanVersion[]

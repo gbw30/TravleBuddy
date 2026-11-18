@@ -9,6 +9,8 @@ const state = vi.hoisted(() => ({
   client: {} as Record<string, unknown>,
   finished: [] as { id: string; title: string; finishedAt: string }[],
   picks: {} as Record<string, string[]>,
+  /** Per trip, how many of its first places a build put there. */
+  built: {} as Record<string, number>,
   discards: {} as Record<string, (string | null)[]>,
 }));
 vi.mock("@/lib/db", () => ({
@@ -37,6 +39,14 @@ vi.mock("@/features/itinerary", () => ({
     },
     canUndo: false,
   })),
+  readBuild: vi.fn(async (_db: unknown, tripId: string) => tripId),
+  // A stand-in for "the places a build chose and the traveller left".
+  builtPlaceIds: vi.fn(
+    (tripId: string, plan: { picks: Record<string, { placeId: string }> }) =>
+      Object.values(plan.picks)
+        .slice(0, state.built[tripId] ?? 0)
+        .map((pick) => pick.placeId),
+  ),
 }));
 vi.mock("@/features/places", () => ({
   // A stand-in place id ends with its kind.
@@ -86,6 +96,7 @@ beforeEach(() => {
   >;
   state.finished = [];
   state.picks = {};
+  state.built = {};
   state.discards = {};
 });
 
@@ -167,6 +178,23 @@ describe("learning from finished trips", () => {
     };
     await learnFromTrips("ana");
     expect(await lines()).toEqual(["interests=museums (think, Lisbon)"]);
+  });
+
+  it("does not count places a build chose as the traveller's own choices", async () => {
+    finish("Tokyo", "2027-05-14T10:00:00.000Z");
+    finish("Lisbon", "2027-09-02T10:00:00.000Z");
+    state.picks = {
+      Tokyo: ["museum", "museum", "park"],
+      Lisbon: ["museum", "museum"],
+    };
+    // In Lisbon the build chose both museums; the traveller chose none.
+    state.built = { Lisbon: 2 };
+    await learnFromTrips("ana");
+    expect(await lines()).toEqual([]);
+    // One museum of the traveller's own is still not two.
+    state.built = { Lisbon: 1 };
+    await learnFromTrips("ana");
+    expect(await lines()).toEqual([]);
   });
 
   it("learns nothing from a trip marked as different", async () => {

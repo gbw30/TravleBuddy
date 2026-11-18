@@ -1,6 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
 
-import { emptyPlanState, planStateSchema, type PlanState } from "./contracts";
+import {
+  buildProgressSchema,
+  emptyPlanState,
+  planStateSchema,
+  type BuildProgress,
+  type PlanState,
+} from "./contracts";
 
 type Client = Prisma.TransactionClient;
 
@@ -67,6 +73,45 @@ export async function writePlanVersion(
     where: { tripId },
     data: { activeVersionId: created.id },
   });
+}
+
+/** How far the trip's build has come, or null when none was started. */
+export async function readBuild(
+  client: Client,
+  tripId: string,
+): Promise<BuildProgress | null> {
+  const plan = await client.plan.findUnique({
+    where: { tripId },
+    select: { build: true },
+  });
+  const parsed = buildProgressSchema.safeParse(plan?.build);
+  return parsed.success ? parsed.data : null;
+}
+
+export async function writeBuild(
+  tx: Client,
+  tripId: string,
+  progress: BuildProgress,
+): Promise<void> {
+  const build = buildProgressSchema.parse(progress);
+  await tx.plan.upsert({
+    where: { tripId },
+    create: { tripId, build },
+    update: { build },
+  });
+}
+
+/**
+ * The places in the plan that the build chose and the traveller has left
+ * where the build put them. They are the agent's choices, not the traveller's.
+ */
+export function builtPlaceIds(
+  progress: BuildProgress | null,
+  state: PlanState,
+): string[] {
+  return Object.entries(progress?.built ?? {}).flatMap(([slot, placeId]) =>
+    state.picks[slot]?.placeId === placeId ? [placeId] : [],
+  );
 }
 
 /** Returns the plan to the version before the last change. False when there is none. */

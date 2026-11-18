@@ -104,6 +104,24 @@ export const planActionSchema = z.discriminatedUnion("type", [
 ]);
 export type PlanAction = z.infer<typeof planActionSchema>;
 
+/**
+ * How far a Quick plan build has come (PRD 11.3). A build fills one day per
+ * request, so this is what lets it resume.
+ */
+export const buildProgressSchema = z.object({
+  /** The next day to build, from 1. Past the last day, the build is finished. */
+  nextDay: z.number().int().min(1).max(401),
+  /** What the build put where: slot id to place id. */
+  built: z.record(z.string(), z.string()),
+  /** Slots where the second-ranked place was nearly as good as the one taken. */
+  close: z.array(z.string()),
+  /** Slots it found no place for. They stay open. */
+  empty: z.array(z.string()),
+  /** True when places could not be gathered, so only saved ones were used. */
+  unreachable: z.boolean(),
+});
+export type BuildProgress = z.infer<typeof buildProgressSchema>;
+
 /** A rule of PRD 9.3 the plan breaks at one item, with a way to mend it. */
 export type PlanFlag = {
   rule: "closed" | "hours-unknown" | "overlap" | "day" | "city";

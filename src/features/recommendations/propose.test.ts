@@ -200,6 +200,69 @@ describe("proposeCards", () => {
   });
 });
 
+describe("a name already in the plan", () => {
+  it("ranks below a place the traveller has not been to, and is still offered", () => {
+    const candidates = [place("a", { name: "Market Kitchen" }), place("b")];
+    expect(ids(proposeCards(input({ candidates })))).toEqual(["a", "b"]);
+    expect(
+      ids(proposeCards(input({ candidates, namesInPlan: ["market kitchen"] }))),
+    ).toEqual(["b", "a"]);
+  });
+
+  it("still ranks above a new place when only it confirms the traveller's dietary rule", () => {
+    const set = proposeCards(
+      input({
+        slot: {
+          ...input().slot,
+          id: "d1-lunch",
+          kind: "lunch",
+          start: "12:30",
+        },
+        candidates: [
+          place("known", {
+            kind: "restaurant",
+            name: "Market Kitchen",
+            serves: ["vegetarian"],
+          }),
+          place("new", { kind: "restaurant", name: "Garden Table" }),
+        ],
+        namesInPlan: ["Market Kitchen"],
+        taste: { ...input().taste, food: ["vegetarian"] },
+      }),
+    );
+    expect(ids(set)).toEqual(["known", "new"]);
+  });
+});
+
+describe("a close choice", () => {
+  it("is marked when the second place ranks nearly as high as the first", () => {
+    // Two places alike in every way that counts.
+    expect(
+      proposeCards(input({ candidates: [place("a"), place("b")] })).close,
+    ).toBe(true);
+    // A place that answers an interest stands clear of one that does not.
+    const set = proposeCards(
+      input({
+        candidates: [
+          place("a", { kind: "museum" }),
+          place("b", { kind: "park" }),
+        ],
+        taste: {
+          ...input().taste,
+          interests: [{ value: "museums", label: "museums and exhibitions" }],
+        },
+      }),
+    );
+    expect(set.cards[0].placeId).toBe("a");
+    expect(set.close).toBe(false);
+  });
+
+  it("is not marked with one place or none", () => {
+    expect(proposeCards(input({ candidates: [place("a")] })).close).toBe(false);
+    expect(proposeCards(input()).close).toBe(false);
+  });
+});
+
 describe("the traveller's taste in the ranking", () => {
   const taste = (over: Partial<CardTaste>): CardTaste => ({
     ...noTaste,

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { emptyPlanState, type PlanState } from "./contracts";
 import {
+  builtPlaceIds,
   copyPlan,
+  readBuild,
   readPlanState,
   undoPlan,
+  writeBuild,
   writePlanVersion,
 } from "./plan-store";
 
@@ -140,5 +143,67 @@ describe("plan versions", () => {
       version: 1,
       parentVersionId: null,
     });
+  });
+});
+
+describe("the progress of a build", () => {
+  /** A stand-in for the plans table that keeps the build column. */
+  function buildClient() {
+    const plans = new Map<string, { build?: unknown }>();
+    const client = {
+      plan: {
+        findUnique: async ({ where }: { where: { tripId: string } }) =>
+          plans.get(where.tripId) ?? null,
+        upsert: async ({
+          where,
+          update,
+        }: {
+          where: { tripId: string };
+          update: { build: unknown };
+        }) => {
+          plans.set(where.tripId, { ...plans.get(where.tripId), ...update });
+        },
+      },
+    };
+    return { client: client as never, plans };
+  }
+  const progress = {
+    nextDay: 2,
+    built: { "d1-morning": "a", "d1-lunch": "b" },
+    close: ["d1-morning"],
+    empty: ["d1-dinner"],
+    unreachable: false,
+  };
+
+  it("is nothing until a build is started, then what was last written", async () => {
+    const { client } = buildClient();
+    expect(await readBuild(client, "trip-1")).toBeNull();
+    await writeBuild(client, "trip-1", progress);
+    expect(await readBuild(client, "trip-1")).toEqual(progress);
+    await writeBuild(client, "trip-1", { ...progress, nextDay: 3 });
+    expect((await readBuild(client, "trip-1"))?.nextDay).toBe(3);
+    expect(await readBuild(client, "trip-2")).toBeNull();
+  });
+
+  it("does not trust a saved value that does not fit, and refuses to write one", async () => {
+    const { client, plans } = buildClient();
+    plans.set("trip-1", { build: { nextDay: "soon" } });
+    expect(await readBuild(client, "trip-1")).toBeNull();
+    await expect(
+      writeBuild(client, "trip-1", { ...progress, nextDay: 0 }),
+    ).rejects.toThrow();
+  });
+
+  it("counts a place as built only while it is where the build put it", () => {
+    const state: PlanState = {
+      ...emptyPlanState,
+      picks: {
+        "d1-morning": { placeId: "a", minutes: null },
+        // The traveller swapped lunch for a place of their own.
+        "d1-lunch": { placeId: "mine", minutes: null },
+      },
+    };
+    expect(builtPlaceIds(progress, state)).toEqual(["a"]);
+    expect(builtPlaceIds(null, state)).toEqual([]);
   });
 });

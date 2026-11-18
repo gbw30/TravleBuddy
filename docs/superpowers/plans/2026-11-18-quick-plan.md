@@ -20,7 +20,7 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 | 1. The brief as a view, and its checks (pure) | `feature/m7-brief-rules`  | TB-QPL-02, 03, 05, 07        | #46          |
 | 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     | #48          |
 | 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          | #49          |
-| 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                |              |
+| 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                | #50          |
 | 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            |              |
 | 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                |              |
 | 7. Evidence                                   | `feature/m7-evidence`     | all of the above, re-checked |              |
@@ -106,7 +106,26 @@ Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 4: Building one day at a time
 
-**Produces:** an additive column for build progress on `plans`; `buildNextDay` in a use case; `POST /api/v1/trips/{tripId}/build`.
+**Produced (pull request 50):**
+
+- `POST /api/v1/trips/{tripId}/build` and `buildNextDay` in `src/use-cases/build.ts`. One request builds one day, as one action through the ledger (`plan_build`) and one plan version ("Built day 2"), so undo takes a built day back in one step. `start` begins at day 1; without it the next day is built. The answer says the day, the number of days, how many slots were filled and whether the build is done.
+- For each open slot, sights first and then meals, the build takes the best-ranked card that leaves no rule broken. It uses the same card ranking as Guided planning and applies the same `pick` action. After each pick the plan is laid out again; a pick that adds a flag other than "opening hours unknown" is not kept and the next card is tried. A slot nothing fits stays open.
+- Build progress is the new column `plans.build` (migration `20261119140000_plan_build_progress`, development database only): the next day, what the build put where, the slots where the choice was close, the slots it left open, and whether places could not be gathered.
+- A build starts from the pace the brief shows, a remembered one included.
+
+**How the review-focus points are met:**
+
+1. Progress is saved in the same transaction as the day. A new page continues at `nextDay`; a repeated request gets its first answer from the ledger.
+2. The ranking never offers a place known to be closed or one whose listing conflicts with a dietary rule, and a pick that would break a rule against a commitment is dropped. Commitments are never part of a build's changes.
+3. Only slots that are open when the day is saved are filled. A second build fills nothing that is taken, and a slot the traveller fills while a day is being worked out is left alone.
+
+**Added decisions:**
+
+- **Places a build chose teach the profile nothing.** A finished trip's "kinds of place chosen" leaves out the places the build put in and the traveller left there; they are the agent's choices (PRD 12.4 speaks of the traveller's choices).
+- **A name already in the plan ranks lower** (minus 1.5), in Guided planning too. Sample places repeat the same restaurant names in every area, and a built trip ate at one name three times. The penalty is smaller than the bonus for a listing that confirms a dietary rule, so a traveller with a rule still returns to a confirmed place before a new one that says nothing.
+- **A card set says when its first two places are close** (`close`, within 0.5 in score), which is what decision 7 needs.
+
+**Seen in the walk:** a three-day sample trip to Lisbon built in three requests of about 1.2 seconds each: 11 places, none twice, no rule broken, dinner on day 1 left open before a reservation at 20:00.
 
 ### Piece 5: The build on screen and the report
 

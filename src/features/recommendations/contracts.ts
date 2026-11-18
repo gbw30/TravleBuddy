@@ -58,4 +58,6 @@ export type CardSet = {
   cards: CardDto[];
   /** Fewer than three places fit; the set is never padded (TB-CRD-01). */
   short: boolean;
+  /** The second place ranks nearly as high as the first: a choice worth a look. */
+  close: boolean;
 };
