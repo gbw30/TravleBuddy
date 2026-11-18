@@ -3,7 +3,7 @@
 Status: current-state
 Authority: Human-readable summary of evidence-backed repository and deployment reality
 Related: [Target requirements](../requirements.md), [architecture](../architecture/README.md), [roadmap](../roadmap.md), [QA feature states](../../qa/feature-states.json)
-Last reviewed: 2026-11-19
+Last reviewed: 2026-11-18
 
 Executable code, Prisma schema, migrations, and tests override this summary if they diverge. QA classification remains controlled by `qa/feature-states.json`.
 
