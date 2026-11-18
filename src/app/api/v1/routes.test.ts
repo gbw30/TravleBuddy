@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => {
     startTrip: vi.fn(),
     removeTrip: vi.fn(),
     findCities: vi.fn(),
+    runPlanAction: vi.fn(),
+    loadPlan: vi.fn(),
   };
 });
 vi.mock("@/lib/authorization", () => ({
@@ -33,6 +35,10 @@ vi.mock("@/features/trips", () => ({
   removeCommitment: vi.fn(),
 }));
 vi.mock("@/features/places", () => ({ findCities: mocks.findCities }));
+vi.mock("@/use-cases/plan", () => ({
+  runPlanAction: mocks.runPlanAction,
+  loadPlan: mocks.loadPlan,
+}));
 
 import { GET as cities } from "./places/cities/route";
 import {
@@ -44,6 +50,10 @@ import {
   DELETE as deleteTrip,
   PATCH as patchTrip,
 } from "./trips/[tripId]/route";
+import {
+  GET as getPlan,
+  POST as changePlan,
+} from "./trips/[tripId]/plan/route";
 import { POST as createTrip } from "./trips/route";
 
 const control = {
@@ -326,5 +336,92 @@ describe("GET /api/v1/places/cities", () => {
     const answer = await search("tokyo");
     expect(answer.status).toBe(503);
     expect(await answer.json()).toEqual({ error: "lookup_unavailable" });
+  });
+});
+
+describe("the plan", () => {
+  const plan = { view: { days: [] }, places: {}, canUndo: false };
+  const pick = { type: "pick", slotId: "d2-morning", placeId: "p1" };
+
+  it("answers the plan, or 404 when the trip is not the traveller's", async () => {
+    mocks.loadPlan.mockResolvedValueOnce(plan).mockResolvedValueOnce(null);
+    const found = await getPlan(request("GET"), trip);
+    expect(await found.json()).toEqual({ plan });
+    expect((await getPlan(request("GET"), trip)).status).toBe(404);
+    expect(mocks.loadPlan).toHaveBeenCalledWith("user-1", "trip-1");
+  });
+
+  it("applies one action and answers the plan as it stands afterwards", async () => {
+    mocks.runPlanAction.mockResolvedValue({
+      status: "ok",
+      data: { summary: "Picked" },
+      revision: 5,
+    });
+    mocks.loadPlan.mockResolvedValue(plan);
+
+    const answer = await changePlan(
+      request("POST", { action: pick, ...control }),
+      trip,
+    );
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({
+      data: { summary: "Picked", plan },
+      revision: 5,
+    });
+    expect(mocks.runPlanAction).toHaveBeenCalledWith({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      action: pick,
+    });
+  });
+
+  it("answers 409 with the reason when the rules refuse the action", async () => {
+    mocks.runPlanAction.mockResolvedValue({
+      status: "refused",
+      message: "That slot holds something already decided.",
+    });
+    const answer = await changePlan(
+      request("POST", {
+        action: {
+          type: "move",
+          fromSlotId: "d1-morning",
+          toSlotId: "d2-dinner",
+        },
+        ...control,
+      }),
+      trip,
+    );
+    expect(answer.status).toBe(409);
+    expect(await answer.json()).toEqual({
+      error: "refused",
+      message: "That slot holds something already decided.",
+    });
+    expect(mocks.loadPlan).not.toHaveBeenCalled();
+  });
+
+  it("answers 422 for an action it does not know or a missing revision", async () => {
+    const bad = [
+      { action: { type: "explode" }, ...control },
+      {
+        action: { type: "pick", slotId: "nowhere", placeId: "p1" },
+        ...control,
+      },
+      { action: pick },
+    ];
+    for (const body of bad) {
+      expect((await changePlan(request("POST", body), trip)).status).toBe(422);
+    }
+    expect(mocks.runPlanAction).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 signed out", async () => {
+    mocks.user.mockRejectedValue(new mocks.UnauthorizedError());
+    expect((await getPlan(request("GET"), trip)).status).toBe(401);
+    expect(
+      (await changePlan(request("POST", { action: pick, ...control }), trip))
+        .status,
+    ).toBe(401);
   });
 });

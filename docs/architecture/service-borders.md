@@ -53,9 +53,10 @@ Test files are exempt from the lint rules, so a test may set up or inspect any t
 
 A shared transaction is the part that needs rework when a service moves out (ADR-008). Keep this list complete.
 
-| Use case                       | Services            | What shares the transaction                                                     |
-| ------------------------------ | ------------------- | ------------------------------------------------------------------------------- |
-| `src/use-cases/trip-action.ts` | Trips, Conversation | A change to a trip and its entry in the replay ledger, with the revision check. |
+| Use case                       | Services                       | What shares the transaction                                                                                                                     |
+| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/use-cases/trip-action.ts` | Trips, Conversation            | A change to a trip and its entry in the replay ledger, with the revision check.                                                                 |
+| `src/use-cases/plan.ts`        | Trips, Itinerary, Conversation | A change to a plan: the check that the trip may be changed, the new plan version and the ledger entry. Places are read outside the transaction. |
 
 `src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip.
 

@@ -20,7 +20,7 @@ The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on
 | 1. Place rules                          | `feature/m4-place-rules`            | TB-ITN-05, TB-ITN-06, TB-ITN-20, TB-TRU-05                                                          | #13          |
 | 2. Place source and saved places        | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 | #14          |
 | 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              | #15          |
-| 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         |              |
+| 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         | #16          |
 | 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    |              |
 | 6. The workspace screen                 | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         |              |
 | 7. Retire the earlier planner           | `feature/m4-retire-earlier-planner` | none (removal); border exceptions fall                                                              |              |
@@ -86,7 +86,9 @@ How the rules are met: a plan stores only choices and is laid out afresh each ti
 
 ### Piece 4: Plan versions and actions
 
-**Produces:** table `plan_versions` (Itinerary) and `trips.active_plan_version_id`; `getPlan`, `applyPlanAction(tx, ...)` for pick, save for later, place from shelf, move, remove, set visit length, undo; `copyPlan(fromTrip, toTrip)`; routes under `/api/v1/trips/{tripId}/plan`.
+**Produced (pull request 16):** `plan-store.ts` (versions in `plan_versions`, the pointer in `plans`, undo, `copyPlan`); `plan-actions.ts` (`applyPlanAction` for pick, save, unshelve, move, remove, visit length, pace and transfer time, and `settle`); `src/use-cases/plan.ts` (`loadPlan`, `runPlanAction` through the replay ledger); `GET` and `POST /api/v1/trips/{tripId}/plan`. A refused action answers 409 with its reason.
+
+The active pointer lives in the Itinerary service's own `plans` table, not on `trips`, so no table of another service was changed.
 
 ### Piece 5: Cards
 
