@@ -20,6 +20,7 @@ export {
   renameTrip,
   saveTripFacts,
   setPlanFinished,
+  setPlanningMode,
   setTripArchived,
   type NewTrip,
 } from "./trip-store";

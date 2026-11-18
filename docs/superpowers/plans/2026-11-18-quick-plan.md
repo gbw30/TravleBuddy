@@ -18,7 +18,7 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 | --------------------------------------------- | ------------------------- | ---------------------------- | ------------ |
 | 0. Plan                                       | `feature/m7-plan`         | none (process)               | #45          |
 | 1. The brief as a view, and its checks (pure) | `feature/m7-brief-rules`  | TB-QPL-02, 03, 05, 07        | #46          |
-| 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     |              |
+| 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     | #48          |
 | 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          |              |
 | 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                |              |
 | 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            |              |
@@ -73,7 +73,18 @@ Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 2: Saving the brief
 
-**Produces:** `PUT /api/v1/trips/{tripId}/brief` saving facts and taste answers in one action; a trip action to change the planning mode; reading "anything else" into preferences for confirmation.
+**Produced (pull request 48):**
+
+- `GET` and `PUT /api/v1/trips/{tripId}/brief`. A save carries any of `facts`, `style` and `said`, in one action through the ledger (`brief_save`). A style answer is saved as said for this trip; an empty list takes the trip's own answer away, so the profile or a default applies again. The plan follows the pace the trip then goes by. Nothing writes to the personal profile.
+- The trip action `mode` (`trip_mode_set`), which changes a trip between Guided planning and Quick plan (TB-STA-04).
+- "Anything else": the words are kept as typed in a new column, `trip_profiles.said` (migration `20261119130000_trip_brief_said`, development database only). `readSaid` reads them by the profile page's rule. A sentence is understood only when all of it plainly names answers; such a part is shown with `inUse: false` until the traveller confirms it, which saves it as a style answer. The rest is kept as said and affects nothing. An allergy named here is listed apart, because it is a limit for every trip and belongs on the profile page.
+
+**Changed from the decisions above:**
+
+- Decision 4 said the typed words are saved in the trip's conversation. They are saved on the trip profile instead, so the box shows them again when the traveller returns (TB-QPL-04). Piece 6 decides how the conversation shows them.
+- Decision 4 said the model reads the box when it is on. It does not yet: the model's reply holds one answer per message, and the box can hold several. The rule reads it in both modes.
+
+**Known limit:** a single common word can match a choice's short name. "We love food" is read as the budget priority "Save on stays, spend on food". The traveller sees it with its full label and must confirm it before it is used.
 
 ### Piece 3: The brief on screen
 

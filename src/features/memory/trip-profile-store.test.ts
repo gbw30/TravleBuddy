@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import { fakeMemoryClient } from "./fake-memory-client";
 import {
   readTripDifference,
+  readTripSaid,
   readTripTaste,
   saveTripAnswer,
   saveTripDifference,
+  saveTripSaid,
 } from "./trip-profile-store";
 
 /** A stand-in for the trip_profiles table and the history written beside it. */
@@ -107,6 +109,25 @@ describe("the trip profile", () => {
     ]);
   });
 
+  it("takes the trip's own answer away again, and says where a change came from", async () => {
+    const { client, history } = fakeClient();
+    await saveTripAnswer(client, "t1", "pace", told("relaxed"), "brief");
+    await saveTripAnswer(client, "t1", "food", told("vegan"), "brief");
+    expect(await saveTripAnswer(client, "t1", "pace", null, "brief")).toEqual({
+      food: told("vegan"),
+    });
+    expect(await readTripTaste(client, "t1")).toEqual({ food: told("vegan") });
+    expect(history.at(-1)).toEqual({
+      tripId: "t1",
+      topic: "pace",
+      before: told("relaxed"),
+      cause: "brief",
+    });
+    // Nothing to take away: nothing is written.
+    await saveTripAnswer(client, "t1", "stay", null, "brief");
+    expect(history).toHaveLength(3);
+  });
+
   it("refuses to save an answer that does not fit", async () => {
     const { client, rows, history } = fakeClient();
     await expect(
@@ -164,5 +185,52 @@ describe("a trip marked as different", () => {
     const { client, rows } = fakeMemoryClient();
     await expect(saveTripDifference(client, "t1", "   ")).rejects.toThrow();
     expect(rows.tripProfiles).toEqual([]);
+  });
+});
+
+describe("what the traveller typed under “anything else”", () => {
+  it("is kept as typed, replaced, and forgotten when emptied, with each change in the history", async () => {
+    const { client, rows } = fakeMemoryClient();
+    expect(await readTripSaid(client, "t1")).toBeNull();
+    await saveTripSaid(client, "t1", "  We walk a lot. ");
+    expect(await readTripSaid(client, "t1")).toBe("We walk a lot.");
+    // The same words again change nothing.
+    await saveTripSaid(client, "t1", "We walk a lot.");
+    await saveTripSaid(client, "t1", "Quiet places");
+    await saveTripSaid(client, "t1", " ");
+    expect(await readTripSaid(client, "t1")).toBeNull();
+    expect(
+      rows.history.map(({ topic, before, after, cause }) => ({
+        topic,
+        before,
+        after,
+        cause,
+      })),
+    ).toEqual([
+      {
+        topic: "said",
+        before: undefined,
+        after: "We walk a lot.",
+        cause: "brief",
+      },
+      {
+        topic: "said",
+        before: "We walk a lot.",
+        after: "Quiet places",
+        cause: "brief",
+      },
+      {
+        topic: "said",
+        before: "Quiet places",
+        after: undefined,
+        cause: "brief",
+      },
+    ]);
+  });
+
+  it("is cut at 600 characters", async () => {
+    const { client } = fakeMemoryClient();
+    await saveTripSaid(client, "t1", "x".repeat(700));
+    expect(await readTripSaid(client, "t1")).toHaveLength(600);
   });
 });

@@ -8,7 +8,7 @@ import type {
   TripFacts,
 } from "@/features/trips/contracts";
 
-import { briefOf } from "./brief";
+import { briefOf, briefSaveSchema, readSaid } from "./brief";
 import { step1Problems } from "./brief-view";
 
 const city = (name: string) => ({
@@ -242,7 +242,7 @@ describe("the brief of a trip", () => {
     expect(full.review[3].lines.slice(0, 5)).toEqual([
       "Pace: relaxed (from your trip “Lisbon, April 2027”).",
       "Shape of the day: I will start the days at about nine.",
-      "Interests: museums and exhibitions and views.",
+      "Interests: museums and exhibitions; views.",
       "Atmosphere: I will mix lively and quiet places.",
       "Food: vegetarian (you told me).",
     ]);
@@ -288,5 +288,123 @@ describe("the brief of a trip", () => {
     expect(skipped.review[3].lines[0]).toBe(
       "Pace: I will keep a balanced pace.",
     );
+  });
+});
+
+describe("the “anything else” box", () => {
+  const short = (typed: string, taste = {}) => {
+    const said = readSaid(typed, taste);
+    return {
+      understood: said?.understood.map((item) => `${item.name}: ${item.label}`),
+      unused: said?.unused,
+      allergies: said?.allergies,
+    };
+  };
+
+  it("is nothing when it is empty", () => {
+    expect(readSaid(null, {})).toBeNull();
+    expect(readSaid("  ", {})).toBeNull();
+  });
+
+  it("understands sentences that plainly name answers, one or several", () => {
+    expect(
+      short("We like museums and markets, relaxed. I'm vegetarian"),
+    ).toEqual({
+      understood: [
+        "Interests: Museums and exhibitions",
+        "Interests: Markets and shopping",
+        "Pace: Relaxed",
+        "Food: Vegetarian",
+      ],
+      unused: [],
+      allergies: [],
+    });
+    // A choice's own words may hold "and" or a comma.
+    expect(short("Temples, shrines and history").understood).toEqual([
+      "Interests: Temples, shrines and history",
+    ]);
+  });
+
+  it("keeps a sentence as said unless all of it is understood", () => {
+    expect(
+      short(
+        "No museums and markets. I get tired of museums after two hours; views",
+      ),
+    ).toEqual({
+      understood: ["Interests: Views"],
+      unused: [
+        "No museums and markets",
+        "I get tired of museums after two hours",
+      ],
+      allergies: [],
+    });
+  });
+
+  it("names an allergy apart, because it holds for every trip", () => {
+    expect(short("Allergic to shellfish. No peanuts")).toEqual({
+      understood: [],
+      unused: ["No peanuts"],
+      allergies: ["shellfish"],
+    });
+  });
+
+  it("says once what was said twice, and whether the trip already goes by it", () => {
+    const taste = tasteInUse([], {
+      interests: { values: ["views"], source: "told" },
+    });
+    const said = readSaid("Views. views\nmarkets", taste);
+    expect(said?.text).toBe("Views. views\nmarkets");
+    expect(said?.understood).toEqual([
+      {
+        topic: "interests",
+        name: "Interests",
+        value: "views",
+        label: "Views",
+        inUse: true,
+      },
+      {
+        topic: "interests",
+        name: "Interests",
+        value: "markets",
+        label: "Markets and shopping",
+        inUse: false,
+      },
+    ]);
+  });
+
+  it("is part of the brief", () => {
+    const brief = briefOf(trip(tokyoInMay), {}, [], " quiet ");
+    expect(brief.said).toMatchObject({
+      text: "quiet",
+      understood: [{ topic: "atmosphere", value: "quiet", inUse: false }],
+    });
+    expect(briefOf(trip(tokyoInMay), {}, []).said).toBeNull();
+  });
+});
+
+describe("what a save of the brief may carry", () => {
+  const accepts = (save: unknown) => briefSaveSchema.safeParse(save).success;
+
+  it("takes facts, style answers and the box, each on its own or together", () => {
+    expect(accepts({})).toBe(true);
+    expect(accepts({ facts: { adults: 2 } })).toBe(true);
+    expect(
+      accepts({
+        style: { pace: ["relaxed"], interests: ["museums", "views"] },
+      }),
+    ).toBe(true);
+    expect(accepts({ style: { pace: [] }, said: null })).toBe(true);
+    expect(accepts({ said: "We walk a lot" })).toBe(true);
+  });
+
+  it("refuses a topic or a value the brief does not have, two values where one fits, and a value twice", () => {
+    expect(accepts({ style: { queues: ["short"] } })).toBe(false);
+    expect(accepts({ style: { pace: ["leisurely"] } })).toBe(false);
+    expect(accepts({ style: { pace: ["relaxed", "packed"] } })).toBe(false);
+    expect(accepts({ style: { interests: ["views", "views"] } })).toBe(false);
+    expect(accepts({ said: "x".repeat(601) })).toBe(false);
+    expect(
+      accepts({ facts: { startDate: "2027-05-10", endDate: "2027-05-09" } }),
+    ).toBe(false);
   });
 });

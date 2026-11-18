@@ -1054,6 +1054,9 @@ model TripProfile {
   differs        Boolean?
   /// Why it is different, in the traveller's words or one of the purposes.
   differsBecause String?  @map("differs_because") @db.VarChar(120)
+  /// What the traveller typed under "anything else" in the trip brief, as
+  /// typed. It affects nothing until a part of it is confirmed as an answer.
+  said           String?  @db.VarChar(600)
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   trip    Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
@@ -1141,7 +1144,7 @@ model ProfileHistory {
   before    Json?
   /// The entry or answer after the change; null when it was removed.
   after     Json?
-  /// "traveller", "learning", "reset" or "conversation".
+  /// "traveller", "learning", "reset", "conversation" or "brief".
   cause     String   @db.VarChar(20)
   createdAt DateTime @default(now()) @map("created_at")
 

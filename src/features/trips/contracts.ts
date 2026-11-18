@@ -160,6 +160,11 @@ export const tripActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("restore"), ...control }),
   z.object({ action: z.literal("finish"), ...control }),
   z.object({ action: z.literal("reopen"), ...control }),
+  z.object({
+    action: z.literal("mode"),
+    planningMode: z.enum(PLANNING_MODES),
+    ...control,
+  }),
 ]);
 export type TripAction = z.infer<typeof tripActionSchema>;
 

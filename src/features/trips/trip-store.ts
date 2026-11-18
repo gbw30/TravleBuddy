@@ -381,6 +381,19 @@ export async function setPlanFinished(
   return { finished };
 }
 
+/** Changes the way the trip is planned: in conversation or from a brief (TB-STA-04). */
+export async function setPlanningMode(
+  tx: Tx,
+  userId: string,
+  tripId: string,
+  planningMode: PlanningMode,
+): Promise<Refused | { planningMode: PlanningMode }> {
+  const refused = await findEditable(tx, userId, tripId);
+  if (refused) return refused;
+  await tx.trip.update({ where: { id: tripId }, data: { planningMode } });
+  return { planningMode };
+}
+
 /** Deletes the trip and everything that belongs to it. False when it is not the traveller's. */
 export async function removeTrip(
   userId: string,
