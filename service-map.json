@@ -43,7 +43,12 @@
         "UserTravelPreference",
         "TripPreference",
         "PreferenceProfileVersion",
-        "TripProfile"
+        "TripProfile",
+        "Profile",
+        "ProfileEntry",
+        "ProfileNote",
+        "ProfileHistory",
+        "ForgottenEvidence"
       ]
     },
     "places": {
@@ -108,6 +113,7 @@
     "PlanningMutation.trip -> Trip (conversation -> trips)",
     "PreferenceProfileVersion.sourceFeedback -> PlanningFeedback (memory -> recommendations)",
     "PreferenceProfileVersion.trip -> Trip (memory -> trips)",
+    "Profile.user -> User (memory -> identity)",
     "Trip.activeItineraryVersion -> ItineraryVersion (trips -> itinerary)",
     "Trip.activePreferenceProfileVersion -> PreferenceProfileVersion (trips -> memory)",
     "Trip.user -> User (trips -> identity)",

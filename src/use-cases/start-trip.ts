@@ -1,7 +1,10 @@
 import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
 import { createTrip, factsFromTickets } from "@/features/trips";
-import type { StartTripInput } from "@/features/trips/contracts";
+import {
+  NEW_TRIP_TITLE,
+  type StartTripInput,
+} from "@/features/trips/contracts";
 
 // Starting a trip spans two services: Places turns the ticket destinations
 // into cities, and Trips saves the trip.
@@ -32,7 +35,7 @@ export async function startTrip(
     : fromTickets.stops.map((stop) => stop.place);
 
   return createTrip(userId, {
-    title: names.length ? `Trip to ${list.format(names)}` : "New trip",
+    title: names.length ? `Trip to ${list.format(names)}` : NEW_TRIP_TITLE,
     planningMode: input.planningMode,
     startDate: fromTickets.startDate,
     endDate: fromTickets.endDate,

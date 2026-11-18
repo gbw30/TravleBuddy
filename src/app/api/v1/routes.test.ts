@@ -17,6 +17,13 @@ const mocks = vi.hoisted(() => {
     addTripPlace: vi.fn(),
     takeTurn: vi.fn(),
     loadConversation: vi.fn(),
+    loadProfile: vi.fn(),
+    tellProfile: vi.fn(),
+    changeEntry: vi.fn(),
+    removeEntry: vi.fn(),
+    removeNote: vi.fn(),
+    forgetEverything: vi.fn(),
+    learnQuietly: vi.fn(),
   };
 });
 vi.mock("@/lib/authorization", () => ({
@@ -51,7 +58,24 @@ vi.mock("@/use-cases/conversation", () => ({
   loadConversation: mocks.loadConversation,
 }));
 
+vi.mock("@/use-cases/learning", () => ({ learnQuietly: mocks.learnQuietly }));
+vi.mock("@/use-cases/profile", () => ({
+  loadProfile: mocks.loadProfile,
+  tellProfile: mocks.tellProfile,
+  changeEntry: mocks.changeEntry,
+  removeEntry: mocks.removeEntry,
+  removeNote: mocks.removeNote,
+  forgetEverything: mocks.forgetEverything,
+}));
+
 import { GET as cities } from "./places/cities/route";
+import {
+  DELETE as deleteProfileEntry,
+  PATCH as changeProfileEntry,
+} from "./profile/entries/[entryId]/route";
+import { POST as tellProfile } from "./profile/entries/route";
+import { DELETE as deleteProfileNote } from "./profile/notes/[noteId]/route";
+import { DELETE as forgetProfile, GET as getProfile } from "./profile/route";
 import {
   DELETE as deleteCommitment,
   PATCH as patchCommitment,
@@ -262,6 +286,43 @@ describe("PATCH /api/v1/trips/{tripId}", () => {
     expect(answer.status).toBe(500);
     expect(await answer.text()).not.toContain("secret");
     log.mockRestore();
+  });
+});
+
+describe("what finished trips teach", () => {
+  it("is brought up to date when a plan is finished or reopened, and not when the change did not go through", async () => {
+    mocks.runTripAction.mockResolvedValue({
+      status: "ok",
+      data: { finished: true },
+      revision: 3,
+    });
+    for (const action of ["finish", "reopen"]) {
+      await patchTrip(request("PATCH", { action, ...control }), trip);
+    }
+    expect(mocks.learnQuietly).toHaveBeenCalledTimes(2);
+    expect(mocks.learnQuietly).toHaveBeenCalledWith("user-1");
+
+    mocks.learnQuietly.mockClear();
+    mocks.runTripAction.mockResolvedValue({ status: "stale" });
+    await patchTrip(request("PATCH", { action: "finish", ...control }), trip);
+    mocks.runTripAction.mockResolvedValue({
+      status: "ok",
+      data: { title: "x" },
+      revision: 4,
+    });
+    await patchTrip(
+      request("PATCH", { action: "rename", title: "x", ...control }),
+      trip,
+    );
+    expect(mocks.learnQuietly).not.toHaveBeenCalled();
+  });
+
+  it("is brought up to date when a trip is deleted, and not when nothing was", async () => {
+    mocks.removeTrip.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    await deleteTrip(request("DELETE"), trip);
+    expect(mocks.learnQuietly).toHaveBeenCalledTimes(1);
+    await deleteTrip(request("DELETE"), trip);
+    expect(mocks.learnQuietly).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -555,6 +616,41 @@ describe("the conversation", () => {
     });
   });
 
+  it("accepts a yes to the agent's offer to remember something", async () => {
+    mocks.takeTurn.mockResolvedValue({
+      status: "ok",
+      data: { focus: null, changed: true },
+      revision: 8,
+    });
+    mocks.loadConversation.mockResolvedValue(conversation);
+    const answer = await takeTurn(
+      request("POST", { turn: { type: "remember" }, ...control }),
+      trip,
+    );
+    expect(answer.status).toBe(200);
+    expect(mocks.takeTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ turn: { type: "remember" } }),
+    );
+  });
+
+  it("accepts an answer to why this trip is different", async () => {
+    mocks.takeTurn.mockResolvedValue({
+      status: "ok",
+      data: { focus: null, changed: true },
+      revision: 7,
+    });
+    mocks.loadConversation.mockResolvedValue(conversation);
+    const different = { type: "answer", topic: "difference", values: ["Work"] };
+    const answer = await takeTurn(
+      request("POST", { turn: different, ...control }),
+      trip,
+    );
+    expect(answer.status).toBe(200);
+    expect(mocks.takeTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ turn: different }),
+    );
+  });
+
   it("answers 409 for a stale revision or a refused turn, without reading the thread", async () => {
     mocks.takeTurn
       .mockResolvedValueOnce({ status: "stale" })
@@ -596,5 +692,114 @@ describe("the conversation", () => {
       (await takeTurn(request("POST", { turn, ...control }), trip)).status,
     ).toBe(401);
     expect(mocks.takeTurn).not.toHaveBeenCalled();
+  });
+});
+
+describe("the profile", () => {
+  const profile = { revision: 3, entries: [], notes: [], topics: [] };
+  const entry = { params: Promise.resolve({ entryId: "e-1" }) };
+  const note = { params: Promise.resolve({ noteId: "n-1" }) };
+
+  beforeEach(() => {
+    mocks.loadProfile.mockResolvedValue(profile);
+  });
+
+  it("answers the signed-in traveller's profile, and forgets it when asked", async () => {
+    expect(await (await getProfile(request("GET"), undefined)).json()).toEqual({
+      profile,
+    });
+    expect(mocks.loadProfile).toHaveBeenCalledWith("user-1");
+    const forgotten = await forgetProfile(request("DELETE"), undefined);
+    expect(forgotten.status).toBe(200);
+    expect(mocks.forgetEverything).toHaveBeenCalledWith("user-1");
+  });
+
+  it("files what the traveller says and answers 201 with where it went", async () => {
+    const filed = { type: "note", note: { id: "n-1", text: "I hate queues" } };
+    mocks.tellProfile.mockResolvedValue(filed);
+    const answer = await tellProfile(
+      request("POST", { text: " I hate queues ", hard: true }),
+      undefined,
+    );
+    expect(answer.status).toBe(201);
+    expect(await answer.json()).toEqual({ filed, profile });
+    expect(mocks.tellProfile).toHaveBeenCalledWith(
+      "user-1",
+      "I hate queues",
+      true,
+    );
+  });
+
+  it("answers 422 for nothing said, or too much", async () => {
+    for (const body of [{ text: "  " }, { text: "x".repeat(301) }, {}]) {
+      expect((await tellProfile(request("POST", body), undefined)).status).toBe(
+        422,
+      );
+    }
+    expect(mocks.tellProfile).not.toHaveBeenCalled();
+  });
+
+  it("changes an entry, and answers 404 for one that is not the traveller's and 422 for a value the topic cannot hold", async () => {
+    mocks.changeEntry
+      .mockResolvedValueOnce({ id: "e-1", value: "packed" })
+      .mockResolvedValueOnce("not_found")
+      .mockResolvedValueOnce("invalid");
+    const changed = await changeProfileEntry(
+      request("PATCH", { value: "packed" }),
+      entry,
+    );
+    expect(await changed.json()).toEqual({
+      entry: { id: "e-1", value: "packed" },
+      profile,
+    });
+    expect(mocks.changeEntry).toHaveBeenCalledWith("user-1", "e-1", "packed");
+    expect(
+      (await changeProfileEntry(request("PATCH", { value: "packed" }), entry))
+        .status,
+    ).toBe(404);
+    const invalid = await changeProfileEntry(
+      request("PATCH", { value: "warp" }),
+      entry,
+    );
+    expect(invalid.status).toBe(422);
+    expect(await invalid.json()).toEqual({ error: "invalid_value" });
+    expect(
+      (await changeProfileEntry(request("PATCH", { value: "" }), entry)).status,
+    ).toBe(422);
+  });
+
+  it("removes an entry or a note, and answers 404 when it is not the traveller's", async () => {
+    mocks.removeEntry
+      .mockResolvedValueOnce({ deleted: true })
+      .mockResolvedValueOnce("not_found");
+    mocks.removeNote
+      .mockResolvedValueOnce({ deleted: true })
+      .mockResolvedValueOnce("not_found");
+    expect((await deleteProfileEntry(request("DELETE"), entry)).status).toBe(
+      200,
+    );
+    expect((await deleteProfileEntry(request("DELETE"), entry)).status).toBe(
+      404,
+    );
+    expect((await deleteProfileNote(request("DELETE"), note)).status).toBe(200);
+    expect((await deleteProfileNote(request("DELETE"), note)).status).toBe(404);
+    expect(mocks.removeEntry).toHaveBeenCalledWith("user-1", "e-1");
+    expect(mocks.removeNote).toHaveBeenCalledWith("user-1", "n-1");
+  });
+
+  it("answers 401 signed out on every profile route", async () => {
+    mocks.user.mockRejectedValue(new mocks.UnauthorizedError());
+    const answers = await Promise.all([
+      getProfile(request("GET"), undefined),
+      forgetProfile(request("DELETE"), undefined),
+      tellProfile(request("POST", { text: "Relaxed" }), undefined),
+      changeProfileEntry(request("PATCH", { value: "packed" }), entry),
+      deleteProfileEntry(request("DELETE"), entry),
+      deleteProfileNote(request("DELETE"), note),
+    ]);
+    expect(answers.map((answer) => answer.status)).toEqual(Array(6).fill(401));
+    expect(mocks.loadProfile).not.toHaveBeenCalled();
+    expect(mocks.forgetEverything).not.toHaveBeenCalled();
+    expect(mocks.tellProfile).not.toHaveBeenCalled();
   });
 });

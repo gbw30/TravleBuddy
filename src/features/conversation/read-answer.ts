@@ -256,7 +256,11 @@ export function readAnswerByRule(question: Question, typed: string): Intent {
   if ((FACT_TOPICS as readonly string[]).includes(question.topic)) {
     return readFact(question.topic as FactTopic, question, raw, text);
   }
-  const values = matchChoices(question, text);
+  // "Yes" to a remembered answer means the same again.
+  const same =
+    question.remembered?.length &&
+    /^(yes|yep|yeah|same|same again|the same|sure|ok|okay)$/.test(text);
+  const values = same ? question.remembered! : matchChoices(question, text);
   return values.length > 0
     ? { type: "taste", topic: question.topic as TasteTopic, values }
     : NONE;

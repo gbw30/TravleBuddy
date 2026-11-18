@@ -1,3 +1,9 @@
+import { conflicts, rememberedFor } from "@/features/memory";
+import {
+  sourceWords,
+  TOPIC_NAMES,
+  type ProfileEntry,
+} from "@/features/memory/contracts";
 import type { TripFacts } from "@/features/trips/contracts";
 
 import {
@@ -204,6 +210,22 @@ export const QUESTIONS: Record<Topic, Question> = {
     ),
     skipSays: "I will spread the budget evenly.",
   },
+  // Asked once, when an answer goes against the personal profile. Its
+  // wording is filled in with the answer and the memory (PRD 7.6).
+  difference: {
+    topic: "difference",
+    stage: "memory",
+    form: "pick_one",
+    prompt: "Is this trip different from your usual?",
+    choices: choices(
+      ["Honeymoon", "Yes, it is a honeymoon"],
+      ["Family visit", "Yes, it is a family visit"],
+      ["Celebration", "Yes, it is a celebration"],
+      ["Work", "Yes, it is for work"],
+      ["ordinary", "No, just this once"],
+    ),
+    skipSays: "I will treat it as an ordinary trip.",
+  },
 };
 
 export type ScriptState = {
@@ -211,6 +233,10 @@ export type ScriptState = {
   /** How many fixed commitments the trip has, and whether one is a stay. */
   commitments: { count: number; hasStay: boolean };
   profile: TripProfile;
+  /** The traveller's personal profile: what is remembered from before this trip. */
+  remembered?: ProfileEntry[];
+  /** Whether the traveller marked this trip as different. Null or absent: not asked yet. */
+  differs?: boolean | null;
 };
 
 /** Whether a fact is already known from the trip, its tickets or what was typed (TB-AGT-03). */
@@ -250,8 +276,71 @@ export function nextQuestion(state: ScriptState): Question | null {
       !factKnown(topic, state) && !state.profile.skippedFacts.includes(topic),
   );
   if (fact) return QUESTIONS[fact];
+  const difference = state.differs == null ? differenceQuestion(state) : null;
+  if (difference) return difference;
   const taste = TASTE_TOPICS.find((topic) => !state.profile.taste[topic]);
-  return taste ? QUESTIONS[taste] : null;
+  return taste ? confirming(QUESTIONS[taste], state.remembered ?? []) : null;
+}
+
+const words = (labels: string[]) =>
+  labels.length < 3
+    ? labels.join(" and ")
+    : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+
+/**
+ * "Is this trip different?", for the first topic where what was said for
+ * this trip goes against what is remembered; null when nothing does
+ * (TB-AGT-12). It is asked once: the answer settles `differs`.
+ */
+function differenceQuestion(state: ScriptState): Question | null {
+  for (const topic of TASTE_TOPICS) {
+    const answer = state.profile.taste[topic];
+    const remembered = rememberedFor(state.remembered ?? [], topic);
+    if (answer?.source !== "told" || !conflicts(answer.values, remembered)) {
+      continue;
+    }
+    const label = (value: string) =>
+      (
+        QUESTIONS[topic].choices.find((choice) => choice.value === value)
+          ?.label ?? value
+      ).toLowerCase();
+    return {
+      ...QUESTIONS.difference,
+      prompt: `${TOPIC_NAMES[topic]}: you chose ${words(answer.values.map(label))} for this trip, and I remember ${words(remembered.map((entry) => label(entry.value)))}. Is this trip different from your usual?`,
+    };
+  }
+  return null;
+}
+
+/**
+ * The question as asked of a traveller the site already knows: where the
+ * personal profile holds an answer the question understands, it asks to
+ * confirm that answer and says where it comes from (TB-AGT-06, TB-MEM-06).
+ */
+function confirming(question: Question, personal: ProfileEntry[]): Question {
+  const known = rememberedFor(personal, question.topic as TasteTopic).filter(
+    (entry) => question.choices.some((choice) => choice.value === entry.value),
+  );
+  if (known.length === 0) return question;
+  const labels = known.map((entry) =>
+    question.choices
+      .find((choice) => choice.value === entry.value)!
+      .label.toLowerCase(),
+  );
+  const remembered = words(labels);
+  // The trip of the first learned entry is named; stated ones need no trip.
+  const source = (
+    known.find((entry) => entry.source.type === "trip") ?? known[0]
+  ).source;
+  return {
+    ...question,
+    prompt: `${TOPIC_NAMES[question.topic as TasteTopic]}: ${
+      source.type === "trip"
+        ? `${sourceWords(source)} I remember ${remembered}`
+        : `you told me ${remembered}`
+    }. Same for this trip?`,
+    remembered: known.map((entry) => entry.value),
+  };
 }
 
 export type Readiness = {
@@ -274,7 +363,11 @@ export function readiness(state: ScriptState): Readiness {
   const days = needs.length === 0;
   return {
     sights: days,
-    meals: days && state.profile.taste.food !== undefined,
+    // Remembered dietary rules are enough to start on meals.
+    meals:
+      days &&
+      (state.profile.taste.food !== undefined ||
+        rememberedFor(state.remembered ?? [], "food").length > 0),
     needs,
   };
 }

@@ -34,6 +34,8 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   address: null,
   openingHours: "Mo-Su 09:00-18:00",
   notable: true,
+  serves: [],
+  servesNot: [],
   ...over,
 });
 const commitment = (over: Partial<CommitmentDto>): CommitmentDto => ({

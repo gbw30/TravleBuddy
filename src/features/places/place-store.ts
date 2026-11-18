@@ -39,6 +39,8 @@ function toDto(row: PlaceRow): PlaceDto {
     address: row.address,
     openingHours: row.openingHours,
     notable: row.notable,
+    serves: row.serves,
+    servesNot: row.servesNot,
   };
 }
 

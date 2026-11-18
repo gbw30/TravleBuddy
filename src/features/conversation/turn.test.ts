@@ -7,6 +7,7 @@ import { emptyTripProfile, type Intent } from "./contracts";
 import { QUESTIONS, readiness, type ScriptState } from "./script";
 import {
   decide,
+  decideDifference,
   intentOfTap,
   labelsOf,
   nightsWithoutStay,
@@ -161,6 +162,21 @@ describe("a skip", () => {
         answer: { values: ["balanced"], source: "default" },
       },
       says: "I will keep a balanced pace.",
+    });
+  });
+
+  it("goes by what is remembered when the profile can answer, kept as a default", () => {
+    const waiting = {
+      ...QUESTIONS.interests,
+      remembered: ["museums", "views"],
+    };
+    expect(run({ type: "skip" }, { waiting })).toEqual({
+      change: {
+        type: "taste",
+        topic: "interests",
+        answer: { values: ["museums", "views"], source: "default" },
+      },
+      says: "I will go with what I remember: museums and exhibitions and views.",
     });
   });
 
@@ -488,6 +504,137 @@ describe("a message the agent cannot act on", () => {
     expect(run({ type: "none" }, { limited: true })).toMatchObject({
       change: null,
     });
+  });
+});
+
+describe("something worth remembering for every trip", () => {
+  it("is offered when a dietary rule is given for a trip, in words the profile can file", () => {
+    const decision = run(
+      { type: "taste", topic: "food", values: ["vegetarian", "gluten-free"] },
+      { waiting: QUESTIONS.food },
+    );
+    expect(decision).toEqual({
+      change: {
+        type: "taste",
+        topic: "food",
+        answer: { values: ["vegetarian", "gluten-free"], source: "told" },
+      },
+      says: "Noted: vegetarian and gluten-free.",
+      offer: { texts: ["Vegetarian", "Gluten-free"], hard: true },
+    });
+  });
+
+  it("is not offered for a rule the profile already holds, or for no restrictions", () => {
+    expect(
+      run(
+        { type: "taste", topic: "food", values: ["vegetarian"] },
+        { knownRules: ["vegetarian"] },
+      ).offer,
+    ).toBeUndefined();
+    expect(
+      run(
+        { type: "taste", topic: "food", values: ["vegetarian", "vegan"] },
+        { knownRules: ["vegetarian"] },
+      ).offer,
+    ).toEqual({
+      texts: ["Vegan"],
+      hard: true,
+    });
+    expect(
+      run({ type: "taste", topic: "food", values: ["none"] }).offer,
+    ).toBeUndefined();
+    expect(
+      run({ type: "taste", topic: "pace", values: ["relaxed"] }).offer,
+    ).toBeUndefined();
+  });
+
+  it("is offered, and nothing is changed, when the traveller says something about themselves in general", () => {
+    expect(
+      run({ type: "statement", text: "I'm allergic to shellfish", rule: true }),
+    ).toEqual({
+      change: null,
+      says: "You said: “I'm allergic to shellfish”.",
+      offer: { texts: ["I'm allergic to shellfish"], hard: true },
+    });
+    expect(run({ type: "statement", text: "I hate queues" }).offer).toEqual({
+      texts: ["I hate queues"],
+      hard: false,
+    });
+  });
+});
+
+describe("an answer to why this trip is different", () => {
+  const question = QUESTIONS.difference;
+
+  it("marks the trip as different with the purpose tapped", () => {
+    expect(
+      decideDifference(question, { type: "answer", values: ["Honeymoon"] }),
+    ).toEqual({
+      said: "Yes, it is a honeymoon",
+      change: { type: "difference", because: "Honeymoon" },
+      says: "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
+    });
+  });
+
+  it("leaves it an ordinary trip for 'no', a skip, or a typed no", () => {
+    const ordinary = {
+      change: { type: "difference", because: null },
+      says: "Understood. I will treat it as an ordinary trip.",
+    };
+    expect(
+      decideDifference(question, { type: "answer", values: ["ordinary"] }),
+    ).toMatchObject({ ...ordinary, said: "No, just this once" });
+    expect(decideDifference(question, { type: "skip" })).toMatchObject({
+      ...ordinary,
+      said: "Skip",
+    });
+    for (const text of ["No", "not really, same as usual", "It isn't"]) {
+      expect(
+        decideDifference(question, { type: "say", text }),
+        text,
+      ).toMatchObject(ordinary);
+    }
+  });
+
+  it("takes typed words as the traveller's own reason", () => {
+    expect(
+      decideDifference(question, {
+        type: "say",
+        text: " We are travelling with my parents ",
+      }),
+    ).toMatchObject({
+      said: "We are travelling with my parents",
+      change: {
+        type: "difference",
+        because: "We are travelling with my parents",
+      },
+    });
+    expect(
+      (
+        decideDifference(question, { type: "say", text: "x".repeat(200) })
+          ?.change as { because: string }
+      ).because,
+    ).toHaveLength(120);
+  });
+
+  it("is null for a tapped value that is not one of the choices", () => {
+    expect(
+      decideDifference(question, { type: "answer", values: ["Holiday"] }),
+    ).toBeNull();
+  });
+
+  it("settles the question in the script's state", () => {
+    const state = {
+      facts: noFacts,
+      commitments: { count: 0, hasStay: false },
+      profile: emptyTripProfile,
+    };
+    expect(
+      stateAfter(state, { type: "difference", because: "Work" }).differs,
+    ).toBe(true);
+    expect(
+      stateAfter(state, { type: "difference", because: null }).differs,
+    ).toBe(false);
   });
 });
 

@@ -40,13 +40,25 @@ export const noHistory: CardHistory = {
  * ranking understands. Price and rating are absent: the place data has neither.
  */
 export type CardTaste = {
-  /** The interests named, with the words to say them. Empty when left open, null when not asked yet. */
-  interests: { value: string; label: string }[] | null;
+  /**
+   * The interests named, with the words to say them. Empty when left open,
+   * null when not asked yet. `from` is the trip an interest is remembered
+   * from, when it was not said for this trip.
+   */
+  interests: { value: string; label: string; from?: string }[] | null;
   atmosphere: "lively" | "quiet" | null;
   /** The traveller likes to get around on foot. */
   onFoot: boolean;
-  /** Food rules named, such as "vegetarian". Empty when there are none, null when not asked yet. */
+  /** The trips the atmosphere and the way of getting around are remembered from (TB-MEM-06). */
+  rememberedFrom?: { atmosphere?: string; onFoot?: string };
+  /**
+   * The dietary rules proposals must respect, such as "vegetarian": those
+   * given for this trip and those remembered. Empty when there are none,
+   * null when not asked yet. They are hard limits (TB-MEM-05).
+   */
   food: string[] | null;
+  /** Allergies, in the traveller's words. No listing can confirm these. */
+  allergies?: string[];
 };
 
 export const noTaste: CardTaste = {
@@ -83,14 +95,18 @@ export type ProposeInput = {
 
 const meansWord = { walk: "walk", transit: "ride", drive: "drive" } as const;
 
+const isMeal = (kind: SlotKind) => kind === "lunch" || kind === "dinner";
+
 type Ranked = {
   place: PlaceDto;
   score: number;
   open: "open" | "unknown";
   travel: ReturnType<typeof travelEstimate> | null;
   fresh: boolean;
+  /** Whether its listing says it serves every dietary rule of the traveller's. */
+  dietConfirmed: boolean;
   /** The interest of the traveller's this place answers, if any. */
-  interest: { value: string; label: string } | undefined;
+  interest: { value: string; label: string; from?: string } | undefined;
 };
 
 function rank(input: ProposeInput): Ranked[] {
@@ -109,6 +125,12 @@ function rank(input: ProposeInput): Ranked[] {
       );
       // A place known to be closed for the visit is never offered (TB-ITN-05).
       if (open === "closed") return [];
+      // Nor is a place to eat whose listing says it does not serve one of
+      // the traveller's dietary rules (TB-MEM-05).
+      const rules = isMeal(slot.kind) ? (taste.food ?? []) : [];
+      if (rules.some((rule) => place.servesNot.includes(rule))) return [];
+      const dietConfirmed =
+        rules.length > 0 && rules.every((rule) => place.serves.includes(rule));
 
       const point =
         place.latitude === null || place.longitude === null
@@ -133,6 +155,8 @@ function rank(input: ProposeInput): Ranked[] {
         if (taste.atmosphere === "quiet") score -= 1.5;
       }
       if (open === "open") score += 0.5;
+      // A listing that confirms the rules beats one that says nothing.
+      if (dietConfirmed) score += 2;
       if (!fresh) score -= 1.5;
       if (history.dislikedKinds.includes(place.kind)) score -= 3;
 
@@ -143,6 +167,7 @@ function rank(input: ProposeInput): Ranked[] {
           open,
           travel: from && point ? travelEstimate(from, point) : null,
           fresh,
+          dietConfirmed,
           interest,
         },
       ];
@@ -163,14 +188,38 @@ const words = (items: string[]) =>
 function travellerSentence(ranked: Ranked, input: ProposeInput): string {
   const { place, travel } = ranked;
   const { history, taste } = input;
-  const meal = input.slot.kind === "lunch" || input.slot.kind === "dinner";
+  const meal = isMeal(input.slot.kind);
 
-  // A food rule is always named: the place data cannot confirm it either
-  // way, and the card must say so (PRD 12.2).
-  if (meal && taste.food?.length) {
-    return `You eat ${words(taste.food)} food, and the place data does not say whether this place serves it, so check with the venue.`;
+  // A hard limit is always named on a place to eat. A listing can confirm a
+  // dietary rule; nothing can confirm an allergy, and no card says a place
+  // is safe for one (PRD 12.2, TB-MEM-05).
+  const rules = meal ? (taste.food ?? []) : [];
+  const allergies = meal ? (taste.allergies ?? []) : [];
+  const allergy = `${words(allergies)} allergy`;
+  if (rules.length > 0 && allergies.length > 0) {
+    return ranked.dietConfirmed
+      ? `Its listing says it serves ${words(rules)} food, but place data cannot tell whether it is safe for your ${allergy}, so check with the venue.`
+      : `You eat ${words(rules)} food and have a ${allergy}, and the place data confirms neither, so check with the venue.`;
   }
-  if (ranked.interest) return `You said you like ${ranked.interest.label}.`;
+  if (rules.length > 0) {
+    return ranked.dietConfirmed
+      ? `You eat ${words(rules)} food, and its listing says it serves it.`
+      : `You eat ${words(rules)} food, and the place data does not say whether this place serves it, so check with the venue.`;
+  }
+  if (allergies.length > 0) {
+    return `You have a ${allergy}, and place data cannot tell whether a place is safe for it, so check with the venue.`;
+  }
+  // A memory from another trip names that trip (TB-MEM-06).
+  const recalled = (trip: string | undefined, said: string, liked: string) =>
+    trip ? `I remember from your trip “${trip}” that you ${liked}` : said;
+  const from = taste.rememberedFrom ?? {};
+  if (ranked.interest) {
+    return `${recalled(
+      ranked.interest.from,
+      `You said you like ${ranked.interest.label}`,
+      `like ${ranked.interest.label}`,
+    )}.`;
+  }
   if (history.tooFar > 0 && travel) {
     return "You said the last places were too far, so I looked closer.";
   }
@@ -178,13 +227,13 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
     return "You asked for somewhere less touristy, and this is a quieter choice.";
   }
   if (taste.atmosphere === "quiet" && !place.notable) {
-    return "You asked for quiet places, and this is a quieter choice.";
+    return `${recalled(from.atmosphere, "You asked for quiet places", "like quiet places")}, and this is a quieter choice.`;
   }
   if (taste.atmosphere === "lively" && place.notable) {
-    return `You like lively places, and this is one of ${input.cityName}'s well-known ones.`;
+    return `${recalled(from.atmosphere, "You like lively places", "like lively places")}, and this is one of ${input.cityName}'s well-known ones.`;
   }
   if (taste.onFoot && travel?.means === "walk") {
-    return "You like to get around on foot, and this is a walk away.";
+    return `${recalled(from.onFoot, "You like to get around on foot", "like to get around on foot")}, and this is a walk away.`;
   }
 
   const adds =
@@ -229,6 +278,8 @@ export function toCard(
   cityName: string,
   reason: string,
   travel: CardDto["travel"] = null,
+  /** The traveller's hard limits this place's listing cannot confirm. */
+  unconfirmed: string[] = [],
 ): CardDto {
   const kind = kindLabel(place.kind);
   const marked =
@@ -242,16 +293,34 @@ export function toCard(
     name: place.name,
     origin: place.origin,
     kind: place.kind,
-    essentials: travel
-      ? `${kind} · ${travel.minutes} min ${meansWord[travel.means]}`
-      : kind,
+    // The mark is on the front of the card, where it is seen before picking.
+    essentials: [
+      travel
+        ? `${kind} · ${travel.minutes} min ${meansWord[travel.means]}`
+        : kind,
+      ...(unconfirmed.length > 0
+        ? [`not confirmed: ${unconfirmed.join(", ")}`]
+        : []),
+    ].join(" · "),
     summary: `${kind} in ${cityName}. ${place.openingHours ? `Open ${place.openingHours}.` : "Opening hours unknown."}${marked}`,
     reason,
     address: place.address,
     hours: place.openingHours,
     visitMinutes: visitMinutes(place.kind),
     travel,
+    ...(unconfirmed.length > 0 ? { unconfirmed } : {}),
   };
+}
+
+/** The traveller's hard limits a place to eat's listing cannot confirm. */
+function unconfirmedFor(ranked: Ranked, input: ProposeInput): string[] {
+  if (!isMeal(input.slot.kind)) return [];
+  return [
+    ...(input.taste.food ?? []).filter(
+      (rule) => !ranked.place.serves.includes(rule),
+    ),
+    ...(input.taste.allergies ?? []).map((item) => `${item} allergy`),
+  ];
 }
 
 /**
@@ -270,6 +339,7 @@ export function proposeCards(input: ProposeInput): CardSet {
         ranked.travel
           ? { means: ranked.travel.means, minutes: ranked.travel.minutes }
           : null,
+        unconfirmedFor(ranked, input),
       ),
     ),
     short: best.length < 3,

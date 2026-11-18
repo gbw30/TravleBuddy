@@ -54,6 +54,54 @@ describe("TripConversation", () => {
     expect(html).not.toContain('aria-pressed="');
   });
 
+  it("offers a remembered answer with one tap, and the other choices beside it", () => {
+    const html = render(
+      snapshot({
+        waiting: {
+          ...QUESTIONS.pace,
+          prompt:
+            "Pace: from your trip “Lisbon” I remember relaxed. Same for this trip?",
+          remembered: ["relaxed"],
+        },
+      }),
+    );
+    expect(html).toContain("I remember relaxed");
+    expect(html).toContain(">Yes, same again</button>");
+    expect(html).toContain("Or choose differently for this trip:");
+    expect(html).toContain(">Packed</button>");
+    expect(render(snapshot())).not.toContain("Yes, same again");
+  });
+
+  it("offers to remember something with one tap while the offer is the last thing said", () => {
+    const offer = message("2", "agent", {
+      kind: "offer",
+      text: "Noted: vegetarian. Should I remember that for every trip?",
+      remember: { texts: ["Vegetarian"], hard: true },
+    });
+    const asked = [
+      message("1", "traveller", { kind: "text", text: "Vegetarian" }),
+      offer,
+    ];
+    const html = render(
+      snapshot({ messages: asked, waiting: QUESTIONS.getting_around }),
+    );
+    expect(html).toContain("Should I remember that for every trip?");
+    expect(html).toContain(">Yes, remember it for every trip</button>");
+    // Once something else is said, the offer has passed. The reply stays in view.
+    const later = render(
+      snapshot({
+        messages: [
+          ...asked,
+          message("3", "traveller", { kind: "text", text: "Mostly on foot" }),
+        ],
+      }),
+    );
+    expect(later).not.toContain("Yes, remember it for every trip");
+    expect(render(snapshot({ messages: asked }), true)).not.toContain(
+      "Yes, remember it for every trip",
+    );
+  });
+
   it("lets several choices be ticked before answering, and none is sent until one is", () => {
     const html = render(snapshot({ waiting: QUESTIONS.interests }));
     expect(count(html, 'aria-pressed="false"')).toBe(

@@ -87,3 +87,37 @@ export function kindFromOsmTags(tags: Tags): PlaceKind | null {
   if (tourism === "attraction" || historic) return "sight";
   return null;
 }
+
+/** The dietary rules a place's listing can speak to. */
+export const DIETS = [
+  "vegetarian",
+  "vegan",
+  "halal",
+  "kosher",
+  "gluten-free",
+] as const;
+
+/**
+ * What a listing says about dietary rules, from OpenStreetMap's `diet:*`
+ * tags: "yes" and "only" mean it serves the diet, "no" that it does not.
+ * Anything else, or no tag, is unknown and appears in neither list. A place
+ * that serves vegan food serves vegetarian food.
+ */
+export function dietsFromOsmTags(tags: Record<string, string | undefined>): {
+  serves: string[];
+  servesNot: string[];
+} {
+  const says = (diet: string) => tags[`diet:${diet.replace("-", "_")}`];
+  const serves = DIETS.filter((diet) =>
+    ["yes", "only"].includes(says(diet) ?? ""),
+  ) as string[];
+  if (serves.includes("vegan") && !serves.includes("vegetarian")) {
+    serves.unshift("vegetarian");
+  }
+  return {
+    serves,
+    servesNot: DIETS.filter(
+      (diet) => says(diet) === "no" && !serves.includes(diet),
+    ),
+  };
+}

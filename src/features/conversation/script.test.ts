@@ -141,6 +141,202 @@ describe("the script", () => {
   });
 });
 
+describe("a traveller the site already knows", () => {
+  const facts = allFacts;
+  const done = { count: 1, hasStay: false };
+  const fromTokyo = (topic: "pace" | "interests", value: string) => ({
+    topic,
+    value,
+    sureness: "think" as const,
+    source: { type: "trip" as const, tripId: "t1", tripTitle: "Tokyo in May" },
+  });
+  const said = (
+    topic: "interests" | "dietary_rules" | "atmosphere",
+    value: string,
+  ) => ({
+    topic,
+    value,
+    sureness: "always" as const,
+    source: { type: "told" as const },
+  });
+
+  it("is asked to confirm a remembered answer, with the trip it comes from", () => {
+    const question = nextQuestion(
+      state({
+        facts,
+        commitments: done,
+        remembered: [fromTokyo("pace", "relaxed")],
+      }),
+    );
+    expect(question).toMatchObject({
+      topic: "pace",
+      prompt:
+        "Pace: from your trip “Tokyo in May” I remember relaxed. Same for this trip?",
+      remembered: ["relaxed"],
+    });
+    // The other choices stay, to answer differently for this trip.
+    expect(question?.choices.map((choice) => choice.value)).toEqual([
+      "relaxed",
+      "balanced",
+      "packed",
+    ]);
+  });
+
+  it("is told plainly when the memory is something they said themselves", () => {
+    const profile = {
+      taste: { pace: told(["relaxed"]), day_shape: told(["early"]) },
+      skippedFacts: [],
+    };
+    const question = nextQuestion(
+      state({
+        facts,
+        commitments: done,
+        profile,
+        remembered: [
+          said("interests", "museums"),
+          said("interests", "views"),
+          said("interests", "markets"),
+        ],
+      }),
+    );
+    expect(question).toMatchObject({
+      topic: "interests",
+      prompt:
+        "Interests: you told me museums and exhibitions, views and markets and shopping. Same for this trip?",
+      remembered: ["museums", "views", "markets"],
+    });
+  });
+
+  it("is asked the plain question where nothing is remembered, or the memory is not a value the question knows", () => {
+    const remembered = [said("atmosphere", "candlelit")];
+    const profile = {
+      taste: {
+        pace: told(["relaxed"]),
+        day_shape: told(["early"]),
+        interests: told(["views"]),
+      },
+      skippedFacts: [],
+    };
+    expect(
+      nextQuestion(state({ facts, commitments: done, remembered })),
+    ).toEqual(QUESTIONS.pace);
+    expect(
+      nextQuestion(state({ facts, commitments: done, profile, remembered })),
+    ).toEqual(QUESTIONS.atmosphere);
+  });
+
+  it("has the food question answered by remembered dietary rules, which also make meals ready", () => {
+    const remembered = [said("dietary_rules", "vegetarian")];
+    const before = {
+      taste: {
+        pace: told(["relaxed"]),
+        day_shape: told(["early"]),
+        interests: told(["views"]),
+        atmosphere: told(["quiet"]),
+      },
+      skippedFacts: [],
+    };
+    expect(
+      nextQuestion(
+        state({ facts, commitments: done, profile: before, remembered }),
+      ),
+    ).toMatchObject({
+      topic: "food",
+      prompt: "Food: you told me vegetarian. Same for this trip?",
+      remembered: ["vegetarian"],
+    });
+    expect(readiness(state({ facts, remembered })).meals).toBe(true);
+    expect(readiness(state({ facts })).meals).toBe(false);
+  });
+
+  it("is not asked again about a topic answered the same way for this trip", () => {
+    const profile = { taste: { pace: told(["relaxed"]) }, skippedFacts: [] };
+    expect(
+      nextQuestion(
+        state({
+          facts,
+          commitments: done,
+          profile,
+          remembered: [fromTokyo("pace", "relaxed")],
+        }),
+      )?.topic,
+    ).toBe("day_shape");
+  });
+
+  it("is asked once why this trip is different when an answer goes against the memory", () => {
+    const profile = { taste: { pace: told(["packed"]) }, skippedFacts: [] };
+    const remembered = [fromTokyo("pace", "relaxed")];
+    const question = nextQuestion(
+      state({ facts, commitments: done, profile, remembered }),
+    );
+    expect(question).toMatchObject({
+      topic: "difference",
+      stage: "memory",
+      prompt:
+        "Pace: you chose packed for this trip, and I remember relaxed. Is this trip different from your usual?",
+    });
+    expect(question?.choices.map((choice) => choice.value)).toEqual([
+      "Honeymoon",
+      "Family visit",
+      "Celebration",
+      "Work",
+      "ordinary",
+    ]);
+    // Once answered, either way, the script moves on and does not ask again.
+    for (const differs of [true, false]) {
+      expect(
+        nextQuestion(
+          state({ facts, commitments: done, profile, remembered, differs }),
+        )?.topic,
+      ).toBe("day_shape");
+    }
+  });
+
+  it("does not take a skipped question, or an answer that shares a value, as going against the memory", () => {
+    const remembered = [
+      fromTokyo("pace", "relaxed"),
+      said("interests", "museums"),
+    ];
+    const skipped = {
+      taste: { pace: { values: ["balanced"], source: "default" as const } },
+      skippedFacts: [],
+    };
+    expect(
+      nextQuestion(
+        state({ facts, commitments: done, profile: skipped, remembered }),
+      )?.topic,
+    ).toBe("day_shape");
+    const overlap = {
+      taste: {
+        pace: told(["relaxed"]),
+        day_shape: told(["early"]),
+        interests: told(["museums", "markets"]),
+      },
+      skippedFacts: [],
+    };
+    expect(
+      nextQuestion(
+        state({ facts, commitments: done, profile: overlap, remembered }),
+      )?.topic,
+    ).toBe("atmosphere");
+  });
+
+  it("asks about the difference before going on with the facts-free questions, but after the facts", () => {
+    const profile = { taste: { pace: told(["packed"]) }, skippedFacts: [] };
+    const remembered = [fromTokyo("pace", "relaxed")];
+    expect(
+      nextQuestion(
+        state({
+          facts: { ...facts, purpose: null },
+          commitments: done,
+          profile,
+          remembered,
+        }),
+      )?.topic,
+    ).toBe("purpose");
+  });
+});
+
 describe("readiness", () => {
   it("says what is still needed before anything can be proposed", () => {
     expect(readiness(state())).toEqual({
@@ -329,6 +525,27 @@ describe("reading a typed answer by rule", () => {
       values: ["transit"],
     });
     expect(read("pace", "like a snail")).toEqual({ type: "none" });
+  });
+
+  it("reads yes to a remembered answer as the same again", () => {
+    const question = {
+      ...QUESTIONS.interests,
+      remembered: ["museums", "views"],
+    };
+    for (const text of ["Yes", "same again", "Sure."]) {
+      expect(readAnswerByRule(question, text), text).toEqual({
+        type: "taste",
+        topic: "interests",
+        values: ["museums", "views"],
+      });
+    }
+    // Another choice still answers differently, and a bare yes means nothing without a memory.
+    expect(readAnswerByRule(question, "markets")).toEqual({
+      type: "taste",
+      topic: "interests",
+      values: ["markets"],
+    });
+    expect(read("interests", "yes")).toEqual({ type: "none" });
   });
 
   it("reads a skip in plain words, and nothing from an empty message", () => {

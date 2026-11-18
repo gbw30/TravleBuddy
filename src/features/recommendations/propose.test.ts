@@ -24,6 +24,8 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   address: null,
   openingHours: "Mo-Su 09:00-18:00",
   notable: false,
+  serves: [],
+  servesNot: [],
   ...over,
 });
 // Distances from Senso-ji: near about 0.4 km, mid about 1.4 km, far about 9 km.
@@ -226,6 +228,43 @@ describe("the traveller's taste in the ranking", () => {
     );
   });
 
+  it("names the trip a memory comes from, and not when it was said for this trip", () => {
+    const remembered = { ...museums, from: "Tokyo in May" };
+    const candidates = [
+      place("z-museum", { kind: "museum" }),
+      place("famous", { ...mid, kind: "park", notable: true }),
+      place("close", { ...near, kind: "market" }),
+    ];
+    const set = proposeCards(
+      input({
+        from: sensoji,
+        candidates,
+        taste: taste({
+          interests: [remembered],
+          atmosphere: "lively",
+          onFoot: true,
+          rememberedFrom: { atmosphere: "Lisbon", onFoot: "Lisbon" },
+        }),
+      }),
+    );
+    expect(reasonOf(set, "z-museum")).toContain(
+      "I remember from your trip “Tokyo in May” that you like museums and exhibitions.",
+    );
+    expect(reasonOf(set, "famous")).toContain(
+      "I remember from your trip “Lisbon” that you like lively places, and this is one of Tokyo's well-known ones.",
+    );
+    expect(reasonOf(set, "close")).toContain(
+      "I remember from your trip “Lisbon” that you like to get around on foot, and this is a walk away.",
+    );
+    // Said for this trip: no trip is named.
+    const now = proposeCards(
+      input({ candidates, taste: taste({ interests: [museums] }) }),
+    );
+    expect(reasonOf(now, "z-museum")).toContain(
+      "You said you like museums and exhibitions.",
+    );
+  });
+
   it("knows the kinds of place every interest in the script means", async () => {
     const { QUESTIONS } = await import("@/features/conversation");
     for (const choice of QUESTIONS.interests.choices) {
@@ -315,6 +354,104 @@ describe("the traveller's taste in the ranking", () => {
     expect(
       proposeCards(input({ slot: lunch, candidates })).cards[0].reason,
     ).toContain("You have not told me about food yet.");
+  });
+
+  describe("hard limits on a place to eat", () => {
+    const lunch = {
+      id: "d2-lunch",
+      kind: "lunch" as const,
+      date: "2027-05-11",
+      start: "12:30",
+    };
+    const eat = (id: string, over: Partial<PlaceDto> = {}) =>
+      place(id, { kind: "restaurant", ...over });
+    const candidates = [
+      eat("a-says-nothing"),
+      eat("b-grill", { servesNot: ["vegetarian"] }),
+      eat("c-green", { serves: ["vegetarian", "vegan"] }),
+      eat("d-partly", { serves: ["vegetarian"], servesNot: ["vegan"] }),
+    ];
+    const propose = (over: Partial<CardTaste>, slot = lunch) =>
+      proposeCards(input({ slot, candidates, taste: taste(over) }));
+
+    it("never proposes a place whose listing says it does not serve a rule", () => {
+      expect(ids(propose({ food: ["vegetarian"] }))).toEqual([
+        "c-green",
+        "d-partly",
+        "a-says-nothing",
+      ]);
+      // With two rules, breaking either one is enough.
+      expect(ids(propose({ food: ["vegetarian", "vegan"] }))).toEqual([
+        "c-green",
+        "a-says-nothing",
+      ]);
+      // No rule: every place is offered.
+      expect(ids(propose({ food: [] }))).toHaveLength(3);
+      expect(ids(propose({ food: [] }))).toContain("b-grill");
+    });
+
+    it("puts a place whose listing confirms the rules first, and says the listing says so", () => {
+      const set = propose({ food: ["vegetarian"] });
+      const confirmed = set.cards[0];
+      expect(confirmed.reason).toContain(
+        "You eat vegetarian food, and its listing says it serves it.",
+      );
+      expect(confirmed.unconfirmed).toBeUndefined();
+      expect(confirmed.essentials).toBe("Restaurant");
+    });
+
+    it("marks a place whose listing cannot confirm a rule, on the front of the card", () => {
+      const card = propose({ food: ["vegetarian"] }).cards[2];
+      expect(card.placeId).toBe("a-says-nothing");
+      expect(card.unconfirmed).toEqual(["vegetarian"]);
+      expect(card.essentials).toBe("Restaurant · not confirmed: vegetarian");
+      expect(card.reason).toContain(
+        "the place data does not say whether this place serves it, so check with the venue",
+      );
+      // One rule confirmed, another not: only the unconfirmed one is marked.
+      const both = propose({ food: ["vegetarian", "gluten-free"] });
+      expect(
+        both.cards.find((item) => item.placeId === "c-green")?.unconfirmed,
+      ).toEqual(["gluten-free"]);
+    });
+
+    it("never calls a place safe for an allergy, whatever its listing says", () => {
+      const set = propose({ food: ["vegetarian"], allergies: ["shellfish"] });
+      for (const card of set.cards) {
+        expect(card.unconfirmed).toContain("shellfish allergy");
+        expect(card.reason).toContain("check with the venue");
+        // "Safe" appears only where the card says it cannot tell.
+        expect(
+          card.reason.replace(/cannot tell whether (it|a place) is safe/g, ""),
+        ).not.toContain("safe");
+      }
+      expect(set.cards[0].reason).toContain(
+        "Its listing says it serves vegetarian food, but place data cannot tell whether it is safe for your shellfish allergy, so check with the venue.",
+      );
+      expect(set.cards[2].reason).toContain(
+        "You eat vegetarian food and have a shellfish allergy, and the place data confirms neither, so check with the venue.",
+      );
+      const only = propose({ food: [], allergies: ["shellfish", "peanut"] });
+      expect(only.cards[0].reason).toContain(
+        "You have a shellfish and peanut allergy, and place data cannot tell whether a place is safe for it, so check with the venue.",
+      );
+      expect(only.cards[0].essentials).toBe(
+        "Restaurant · not confirmed: shellfish allergy, peanut allergy",
+      );
+    });
+
+    it("leaves sights alone: the limits are about places to eat", () => {
+      const sights = [place("museum", { servesNot: ["vegetarian"] })];
+      const set = proposeCards(
+        input({
+          candidates: sights,
+          taste: taste({ food: ["vegetarian"], allergies: ["shellfish"] }),
+        }),
+      );
+      expect(ids(set)).toEqual(["museum"]);
+      expect(set.cards[0].unconfirmed).toBeUndefined();
+      expect(set.cards[0].reason).not.toContain("allergy");
+    });
   });
 
   it("names something about the traveller and the slot in every reason, in three sentences at most", () => {

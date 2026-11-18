@@ -37,12 +37,21 @@ export type Change =
   | { type: "skip_fact"; topic: FactTopic }
   | { type: "commitment"; commitment: CommitmentInput }
   | { type: "go_to"; slotId: string }
+  /** The answer to "is this trip different?". `because` is null for an ordinary trip. */
+  | { type: "difference"; because: string | null }
+  /** Yes to an offer: these go into the personal profile (TB-MEM-07). */
+  | { type: "remember"; texts: string[]; hard: boolean }
   | null;
 
 export type Decision = {
   change: Change;
   /** What the agent says back. */
   says: string;
+  /**
+   * Something worth remembering for every trip. The agent asks, and it is
+   * saved only when the traveller says yes (TB-MEM-07).
+   */
+  offer?: { texts: string[]; hard: boolean };
 };
 
 export type DecideInput = {
@@ -58,6 +67,8 @@ export type DecideInput = {
   days: PlanDay[];
   /** The AI model is not reading this turn. */
   limited: boolean;
+  /** The dietary rules the personal profile already holds. */
+  knownRules?: string[];
 };
 
 const list = (items: string[]) =>
@@ -151,6 +162,18 @@ function skip(waiting: Question | null): Decision {
     };
   }
   const topic = waiting.topic as TasteTopic;
+  // A skipped question the profile can answer goes by what is remembered
+  // (TB-AGT-02). It is kept as a default: skipping is not saying it again.
+  if (waiting.remembered?.length) {
+    return {
+      change: {
+        type: "taste",
+        topic,
+        answer: { values: waiting.remembered, source: "default" },
+      },
+      says: `I will go with what I remember: ${list(labelsOf(QUESTIONS[topic], waiting.remembered)).toLowerCase()}.`,
+    };
+  }
   return {
     change: {
       type: "taste",
@@ -332,7 +355,16 @@ export function decide(input: DecideInput): Decision {
   switch (intent.type) {
     case "skip":
       return skip(waiting);
-    case "taste":
+    case "taste": {
+      // A dietary rule given for one trip is offered for every trip, unless
+      // the personal profile already holds it.
+      const rules =
+        intent.topic === "food"
+          ? intent.values.filter(
+              (value) =>
+                value !== "none" && !(input.knownRules ?? []).includes(value),
+            )
+          : [];
       return {
         change: {
           type: "taste",
@@ -342,6 +374,18 @@ export function decide(input: DecideInput): Decision {
         says:
           `Noted: ${list(labelsOf(QUESTIONS[intent.topic], intent.values)).toLowerCase()}.` +
           (intent.topic === "stay" ? stayNote(trip) : ""),
+        ...(rules.length > 0
+          ? {
+              offer: { texts: labelsOf(QUESTIONS.food, rules), hard: true },
+            }
+          : {}),
+      };
+    }
+    case "statement":
+      return {
+        change: null,
+        says: `You said: “${intent.text}”.`,
+        offer: { texts: [intent.text], hard: intent.rule ?? false },
       };
     case "facts":
       return facts(intent, input);
@@ -360,6 +404,52 @@ export function decide(input: DecideInput): Decision {
       );
     }
   }
+}
+
+/** The question that goes with an offer, said last in the agent's reply. */
+export const OFFER_ASKS = "Should I remember that for every trip?";
+
+const NOT_DIFFERENT =
+  /^(no|nope|not really|it is not|it isn'?t|same as usual|as usual|just this once|ordinary)\b/i;
+
+/**
+ * What an answer to "is this trip different?" leads to (TB-AGT-12). A tapped
+ * choice is a purpose or "no"; typed words are the traveller's own reason. A
+ * skip, or a plain no, leaves it an ordinary trip. Null when a tapped value
+ * is not one of the choices.
+ */
+export function decideDifference(
+  question: Question,
+  answer:
+    | { type: "answer"; values: string[] }
+    | { type: "skip" }
+    | { type: "say"; text: string },
+): (Decision & { said: string }) | null {
+  let because: string | null;
+  let said: string;
+  if (answer.type === "skip") {
+    because = null;
+    said = "Skip";
+  } else if (answer.type === "say") {
+    const text = answer.text.trim();
+    because = NOT_DIFFERENT.test(text) ? null : text.slice(0, 120);
+    said = text;
+  } else {
+    const choice = question.choices.find(
+      (item) => item.value === answer.values[0],
+    );
+    if (!choice) return null;
+    because = choice.value === "ordinary" ? null : choice.value;
+    said = choice.label;
+  }
+  return {
+    said,
+    change: { type: "difference", because },
+    says:
+      because === null
+        ? "Understood. I will treat it as an ordinary trip."
+        : "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
+  };
 }
 
 /** The script's state once a change is made, to see whether a topic became ready. */
@@ -394,6 +484,8 @@ export function stateAfter(state: ScriptState, change: Change): ScriptState {
           count: state.commitments.count + 1,
         },
       };
+    case "difference":
+      return { ...state, differs: change.because !== null };
     default:
       return state;
   }

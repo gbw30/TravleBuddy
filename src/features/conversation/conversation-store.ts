@@ -64,6 +64,20 @@ export async function readConversation(
   });
 }
 
+/** The last message of the thread, or null when there is none or it no longer fits. */
+export async function readLastMessage(
+  client: Client,
+  tripId: string,
+): Promise<MessageBody | null> {
+  const row = await client.conversationMessage.findFirst({
+    where: { tripId },
+    orderBy: { id: "desc" },
+    select: { body: true },
+  });
+  const body = messageBodySchema.safeParse(row?.body);
+  return body.success ? body.data : null;
+}
+
 /** The topic of the question most recently saved in the thread, if any. */
 export async function lastQuestionTopic(
   client: Client,

@@ -4,6 +4,7 @@
 export {
   appendMessages,
   lastQuestionTopic,
+  readLastMessage,
   readConversation,
   readSkippedFacts,
   skipFact,
@@ -36,6 +37,8 @@ export {
 } from "./script";
 export {
   decide,
+  decideDifference,
+  OFFER_ASKS,
   intentOfTap,
   labelsOf,
   readinessNote,
