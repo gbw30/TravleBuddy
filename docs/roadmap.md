@@ -120,6 +120,8 @@ Add the five-step brief, the day-at-a-time build, the result report, and switchi
 
 Exit evidence: TB-QPL and TB-STA-04 pass; a build interrupted by closing the page resumes on return.
 
+**Started 2026-11-18** on branch `milestone/7-quick-plan`. [Plan](superpowers/plans/2026-11-18-quick-plan.md).
+
 ## Milestone 8: Quality and release
 
 Judge both ways of planning against the four sample travellers of PRD 18. Complete accessibility, phone layouts, time zones, performance and cost-cap checks. Record a portfolio demonstration.
