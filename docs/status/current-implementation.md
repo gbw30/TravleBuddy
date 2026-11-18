@@ -63,9 +63,7 @@ Executable code, Prisma schema, migrations, and tests override this summary if t
 - Google Places implementation exists but live provider credentials and configuration are not required for the deterministic QA milestone.
 - Final adaptive browser evidence and the portfolio recording were not completed. The [roadmap](../roadmap.md) of 2026-11-12 no longer gates on them.
 - Milestones 2 and 3 of the [roadmap](../roadmap.md) are on `main` since 2026-11-18, with migration `20261118090000_trip_facts_and_commitments` on all three databases.
-- Milestone 4 is built on branch `milestone/4-places-cards-itinerary` and is not on `main`. Its migration `20261118120000_places_plans_and_cards` is on the development database only.
-- Milestone 5 is built on branch `milestone/5-guided-planning`, cut from Milestone 4's branch, and is not on `main`. Its migration `20261119090000_conversation_and_trip_profile` is on the development database only. No Anthropic API key is configured anywhere.
-- Milestone 6 is built on branch `milestone/6-memory`, cut from Milestone 5's branch, and is not on `main`. Its three migrations (`20261119100000_personal_profile`, `20261119110000_trip_difference`, `20261119120000_place_dietary_tags`) are on the development database only.
+- Milestones 4, 5 and 6 are on `main` since 2026-11-18 (pull requests 21, 31 and 44; merge commits `3eff116`, `4e949a5`, `0a21c84`), merged at the developer's request. Their five migrations are on all three databases: QA through the protected workflow (run 44415545444, from `qa` at `a235c75`), production with `DB_TARGET=prod` before the merges. The production deployment succeeded and the live site answered signed out, including routes that exist only in the new code. Nobody has signed in on production since, and the QA gate has not been run.
 - Local development uses one `.env` with the development database as the default ([Neon setup](../neon-env-setup.md)).
 - The target product was redefined on 2026-11-12 ([PRD](../prd.md)). The capability matrix above still describes what is built; its "Planned" rows refer to the earlier target.
 
