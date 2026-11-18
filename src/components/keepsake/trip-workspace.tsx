@@ -67,6 +67,13 @@ export function TripWorkspace({
   readOnly: boolean;
 }) {
   const [plan, setPlan] = useState(initial);
+  // The slot the traveller is on. A read of the plan asks for this slot, so
+  // a read started by a change elsewhere on the page keeps their place.
+  const wanted = useRef(initial.proposal?.slotId ?? null);
+  const show = (next: PlanSnapshot) => {
+    wanted.current = next.proposal?.slotId ?? null;
+    setPlan(next);
+  };
   const [transit, setTransit] = useState<{
     placeId: string;
     slotId: string;
@@ -81,6 +88,7 @@ export function TripWorkspace({
   const [found, setFound] = useState<CardDto[] | null>(null);
   const [searchNote, setSearchNote] = useState("");
   const asked = useRef(false);
+  const reading = useRef(0);
 
   const { view, proposal } = plan;
   const focus = proposal?.slotId ?? null;
@@ -94,11 +102,15 @@ export function TripWorkspace({
       : null;
 
   async function refresh(slot?: string | null) {
+    const mine = ++reading.current;
+    wanted.current = slot ?? null;
     const result = await callApi<{ plan: PlanSnapshot }>(
       `/api/v1/trips/${tripId}/plan${slot ? `?slot=${slot}` : ""}`,
       { method: "GET" },
     );
-    if (result.ok) setPlan(result.data.plan);
+    // Only the newest read is shown: an older one may answer later.
+    if (mine !== reading.current) return;
+    if (result.ok) show(result.data.plan);
     else setProblem(result.message);
   }
 
@@ -110,6 +122,18 @@ export function TripWorkspace({
     void refresh(proposal.slotId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the status turns pending
   }, [proposal?.status]);
+
+  // The page reads the trip again after a change made elsewhere on it: an
+  // answer in the conversation, a saved fact, something newly decided. The
+  // plan is then read again for the slot in focus, so the traveller keeps
+  // their place instead of being sent back to the first open slot.
+  const shown = useRef(initial);
+  useEffect(() => {
+    if (shown.current === initial) return;
+    shown.current = initial;
+    void refresh(wanted.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the page brings new data
+  }, [initial]);
 
   async function send(
     action: PlanAction,
@@ -134,7 +158,7 @@ export function TripWorkspace({
 
   async function act(action: PlanAction, nextFocus?: string | null) {
     const next = await send(action, nextFocus);
-    if (next) setPlan(next);
+    if (next) show(next);
   }
 
   /** Picks a card; where the browser can, the card is seen to move to its slot. */
@@ -144,12 +168,12 @@ export function TripWorkspace({
     setFound(null);
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!("startViewTransition" in document) || still) {
-      setPlan(next);
+      show(next);
       return;
     }
     flushSync(() => setTransit({ placeId, slotId }));
     document
-      .startViewTransition(() => flushSync(() => setPlan(next)))
+      .startViewTransition(() => flushSync(() => show(next)))
       .finished.catch(() => undefined)
       .finally(() => setTransit(null));
   }
@@ -260,7 +284,7 @@ export function TripWorkspace({
                 </AgentMessage>
               )}
               <div>
-                <AgentMessage>How packed should the days be?</AgentMessage>
+                <p className={eyebrow}>Pace of the days</p>
                 <p className="mt-2.5 flex flex-wrap gap-2">
                   {PACES.map((pace) => (
                     <button
@@ -346,6 +370,24 @@ export function TripWorkspace({
                 <AgentMessage>
                   I only found {cards.length} that fit.
                 </AgentMessage>
+              )}
+              {plan.shelfOffer && !readOnly && (
+                <div data-qa="shelf-offer">
+                  <AgentMessage>
+                    {plan.shelfOffer.name} is on your shelf and fits this slot.
+                  </AgentMessage>
+                  <button
+                    type="button"
+                    className={`mt-2.5 ${buttonSecond}`}
+                    disabled={busy}
+                    onClick={() =>
+                      plan.shelfOffer &&
+                      void pick(plan.shelfOffer.placeId, plan.shelfOffer.slotId)
+                    }
+                  >
+                    Put it here
+                  </button>
+                </div>
               )}
               {heard && <AgentMessage>{heard}</AgentMessage>}
               <p role="alert" className="font-sans text-[14px] text-stamp">

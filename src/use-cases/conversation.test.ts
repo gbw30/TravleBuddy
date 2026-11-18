@@ -221,7 +221,7 @@ describe("a tapped answer", () => {
 
     expect(outcome).toEqual({
       status: "ok",
-      data: { focus: null },
+      data: { focus: null, changed: true },
       revision: 5,
     });
     expect(mocks.runTripAction).toHaveBeenCalledWith(
@@ -318,7 +318,7 @@ describe("a tapped answer", () => {
     });
     mocks.runTripAction.mockResolvedValue({
       status: "ok",
-      data: { focus: null },
+      data: { focus: null, changed: true },
       revision: 5,
     });
     const repeat = await takeTurn({
@@ -329,7 +329,7 @@ describe("a tapped answer", () => {
     });
     expect(repeat).toEqual({
       status: "ok",
-      data: { focus: null },
+      data: { focus: null, changed: true },
       revision: 5,
     });
     expect(mocks.runTripAction).toHaveBeenCalledTimes(1);
@@ -419,6 +419,8 @@ describe("a typed message with the model off", () => {
     await say("I booked teamLab for Thursday at 3");
     expect(mocks.addCommitment).not.toHaveBeenCalled();
     expect(mocks.saveTripAnswer).not.toHaveBeenCalled();
+    const outcome = await say("still not readable");
+    expect(outcome).toMatchObject({ data: { focus: null, changed: false } });
     expect(saved().at(-1)?.[2]).toMatch(
       /^I am in a limited mode and can only read simple answers\./,
     );
@@ -543,7 +545,7 @@ describe("a typed message with the model on", () => {
     ]);
     expect(await say("let's do day 2 first")).toEqual({
       status: "ok",
-      data: { focus: "d2-morning" },
+      data: { focus: "d2-morning", changed: false },
       revision: 5,
     });
     expect(saved().at(-1)).toEqual(["agent", "text", "Day 2 it is."]);

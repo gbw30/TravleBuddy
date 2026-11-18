@@ -23,7 +23,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | 4a. Taking a turn                                            | `feature/m5-turns`               | TB-AGT-08, TB-AGT-11 (typed), TB-AGT-13, TB-AGT-14, TB-AGT-15, TB-FIX-05, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI) | #26          |
 | 4b. Proposals in conversation                                | `feature/m5-proposals`           | TB-AGT-07, TB-AGT-09, TB-AGT-10, TB-ITN-14 (the offer)                                                         | #27          |
 | 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                                                                                     | #28          |
-| 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15                                                                     |              |
+| 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15                                                                     | #29          |
 | 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                                                                                   |              |
 
 ## Global Constraints
@@ -136,7 +136,21 @@ The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go wi
 
 ### Piece 6: The conversation on screen
 
-**Produces:** the thread in the workspace: the agent's messages, the traveller's answers, the question waiting with its tap choices and a box to type in, skip, and the limited-mode notice.
+**Produced (pull request 29):**
+
+- `components/keepsake/trip-conversation.tsx`, on the trip page above the workspace for a guided trip: the waiting question with its choices to tap, a box to type in, and a skip (TB-AGT-01, TB-AGT-02); the agent's reply to the last thing said; the whole thread in order behind "The conversation so far" (TB-AGT-13); and a notice when the agent is in its limited mode (TB-AGT-15). An archived trip shows its thread with nothing to answer.
+- A question that takes several answers is ticked first and sent with "That is my answer". After an answer the next question takes the keyboard focus.
+- The workspace shows the agent's offer of a shelved place with a "Put it here" button (TB-ITN-14).
+- A day named in conversation ("let's do day 4") opens the workspace on that slot, through `?slot=` in the page address (TB-AGT-11).
+- The workspace now stays in place when the trip changes elsewhere on the page and reads the plan again for the slot the traveller is on. Before, it was rebuilt on every change and went back to the first open slot. Only the newest read is shown.
+- A turn answers `changed`, so a message that could not be read does not reload the page.
+- The pace control in the workspace is labelled "Pace of the days", because the conversation now asks that question.
+
+**Found in the browser walk and fixed:** the agent's reply was replaced on screen by a later proposal line; a slow page reload could put an older thread back after a quick second message; a re-read started just after a click could ask for the old slot and win.
+
+**Checked in a real browser** (development server, model off, sample places), twice in a row: the whole script by tapping, typing and skipping; the cards following the interests told; a meal card naming the vegetarian rule; the shelf offer placed; the same thread after a reload. No serious accessibility findings at 1440 and 390 pixels wide, and no sideways scroll on the phone.
+
+**Known limits:** a proposal made by the workspace appears in the thread at the next reload or answer, not at once. Changing the pace with the workspace control does not change the pace answer in the trip profile. Not checked: Firefox, WebKit, a real phone.
 
 ### Piece 7: Evidence
 

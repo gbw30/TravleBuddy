@@ -5,28 +5,43 @@ import { PlanStateButton } from "@/components/keepsake/plan-state-button";
 import { eyebrow, pageTitle, sectionTitle } from "@/components/keepsake/styles";
 import { TripCardActions } from "@/components/keepsake/trip-card-actions";
 import { TripCommitments } from "@/components/keepsake/trip-commitments";
+import { TripConversation } from "@/components/keepsake/trip-conversation";
 import { TripFactsForm } from "@/components/keepsake/trip-facts-form";
 import { TripWorkspace } from "@/components/keepsake/trip-workspace";
 import { getTrip } from "@/features/trips";
 import { requireUser } from "@/lib/authorization";
+import { loadConversation } from "@/use-cases/conversation";
 import { loadPlan } from "@/use-cases/plan";
 
 const stateLabel = { planning: "Planning", upcoming: "Upcoming", past: "Past" };
 
+const slotPattern = /^d\d{1,3}-[a-z0-9-]{4,12}$/;
+
 export default async function TripPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tripId: string }>;
+  searchParams: Promise<{ slot?: string | string[] }>;
 }) {
   const userId = await requireUser();
   const { tripId } = await params;
+  // The slot to show cards for: set when the traveller names a day in conversation.
+  const { slot } = await searchParams;
+  const focus =
+    typeof slot === "string" && slotPattern.test(slot) ? slot : undefined;
   const trip = await getTrip(userId, tripId);
   if (!trip) notFound();
 
   const { facts, commitments, clashes, ...summary } = trip;
   // The page does not wait for the place provider; the workspace asks for
   // places once it is on screen.
-  const plan = await loadPlan(userId, tripId, undefined, false);
+  const plan = await loadPlan(userId, tripId, focus, false);
+  // Read after the plan, so a proposal the plan has just made is in the thread.
+  const conversation =
+    trip.planningMode === "GUIDED"
+      ? await loadConversation(userId, tripId)
+      : null;
 
   return (
     <main className="py-10 md:py-14">
@@ -55,11 +70,24 @@ export default async function TripPage({
         <TripCardActions trip={summary} afterDelete="/home" />
       </div>
 
+      {conversation && (
+        <div className="mt-12 border-t border-ink/12 pt-10">
+          <TripConversation
+            key={trip.id}
+            tripId={trip.id}
+            revision={trip.revision}
+            initial={conversation}
+            readOnly={trip.archived}
+          />
+        </div>
+      )}
+
       {plan && (
         <div className="mt-12 border-t border-ink/12 pt-10">
-          {/* A saved change to the facts or commitments lays the plan out afresh. */}
+          {/* The workspace stays in place when the trip changes and reads the
+              plan again itself. A day named in conversation starts it on that slot. */}
           <TripWorkspace
-            key={`${trip.id}-${trip.revision}`}
+            key={`${trip.id}-${focus ?? ""}`}
             tripId={trip.id}
             revision={trip.revision}
             initial={plan}

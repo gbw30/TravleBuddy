@@ -157,6 +157,8 @@ export type Turn = z.infer<typeof turnSchema>;
 export type TurnResult = {
   /** The slot the traveller asked to work on, when they named a day. */
   focus: string | null;
+  /** Whether the turn changed the trip, its taste or its plan. A message that could not be read changes nothing. */
+  changed: boolean;
 };
 
 /** Everything the conversation screen needs. */
