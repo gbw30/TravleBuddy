@@ -25,7 +25,7 @@ The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on
 | 6. The workspace screen                    | `feature/m4-workspace`              | TB-CRD-02 to 04, TB-ITN-01 to 03, TB-ITN-09                                                         | #18          |
 | 7a. Retire the earlier planner's screens   | `feature/m4-retire-earlier-screens` | none (removal); border exceptions fall from 188 to 164                                              | #19          |
 | 7b. Retire its routes, services and tables | waits for the developer             | none (removal)                                                                                      |              |
-| 8. Evidence                                | `feature/m4-evidence`               | all of the above, re-checked                                                                        |              |
+| 8. Evidence                                | `feature/m4-evidence`               | all of the above, re-checked                                                                        | #20          |
 
 ## Global Constraints
 
@@ -125,7 +125,8 @@ Why it waits: removing it changes what the QA gate checks, and dropping the tabl
 
 ### Piece 8: Evidence
 
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass.
-- [ ] Browser walk on wide and phone widths; no serious accessibility findings; every action by keyboard.
-- [ ] Each requirement in the table above checked and recorded in the roadmap's Milestone 4 entry.
-- [ ] `docs/status/current-implementation.md` and `docs/api/v1.md` updated.
+- [x] `npm run lint`, `npm run typecheck`, `npm run test` (707 pass) and `npm run build` pass.
+- [x] Browser walk on wide and phone widths against the development database with sample places; no serious accessibility findings; every action reached by keyboard.
+- [x] Each requirement checked and recorded in the roadmap's Milestone 4 entry, with what is only partly met.
+- [x] `docs/status/current-implementation.md` and `docs/api/v1.md` updated.
+- [ ] Not done, needs the developer or a live service: the QA gate, the QA and production databases, the real OpenStreetMap services, Firefox and WebKit, piece 7b.
