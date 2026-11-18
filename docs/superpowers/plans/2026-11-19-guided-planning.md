@@ -24,7 +24,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | 4b. Proposals in conversation                                | `feature/m5-proposals`           | TB-AGT-07, TB-AGT-09, TB-AGT-10, TB-ITN-14 (the offer)                                                         | #27          |
 | 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                                                                                     | #28          |
 | 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15                                                                     | #29          |
-| 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                                                                                   |              |
+| 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                                                                                   | #30          |
 
 ## Global Constraints
 
@@ -154,7 +154,17 @@ The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go wi
 
 ### Piece 7: Evidence
 
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass.
-- [ ] Browser walk with the model off, wide and phone widths; no serious accessibility findings.
-- [ ] Each requirement checked and recorded in the roadmap's Milestone 5 entry, with what is only partly met.
-- [ ] `docs/status/current-implementation.md` and `docs/api/v1.md` updated.
+**Produced (pull request 30):**
+
+- [x] `npm run lint`, `npm run typecheck`, `npm run test` (833 tests) and `npm run build` pass.
+- [x] Browser walk with the model off, wide and phone widths; no serious accessibility findings (recorded under piece 6).
+- [x] Each requirement checked and recorded in the [roadmap](../../roadmap.md)'s Milestone 5 entry, with what is only partly met.
+- [x] `docs/status/current-implementation.md` and `docs/api/v1.md` updated.
+
+## Waiting for the developer
+
+- Review and merge the milestone into `main`, after Milestone 4.
+- Apply the migration to the QA and production databases through the protected workflows.
+- An Anthropic API key, a spending limit on that account, and one look at a real reply. Until then the product runs in its limited mode everywhere.
+- Whether the model should also word the agent's messages and the reasons, as PRD 17 says, or stay with templates.
+- Whether to save OpenStreetMap's dietary tags so a food rule can be enforced (proposed for Milestone 8).
