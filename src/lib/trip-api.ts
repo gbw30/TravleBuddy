@@ -15,6 +15,7 @@ const messages: Record<string, string> = {
   too_many: "This trip already holds as many commitments as it can.",
   invalid_request:
     "Something in the form is not valid. Check it and try again.",
+  invalid_value: "That is not something this topic can hold.",
   lookup_unavailable:
     "City search is not available right now. Try again in a moment.",
   lookup_capped:
