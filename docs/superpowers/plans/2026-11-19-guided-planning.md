@@ -17,7 +17,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | Piece                                                        | Branch                           | Requirements                                      | Pull request |
 | ------------------------------------------------------------ | -------------------------------- | ------------------------------------------------- | ------------ |
 | 0. Plan                                                      | `feature/m5-plan`                | none (process)                                    | #22          |
-| 1. The script: questions, readiness, reading answers by rule | `feature/m5-script`              | TB-AGT-01 to 05, TB-AGT-07, TB-AGT-08, TB-AGT-15  |              |
+| 1. The script: questions, readiness, reading answers by rule | `feature/m5-script`              | TB-AGT-01 to 05, TB-AGT-07, TB-AGT-08, TB-AGT-15  | #23          |
 | 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)   |              |
 | 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                         |              |
 | 4. Taking a turn                                             | `feature/m5-turns`               | TB-AGT-09 to 11, TB-FIX-05, TB-ITN-14 (the offer) |              |
@@ -63,7 +63,7 @@ Each piece gets its task list in its pull request. What is fixed here is what ea
 
 ### Piece 1: The script (pure)
 
-**Produces, in `src/features/conversation/`:** `contracts.ts` (question, answer and message shapes); `script.ts` (`QUESTIONS`, `nextQuestion(state)`, `readiness(state)`, `defaultFor(question)`); `read-answer.ts` (`readAnswerByRule(question, text)` for numbers, dates, choices and yes or no).
+**Produced (pull request 23), in `src/features/conversation/`:** `contracts.ts` (topics, questions, the trip profile, the `Intent` a typed message is read into with its schema, and saved messages); `script.ts` (`QUESTIONS` for the 7 fact topics and 8 taste topics, `nextQuestion(state)`, `readiness(state)`, `allowedValues(topic)`, `TASTE_DEFAULTS`); `read-answer.ts` (`readAnswerByRule(question, text)`: cities, dates in common forms, a length with a month, who is travelling, a budget with its currency, the question's choices, and a skip in plain words).
 
 ### Piece 2: The AI model boundary
 

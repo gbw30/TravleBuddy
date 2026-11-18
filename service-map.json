@@ -20,7 +20,11 @@
       ]
     },
     "conversation": {
-      "code": ["src/features/planning/**", "src/lib/ai/**"],
+      "code": [
+        "src/features/conversation/**",
+        "src/features/planning/**",
+        "src/lib/ai/**"
+      ],
       "tables": ["PlanningMutation", "PlanningEvent"]
     },
     "memory": {
