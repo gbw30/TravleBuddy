@@ -18,7 +18,7 @@ The branch is `milestone/4-places-cards-itinerary`. Each piece below is built on
 | --------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- | ------------ |
 | 0. Plan and branch workflow             | `feature/m4-plan`                   | none (process)                                                                                      | #12          |
 | 1. Place rules                          | `feature/m4-place-rules`            | TB-ITN-05, TB-ITN-06, TB-ITN-20, TB-TRU-05                                                          | #13          |
-| 2. Place source and saved places        | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 |              |
+| 2. Place source and saved places        | `feature/m4-place-source`           | TB-SYS-09, TB-SYS-11 (place data), TB-SYS-12, TB-TRU-01, TB-TRU-02, TB-TRU-06, TB-CRD-10, TB-CRD-11 | #14          |
 | 3. Slots and scheduling rules           | `feature/m4-scheduling`             | TB-ITN-04 to 08, TB-ITN-16 to 20, TB-FIX-03, TB-FIX-04                                              |              |
 | 4. Plan versions and actions            | `feature/m4-plan-actions`           | TB-ITN-09 to 15, TB-CRD-05, TB-CRD-06, TB-SYS-08, TB-SYS-14                                         |              |
 | 5. Cards: eligibility, ranking, reasons | `feature/m4-cards`                  | TB-CRD-01, TB-CRD-07 to 09, TB-CRD-12, TB-TRU-04                                                    |              |
@@ -74,7 +74,9 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 2: Place source and saved places
 
-**Produces:** tables `places` and `place_fetches` (Places); `PlaceSource` with OpenStreetMap, sample and Google implementations chosen by configuration; `preparePlaces(city)` one step at a time; `findPlaces(city, kinds)`; `searchPlaceByName(city, text)`; `addOwnPlace(input)`; the daily request count and cap.
+**Produced (pull request 14):** tables `places`, `place_fetches` and `provider_calls` (Places); `PlaceSource` with OpenStreetMap and sample implementations chosen by configuration; `gatherSights(city)` and `gatherFoodNear(city, point)`, one provider request each; `listSights`, `listFoodNear`, `getPlaces`; `findPlacesByName(city, text)`; `addOwnPlace(userId, city, input)`; the daily request count and cap.
+
+Not done: Google is not behind this adapter. Its terms forbid saving the names and addresses a plan needs (ADR-009), so TB-SYS-09 is met for two of its three providers. The same migration also creates `plans`, `plan_versions` and `card_events` for pieces 4 and 5.
 
 ### Piece 3: Slots and scheduling rules (pure)
 

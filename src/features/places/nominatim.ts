@@ -1,25 +1,13 @@
 import tzLookup from "@photostructure/tz-lookup";
 
 import { citySchema, type City } from "./contracts";
+import { kindFromOsmTags } from "./kinds";
+import { politeFetch } from "./osm-http";
+import type { FoundPlace, Point } from "./place-source";
 
 // OpenStreetMap's Nominatim, used as ADR-009 allows: on submit only, one
 // request a second, identified, and every result saved by the caller.
 const ENDPOINT = "https://nominatim.openstreetmap.org/search";
-const USER_AGENT =
-  process.env.PLACES_USER_AGENT ??
-  "TravleBuddy/1.0 (+https://travle-buddy.vercel.app)";
-const GAP_MS = 1100;
-
-// shortcut: the gap holds inside one server process only; several serverless
-// instances could exceed it together. Upgrade to a shared gate, or to a
-// self-hosted or paid lookup, before real public use (ADR-009).
-let nextSlot = 0;
-async function waitForTurn() {
-  const now = Date.now();
-  const wait = Math.max(0, nextSlot - now);
-  nextSlot = Math.max(now, nextSlot) + GAP_MS;
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-}
 
 function timeZoneAt(latitude: number, longitude: number): string | null {
   try {
@@ -64,23 +52,82 @@ export function citiesFromNominatim(reply: unknown): City[] {
   });
 }
 
-/** Throws when the service cannot be reached or refuses the request. */
-export async function searchNominatim(query: string): Promise<City[]> {
-  await waitForTurn();
+async function search(params: Record<string, string>): Promise<unknown> {
   const url = new URL(ENDPOINT);
   url.search = new URLSearchParams({
-    q: query,
     format: "jsonv2",
-    addressdetails: "1",
     limit: "5",
-    featureType: "city",
     "accept-language": "en",
+    ...params,
   }).toString();
+  const response = await politeFetch(url, { timeoutMs: 8000 });
+  return response.json();
+}
 
-  const response = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-    signal: AbortSignal.timeout(8000),
+/** Throws when the service cannot be reached or refuses the request. */
+export async function searchNominatim(query: string): Promise<City[]> {
+  return citiesFromNominatim(
+    await search({ q: query, addressdetails: "1", featureType: "city" }),
+  );
+}
+
+/**
+ * Nominatim's reply to a search by name as places. A result of a kind the
+ * product does not plan with is kept as a sight: the traveller asked for it.
+ */
+export function placesFromNominatim(reply: unknown): FoundPlace[] {
+  if (!Array.isArray(reply)) return [];
+  return reply.flatMap((item) => {
+    const extra = (item?.extratags ?? {}) as Record<string, string | undefined>;
+    const name = typeof item?.name === "string" ? item.name.trim() : "";
+    const latitude = Number(item?.lat);
+    const longitude = Number(item?.lon);
+    if (
+      !name ||
+      !item?.osm_type ||
+      !item?.osm_id ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return [];
+    }
+    return [
+      {
+        originRef: `${item.osm_type}/${item.osm_id}`,
+        name: name.slice(0, 160),
+        kind:
+          kindFromOsmTags({ ...extra, [String(item.category)]: item.type }) ??
+          "sight",
+        latitude,
+        longitude,
+        address:
+          typeof item.display_name === "string"
+            ? item.display_name.slice(0, 240)
+            : null,
+        openingHours: extra.opening_hours?.slice(0, 400) ?? null,
+        notable: Boolean(extra.wikidata || extra.wikipedia),
+      },
+    ];
   });
-  if (!response.ok) throw new Error(`Nominatim answered ${response.status}`);
-  return citiesFromNominatim(await response.json());
+}
+
+/** Places near a point whose name matches. Throws when the service cannot answer. */
+export async function searchPlacesByName(
+  text: string,
+  near: Point,
+): Promise<FoundPlace[]> {
+  const reach = 0.3;
+  return placesFromNominatim(
+    await search({
+      q: text,
+      extratags: "1",
+      bounded: "1",
+      viewbox: [
+        near.longitude - reach,
+        near.latitude + reach,
+        near.longitude + reach,
+        near.latitude - reach,
+      ].join(","),
+    }),
+  );
 }

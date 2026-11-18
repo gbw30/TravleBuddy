@@ -7,6 +7,7 @@ vi.mock("@/lib/db", () => ({ db: mocks.db }));
 
 import { findCities } from "./city-lookup";
 import { citiesFromNominatim } from "./nominatim";
+import { resetPoliteFetch } from "./osm-http";
 
 // Shapes recorded from the live service on 2026-11-18.
 const tokyo = {
@@ -66,6 +67,7 @@ describe("findCities", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    resetPoliteFetch();
     vi.stubGlobal("fetch", fetchMock);
     vi.stubEnv("PLACE_PROVIDER_MODE", "auto");
     mocks.db.cityLookup.findUnique.mockResolvedValue(null);
