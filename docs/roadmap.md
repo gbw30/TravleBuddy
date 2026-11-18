@@ -104,6 +104,8 @@ Add the personal profile with sources and sureness, hard limits, the question ab
 
 Exit evidence: TB-MEM, TB-AGT-06 and TB-AGT-12 pass, including isolation between travellers and the rule that stated preferences win.
 
+**Started 2026-11-18** on branch `milestone/6-memory`. [Plan](superpowers/plans/2026-11-18-memory.md).
+
 ## Milestone 7: Quick plan
 
 Add the five-step brief, the day-at-a-time build, the result report, and switching between the two ways of planning.
