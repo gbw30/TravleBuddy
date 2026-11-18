@@ -197,8 +197,8 @@ deployed web commit does not contain the hybrid-command implementation.
 
 1. Check out the exact `$ReleaseCommit` on the existing `qa` branch and confirm
    the worktree is clean.
-2. Open a fresh PowerShell terminal at the repository root. Do not edit or load
-   the production-oriented local `.env` for this step.
+2. Open a fresh PowerShell terminal at the repository root. Do not edit
+   the local `.env` for this step.
 3. Set session-only worker variables, entering the pooled QA `qa_app` URL via
    `Read-Host` so it is not stored in command history:
 
