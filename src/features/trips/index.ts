@@ -14,6 +14,7 @@ export {
   CitiesInUseError,
   createTrip,
   getTrip,
+  listFinishedTrips,
   listTrips,
   removeTrip,
   renameTrip,

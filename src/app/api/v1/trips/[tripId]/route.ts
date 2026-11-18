@@ -6,6 +6,7 @@ import {
   setTripArchived,
 } from "@/features/trips";
 import { tripActionSchema } from "@/features/trips/contracts";
+import { learnQuietly } from "@/use-cases/learning";
 import { runTripAction } from "@/use-cases/trip-action";
 
 import { json, outcomeResponse, readBody, withUser } from "../../respond";
@@ -64,11 +65,14 @@ export const PATCH = withUser<Context>(async (userId, request, context) => {
     case "finish":
     case "reopen": {
       const finished = change.action === "finish";
-      return outcomeResponse(
-        await run(finished ? "trip_plan_finish" : "trip_plan_reopen", (tx) =>
-          setPlanFinished(tx, userId, tripId, finished),
-        ),
+      const outcome = await run(
+        finished ? "trip_plan_finish" : "trip_plan_reopen",
+        (tx) => setPlanFinished(tx, userId, tripId, finished),
       );
+      // A trip counts toward what the site learns once its plan is finished,
+      // and stops counting when it is reopened (PRD 12.4).
+      if (outcome.status === "ok") await learnQuietly(userId);
+      return outcomeResponse(outcome);
     }
   }
 });
@@ -76,7 +80,10 @@ export const PATCH = withUser<Context>(async (userId, request, context) => {
 /** Deletes a trip for good. Repeating it answers 404, which a client may treat as done. */
 export const DELETE = withUser<Context>(async (userId, _request, context) => {
   const { tripId } = await context.params;
-  return (await removeTrip(userId, tripId))
-    ? new Response(null, { status: 204 })
-    : json({ error: "not_found" }, 404);
+  if (!(await removeTrip(userId, tripId))) {
+    return json({ error: "not_found" }, 404);
+  }
+  // A deleted trip no longer counts toward what the site has learned.
+  await learnQuietly(userId);
+  return new Response(null, { status: 204 });
 });

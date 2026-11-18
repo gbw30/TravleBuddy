@@ -169,6 +169,9 @@ export const commitmentActionSchema = z.object({
 });
 export const controlSchema = z.object(control);
 
+/** The title every trip starts with when no ticket names a city. */
+export const NEW_TRIP_TITLE = "New trip";
+
 export type TripState = "planning" | "upcoming" | "past";
 
 export type TripFacts = {

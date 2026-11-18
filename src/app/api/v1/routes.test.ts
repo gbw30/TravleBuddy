@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
     removeEntry: vi.fn(),
     removeNote: vi.fn(),
     forgetEverything: vi.fn(),
+    learnQuietly: vi.fn(),
   };
 });
 vi.mock("@/lib/authorization", () => ({
@@ -57,6 +58,7 @@ vi.mock("@/use-cases/conversation", () => ({
   loadConversation: mocks.loadConversation,
 }));
 
+vi.mock("@/use-cases/learning", () => ({ learnQuietly: mocks.learnQuietly }));
 vi.mock("@/use-cases/profile", () => ({
   loadProfile: mocks.loadProfile,
   tellProfile: mocks.tellProfile,
@@ -284,6 +286,43 @@ describe("PATCH /api/v1/trips/{tripId}", () => {
     expect(answer.status).toBe(500);
     expect(await answer.text()).not.toContain("secret");
     log.mockRestore();
+  });
+});
+
+describe("what finished trips teach", () => {
+  it("is brought up to date when a plan is finished or reopened, and not when the change did not go through", async () => {
+    mocks.runTripAction.mockResolvedValue({
+      status: "ok",
+      data: { finished: true },
+      revision: 3,
+    });
+    for (const action of ["finish", "reopen"]) {
+      await patchTrip(request("PATCH", { action, ...control }), trip);
+    }
+    expect(mocks.learnQuietly).toHaveBeenCalledTimes(2);
+    expect(mocks.learnQuietly).toHaveBeenCalledWith("user-1");
+
+    mocks.learnQuietly.mockClear();
+    mocks.runTripAction.mockResolvedValue({ status: "stale" });
+    await patchTrip(request("PATCH", { action: "finish", ...control }), trip);
+    mocks.runTripAction.mockResolvedValue({
+      status: "ok",
+      data: { title: "x" },
+      revision: 4,
+    });
+    await patchTrip(
+      request("PATCH", { action: "rename", title: "x", ...control }),
+      trip,
+    );
+    expect(mocks.learnQuietly).not.toHaveBeenCalled();
+  });
+
+  it("is brought up to date when a trip is deleted, and not when nothing was", async () => {
+    mocks.removeTrip.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    await deleteTrip(request("DELETE"), trip);
+    expect(mocks.learnQuietly).toHaveBeenCalledTimes(1);
+    await deleteTrip(request("DELETE"), trip);
+    expect(mocks.learnQuietly).toHaveBeenCalledTimes(1);
   });
 });
 
