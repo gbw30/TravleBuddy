@@ -17,6 +17,8 @@ import type {
   PlanView,
 } from "@/features/itinerary/contracts";
 import {
+  addOwnPlace,
+  findPlacesByName,
   gatherFoodNear,
   gatherSights,
   getPlaces,
@@ -24,7 +26,12 @@ import {
   listSights,
   type GatherOutcome,
 } from "@/features/places";
-import { cityKeyOf, type PlaceDto } from "@/features/places/contracts";
+import {
+  cityKeyOf,
+  type City,
+  type PlaceDto,
+  type PlaceKind,
+} from "@/features/places/contracts";
 import {
   proposeCards,
   readDiscards,
@@ -37,32 +44,18 @@ import {
 import {
   discardReason,
   type CardDto,
-  type CardSet,
   type DiscardReason,
 } from "@/features/recommendations/contracts";
 import { findEditable, getTrip } from "@/features/trips";
 import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
+import type { PlanSnapshot } from "./plan-snapshot";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
 // Reading and changing a trip's plan spans four services: Trips holds the
 // facts and commitments, Places the saved places, Itinerary the choices and
 // the rules that lay them out, and Recommendations the cards.
-
-/** Everything the workspace screen needs to show a plan. */
-export type PlanSnapshot = {
-  view: PlanView;
-  /** A card for every place in the plan and on the shelf, by place id. */
-  chosen: Record<string, CardDto>;
-  /**
-   * The cards for the slot in focus. `status` says whether places could be
-   * gathered: when not, the cards come from saved places only and the screen
-   * says so (TB-TRU-06, TB-SYS-11). Null when there is no slot to fill.
-   */
-  proposal: (CardSet & { status: GatherOutcome["status"] }) | null;
-  canUndo: boolean;
-};
 
 type SlotEntry = Extract<PlanEntry, { type: "open" | "place" }>;
 
@@ -150,6 +143,7 @@ async function proposalFor(
   places: Record<string, PlaceDto>,
   userId: string,
   wanted: string | undefined,
+  gather: boolean,
 ): Promise<PlanSnapshot["proposal"]> {
   const focus = focusSlot(view, wanted);
   const city = trip.facts.cities.find(
@@ -181,8 +175,9 @@ async function proposalFor(
   const near = from ?? centre;
 
   // One provider request at most; a failure leaves saved places usable.
-  const gathered: GatherOutcome =
-    isMeal(entry) && near
+  const gathered: GatherOutcome | null = !gather
+    ? null
+    : isMeal(entry) && near
       ? await gatherFoodNear(city, near)
       : await gatherSights(city);
   const saved =
@@ -217,7 +212,12 @@ async function proposalFor(
     entry.slotId,
     set.cards.map((card) => card.placeId),
   );
-  return { ...set, status: gathered.status };
+  return {
+    ...set,
+    cityName: city.name,
+    // Without gathering, an empty set may only mean nobody has asked yet.
+    status: gathered?.status ?? (set.cards.length === 0 ? "pending" : "ready"),
+  };
 }
 
 /** A card for each place already chosen, so the traveller can look at it again. */
@@ -263,6 +263,8 @@ export async function loadPlan(
   userId: string,
   tripId: string,
   focus?: string,
+  /** False keeps the provider out of a page load; the screen then asks again. */
+  gather = true,
 ): Promise<PlanSnapshot | null> {
   const trip = await getTrip(userId, tripId);
   if (!trip) return null;
@@ -275,7 +277,7 @@ export async function loadPlan(
     chosen: chosenCards(view, context.places, trip),
     proposal: trip.archived
       ? null
-      : await proposalFor(trip, view, context.places, userId, focus),
+      : await proposalFor(trip, view, context.places, userId, focus, gather),
     canUndo: saved.canUndo,
   };
 }
@@ -363,4 +365,64 @@ export async function runPlanAction(input: {
       return { summary: applied.summary };
     },
   });
+}
+
+/** The city a slot is in, or the trip's first city when no slot is named. */
+async function cityFor(
+  userId: string,
+  tripId: string,
+  slotId: string | undefined,
+): Promise<City | null> {
+  const plan = await loadPlan(userId, tripId, slotId, false);
+  const trip = await getTrip(userId, tripId);
+  if (!plan || !trip) return null;
+  const entry = plan.view.days
+    .flatMap((day) => day.entries)
+    .filter(isSlot)
+    .find((e) => e.slotId === slotId);
+  const cities = trip.facts.cities.map(({ city }) => city);
+  return (
+    cities.find((city) => entry && cityKeyOf(city) === entry.cityKey) ??
+    cities[0] ??
+    null
+  );
+}
+
+export type PlaceSearch =
+  | { status: "ok"; cards: CardDto[] }
+  | { status: "not_found" | "unavailable" | "capped" };
+
+/**
+ * Places by name in the city of a slot, as cards the traveller can pick or
+ * save (TB-CRD-10). One provider request, made when the traveller submits.
+ */
+export async function findTripPlaces(
+  userId: string,
+  tripId: string,
+  slotId: string | undefined,
+  text: string,
+): Promise<PlaceSearch> {
+  const city = await cityFor(userId, tripId, slotId);
+  if (!city) return { status: "not_found" };
+  const found = await findPlacesByName(city, text);
+  if (found.status !== "ok") return found;
+  return {
+    status: "ok",
+    cards: found.places.map((place) =>
+      toCard(place, city.name, "You searched for this place by name."),
+    ),
+  };
+}
+
+/** A place the provider does not know, entered by hand and marked as the traveller's own (TB-CRD-11). */
+export async function addTripPlace(
+  userId: string,
+  tripId: string,
+  slotId: string | undefined,
+  input: { name: string; kind: PlaceKind },
+): Promise<CardDto | null> {
+  const city = await cityFor(userId, tripId, slotId);
+  if (!city) return null;
+  const place = await addOwnPlace(userId, city, input);
+  return toCard(place, city.name, "You added this place yourself.");
 }

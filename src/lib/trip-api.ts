@@ -17,6 +17,8 @@ const messages: Record<string, string> = {
     "Something in the form is not valid. Check it and try again.",
   lookup_unavailable:
     "City search is not available right now. Try again in a moment.",
+  lookup_capped:
+    "Today's place lookups are used up. Try again tomorrow, or add the place by hand.",
   unauthorized: "You are signed out. Sign in again to continue.",
 };
 const fallback = "That did not work. Please try again.";
@@ -40,7 +42,12 @@ export async function callApi<T>(
       };
     }
     const error = typeof reply.error === "string" ? reply.error : "unknown";
-    return { ok: false, error, message: messages[error] ?? fallback };
+    // A refusal carries its own reason, written for the traveller.
+    const message =
+      error === "refused" && typeof reply.message === "string"
+        ? reply.message
+        : (messages[error] ?? fallback);
+    return { ok: false, error, message };
   } catch {
     return { ok: false, error: "network", message: fallback };
   }
