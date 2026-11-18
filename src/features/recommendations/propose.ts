@@ -1,4 +1,4 @@
-import type { SlotKind } from "@/features/itinerary/contracts";
+import { SLOT_WORDS, type SlotKind } from "@/features/itinerary/contracts";
 import {
   distanceKm,
   isOpenFor,
@@ -49,14 +49,6 @@ export type ProposeInput = {
   history: CardHistory;
 };
 
-const slotWord: Record<SlotKind, string> = {
-  morning: "morning",
-  "morning-2": "late morning",
-  lunch: "lunch",
-  afternoon: "afternoon",
-  "afternoon-2": "late afternoon",
-  dinner: "dinner",
-};
 const meansWord = { walk: "walk", transit: "ride", drive: "drive" } as const;
 
 type Ranked = {
@@ -116,7 +108,7 @@ function rank(input: ProposeInput): Ranked[] {
 function reasonFor(ranked: Ranked, input: ProposeInput): string {
   const { place, travel } = ranked;
   const sentences: string[] = [];
-  const slot = slotWord[input.slot.kind];
+  const slot = SLOT_WORDS[input.slot.kind].toLowerCase();
 
   if (travel && input.from) {
     sentences.push(

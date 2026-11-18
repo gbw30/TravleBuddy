@@ -1,7 +1,7 @@
-import type {
-  PlanEntry,
-  PlanView,
-  SlotKind,
+import {
+  SLOT_WORDS,
+  type PlanEntry,
+  type PlanView,
 } from "@/features/itinerary/contracts";
 import type { CardDto } from "@/features/recommendations/contracts";
 
@@ -12,14 +12,7 @@ import { MoveMenu } from "./move-menu";
 import { eyebrow, field, quiet } from "./styles";
 import { TicketStub } from "./ticket-stub";
 
-export const slotWord: Record<SlotKind, string> = {
-  morning: "Morning",
-  "morning-2": "Late morning",
-  lunch: "Lunch",
-  afternoon: "Afternoon",
-  "afternoon-2": "Late afternoon",
-  dinner: "Dinner",
-};
+export const slotWord = SLOT_WORDS;
 const meansWord = { walk: "Walk", transit: "Transit", drive: "Drive" };
 const kindWord = {
   TRANSPORT: "Transport",

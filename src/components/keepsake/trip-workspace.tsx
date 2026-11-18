@@ -297,7 +297,13 @@ export function TripWorkspace({
               className="max-w-[620px] space-y-3 text-ink/80"
               aria-live="polite"
             >
-              {!proposal && (
+              {plan.holding === "food" && (
+                <AgentMessage>
+                  I can suggest places to eat once you have told me about food.
+                  Answer or skip that question and I will.
+                </AgentMessage>
+              )}
+              {!proposal && !plan.holding && (
                 <AgentMessage>
                   Every slot is filled. Swap, move or remove anything in the
                   itinerary, and I will check the plan again.

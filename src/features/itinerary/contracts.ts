@@ -17,6 +17,15 @@ export const SLOT_KINDS = [
   "dinner",
 ] as const;
 export type SlotKind = (typeof SLOT_KINDS)[number];
+/** What a traveller calls each slot. */
+export const SLOT_WORDS: Record<SlotKind, string> = {
+  morning: "Morning",
+  "morning-2": "Late morning",
+  lunch: "Lunch",
+  afternoon: "Afternoon",
+  "afternoon-2": "Late afternoon",
+  dinner: "Dinner",
+};
 
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

@@ -8,21 +8,24 @@ type Action = "PRESENTED" | "PICKED" | "SAVED" | "DISCARDED";
 // Every card shown, picked, saved or turned down stays on record for the
 // trip (TB-CRD-12).
 
-/** Records that cards were shown for a slot. A card already shown there is not recorded twice. */
+/**
+ * Records that cards were shown for a slot. A card already shown there is not
+ * recorded twice. Answers the places shown there for the first time.
+ */
 export async function recordPresented(
   client: Client,
   tripId: string,
   slotId: string,
   placeIds: string[],
-): Promise<void> {
-  if (placeIds.length === 0) return;
+): Promise<string[]> {
+  if (placeIds.length === 0) return [];
   const seen = await client.cardEvent.findMany({
     where: { tripId, slotId, action: "PRESENTED", placeId: { in: placeIds } },
     select: { placeId: true },
   });
   const known = new Set(seen.map((event) => event.placeId));
   const fresh = placeIds.filter((id) => !known.has(id));
-  if (fresh.length === 0) return;
+  if (fresh.length === 0) return fresh;
   await client.cardEvent.createMany({
     data: fresh.map((placeId) => ({
       tripId,
@@ -31,6 +34,7 @@ export async function recordPresented(
       action: "PRESENTED" as const,
     })),
   });
+  return fresh;
 }
 
 /** Records one thing the traveller did with a card. */

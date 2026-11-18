@@ -31,6 +31,7 @@ import type {
   Turn,
   TurnResult,
 } from "@/features/conversation/contracts";
+import { PACES } from "@/features/itinerary/contracts";
 import { readTripTaste, saveTripAnswer } from "@/features/memory";
 import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
@@ -44,7 +45,7 @@ import {
 import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
-import { planDays } from "./plan";
+import { planDays, setPlanPace } from "./plan";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
 // The guided conversation spans five services: Conversation holds the script,
@@ -265,6 +266,15 @@ export async function takeTurn(input: {
       }
       if (change?.type === "taste") {
         await saveTripAnswer(tx, tripId, change.topic, change.answer);
+        // The pace answer is also the plan's pace: it sets how many slots a day has.
+        const pace = PACES.find((item) => item === change.answer.values[0]);
+        if (
+          change.topic === "pace" &&
+          pace &&
+          (await setPlanPace(tx, trip, userId, pace))
+        ) {
+          says += ` The plan now follows a ${pace} pace.`;
+        }
       }
       if (change?.type === "skip_fact") {
         await skipFact(tx, tripId, change.topic);
