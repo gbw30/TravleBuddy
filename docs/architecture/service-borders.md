@@ -18,16 +18,16 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 
 ## The services
 
-| Service         | Code                                                                      | Tables                                                                                          |
-| --------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`                           | User, Account, Session, VerificationToken                                                       |
-| Trips           | `src/features/trips`                                                      | Trip, TripDestination, TripTravelSegment, FixedCommitment                                       |
-| Conversation    | `src/features/conversation`, `src/features/planning`, `src/lib/ai`        | PlanningMutation, PlanningEvent, Conversation, ConversationMessage, AiUsage                     |
-| Memory          | `src/features/memory`, `src/features/profile`, `src/features/preferences` | UserTravelPreference, TripPreference, PreferenceProfileVersion, TripProfile                     |
-| Places          | `src/features/places`, `src/lib/providers/places`, `src/lib/google`       | CityLookup, Place, PlaceFetch, ProviderCall                                                     |
-| Recommendations | `src/features/recommendations`, `src/features/adaptation`                 | PlaceSuggestion, PlanningFeedback, CardEvent                                                    |
-| Itinerary       | `src/features/itinerary`                                                  | ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict, Plan, PlanVersion |
-| Jobs            | `src/features/jobs`, `src/worker`                                         | GenerationJob, JobAttempt, JobEvent                                                             |
+| Service         | Code                                                                      | Tables                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`                           | User, Account, Session, VerificationToken                                                                                                          |
+| Trips           | `src/features/trips`                                                      | Trip, TripDestination, TripTravelSegment, FixedCommitment                                                                                          |
+| Conversation    | `src/features/conversation`, `src/features/planning`, `src/lib/ai`        | PlanningMutation, PlanningEvent, Conversation, ConversationMessage, AiUsage                                                                        |
+| Memory          | `src/features/memory`, `src/features/profile`, `src/features/preferences` | UserTravelPreference, TripPreference, PreferenceProfileVersion, TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
+| Places          | `src/features/places`, `src/lib/providers/places`, `src/lib/google`       | CityLookup, Place, PlaceFetch, ProviderCall                                                                                                        |
+| Recommendations | `src/features/recommendations`, `src/features/adaptation`                 | PlaceSuggestion, PlanningFeedback, CardEvent                                                                                                       |
+| Itinerary       | `src/features/itinerary`                                                  | ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict, Plan, PlanVersion                                                    |
+| Jobs            | `src/features/jobs`, `src/worker`                                         | GenerationJob, JobAttempt, JobEvent                                                                                                                |
 
 `service-map.json` wins if this table and the map disagree. `src/features/prototype` holds sample data for the design prototype; it is not a service and owns no tables.
 

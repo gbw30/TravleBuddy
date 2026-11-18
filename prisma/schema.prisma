@@ -285,6 +285,7 @@ model User {
   trips            Trip[]
   travelPreference UserTravelPreference?
   planningFeedback PlanningFeedback[]
+  profile          Profile?
 
   @@map("users")
 }
@@ -1045,7 +1046,8 @@ model TripProfile {
   taste     Json     @default("{}")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip    Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  history ProfileHistory[]
 
   @@map("trip_profiles")
 }
@@ -1059,4 +1061,99 @@ model AiUsage {
   calls        Int    @default(0)
 
   @@map("ai_usage")
+}
+
+/// A traveller's personal profile: what the site believes across trips
+/// (Memory service). The row holds the profile's revision; entries, notes
+/// and history hang from it.
+model Profile {
+  userId     String    @id @map("user_id")
+  /// Goes up by one with every change; each history row names the revision it produced.
+  revision   Int       @default(0)
+  /// Set by a reset: trips finished before this moment teach nothing.
+  learnAfter DateTime? @map("learn_after")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries   ProfileEntry[]
+  notes     ProfileNote[]
+  history   ProfileHistory[]
+  forgotten ForgottenEvidence[]
+
+  @@map("profiles")
+}
+
+/// One thing the site believes: a value on a topic, how sure, and from where.
+model ProfileEntry {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId          String   @map("user_id")
+  topic           String   @db.VarChar(30)
+  value           String   @db.VarChar(80)
+  /// "think", "usually" or "always".
+  sureness        String   @db.VarChar(10)
+  /// Null when the traveller said so; otherwise the most recent trip it was learned from.
+  sourceTripId    String?  @map("source_trip_id")
+  /// Kept as text, so the source can still be named after that trip is deleted.
+  sourceTripTitle String?  @map("source_trip_title") @db.VarChar(120)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, topic, value])
+  @@map("profile_entries")
+}
+
+/// Something the traveller said that fits no topic. Kept and shown; not used by the ranking.
+model ProfileNote {
+  id        String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId    String   @map("user_id")
+  text      String   @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("profile_notes")
+}
+
+/// Every change to a personal profile or a trip profile, in order. Append-only.
+model ProfileHistory {
+  id        Int      @id @default(autoincrement())
+  /// Set for a change to a personal profile.
+  userId    String?  @map("user_id")
+  /// Set for a change to a trip profile.
+  tripId    String?  @map("trip_id")
+  /// The personal profile's revision this change produced.
+  revision  Int?
+  topic     String   @db.VarChar(30)
+  /// The entry or answer before the change; null when there was none.
+  before    Json?
+  /// The entry or answer after the change; null when it was removed.
+  after     Json?
+  /// "traveller", "learning", "reset" or "conversation".
+  cause     String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  profile     Profile?     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  tripProfile TripProfile? @relation(fields: [tripId], references: [tripId], onDelete: Cascade)
+
+  @@index([userId, id])
+  @@index([tripId, id])
+  @@map("profile_history")
+}
+
+/// A learned entry the traveller deleted, with the trips it had come from.
+/// Those trips no longer count for that value.
+model ForgottenEvidence {
+  id      String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId  String   @map("user_id")
+  topic   String   @db.VarChar(30)
+  value   String   @db.VarChar(80)
+  tripIds String[] @default([]) @map("trip_ids")
+
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, topic, value])
+  @@map("forgotten_evidence")
 }
