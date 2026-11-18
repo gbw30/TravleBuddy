@@ -44,14 +44,23 @@ export async function saveTripAnswer(
   topic: TasteTopic,
   answer: TripAnswer,
 ): Promise<TripTaste> {
-  const taste = {
-    ...(await readTripTaste(client, tripId)),
-    [topic]: tripAnswerSchema.parse(answer),
-  };
+  const before = await readTripTaste(client, tripId);
+  const saved = tripAnswerSchema.parse(answer);
+  const taste = { ...before, [topic]: saved };
   await client.tripProfile.upsert({
     where: { tripId },
     create: { tripId, taste },
     update: { taste },
+  });
+  // Changes to a trip profile are kept in order too (TB-MEM-13).
+  await client.profileHistory.create({
+    data: {
+      tripId,
+      topic,
+      ...(before[topic] ? { before: before[topic] } : {}),
+      after: saved,
+      cause: "conversation",
+    },
   });
   return taste;
 }
