@@ -4,21 +4,6 @@
       "count": 2
     }
   },
-  "src/app/(app)/trips/[tripId]/itinerary/page.tsx": {
-    "no-restricted-imports": {
-      "count": 3
-    }
-  },
-  "src/app/(app)/trips/[tripId]/planning/page.tsx": {
-    "no-restricted-imports": {
-      "count": 3
-    }
-  },
-  "src/app/(app)/trips/[tripId]/preferences/page.tsx": {
-    "no-restricted-imports": {
-      "count": 4
-    }
-  },
   "src/app/api/trips/[tripId]/conflicts/[conflictId]/resolve/route.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -97,41 +82,6 @@
   "src/app/api/trips/route.ts": {
     "no-restricted-imports": {
       "count": 3
-    }
-  },
-  "src/components/preferences/preference-form.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "src/components/preferences/preference-summary.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "src/components/recommendations/adaptive-itinerary-model.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "src/components/recommendations/adaptive-itinerary-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "src/components/recommendations/adaptive-itinerary-view.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
-  "src/components/recommendations/already-decided-place-form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "src/components/recommendations/planning-workspace.tsx": {
-    "no-restricted-imports": {
-      "count": 5
     }
   },
   "src/features/adaptation/job-handler.ts": {

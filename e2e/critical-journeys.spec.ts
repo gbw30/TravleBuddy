@@ -22,28 +22,16 @@ test.describe("critical authenticated journeys", () => {
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
   });
 
-  test("@critical current planning surfaces load for a representative trip", async ({
+  test("@critical the trip page shows the plan, the facts and what is decided", async ({
     page,
   }) => {
     const manifest = await fixtureManifest();
-    const checks = [
-      [
-        `/trips/${manifest.ownerTripId}/preferences`,
-        "Shape your planning profile",
-      ],
-      [`/trips/${manifest.ownerTripId}`, "The facts"],
-      [`/trips/${manifest.ownerTripId}/planning`, "Planning timeline"],
-      [
-        `/trips/${manifest.ownerTripId}/itinerary`,
-        "Read-only itinerary draft",
-      ],
-    ] as const;
+    const response = await page.goto(`/trips/${manifest.ownerTripId}`);
+    expect(response?.status()).toBe(200);
 
-    for (const [url, heading] of checks) {
-      const response = await page.goto(url);
-      expect(response?.status(), url).toBe(200);
-      await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible();
-    }
+    await expect(page.locator('[data-qa="trip-workspace"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "The facts" })).toBeVisible();
+    await expect(page.locator('[data-qa="commitments"]')).toBeVisible();
   });
 
   test("@nightly critical pages have no serious accessibility violations", async ({
