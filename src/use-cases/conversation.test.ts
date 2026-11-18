@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   findEditable: vi.fn(),
   readTripTaste: vi.fn(),
   saveTripAnswer: vi.fn(),
+  readProfile: vi.fn(),
   findCities: vi.fn(),
   planDays: vi.fn(),
   setPlanPace: vi.fn(),
@@ -32,9 +33,11 @@ vi.mock("@/features/trips", () => ({
   findEditable: mocks.findEditable,
   todayIn: () => "2026-11-19",
 }));
-vi.mock("@/features/memory", () => ({
+vi.mock("@/features/memory", async (actual) => ({
+  ...(await actual<typeof import("@/features/memory")>()),
   readTripTaste: mocks.readTripTaste,
   saveTripAnswer: mocks.saveTripAnswer,
+  readProfile: mocks.readProfile,
 }));
 vi.mock("@/features/places", () => ({ findCities: mocks.findCities }));
 vi.mock("./plan", () => ({
@@ -155,6 +158,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.getTrip.mockResolvedValue(trip());
   mocks.readTripTaste.mockResolvedValue({});
+  mocks.readProfile.mockResolvedValue({ entries: [] });
   mocks.readSkippedFacts.mockResolvedValue([]);
   mocks.readConversation.mockResolvedValue([]);
   mocks.readUsage.mockResolvedValue({ inputTokens: 0, outputTokens: 0 });
@@ -202,6 +206,73 @@ describe("reading the conversation", () => {
       outputTokens: 0,
     });
     expect((await loadConversation("user-1", "trip-1"))?.limited).toBe(true);
+  });
+});
+
+describe("a traveller the site already knows", () => {
+  const relaxed = {
+    id: "e1",
+    topic: "pace",
+    value: "relaxed",
+    sureness: "think",
+    source: { type: "trip", tripId: "t0", tripTitle: "Lisbon in spring" },
+  };
+
+  it("is asked to confirm what is remembered, and yes saves it for this trip as told", async () => {
+    mocks.readProfile.mockResolvedValue({ entries: [relaxed] });
+    const conversation = await loadConversation("user-1", "trip-1");
+    expect(conversation?.waiting).toMatchObject({
+      topic: "pace",
+      prompt:
+        "Pace: from your trip “Lisbon in spring” I remember relaxed. Same for this trip?",
+      remembered: ["relaxed"],
+    });
+    expect(mocks.readProfile).toHaveBeenCalledWith({ name: "db" }, "user-1");
+
+    await takeTurn({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      turn: { type: "answer", topic: "pace", values: ["relaxed"] },
+    });
+    expect(mocks.saveTripAnswer).toHaveBeenCalledWith(tx, "trip-1", "pace", {
+      values: ["relaxed"],
+      source: "told",
+    });
+    expect(saved()[0]).toEqual([
+      "agent",
+      "question",
+      "Pace: from your trip “Lisbon in spring” I remember relaxed. Same for this trip?",
+    ]);
+  });
+
+  it("goes by the memory when the question is skipped, and by the typed yes", async () => {
+    mocks.readProfile.mockResolvedValue({ entries: [relaxed] });
+    await takeTurn({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      turn: { type: "skip", topic: "pace" },
+    });
+    expect(mocks.saveTripAnswer).toHaveBeenLastCalledWith(
+      tx,
+      "trip-1",
+      "pace",
+      {
+        values: ["relaxed"],
+        source: "default",
+      },
+    );
+    await say("yes");
+    expect(mocks.saveTripAnswer).toHaveBeenLastCalledWith(
+      tx,
+      "trip-1",
+      "pace",
+      {
+        values: ["relaxed"],
+        source: "told",
+      },
+    );
   });
 });
 

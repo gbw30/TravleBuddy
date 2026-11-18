@@ -19,8 +19,13 @@ import {
   type PlanState,
   type PlanView,
 } from "@/features/itinerary/contracts";
-import { readTripTaste } from "@/features/memory";
-import type { TripTaste } from "@/features/memory/contracts";
+import {
+  readProfile,
+  readTripTaste,
+  tasteInUse,
+  type TasteInUse,
+} from "@/features/memory";
+import type { ProfileEntry } from "@/features/memory/contracts";
 import type { PlanningTransaction } from "@/features/planning";
 import {
   addOwnPlace,
@@ -115,13 +120,23 @@ function focusSlot(
 }
 
 /** The trip's taste in the form the ranking understands (TB-RSN-02). */
-function cardTaste(taste: TripTaste): CardTaste {
+function cardTaste(taste: TasteInUse): CardTaste {
+  // The trip a remembered value was learned from, so a reason can name it (TB-MEM-06).
+  const tripOf = (entries: ProfileEntry[] = [], value?: string) => {
+    const entry = entries.find(
+      (item) =>
+        item.source.type === "trip" &&
+        (value === undefined || item.value === value),
+    );
+    return entry?.source.type === "trip" ? entry.source.tripTitle : undefined;
+  };
   const atmosphere = taste.atmosphere?.values[0];
   return {
     interests: taste.interests
       ? taste.interests.values.map((value) => ({
           value,
           label: labelsOf(QUESTIONS.interests, [value])[0].toLowerCase(),
+          from: tripOf(taste.interests?.entries, value),
         }))
       : null,
     atmosphere:
@@ -130,6 +145,10 @@ function cardTaste(taste: TripTaste): CardTaste {
     food: taste.food
       ? taste.food.values.filter((value) => value !== "none")
       : null,
+    rememberedFrom: {
+      atmosphere: tripOf(taste.atmosphere?.entries),
+      onFoot: tripOf(taste.getting_around?.entries),
+    },
   };
 }
 
@@ -169,7 +188,7 @@ async function proposalFor(
   places: Record<string, PlaceDto>,
   userId: string,
   { day, entry }: { day: PlanDay; entry: SlotEntry },
-  taste: TripTaste,
+  taste: TasteInUse,
   gather: boolean,
 ): Promise<PlanSnapshot["proposal"]> {
   const city = trip.facts.cities.find(
@@ -324,7 +343,14 @@ export async function loadPlan(
   const context = await contextFor(trip, state, userId);
   const view = buildPlanView(state, context);
   const focus = trip.archived ? null : focusSlot(view, wanted);
-  const taste: TripTaste = focus ? await readTripTaste(db, tripId) : {};
+  // The taste a trip goes by starts from the personal profile; what was
+  // said for this trip wins (TB-MEM-02).
+  const taste: TasteInUse = focus
+    ? tasteInUse(
+        (await readProfile(db, userId)).entries,
+        await readTripTaste(db, tripId),
+      )
+    : {};
   // Guided planning proposes meals once the food question is answered or
   // skipped (TB-AGT-07). Until then the agent says what it is waiting for.
   const holding =

@@ -54,6 +54,24 @@ describe("TripConversation", () => {
     expect(html).not.toContain('aria-pressed="');
   });
 
+  it("offers a remembered answer with one tap, and the other choices beside it", () => {
+    const html = render(
+      snapshot({
+        waiting: {
+          ...QUESTIONS.pace,
+          prompt:
+            "Pace: from your trip “Lisbon” I remember relaxed. Same for this trip?",
+          remembered: ["relaxed"],
+        },
+      }),
+    );
+    expect(html).toContain("I remember relaxed");
+    expect(html).toContain(">Yes, same again</button>");
+    expect(html).toContain("Or choose differently for this trip:");
+    expect(html).toContain(">Packed</button>");
+    expect(render(snapshot())).not.toContain("Yes, same again");
+  });
+
   it("lets several choices be ticked before answering, and none is sent until one is", () => {
     const html = render(snapshot({ waiting: QUESTIONS.interests }));
     expect(count(html, 'aria-pressed="false"')).toBe(

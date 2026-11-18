@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   recordPresented: vi.fn(),
   readDiscards: vi.fn(),
   readTripTaste: vi.fn(),
+  readProfile: vi.fn(),
   appendMessages: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
@@ -45,7 +46,11 @@ vi.mock("@/features/recommendations", async (actual) => ({
   recordCard: vi.fn(),
   recordDiscards: vi.fn(),
 }));
-vi.mock("@/features/memory", () => ({ readTripTaste: mocks.readTripTaste }));
+vi.mock("@/features/memory", async (actual) => ({
+  ...(await actual<typeof import("@/features/memory")>()),
+  readTripTaste: mocks.readTripTaste,
+  readProfile: mocks.readProfile,
+}));
 vi.mock("@/features/conversation", async (actual) => ({
   ...(await actual<typeof import("@/features/conversation")>()),
   appendMessages: mocks.appendMessages,
@@ -126,6 +131,7 @@ beforeEach(() => {
   mocks.listFoodNear.mockResolvedValue(food);
   mocks.readDiscards.mockResolvedValue([]);
   mocks.readTripTaste.mockResolvedValue({});
+  mocks.readProfile.mockResolvedValue({ entries: [] });
   // Every card is shown for the first time.
   mocks.recordPresented.mockImplementation(
     async (_db, _trip, _slot, ids) => ids,
@@ -166,6 +172,51 @@ describe("proposals in guided planning", () => {
       "You said you like museums and exhibitions.",
     );
     expect(second.reason).toContain("It is not one of the interests you named");
+  });
+
+  it("starts from the personal profile, and the reason names the trip the memory comes from", async () => {
+    mocks.readProfile.mockResolvedValue({
+      entries: [
+        {
+          id: "e1",
+          topic: "interests",
+          value: "museums",
+          sureness: "think",
+          source: { type: "trip", tripId: "t0", tripTitle: "Lisbon in spring" },
+        },
+      ],
+    });
+    const [first] = (await load())!.proposal!.cards;
+    expect(first.name).toBe("Tokyo National Museum");
+    expect(first.reason).toContain(
+      "I remember from your trip “Lisbon in spring” that you like museums and exhibitions.",
+    );
+    // What is said for this trip wins over the memory.
+    mocks.readTripTaste.mockResolvedValue({
+      interests: { values: ["nature"], source: "told" },
+    });
+    const [now] = (await load())!.proposal!.cards;
+    expect(now.name).toBe("Ueno Park");
+    expect(now.reason).toContain("You said you like parks and nature.");
+  });
+
+  it("does not hold back meals from a traveller whose dietary rules are remembered", async () => {
+    mocks.readProfile.mockResolvedValue({
+      entries: [
+        {
+          id: "e2",
+          topic: "dietary_rules",
+          value: "vegetarian",
+          sureness: "always",
+          source: { type: "told" },
+        },
+      ],
+    });
+    const plan = await load("d1-lunch");
+    expect(plan?.holding).toBeNull();
+    expect(plan?.proposal?.cards[0].reason).toContain(
+      "You eat vegetarian food",
+    );
   });
 
   it("does not save the same proposal twice", async () => {

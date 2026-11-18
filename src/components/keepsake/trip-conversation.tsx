@@ -184,6 +184,26 @@ export function TripConversation({
               <legend>
                 <AgentMessage>{waiting.prompt}</AgentMessage>
               </legend>
+              {waiting.remembered && waiting.remembered.length > 0 && (
+                <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <button
+                    type="button"
+                    className={button}
+                    onClick={() =>
+                      void take({
+                        type: "answer",
+                        topic: waiting.topic,
+                        values: waiting.remembered ?? [],
+                      })
+                    }
+                  >
+                    Yes, same again
+                  </button>
+                  <span className="font-sans text-[13px] text-muted">
+                    Or choose differently for this trip:
+                  </span>
+                </p>
+              )}
               {waiting.choices.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {waiting.choices.map((choice) => (

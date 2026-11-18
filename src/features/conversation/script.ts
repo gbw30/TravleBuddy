@@ -1,3 +1,9 @@
+import { rememberedFor } from "@/features/memory";
+import {
+  sourceWords,
+  TOPIC_NAMES,
+  type ProfileEntry,
+} from "@/features/memory/contracts";
 import type { TripFacts } from "@/features/trips/contracts";
 
 import {
@@ -211,6 +217,8 @@ export type ScriptState = {
   /** How many fixed commitments the trip has, and whether one is a stay. */
   commitments: { count: number; hasStay: boolean };
   profile: TripProfile;
+  /** The traveller's personal profile: what is remembered from before this trip. */
+  remembered?: ProfileEntry[];
 };
 
 /** Whether a fact is already known from the trip, its tickets or what was typed (TB-AGT-03). */
@@ -251,7 +259,41 @@ export function nextQuestion(state: ScriptState): Question | null {
   );
   if (fact) return QUESTIONS[fact];
   const taste = TASTE_TOPICS.find((topic) => !state.profile.taste[topic]);
-  return taste ? QUESTIONS[taste] : null;
+  return taste ? confirming(QUESTIONS[taste], state.remembered ?? []) : null;
+}
+
+/**
+ * The question as asked of a traveller the site already knows: where the
+ * personal profile holds an answer the question understands, it asks to
+ * confirm that answer and says where it comes from (TB-AGT-06, TB-MEM-06).
+ */
+function confirming(question: Question, personal: ProfileEntry[]): Question {
+  const known = rememberedFor(personal, question.topic as TasteTopic).filter(
+    (entry) => question.choices.some((choice) => choice.value === entry.value),
+  );
+  if (known.length === 0) return question;
+  const labels = known.map((entry) =>
+    question.choices
+      .find((choice) => choice.value === entry.value)!
+      .label.toLowerCase(),
+  );
+  const words =
+    labels.length < 3
+      ? labels.join(" and ")
+      : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+  // The trip of the first learned entry is named; stated ones need no trip.
+  const source = (
+    known.find((entry) => entry.source.type === "trip") ?? known[0]
+  ).source;
+  return {
+    ...question,
+    prompt: `${TOPIC_NAMES[question.topic as TasteTopic]}: ${
+      source.type === "trip"
+        ? `${sourceWords(source)} I remember ${words}`
+        : `you told me ${words}`
+    }. Same for this trip?`,
+    remembered: known.map((entry) => entry.value),
+  };
 }
 
 export type Readiness = {
@@ -274,7 +316,11 @@ export function readiness(state: ScriptState): Readiness {
   const days = needs.length === 0;
   return {
     sights: days,
-    meals: days && state.profile.taste.food !== undefined,
+    // Remembered dietary rules are enough to start on meals.
+    meals:
+      days &&
+      (state.profile.taste.food !== undefined ||
+        rememberedFor(state.remembered ?? [], "food").length > 0),
     needs,
   };
 }

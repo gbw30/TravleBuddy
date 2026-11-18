@@ -40,11 +40,17 @@ export const noHistory: CardHistory = {
  * ranking understands. Price and rating are absent: the place data has neither.
  */
 export type CardTaste = {
-  /** The interests named, with the words to say them. Empty when left open, null when not asked yet. */
-  interests: { value: string; label: string }[] | null;
+  /**
+   * The interests named, with the words to say them. Empty when left open,
+   * null when not asked yet. `from` is the trip an interest is remembered
+   * from, when it was not said for this trip.
+   */
+  interests: { value: string; label: string; from?: string }[] | null;
   atmosphere: "lively" | "quiet" | null;
   /** The traveller likes to get around on foot. */
   onFoot: boolean;
+  /** The trips the atmosphere and the way of getting around are remembered from (TB-MEM-06). */
+  rememberedFrom?: { atmosphere?: string; onFoot?: string };
   /** Food rules named, such as "vegetarian". Empty when there are none, null when not asked yet. */
   food: string[] | null;
 };
@@ -90,7 +96,7 @@ type Ranked = {
   travel: ReturnType<typeof travelEstimate> | null;
   fresh: boolean;
   /** The interest of the traveller's this place answers, if any. */
-  interest: { value: string; label: string } | undefined;
+  interest: { value: string; label: string; from?: string } | undefined;
 };
 
 function rank(input: ProposeInput): Ranked[] {
@@ -170,7 +176,17 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
   if (meal && taste.food?.length) {
     return `You eat ${words(taste.food)} food, and the place data does not say whether this place serves it, so check with the venue.`;
   }
-  if (ranked.interest) return `You said you like ${ranked.interest.label}.`;
+  // A memory from another trip names that trip (TB-MEM-06).
+  const recalled = (trip: string | undefined, said: string, liked: string) =>
+    trip ? `I remember from your trip “${trip}” that you ${liked}` : said;
+  const from = taste.rememberedFrom ?? {};
+  if (ranked.interest) {
+    return `${recalled(
+      ranked.interest.from,
+      `You said you like ${ranked.interest.label}`,
+      `like ${ranked.interest.label}`,
+    )}.`;
+  }
   if (history.tooFar > 0 && travel) {
     return "You said the last places were too far, so I looked closer.";
   }
@@ -178,13 +194,13 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
     return "You asked for somewhere less touristy, and this is a quieter choice.";
   }
   if (taste.atmosphere === "quiet" && !place.notable) {
-    return "You asked for quiet places, and this is a quieter choice.";
+    return `${recalled(from.atmosphere, "You asked for quiet places", "like quiet places")}, and this is a quieter choice.`;
   }
   if (taste.atmosphere === "lively" && place.notable) {
-    return `You like lively places, and this is one of ${input.cityName}'s well-known ones.`;
+    return `${recalled(from.atmosphere, "You like lively places", "like lively places")}, and this is one of ${input.cityName}'s well-known ones.`;
   }
   if (taste.onFoot && travel?.means === "walk") {
-    return "You like to get around on foot, and this is a walk away.";
+    return `${recalled(from.onFoot, "You like to get around on foot", "like to get around on foot")}, and this is a walk away.`;
   }
 
   const adds =
