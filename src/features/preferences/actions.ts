@@ -304,7 +304,7 @@ export async function saveTripPreferenceFormAction(formData: FormData) {
     redirect(preferenceRedirectPath(tripId, returnTo, "error=invalid"));
   }
 
-  revalidatePath("/dashboard");
+  revalidatePath("/home");
   revalidatePath("/profile");
   revalidatePath("/trips");
   revalidatePath(`/trips/${tripId}`);

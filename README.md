@@ -129,7 +129,7 @@ Install dependencies and create a local environment file:
 
 ```powershell
 npm ci
-Copy-Item .env.example .env.local
+Copy-Item .env.example .env
 ```
 
 For a deterministic no-cost demo, set:
@@ -155,8 +155,8 @@ and a standalone worker runs locally during demonstrations:
 Browser -> Vercel web/API -> Neon PostgreSQL queue <- local worker
 ```
 
-Use the pooled QA `qa_app` connection only as a session variable; do not replace
-the production-oriented local `.env`:
+Use the pooled QA `qa_app` connection only as a session variable; do not change
+the local `.env`:
 
 ```powershell
 $env:DATABASE_URL = Read-Host "Pooled qa_app QA URL"

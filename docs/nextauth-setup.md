@@ -38,7 +38,7 @@ Legacy aliases remain local migration aids; new deployments should use `AUTH_*`.
 
 # 2. Required Environment Variables
 
-For the recommended Auth.js setup, add these locally in `.env.local`:
+For the recommended Auth.js setup, add these locally in `.env`:
 
 ```text
 AUTH_SECRET="long-random-secret"
@@ -100,7 +100,7 @@ Run:
 npx auth secret
 ```
 
-That creates a strong secret. If it writes directly to `.env.local`, keep that file uncommitted.
+That creates a strong secret. If it creates `.env.local`, move the line into `.env` and delete `.env.local`, so there is one local env file.
 
 ---
 
@@ -126,7 +126,7 @@ http://localhost:3000/api/auth/callback/google
 https://your-production-domain.com/api/auth/callback/google
 ```
 
-7. Copy the client ID and client secret into `.env.local`, GitHub Actions secrets, and Vercel environment variables as appropriate.
+7. Copy the client ID and client secret into `.env`, GitHub Actions secrets, and Vercel environment variables as appropriate.
 
 ---
 
@@ -437,6 +437,6 @@ For QA, do not run this command from report-only verification. Use the protected
 
 ## Signing in without Google during local development
 
-Set `AUTH_DEV_LOGIN="1"` in `.env.local` to add a **Sign in as dev user** button to `/login`. It signs in one fixed user (`dev@travlebuddy.local`), created in whichever database `DATABASE_URL` points to, and works on any port because it does not go through Google.
+Set `AUTH_DEV_LOGIN="1"` in `.env` to add a **Sign in as dev user** button to `/login`. It signs in one fixed user (`dev@travlebuddy.local`), created in whichever database `DATABASE_URL` points to, and works on any port because it does not go through Google.
 
 It takes effect only when `NODE_ENV` is `development`, which is true for `npm run dev` and false for every built or deployed version, so the flag does nothing on Vercel. Remove the line to go back to Google only.

@@ -5,13 +5,18 @@ import { fixtureManifest, ownerStatePath } from "./support";
 test.describe("critical authenticated journeys", () => {
   test.use({ storageState: ownerStatePath });
 
-  test("@critical creates a draft and persists it after reload", async ({ page }) => {
-    const title = `QA browser draft ${process.env.QA_RUN_ID}`;
+  test("@critical starts a trip, renames it, and keeps it after reload", async ({
+    page,
+  }) => {
+    const title = `QA browser trip ${process.env.QA_RUN_ID}`;
     await page.goto("/trips/new");
-    await page.getByLabel("Title").fill(title);
-    await page.getByRole("button", { name: "Save as draft" }).click();
+    await page.getByRole("button", { name: "Start planning together" }).click();
 
     await expect(page).toHaveURL(/\/trips\/[^/]+$/);
+    await expect(page.getByRole("heading", { name: "New trip" })).toBeVisible();
+    await page.getByRole("button", { name: /^Rename/ }).click();
+    await page.getByLabel("New name").fill(title);
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
     await page.reload();
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
@@ -26,7 +31,7 @@ test.describe("critical authenticated journeys", () => {
         `/trips/${manifest.ownerTripId}/preferences`,
         "Shape your planning profile",
       ],
-      [`/trips/${manifest.ownerTripId}/logistics`, "I have tickets/timing"],
+      [`/trips/${manifest.ownerTripId}`, "The facts"],
       [`/trips/${manifest.ownerTripId}/planning`, "Planning timeline"],
       [
         `/trips/${manifest.ownerTripId}/itinerary`,
@@ -44,7 +49,7 @@ test.describe("critical authenticated journeys", () => {
   test("@nightly critical pages have no serious accessibility violations", async ({
     page,
   }) => {
-    await page.goto("/dashboard");
+    await page.goto("/home");
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
@@ -57,7 +62,7 @@ test.describe("critical authenticated journeys", () => {
 
   test("@nightly mobile-width pages do not overflow horizontally", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/dashboard");
+    await page.goto("/home");
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,

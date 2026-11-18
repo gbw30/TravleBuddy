@@ -14,6 +14,35 @@ enum TripStatus {
   ARCHIVED
 }
 
+/// Who may see a trip. Private in the first version (TB-SYS-13). The owner is
+/// Trip.userId; later stages add values here and a list of viewers.
+enum TripVisibility {
+  PRIVATE
+}
+
+enum Firmness {
+  FIXED
+  FLEXIBLE
+}
+
+enum BudgetBasis {
+  TRIP
+  DAY
+}
+
+enum PlanningMode {
+  GUIDED
+  QUICK
+}
+
+enum CommitmentKind {
+  TRANSPORT
+  STAY
+  RESERVATION
+  MUST_SEE
+  OTHER
+}
+
 enum BudgetLevel {
   BUDGET
   MODERATE
@@ -320,6 +349,18 @@ model Trip {
   budgetAmount                     Decimal?          @map("budget_amount") @db.Decimal(12, 2)
   budgetCurrency                   String?           @map("budget_currency") @db.VarChar(3)
   logisticsMode                    TripLogisticsMode @default(FLEXIBLE) @map("logistics_mode")
+  visibility                       TripVisibility    @default(PRIVATE)
+  planningMode                     PlanningMode?     @map("planning_mode")
+  planFinishedAt                   DateTime?         @map("plan_finished_at")
+  lengthNights                     Int?              @map("length_nights")
+  /// A rough time of year as a month, 1 to 12, for trips without dates yet.
+  timeOfYear                       Int?              @map("time_of_year")
+  adults                           Int?
+  children                         Int?
+  budgetBasis                      BudgetBasis?      @map("budget_basis")
+  datesFirmness                    Firmness?         @map("dates_firmness")
+  budgetFirmness                   Firmness?         @map("budget_firmness")
+  purpose                          String?           @db.VarChar(120)
   planningRevision                 Int               @default(0) @map("planning_revision")
   tripVersion                      Int               @default(1) @map("trip_version")
   activePreferenceProfileVersionId String?           @map("active_preference_profile_version_id")
@@ -330,6 +371,7 @@ model Trip {
   user                           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   destinations                   TripDestination[]
   travelSegments                 TripTravelSegment[]
+  commitments                    FixedCommitment[]
   preference                     TripPreference?
   suggestions                    PlaceSuggestion[]
   planningFeedback               PlanningFeedback[]
@@ -363,6 +405,7 @@ model TripDestination {
   latitude  Decimal? @db.Decimal(10, 7)
   longitude Decimal? @db.Decimal(10, 7)
   sortOrder Int      @default(0) @map("sort_order")
+  nights    Int?
   notes     String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -375,6 +418,40 @@ model TripDestination {
   @@index([tripId])
   @@index([tripId, sortOrder])
   @@map("trip_destinations")
+}
+
+/// Something already decided: a ticket, a stay, a reservation, a must-see.
+/// Dates and times are wall-clock values at the place, with no time zone.
+model FixedCommitment {
+  id            String             @id @default(dbgenerated("(gen_random_uuid())::text"))
+  tripId        String             @map("trip_id")
+  kind          CommitmentKind
+  title         String             @db.VarChar(160)
+  date          DateTime?          @db.Date
+  startTime     String?            @map("start_time") @db.VarChar(5)
+  endDate       DateTime?          @map("end_date") @db.Date
+  endTime       String?            @map("end_time") @db.VarChar(5)
+  reference     String?            @db.VarChar(80)
+  note          String?            @db.VarChar(500)
+  transportMode TravelSegmentMode? @map("transport_mode")
+  origin        String?            @db.VarChar(120)
+  destination   String?            @db.VarChar(120)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, date])
+  @@map("fixed_commitments")
+}
+
+/// Saved city lookups, keyed by the normalised search text (ADR-009).
+model CityLookup {
+  query     String   @id @db.VarChar(120)
+  results   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("city_lookups")
 }
 
 model PlanningMutation {

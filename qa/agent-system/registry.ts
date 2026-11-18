@@ -134,7 +134,7 @@ const routeRules: readonly RouteRule[] = [
     agent: "qa_journeys",
     prefixes: [
       "src/app/(auth)/",
-      "src/app/(dashboard)/",
+      "src/app/(app)/",
       "src/components/",
       "e2e/",
     ],

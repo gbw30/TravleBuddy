@@ -18,28 +18,41 @@ Start with `docs/README.md`. TravleBuddy documentation separates:
 - `docs/architecture/README.md`: system boundaries and ADR index.
 - `docs/history/`: non-authoritative implementation history.
 
+Service borders are enforced by lint and tests. Import another service only through its `index.ts` or `contracts.ts`, query only the tables your service owns, and never add an entry to `eslint-suppressions.json`; that list may only shrink.
+
 Never infer current implementation from a target requirement, permanent product scope from a staged limitation, or present authority from a historical file. Operational safety rules in this file and `docs/operating-constraints.md` remain binding.
 
-| Task                      | Required context                                                                          |
-| ------------------------- | ----------------------------------------------------------------------------------------- |
-| Product feature           | Knowledge map → vision → PRD → target requirements → current status → relevant code/tests |
-| Architecture change       | Target → architecture index → relevant ADR → current code                                 |
-| Conversational planning   | Target → current status → conversational README → current stage                           |
-| Recommendations/providers | Target recommendation section → Stages 1B/2B → provider/recommendation code → QA state    |
-| Scheduling/timezones      | Target logistics/time section → current limitation → Stage 2A → itinerary/logistics code  |
-| Adaptive planning/jobs    | Current status → ADRs 001–004 → adaptive demo → jobs/adaptation code                      |
-| QA/full/release           | QA routing below and generated context bundles                                            |
-| Infrastructure/deployment | Operating constraints → developer finish/setup guide                                      |
+| Task                            | Required context                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| Product feature                 | Knowledge map → vision → PRD → target requirements → current status → relevant code/tests |
+| Architecture change             | Target → architecture index → relevant ADR → current code                                 |
+| Any code that crosses a service | `docs/architecture/service-borders.md` → `service-map.json`                               |
+| Conversational planning         | Target → current status → conversational README → current stage                           |
+| Recommendations/providers       | Target recommendation section → Stages 1B/2B → provider/recommendation code → QA state    |
+| Scheduling/timezones            | Target logistics/time section → current limitation → Stage 2A → itinerary/logistics code  |
+| Adaptive planning/jobs          | Current status → ADRs 001–004 → adaptive demo → jobs/adaptation code                      |
+| QA/full/release                 | QA routing below and generated context bundles                                            |
+| Infrastructure/deployment       | Operating constraints → developer finish/setup guide                                      |
 
 ## Standing environment and branch constraint
 
 The developer has chosen a fixed, minimal project topology. This is a standing
 instruction for every Codex session working in this repository:
 
-- Use the existing `qa` branch for active integration work and the existing
-  `main` branch for stable/release work. Do not create another Git branch or
-  worktree, including a `codex/*` branch, unless the developer explicitly asks
-  for that specific branch.
+- Branches, as the developer set on 2026-11-18. Build each roadmap milestone on
+  its own branch, `milestone/<number>-<name>`, cut from `main`, or from `qa`
+  while `qa` is ahead of `main`. Do each piece of the milestone on a feature
+  branch, `feature/m<number>-<piece>`, cut from the milestone branch. Merge a
+  finished feature branch into its milestone branch without asking, once lint,
+  type check, tests and build pass. The milestone branch is merged into `main`
+  together with the developer when the milestone is done; never merge into
+  `main` unasked. `qa` stays the branch behind the QA preview and the protected
+  QA workflows; update it from a milestone branch only when the developer asks
+  for the preview or the QA gate. Do not create a branch outside this pattern
+  or a worktree, and do not delete a merged branch without being asked.
+- Feature and milestone branches are not deployed: `vercel.json` turns
+  automatic deployments off for them, so the Vercel topology below is
+  unchanged.
 - Reuse the currently configured QA and production databases. Do not create a
   Neon branch, database clone, disposable cloud database, or additional
   persistent database. The PostgreSQL service already defined inside the

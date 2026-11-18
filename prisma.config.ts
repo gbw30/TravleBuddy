@@ -3,12 +3,23 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// DB_TARGET=qa or DB_TARGET=prod aims the Prisma command line at QA_* or PROD_*
+// from .env. Without it Prisma uses DIRECT_URL/DATABASE_URL: development
+// locally, and whatever database a CI workflow sets.
+const target = process.env["DB_TARGET"];
+if (target && target !== "qa" && target !== "prod") {
+  throw new Error(`DB_TARGET must be "qa" or "prod", not "${target}"`);
+}
+const prefix = target ? `${target.toUpperCase()}_` : "";
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
+    url:
+      process.env[`${prefix}DIRECT_URL`] ??
+      process.env[`${prefix}DATABASE_URL`],
   },
 });

@@ -1,39 +1,47 @@
 import Link from "next/link";
-import { AppNav } from "@/components/layout/app-nav";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import {
+  buttonArrow,
+  buttonLarge,
+  eyebrow,
+  pageTitle,
+  quietLarge,
+} from "@/components/keepsake/styles";
+import { auth } from "@/lib/auth";
+
+export default async function Landing() {
+  const session = await auth();
+  if (session?.user?.id) redirect("/home");
+
   return (
-    <>
-      <AppNav />
-      <main className="flex-1 bg-zinc-50">
-        <section className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col justify-center px-4 py-16 sm:px-6">
-          <div className="max-w-3xl">
-            <p className="text-sm font-medium text-zinc-500">TravleBuddy</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-normal text-zinc-950 sm:text-5xl">
-              Plan better trips with a secure planning workspace.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-600">
-              Sign in to start building your protected travel planning session.
-              Draft discovery and full planning workflows are being developed
-              behind authenticated routes.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/dashboard"
-                className="inline-flex h-10 items-center rounded-md bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-              >
-                Open dashboard
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex h-10 items-center rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-white"
-              >
-                Sign in
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-    </>
+    <main className="keepsake-paper flex min-h-dvh flex-1 flex-col text-[17px] leading-[1.55]">
+      <div className="mx-auto w-full max-w-[1240px] px-5 pt-6 md:px-10 md:pt-7">
+        <span className="font-serif text-[24px] tracking-[-0.02em]">
+          Travle<em>Buddy</em>
+        </span>
+      </div>
+      <section className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col justify-center px-5 py-16 md:px-10">
+        <p className={eyebrow}>A travel agent with a memory</p>
+        <h1 className={`mt-4 max-w-[14ch] ${pageTitle}`}>
+          Trips planned the way <em>you travel.</em>
+        </h1>
+        <p className="mt-5 max-w-[32rem] text-lg text-ink/80 md:text-xl">
+          Tell it where you are going and what is already booked. It keeps your
+          trips, your tickets and what you have decided in one place.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center gap-6">
+          <Link href="/login" className={buttonLarge}>
+            Sign in
+            <span aria-hidden className={buttonArrow}>
+              →
+            </span>
+          </Link>
+          <Link href="/prototype" className={quietLarge}>
+            See a sample trip
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }

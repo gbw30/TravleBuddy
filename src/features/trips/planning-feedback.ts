@@ -23,7 +23,10 @@ const targetFieldByType = {
   ITINERARY_DAY: "itineraryDayId",
   ITINERARY_ITEM: "itineraryItemId",
   CONFLICT: "conflictId",
-} as const satisfies Record<Exclude<FeedbackTargetType, "TRIP">, keyof PlanningFeedbackTargetInput>;
+} as const satisfies Record<
+  Exclude<FeedbackTargetType, "TRIP">,
+  keyof PlanningFeedbackTargetInput
+>;
 
 const targetFields = Object.values(targetFieldByType);
 

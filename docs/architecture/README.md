@@ -3,7 +3,7 @@
 Status: architecture
 Authority: Target/current system boundaries and accepted-decision index
 Related: [Target requirements](../requirements.md), [current implementation](../status/current-implementation.md), [roadmap](../roadmap.md)
-Last reviewed: 2026-08-09
+Last reviewed: 2026-11-18
 
 ## Architecture principles
 
@@ -68,5 +68,8 @@ external results.
 7. [ADR-007: Adaptive replacement identity and affordability](adr-007-adaptive-replacement-identity-and-affordability.md)
 8. [ADR-008: Modular services in one deployment](adr-008-modular-services-in-one-deployment.md)
 9. [ADR-009: OpenStreetMap as the first place-data provider](adr-009-place-data-provider.md)
+10. [ADR-010: Service borders are enforced now, with a shrinking list of exceptions](adr-010-service-borders-by-shrinking-exceptions.md)
+
+Working rules for the borders, and what to do when a border check fails: [service-borders.md](service-borders.md).
 
 Accepted ADRs record decisions at the time they were made. New architecture changes require a new or explicitly superseding decision; the index does not rewrite ADR history.

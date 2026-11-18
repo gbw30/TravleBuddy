@@ -24,7 +24,7 @@ export function getAuthRouteDecision(
   if (isLoginRoute(pathname) && isSignedIn) {
     return {
       kind: "redirect",
-      destination: "/dashboard",
+      destination: "/home",
     };
   }
 

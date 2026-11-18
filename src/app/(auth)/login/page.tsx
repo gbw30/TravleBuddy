@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+
 import { DevSignInButton, SignInButton } from "@/components/auth/auth-buttons";
+import { eyebrow, panel, sectionTitle } from "@/components/keepsake/styles";
 import { auth } from "@/lib/auth";
 import { isDevLoginEnabled } from "@/lib/env";
 
@@ -7,23 +9,27 @@ export default async function LoginPage() {
   const session = await auth();
 
   if (session?.user?.id) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-zinc-50 px-4">
-      <section className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-zinc-950">Sign in</h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Use your Google account to continue planning trips.
-          </p>
+    <main className="keepsake-paper flex min-h-dvh flex-1 items-center justify-center px-5 text-[17px] leading-[1.55]">
+      <section className={`${panel} w-full max-w-md p-8 md:p-10`}>
+        <p className={eyebrow}>
+          Travle<em>Buddy</em>
+        </p>
+        <h1 className={`mt-3 ${sectionTitle}`}>Sign in</h1>
+        <p className="mt-3 text-base text-muted">
+          Use your Google account to keep your trips and pick up where you left
+          off.
+        </p>
+        <div className="mt-7">
+          <SignInButton />
         </div>
-        <SignInButton />
         {isDevLoginEnabled() && (
-          <div className="mt-3">
+          <div className="mt-6 border-t border-ink/12 pt-5">
             <DevSignInButton />
-            <p className="mt-2 text-xs text-zinc-600">
+            <p className="mt-2 text-[13px] text-muted">
               Development only. Signs in a fixed local user without Google.
             </p>
           </div>

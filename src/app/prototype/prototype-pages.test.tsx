@@ -8,6 +8,12 @@ import PrototypeNewTrip from "./new/page";
 import PrototypeHome from "./page";
 import PrototypeProfile from "./profile/page";
 
+// The start screen holds a router for the real app; the sample one never uses it.
+vi.mock("next/navigation", async (original) => ({
+  ...(await original<typeof import("next/navigation")>()),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();

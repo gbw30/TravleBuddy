@@ -1,10 +1,13 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import { serviceBorders } from "./eslint.borders.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Service borders (ADR-008). Known exceptions live in eslint-suppressions.json.
+  ...serviceBorders,
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

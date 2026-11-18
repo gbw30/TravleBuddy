@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type FormEvent } from "react";
+
+import {
+  TICKET_MODES,
+  ticketInputSchema,
+  type PlanningMode,
+  type TicketInput,
+} from "@/features/trips/contracts";
+import { callApi } from "@/lib/trip-api";
 
 import { Stamp } from "./day-stamp";
 import {
@@ -17,11 +26,12 @@ import {
 } from "./styles";
 import { TicketStub } from "./ticket-stub";
 
-type Ticket = { time: string; title: string; note?: string };
+/** Where the sample prototype goes instead of saving a trip. */
+export type SampleLinks = { together: string; brief: string; back: string };
 
 const ways = {
   together: {
-    href: "/prototype/trip",
+    mode: "GUIDED" as PlanningMode,
     title: "Plan it together",
     text: "I ask a few questions, then show you three places at a time. You pick, and the trip takes shape.",
     time: "About 15 minutes",
@@ -29,7 +39,7 @@ const ways = {
     go: "Start planning together",
   },
   brief: {
-    href: "/prototype/quick-plan",
+    mode: "QUICK" as PlanningMode,
     title: "Build it for me",
     text: "Fill in one short brief. I build the whole trip and tell you what I assumed. Then you refine it.",
     time: "About 3 minutes",
@@ -39,7 +49,12 @@ const ways = {
 };
 type Way = keyof typeof ways;
 
-const types = ["Flight", "Train", "Bus", "Ferry"];
+const typeWord: Record<TicketInput["mode"], string> = {
+  FLIGHT: "Flight",
+  TRAIN: "Train",
+  BUS: "Bus",
+  FERRY: "Ferry",
+};
 const label =
   "block font-mono text-[10.5px] tracking-[0.14em] text-muted uppercase";
 const input = `${fieldLarge} mt-1.5 block h-12 w-full tracking-normal normal-case`;
@@ -48,26 +63,53 @@ const rise = (i: number) => ({ "--i": i }) as CSSProperties;
 const miniPrint =
   "absolute w-[92px] rounded-[3px] bg-card p-[5px] pb-[17px] shadow-[0_6px_14px_rgb(29_26_22/0.18)]";
 
-export function StartTrip() {
+/**
+ * The start of a trip: tickets already held, then how to plan (PRD 5). With
+ * `sample` it is the design prototype and saves nothing; without, it creates
+ * the trip and opens it.
+ */
+export function StartTrip({ sample }: { sample?: SampleLinks }) {
+  const router = useRouter();
   const [way, setWay] = useState<Way>("together");
   const [addingTickets, setAddingTickets] = useState(false);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [tickets, setTickets] = useState<TicketInput[]>([]);
   const [draft, setDraft] = useState({ to: "", time: "", reference: "" });
+  const [ticketProblem, setTicketProblem] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
 
   function addTicket(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const text = (name: string) => String(data.get(name) ?? "").trim();
-    setTickets((list) => [
-      ...list,
-      {
-        time: text("time") || "--:--",
-        title: `${text("type")} · ${text("from")} → ${text("to")}`,
-        note: [text("date"), text("reference")].filter(Boolean).join(" · "),
-      },
-    ]);
+    const parsed = ticketInputSchema.safeParse(
+      Object.fromEntries(new FormData(event.currentTarget)),
+    );
+    if (!parsed.success) {
+      setTicketProblem(
+        parsed.error.issues[0]?.path[0] === "arriveDate"
+          ? "The arrival is before the departure. Check the two dates."
+          : "Fill in where from, where to, and both dates and times.",
+      );
+      return;
+    }
+    setTicketProblem(null);
+    setTickets((list) => [...list, parsed.data]);
     event.currentTarget.reset();
     setDraft({ to: "", time: "", reference: "" });
+  }
+
+  async function begin() {
+    setStarting(true);
+    setProblem(null);
+    const result = await callApi<{ trip: { id: string } }>("/api/v1/trips", {
+      method: "POST",
+      body: { tickets, planningMode: ways[way].mode },
+    });
+    if (result.ok) {
+      router.push(`/trips/${result.data.trip.id}`);
+      return;
+    }
+    setStarting(false);
+    setProblem(result.message);
   }
 
   return (
@@ -152,7 +194,28 @@ export function StartTrip() {
                 <ul className="mt-4 space-y-2.5">
                   {tickets.map((ticket, index) => (
                     <li key={index}>
-                      <TicketStub {...ticket} />
+                      <TicketStub
+                        time={ticket.arriveTime}
+                        title={`${typeWord[ticket.mode]} · ${ticket.from} → ${ticket.to}`}
+                        note={[ticket.arriveDate, ticket.reference]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      />
+                      <button
+                        type="button"
+                        className={quiet}
+                        onClick={() =>
+                          setTickets((list) =>
+                            list.filter((_, at) => at !== index),
+                          )
+                        }
+                      >
+                        Remove
+                        <span className="sr-only">
+                          {" "}
+                          the ticket to {ticket.to}
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -165,19 +228,19 @@ export function StartTrip() {
                 <div className="grid gap-4 p-5 sm:grid-cols-2">
                   <fieldset className="flex w-fit gap-1 rounded-full bg-tint p-1 sm:col-span-2">
                     <legend className="sr-only">Kind of ticket</legend>
-                    {types.map((type, index) => (
+                    {TICKET_MODES.map((type, index) => (
                       <label
                         key={type}
                         className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13.5px] text-ink/75 transition-colors duration-150 has-checked:bg-card has-checked:font-medium has-checked:text-ink has-checked:shadow-[0_1px_3px_rgb(29_26_22/0.14)] has-focus-visible:outline-2 has-focus-visible:outline-terracotta"
                       >
                         <input
                           type="radio"
-                          name="type"
+                          name="mode"
                           value={type}
                           defaultChecked={index === 0}
                           className="sr-only"
                         />
-                        {type}
+                        {typeWord[type]}
                       </label>
                     ))}
                   </fieldset>
@@ -198,13 +261,36 @@ export function StartTrip() {
                     />
                   </label>
                   <label className={label}>
-                    Arrives on
-                    <input name="date" type="date" required className={input} />
+                    Leaves on
+                    <input
+                      name="departDate"
+                      type="date"
+                      required
+                      className={input}
+                    />
                   </label>
                   <label className={label}>
-                    At
+                    Leaves at
                     <input
-                      name="time"
+                      name="departTime"
+                      type="time"
+                      required
+                      className={input}
+                    />
+                  </label>
+                  <label className={label}>
+                    Arrives on
+                    <input
+                      name="arriveDate"
+                      type="date"
+                      required
+                      className={input}
+                    />
+                  </label>
+                  <label className={label}>
+                    Arrives at
+                    <input
+                      name="arriveTime"
                       type="time"
                       required
                       className={input}
@@ -237,6 +323,9 @@ export function StartTrip() {
                         ? `${draft.reference || "Arrive"} · ${draft.to}`
                         : "Your arrival will show here"}
                     </span>
+                  </p>
+                  <p role="alert" className="text-[13px] text-stamp">
+                    {ticketProblem}
                   </p>
                   <button
                     type="submit"
@@ -347,16 +436,33 @@ export function StartTrip() {
             trip.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-            <Link href={ways[way].href} className={buttonLarge}>
-              {ways[way].go}
-              <span aria-hidden className={buttonArrow}>
-                →
-              </span>
-            </Link>
-            <Link href="/prototype" className={quiet}>
+            {sample ? (
+              <Link href={sample[way]} className={buttonLarge}>
+                {ways[way].go}
+                <span aria-hidden className={buttonArrow}>
+                  →
+                </span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled={starting}
+                onClick={begin}
+                className={buttonLarge}
+              >
+                {starting ? "Starting your trip…" : ways[way].go}
+                <span aria-hidden className={buttonArrow}>
+                  →
+                </span>
+              </button>
+            )}
+            <Link href={sample?.back ?? "/home"} className={quiet}>
               Back
             </Link>
           </div>
+          <p role="alert" className="mt-3 text-[15px] text-stamp">
+            {problem}
+          </p>
         </section>
       </div>
 

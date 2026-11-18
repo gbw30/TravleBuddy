@@ -86,9 +86,7 @@ export function canUseDiscovery(trip: TripReadinessInput) {
   return trip.status === "DRAFT" || trip.status === "PLANNING";
 }
 
-export function getMissingFullPlanningRequirements(
-  trip: TripReadinessInput,
-) {
+export function getMissingFullPlanningRequirements(trip: TripReadinessInput) {
   const missingRequirements: string[] = [];
 
   if (trip.status !== "PLANNING") {
