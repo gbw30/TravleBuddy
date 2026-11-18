@@ -21,3 +21,12 @@ export type CityLookupOutcome =
 export function cityLabel(city: Pick<City, "name" | "region" | "country">) {
   return [city.name, city.region, city.country].filter(Boolean).join(", ");
 }
+
+export {
+  isMealKind,
+  kindLabel,
+  PLACE_KINDS,
+  visitMinutes,
+  type PlaceKind,
+} from "./kinds";
+export { TRAVEL_MEANS, type TravelEstimate, type TravelMeans } from "./travel";
