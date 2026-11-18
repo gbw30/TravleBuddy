@@ -46,7 +46,8 @@ vi.mock("@/features/recommendations", async (actual) => ({
   recordDiscards: vi.fn(),
 }));
 vi.mock("@/features/memory", () => ({ readTripTaste: mocks.readTripTaste }));
-vi.mock("@/features/conversation", () => ({
+vi.mock("@/features/conversation", async (actual) => ({
+  ...(await actual<typeof import("@/features/conversation")>()),
   appendMessages: mocks.appendMessages,
 }));
 vi.mock("./trip-action", () => ({ runTripAction: vi.fn(), Refusal: class {} }));
@@ -155,6 +156,18 @@ describe("proposals in guided planning", () => {
     ]);
   });
 
+  it("ranks by the taste the traveller told, and the reason names it", async () => {
+    mocks.readTripTaste.mockResolvedValue({
+      interests: { values: ["museums"], source: "told" },
+    });
+    const [first, second] = (await load())!.proposal!.cards;
+    expect(first.name).toBe("Tokyo National Museum");
+    expect(first.reason).toContain(
+      "You said you like museums and exhibitions.",
+    );
+    expect(second.reason).toContain("It is not one of the interests you named");
+  });
+
   it("does not save the same proposal twice", async () => {
     mocks.recordPresented.mockResolvedValue([]);
     expect((await load())?.proposal?.cards).toHaveLength(3);
@@ -221,7 +234,6 @@ describe("proposals outside guided planning", () => {
     const plan = await load("d1-lunch");
     expect(plan?.holding).toBeNull();
     expect(plan?.proposal?.slotId).toBe("d1-lunch");
-    expect(mocks.readTripTaste).not.toHaveBeenCalled();
     expect(mocks.appendMessages).not.toHaveBeenCalled();
   });
 

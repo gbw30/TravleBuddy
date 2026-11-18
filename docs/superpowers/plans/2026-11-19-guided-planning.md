@@ -22,7 +22,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                                                                                      | #25          |
 | 4a. Taking a turn                                            | `feature/m5-turns`               | TB-AGT-08, TB-AGT-11 (typed), TB-AGT-13, TB-AGT-14, TB-AGT-15, TB-FIX-05, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI) | #26          |
 | 4b. Proposals in conversation                                | `feature/m5-proposals`           | TB-AGT-07, TB-AGT-09, TB-AGT-10, TB-ITN-14 (the offer)                                                         | #27          |
-| 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                                                                                     |              |
+| 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                                                                                     | #28          |
 | 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15                                                                     |              |
 | 7. Evidence                                                  | `feature/m5-evidence`            | all of the above, re-checked                                                                                   |              |
 
@@ -121,7 +121,18 @@ The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go wi
 
 ### Piece 5: Taste in the ranking and the reasons
 
-**Produces:** the trip profile as an input to `proposeCards` (interests, atmosphere, food); reasons that name what the traveller said and what about the slot (TB-RSN-02).
+**Produced (pull request 28):**
+
+- `proposeCards` takes the trip's taste (`CardTaste`). A place that answers a named interest ranks higher; a well-known place ranks higher for "lively" and lower for "quiet"; distance counts for more when the traveller likes to walk. `INTEREST_KINDS` says which kinds of place each interest means, and a test checks it covers every interest the script offers.
+- A reason is now always three parts: what about the slot, what about the traveller, and what is known of the hours (TB-RSN-02, TB-RSN-04). The traveller part comes from the factor that ranked the place when one applies. Otherwise it says plainly what the traveller has or has not told: "You have not told me what you like to see yet", "You left what to see open", "It is not one of the interests you named".
+- On a meal card a food rule is always named, with a note that the place data cannot confirm it and to check with the venue (PRD 12.2).
+- `loadPlan` reads the trip's taste once and passes it to the ranking.
+
+**TB-CRD-08:** discards have been recorded on the trip and have changed the next proposal since Milestone 4; the reason now sits beside what the traveller told in conversation. Learning from them into the personal profile is Milestone 6.
+
+**Known limit, for Milestone 8:** a food rule is stated, not enforced. Saved place data has no dietary tags, so no place can conflict with a rule and none can be confirmed. OpenStreetMap has `diet:*` tags on some places; saving them would let the ranking prefer confirmed places and drop conflicting ones. The quality sample "Maya" (vegetarian, a hard limit) needs this.
+
+**Not used by the ranking:** day shape, where to stay and budget priorities. The place data has no price or rating.
 
 ### Piece 6: The conversation on screen
 

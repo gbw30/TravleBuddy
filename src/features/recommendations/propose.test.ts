@@ -3,7 +3,15 @@ import { describe, expect, it } from "vitest";
 import type { PlaceDto } from "@/features/places/contracts";
 
 import { discardReason, DISCARD_REASONS } from "./contracts";
-import { noHistory, proposeCards, toCard, type ProposeInput } from "./propose";
+import {
+  INTEREST_KINDS,
+  noHistory,
+  noTaste,
+  proposeCards,
+  toCard,
+  type CardTaste,
+  type ProposeInput,
+} from "./propose";
 
 const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   id,
@@ -38,6 +46,7 @@ const input = (over: Partial<ProposeInput> = {}): ProposeInput => ({
   taken: [],
   kindsInDay: [],
   history: noHistory,
+  taste: noTaste,
   ...over,
 });
 const ids = (set: ReturnType<typeof proposeCards>) =>
@@ -186,6 +195,170 @@ describe("proposeCards", () => {
       expect(sentences, card.reason).toBeLessThanOrEqual(3);
       expect(card.reason).toContain("morning");
     }
+  });
+});
+
+describe("the traveller's taste in the ranking", () => {
+  const taste = (over: Partial<CardTaste>): CardTaste => ({
+    ...noTaste,
+    ...over,
+  });
+  const museums = { value: "museums", label: "museums and exhibitions" };
+  const reasonOf = (set: ReturnType<typeof proposeCards>, id: string) =>
+    set.cards.find((card) => card.placeId === id)!.reason;
+
+  it("puts a place that answers a named interest first, and says which interest", () => {
+    const candidates = [
+      place("a-park", { kind: "park" }),
+      place("b-market", { kind: "market" }),
+      place("z-museum", { kind: "museum" }),
+    ];
+    expect(ids(proposeCards(input({ candidates })))[0]).toBe("a-park");
+    const set = proposeCards(
+      input({ candidates, taste: taste({ interests: [museums] }) }),
+    );
+    expect(ids(set)[0]).toBe("z-museum");
+    expect(reasonOf(set, "z-museum")).toBe(
+      "It fits your morning in Tokyo. You said you like museums and exhibitions. It is open for the whole visit.",
+    );
+    expect(reasonOf(set, "a-park")).toContain(
+      "It is not one of the interests you named.",
+    );
+  });
+
+  it("knows the kinds of place every interest in the script means", async () => {
+    const { QUESTIONS } = await import("@/features/conversation");
+    for (const choice of QUESTIONS.interests.choices) {
+      expect(
+        INTEREST_KINDS[choice.value]?.length,
+        choice.value,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("weighs a well-known place up for lively and down for quiet, and says why", () => {
+    const candidates = [
+      place("famous", { ...mid, notable: true }),
+      place("tucked-away", near),
+    ];
+    const lively = proposeCards(
+      input({
+        from: sensoji,
+        candidates,
+        taste: taste({ atmosphere: "lively" }),
+      }),
+    );
+    expect(ids(lively)[0]).toBe("famous");
+    expect(reasonOf(lively, "famous")).toContain(
+      "You like lively places, and this is one of Tokyo's well-known ones.",
+    );
+    const quiet = proposeCards(
+      input({
+        from: sensoji,
+        candidates,
+        taste: taste({ atmosphere: "quiet" }),
+      }),
+    );
+    expect(ids(quiet)[0]).toBe("tucked-away");
+    expect(reasonOf(quiet, "tucked-away")).toContain(
+      "You asked for quiet places, and this is a quieter choice.",
+    );
+  });
+
+  it("looks closer for a traveller who likes to walk", () => {
+    // About 2 km from Senso-ji: a well-known place wins from there, but not
+    // for someone on foot.
+    const twoKm = { latitude: 35.7148, longitude: 139.8188 };
+    const candidates = [
+      place("famous", { ...twoKm, notable: true }),
+      place("close", near),
+    ];
+    expect(ids(proposeCards(input({ from: sensoji, candidates })))[0]).toBe(
+      "famous",
+    );
+    const onFoot = proposeCards(
+      input({ from: sensoji, candidates, taste: taste({ onFoot: true }) }),
+    );
+    expect(ids(onFoot)[0]).toBe("close");
+    expect(reasonOf(onFoot, "close")).toContain(
+      "You like to get around on foot, and this is a walk away.",
+    );
+  });
+
+  it("names a food rule on every meal card and says the data cannot confirm it", () => {
+    const lunch = {
+      id: "d2-lunch",
+      kind: "lunch" as const,
+      date: "2027-05-11",
+      start: "12:30",
+    };
+    const candidates = [
+      place("soba", { kind: "restaurant" }),
+      place("cafe", { kind: "cafe" }),
+    ];
+    const ruled = proposeCards(
+      input({
+        slot: lunch,
+        candidates,
+        taste: taste({ food: ["vegetarian", "gluten-free"] }),
+      }),
+    );
+    for (const card of ruled.cards) {
+      expect(card.reason).toBe(
+        "It fits your lunch in Tokyo. You eat vegetarian and gluten-free food, and the place data does not say whether this place serves it, so check with the venue. It is open for the whole visit.",
+      );
+    }
+    const free = proposeCards(
+      input({ slot: lunch, candidates, taste: taste({ food: [] }) }),
+    );
+    expect(free.cards[0].reason).toContain("You have no food rules.");
+    expect(
+      proposeCards(input({ slot: lunch, candidates })).cards[0].reason,
+    ).toContain("You have not told me about food yet.");
+  });
+
+  it("names something about the traveller and the slot in every reason, in three sentences at most", () => {
+    const candidates = [
+      place("a", { ...near, kind: "museum" }),
+      place("b", { ...mid, kind: "park", notable: true }),
+      place("c", { kind: "market", openingHours: null }),
+    ];
+    const tastes: CardTaste[] = [
+      noTaste,
+      taste({ interests: [] }),
+      taste({ interests: [museums] }),
+      taste({ interests: [museums], atmosphere: "quiet", onFoot: true }),
+      taste({ atmosphere: "lively" }),
+    ];
+    for (const from of [null, sensoji]) {
+      for (const given of tastes) {
+        const set = proposeCards(
+          input({ from, candidates, taste: given, kindsInDay: ["museum"] }),
+        );
+        expect(set.cards).toHaveLength(3);
+        for (const card of set.cards) {
+          expect(card.reason).toContain("morning");
+          expect(card.reason, card.reason).toMatch(/\b[Yy]ou\b/);
+          expect(
+            card.reason.split(/(?<=\.)\s/).length,
+            card.reason,
+          ).toBeLessThanOrEqual(3);
+        }
+      }
+    }
+  });
+
+  it("says plainly when nothing is known yet, or the choice was left open", () => {
+    const candidates = [place("a", { notable: true })];
+    expect(proposeCards(input({ candidates })).cards[0].reason).toContain(
+      "You have not told me what you like to see yet, and it is one of Tokyo's well-known places.",
+    );
+    expect(
+      proposeCards(input({ candidates, taste: taste({ interests: [] }) }))
+        .cards[0].reason,
+    ).toContain(
+      "You left what to see open, and it is one of Tokyo's well-known places.",
+    );
   });
 });
 

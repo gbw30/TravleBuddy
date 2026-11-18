@@ -9,7 +9,7 @@ import {
   writePlanVersion,
   type PlanContext,
 } from "@/features/itinerary";
-import { appendMessages } from "@/features/conversation";
+import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
 import {
   SLOT_WORDS,
   type Pace,
@@ -20,6 +20,7 @@ import {
   type PlanView,
 } from "@/features/itinerary/contracts";
 import { readTripTaste } from "@/features/memory";
+import type { TripTaste } from "@/features/memory/contracts";
 import type { PlanningTransaction } from "@/features/planning";
 import {
   addOwnPlace,
@@ -45,6 +46,7 @@ import {
   recordPresented,
   toCard,
   type CardHistory,
+  type CardTaste,
 } from "@/features/recommendations";
 import {
   discardReason,
@@ -112,6 +114,25 @@ function focusSlot(
   return open.find(({ entry }) => !isMeal(entry)) ?? open[0] ?? null;
 }
 
+/** The trip's taste in the form the ranking understands (TB-RSN-02). */
+function cardTaste(taste: TripTaste): CardTaste {
+  const atmosphere = taste.atmosphere?.values[0];
+  return {
+    interests: taste.interests
+      ? taste.interests.values.map((value) => ({
+          value,
+          label: labelsOf(QUESTIONS.interests, [value])[0].toLowerCase(),
+        }))
+      : null,
+    atmosphere:
+      atmosphere === "lively" || atmosphere === "quiet" ? atmosphere : null,
+    onFoot: taste.getting_around?.values[0] === "walk",
+    food: taste.food
+      ? taste.food.values.filter((value) => value !== "none")
+      : null,
+  };
+}
+
 /** What the traveller's discards on this trip say about what to offer next (TB-CRD-08). */
 async function historyFor(
   tripId: string,
@@ -148,6 +169,7 @@ async function proposalFor(
   places: Record<string, PlaceDto>,
   userId: string,
   { day, entry }: { day: PlanDay; entry: SlotEntry },
+  taste: TripTaste,
   gather: boolean,
 ): Promise<PlanSnapshot["proposal"]> {
   const city = trip.facts.cities.find(
@@ -208,6 +230,7 @@ async function proposalFor(
       e.type === "place" && places[e.placeId] ? [places[e.placeId].kind] : [],
     ),
     history: await historyFor(trip.id, userId),
+    taste: cardTaste(taste),
   });
   const fresh = await recordPresented(
     db,
@@ -301,19 +324,28 @@ export async function loadPlan(
   const context = await contextFor(trip, state, userId);
   const view = buildPlanView(state, context);
   const focus = trip.archived ? null : focusSlot(view, wanted);
+  const taste: TripTaste = focus ? await readTripTaste(db, tripId) : {};
   // Guided planning proposes meals once the food question is answered or
   // skipped (TB-AGT-07). Until then the agent says what it is waiting for.
   const holding =
     focus !== null &&
     isMeal(focus.entry) &&
     trip.planningMode === "GUIDED" &&
-    (await readTripTaste(db, tripId)).food === undefined;
+    taste.food === undefined;
   const proposing = focus !== null && !holding;
   return {
     view,
     chosen: chosenCards(view, context.places, trip),
     proposal: proposing
-      ? await proposalFor(trip, view, context.places, userId, focus, gather)
+      ? await proposalFor(
+          trip,
+          view,
+          context.places,
+          userId,
+          focus,
+          taste,
+          gather,
+        )
       : null,
     holding: holding ? "food" : null,
     shelfOffer: proposing
