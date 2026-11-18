@@ -9,13 +9,19 @@ import {
   writePlanVersion,
   type PlanContext,
 } from "@/features/itinerary";
-import type {
-  PlanAction,
-  PlanDay,
-  PlanEntry,
-  PlanState,
-  PlanView,
+import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
+import {
+  SLOT_WORDS,
+  type Pace,
+  type PlanAction,
+  type PlanDay,
+  type PlanEntry,
+  type PlanState,
+  type PlanView,
 } from "@/features/itinerary/contracts";
+import { readTripTaste } from "@/features/memory";
+import type { TripTaste } from "@/features/memory/contracts";
+import type { PlanningTransaction } from "@/features/planning";
 import {
   addOwnPlace,
   findPlacesByName,
@@ -40,6 +46,7 @@ import {
   recordPresented,
   toCard,
   type CardHistory,
+  type CardTaste,
 } from "@/features/recommendations";
 import {
   discardReason,
@@ -107,6 +114,25 @@ function focusSlot(
   return open.find(({ entry }) => !isMeal(entry)) ?? open[0] ?? null;
 }
 
+/** The trip's taste in the form the ranking understands (TB-RSN-02). */
+function cardTaste(taste: TripTaste): CardTaste {
+  const atmosphere = taste.atmosphere?.values[0];
+  return {
+    interests: taste.interests
+      ? taste.interests.values.map((value) => ({
+          value,
+          label: labelsOf(QUESTIONS.interests, [value])[0].toLowerCase(),
+        }))
+      : null,
+    atmosphere:
+      atmosphere === "lively" || atmosphere === "quiet" ? atmosphere : null,
+    onFoot: taste.getting_around?.values[0] === "walk",
+    food: taste.food
+      ? taste.food.values.filter((value) => value !== "none")
+      : null,
+  };
+}
+
 /** What the traveller's discards on this trip say about what to offer next (TB-CRD-08). */
 async function historyFor(
   tripId: string,
@@ -142,15 +168,14 @@ async function proposalFor(
   view: PlanView,
   places: Record<string, PlaceDto>,
   userId: string,
-  wanted: string | undefined,
+  { day, entry }: { day: PlanDay; entry: SlotEntry },
+  taste: TripTaste,
   gather: boolean,
 ): Promise<PlanSnapshot["proposal"]> {
-  const focus = focusSlot(view, wanted);
   const city = trip.facts.cities.find(
-    ({ city }) => focus && cityKeyOf(city) === focus.entry.cityKey,
+    ({ city }) => cityKeyOf(city) === entry.cityKey,
   )?.city;
-  if (!focus || !city) return null;
-  const { day, entry } = focus;
+  if (!city) return null;
 
   // The stop just before the slot, when its position is known.
   const before = day.entries
@@ -205,13 +230,29 @@ async function proposalFor(
       e.type === "place" && places[e.placeId] ? [places[e.placeId].kind] : [],
     ),
     history: await historyFor(trip.id, userId),
+    taste: cardTaste(taste),
   });
-  await recordPresented(
+  const fresh = await recordPresented(
     db,
     trip.id,
     entry.slotId,
     set.cards.map((card) => card.placeId),
   );
+  // In guided planning a new proposal joins the conversation, naming its
+  // slot with the day and the time (TB-AGT-09, TB-AGT-13).
+  if (trip.planningMode === "GUIDED" && fresh.length > 0) {
+    await appendMessages(db, trip.id, [
+      {
+        from: "agent",
+        body: {
+          kind: "proposal",
+          slotId: entry.slotId,
+          text: `For day ${day.day}, ${SLOT_WORDS[entry.kind].toLowerCase()} at ${entry.start}, I suggest ${set.cards.length === 1 ? "this" : "one of these"}.`,
+          placeNames: set.cards.map((card) => card.name.slice(0, 160)),
+        },
+      },
+    ]);
+  }
   return {
     ...set,
     cityName: city.name,
@@ -254,6 +295,16 @@ function chosenCards(
   return cards;
 }
 
+/** The plan's days as they stand, without proposals. Empty while a fact is missing. */
+export async function planDays(
+  userId: string,
+  trip: TripDetail,
+): Promise<PlanDay[]> {
+  const saved = await readPlanState(db, trip.id);
+  const state = withProvisionalStart(saved.state, trip);
+  return buildPlanView(state, await contextFor(trip, state, userId)).days;
+}
+
 /**
  * The plan as it stands, with the cards for one slot, or null when the trip
  * is not the traveller's. Reading can gather a city's places (one provider
@@ -262,7 +313,7 @@ function chosenCards(
 export async function loadPlan(
   userId: string,
   tripId: string,
-  focus?: string,
+  wanted?: string,
   /** False keeps the provider out of a page load; the screen then asks again. */
   gather = true,
 ): Promise<PlanSnapshot | null> {
@@ -272,14 +323,84 @@ export async function loadPlan(
   const state = withProvisionalStart(saved.state, trip);
   const context = await contextFor(trip, state, userId);
   const view = buildPlanView(state, context);
+  const focus = trip.archived ? null : focusSlot(view, wanted);
+  const taste: TripTaste = focus ? await readTripTaste(db, tripId) : {};
+  // Guided planning proposes meals once the food question is answered or
+  // skipped (TB-AGT-07). Until then the agent says what it is waiting for.
+  const holding =
+    focus !== null &&
+    isMeal(focus.entry) &&
+    trip.planningMode === "GUIDED" &&
+    taste.food === undefined;
+  const proposing = focus !== null && !holding;
   return {
     view,
     chosen: chosenCards(view, context.places, trip),
-    proposal: trip.archived
-      ? null
-      : await proposalFor(trip, view, context.places, userId, focus, gather),
+    proposal: proposing
+      ? await proposalFor(
+          trip,
+          view,
+          context.places,
+          userId,
+          focus,
+          taste,
+          gather,
+        )
+      : null,
+    holding: holding ? "food" : null,
+    shelfOffer: proposing
+      ? shelfOffer(view, context.places, focus.entry)
+      : null,
     canUndo: saved.canUndo,
   };
+}
+
+/** A shelved place that fits the open slot in focus, for the agent to offer (TB-ITN-14). */
+function shelfOffer(
+  view: PlanView,
+  places: Record<string, PlaceDto>,
+  entry: SlotEntry,
+): PlanSnapshot["shelfOffer"] {
+  if (entry.type !== "open") return null;
+  const place = view.shelf
+    .map((item) => places[item.placeId])
+    .find(
+      (place) =>
+        place &&
+        place.cityKey === entry.cityKey &&
+        kindSuitsSlot(place.kind, entry.kind),
+    );
+  return place
+    ? { placeId: place.id, name: place.name, slotId: entry.slotId }
+    : null;
+}
+
+/**
+ * Sets the plan's pace inside a change that is already under way: the pace
+ * answer in conversation. False when the plan already has that pace.
+ */
+export async function setPlanPace(
+  tx: PlanningTransaction,
+  trip: TripDetail,
+  userId: string,
+  pace: Pace,
+): Promise<boolean> {
+  const saved = await readPlanState(tx, trip.id);
+  if (saved.state.pace === pace) return false;
+  const state = withProvisionalStart(saved.state, trip);
+  const context = await contextFor(trip, state, userId);
+  const applied = applyPlanAction(state, buildPlanView(state, context), {
+    type: "pace",
+    pace,
+  });
+  if ("refused" in applied) return false;
+  await writePlanVersion(
+    tx,
+    trip.id,
+    settle(applied.state, buildPlanView(applied.state, context)),
+    applied.summary,
+  );
+  return true;
 }
 
 /**

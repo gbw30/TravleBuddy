@@ -34,6 +34,7 @@
     "qa:sanitize-log": "tsx qa/cli/sanitize-log.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
     "@auth/prisma-adapter": "^2.11.3",
     "@googlemaps/js-api-loader": "^2.0.2",
     "@next/env": "16.2.12",

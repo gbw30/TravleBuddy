@@ -1,0 +1,363 @@
+import { describe, expect, it } from "vitest";
+
+import type { TripFacts } from "@/features/trips/contracts";
+
+import {
+  emptyTripProfile,
+  FACT_TOPICS,
+  intentSchema,
+  TASTE_TOPICS,
+  type Intent,
+  type TripProfile,
+} from "./contracts";
+import { readAnswerByRule } from "./read-answer";
+import {
+  allowedValues,
+  nextQuestion,
+  QUESTIONS,
+  readiness,
+  TASTE_DEFAULTS,
+  type ScriptState,
+} from "./script";
+
+const tokyo = {
+  name: "Tokyo",
+  region: null,
+  country: "Japan",
+  latitude: 35.6769,
+  longitude: 139.7639,
+  timeZone: "Asia/Tokyo",
+};
+const noFacts: TripFacts = {
+  cities: [],
+  startDate: null,
+  endDate: null,
+  lengthNights: null,
+  timeOfYear: null,
+  datesFirmness: null,
+  adults: null,
+  children: null,
+  budgetAmount: null,
+  budgetCurrency: null,
+  budgetBasis: null,
+  budgetFirmness: null,
+  purpose: null,
+};
+const allFacts: TripFacts = {
+  ...noFacts,
+  cities: [{ city: tokyo, nights: 4 }],
+  startDate: "2027-05-10",
+  endDate: "2027-05-14",
+  datesFirmness: "FIXED",
+  adults: 2,
+  children: 0,
+  budgetAmount: 300000,
+  budgetCurrency: "JPY",
+  budgetBasis: "TRIP",
+  budgetFirmness: "FLEXIBLE",
+  purpose: "Holiday",
+};
+const state = (over: Partial<ScriptState> = {}): ScriptState => ({
+  facts: noFacts,
+  commitments: { count: 0, hasStay: false },
+  profile: emptyTripProfile,
+  ...over,
+});
+const told = (values: string[]) => ({ values, source: "told" as const });
+
+describe("the script", () => {
+  it("has a question for every topic, each answerable by tapping or typing", () => {
+    for (const topic of [...FACT_TOPICS, ...TASTE_TOPICS]) {
+      const question = QUESTIONS[topic];
+      expect(question.topic).toBe(topic);
+      expect(
+        question.prompt.endsWith("?") || question.prompt.endsWith("."),
+      ).toBe(true);
+      expect(question.skipSays.length).toBeGreaterThan(10);
+      // Open text is typed; every other form offers choices to tap.
+      expect(
+        question.form === "open_text" || question.choices.length >= 2,
+        topic,
+      ).toBe(true);
+    }
+  });
+
+  it("asks the facts first, in order, and only those it does not have", () => {
+    expect(nextQuestion(state())?.topic).toBe("where");
+    // Tickets already gave the city and the dates.
+    const fromTickets = state({
+      facts: {
+        ...noFacts,
+        cities: allFacts.cities,
+        startDate: "2027-05-10",
+        datesFirmness: "FIXED",
+      },
+      commitments: { count: 2, hasStay: false },
+    });
+    expect(nextQuestion(fromTickets)?.topic).toBe("who");
+  });
+
+  it("does not ask how firm a budget is when there is no budget", () => {
+    const s = state({
+      facts: { ...allFacts, budgetAmount: null, budgetFirmness: null },
+      commitments: { count: 1, hasStay: false },
+      profile: { taste: {}, skippedFacts: ["budget"] },
+    });
+    expect(nextQuestion(s)?.topic).toBe("pace");
+  });
+
+  it("asks whether anything is decided unless a commitment already exists", () => {
+    const facts = { ...allFacts, purpose: null };
+    expect(nextQuestion(state({ facts }))?.topic).toBe("decided");
+    expect(
+      nextQuestion(state({ facts, commitments: { count: 1, hasStay: true } }))
+        ?.topic,
+    ).toBe("purpose");
+  });
+
+  it("moves on from a skipped fact and never asks it again", () => {
+    const s = state({
+      profile: { taste: {}, skippedFacts: ["where", "when", "who"] },
+    });
+    expect(nextQuestion(s)?.topic).toBe("budget");
+  });
+
+  it("then covers taste one topic at a time, and finishes", () => {
+    const done = { count: 1, hasStay: false };
+    const asked: string[] = [];
+    let profile: TripProfile = emptyTripProfile;
+    for (;;) {
+      const question = nextQuestion(
+        state({ facts: allFacts, commitments: done, profile }),
+      );
+      if (!question) break;
+      asked.push(question.topic);
+      profile = {
+        ...profile,
+        taste: { ...profile.taste, [question.topic]: told(["x"]) },
+      };
+    }
+    expect(asked).toEqual([...TASTE_TOPICS]);
+  });
+});
+
+describe("readiness", () => {
+  it("says what is still needed before anything can be proposed", () => {
+    expect(readiness(state())).toEqual({
+      sights: false,
+      meals: false,
+      needs: ["where you are going", "when, or for how long"],
+    });
+  });
+
+  it("is ready for sights as soon as the days can be laid out, before any taste is known", () => {
+    expect(readiness(state({ facts: allFacts }))).toEqual({
+      sights: true,
+      meals: false,
+      needs: [],
+    });
+    const rough = {
+      ...noFacts,
+      cities: allFacts.cities,
+      lengthNights: 5,
+      timeOfYear: 10,
+    };
+    expect(readiness(state({ facts: rough })).sights).toBe(true);
+  });
+
+  it("is ready for meals once food is answered or skipped, whatever else is open", () => {
+    const answered = {
+      taste: { food: told(["vegetarian"]) },
+      skippedFacts: [],
+    };
+    const skipped = {
+      taste: {
+        food: { values: TASTE_DEFAULTS.food, source: "default" as const },
+      },
+      skippedFacts: [],
+    };
+    expect(readiness(state({ facts: allFacts, profile: answered })).meals).toBe(
+      true,
+    );
+    expect(readiness(state({ facts: allFacts, profile: skipped })).meals).toBe(
+      true,
+    );
+  });
+});
+
+describe("reading a typed answer by rule", () => {
+  const read = (topic: keyof typeof QUESTIONS, text: string) =>
+    readAnswerByRule(QUESTIONS[topic], text);
+  const valid = (intent: Intent) => intentSchema.safeParse(intent).success;
+
+  it("reads where as a list of cities in order", () => {
+    expect(read("where", "Tokyo")).toEqual({
+      type: "facts",
+      cities: ["Tokyo"],
+    });
+    expect(read("where", "Tokyo, then Kyoto and Osaka")).toEqual({
+      type: "facts",
+      cities: ["Tokyo", "Kyoto", "Osaka"],
+    });
+  });
+
+  it("reads dates in common forms, and a length with a month", () => {
+    expect(read("when", "2027-05-10 to 2027-05-14")).toEqual({
+      type: "facts",
+      startDate: "2027-05-10",
+      endDate: "2027-05-14",
+    });
+    expect(read("when", "10 May 2027")).toEqual({
+      type: "facts",
+      startDate: "2027-05-10",
+    });
+    expect(read("when", "From May 10th, 2027 until 14 May 2027.")).toEqual({
+      type: "facts",
+      startDate: "2027-05-10",
+      endDate: "2027-05-14",
+    });
+    expect(read("when", "5 nights in October")).toEqual({
+      type: "facts",
+      lengthNights: 5,
+      timeOfYear: 10,
+    });
+    expect(read("when", "a week in may")).toEqual({
+      type: "facts",
+      lengthNights: 7,
+      timeOfYear: 5,
+    });
+  });
+
+  it("does not accept a date that does not exist, or a length with no month", () => {
+    expect(read("when", "30 February 2027")).toEqual({ type: "none" });
+    expect(read("when", "five nights")).toEqual({ type: "none" });
+    expect(read("when", "soon")).toEqual({ type: "none" });
+  });
+
+  it("reads who is travelling from a choice or a phrase", () => {
+    expect(read("who", "Just me")).toEqual({
+      type: "facts",
+      adults: 1,
+      children: 0,
+    });
+    expect(read("who", "Two adults and two children")).toEqual({
+      type: "facts",
+      adults: 2,
+      children: 2,
+    });
+    expect(read("who", "3 adults and a child")).toEqual({
+      type: "facts",
+      adults: 3,
+      children: 1,
+    });
+    expect(read("who", "me and my wife")).toEqual({
+      type: "facts",
+      adults: 2,
+      children: 0,
+    });
+    expect(read("who", "4")).toEqual({ type: "facts", adults: 4, children: 0 });
+    expect(read("who", "everyone")).toEqual({ type: "none" });
+  });
+
+  it("reads a budget with its currency and whether it is per day", () => {
+    expect(read("budget", "300,000 JPY for the trip")).toEqual({
+      type: "facts",
+      budgetAmount: 300000,
+      budgetCurrency: "JPY",
+      budgetBasis: "TRIP",
+    });
+    expect(read("budget", "€150 a day")).toEqual({
+      type: "facts",
+      budgetAmount: 150,
+      budgetCurrency: "EUR",
+      budgetBasis: "DAY",
+    });
+    expect(read("budget", "2k dollars")).toEqual({
+      type: "facts",
+      budgetAmount: 2000,
+      budgetCurrency: "USD",
+      budgetBasis: "TRIP",
+    });
+    // An amount with no currency is not guessed.
+    expect(read("budget", "about 2000")).toEqual({ type: "none" });
+  });
+
+  it("reads firmness, purpose and whether anything is decided", () => {
+    expect(read("firmness", "Dates fixed, budget can stretch")).toEqual({
+      type: "facts",
+      datesFirmness: "FIXED",
+      budgetFirmness: "FLEXIBLE",
+    });
+    expect(read("purpose", "A honeymoon")).toEqual({
+      type: "facts",
+      purpose: "Honeymoon",
+    });
+    expect(read("purpose", "My sister's wedding")).toEqual({
+      type: "facts",
+      purpose: "My sister's wedding",
+    });
+    expect(read("decided", "Nothing yet")).toEqual({ type: "skip" });
+    expect(read("decided", "I booked teamLab for Thursday at 3")).toEqual({
+      type: "none",
+    });
+  });
+
+  it("reads taste answers by the question's own choices, one or several", () => {
+    expect(read("pace", "relaxed")).toEqual({
+      type: "taste",
+      topic: "pace",
+      values: ["relaxed"],
+    });
+    expect(read("pace", "Packed!")).toEqual({
+      type: "taste",
+      topic: "pace",
+      values: ["packed"],
+    });
+    expect(read("interests", "museums, parks and views")).toEqual({
+      type: "taste",
+      topic: "interests",
+      values: ["museums", "nature", "views"],
+    });
+    expect(read("food", "vegetarian and gluten-free")).toEqual({
+      type: "taste",
+      topic: "food",
+      values: ["vegetarian", "gluten-free"],
+    });
+    expect(read("getting_around", "public transport")).toEqual({
+      type: "taste",
+      topic: "getting_around",
+      values: ["transit"],
+    });
+    expect(read("pace", "like a snail")).toEqual({ type: "none" });
+  });
+
+  it("reads a skip in plain words, and nothing from an empty message", () => {
+    for (const text of ["skip", "Not sure.", "you choose", "I don't know"]) {
+      expect(read("pace", text), text).toEqual({ type: "skip" });
+    }
+    expect(read("pace", "   ")).toEqual({ type: "none" });
+  });
+
+  it("only ever returns an intent that passes the schema, with values the script allows", () => {
+    const samples: [keyof typeof QUESTIONS, string][] = [
+      ["where", "Tokyo, Kyoto"],
+      ["when", "10 May 2027"],
+      ["who", "2 adults and 1 child"],
+      ["budget", "£900"],
+      ["interests", "museums and markets"],
+      ["stay", "a hotel"],
+      ["budget_priorities", "evenly"],
+    ];
+    for (const [topic, text] of samples) {
+      const intent = read(topic, text);
+      expect(valid(intent), `${topic}: ${text}`).toBe(true);
+      if (intent.type === "taste") {
+        expect(
+          intent.values.every((value) =>
+            allowedValues(intent.topic).includes(value),
+          ),
+        ).toBe(true);
+      }
+    }
+  });
+});

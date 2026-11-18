@@ -20,15 +20,30 @@
       ]
     },
     "conversation": {
-      "code": ["src/features/planning/**", "src/lib/ai/**"],
-      "tables": ["PlanningMutation", "PlanningEvent"]
+      "code": [
+        "src/features/conversation/**",
+        "src/features/planning/**",
+        "src/lib/ai/**"
+      ],
+      "tables": [
+        "PlanningMutation",
+        "PlanningEvent",
+        "Conversation",
+        "ConversationMessage",
+        "AiUsage"
+      ]
     },
     "memory": {
-      "code": ["src/features/profile/**", "src/features/preferences/**"],
+      "code": [
+        "src/features/memory/**",
+        "src/features/profile/**",
+        "src/features/preferences/**"
+      ],
       "tables": [
         "UserTravelPreference",
         "TripPreference",
-        "PreferenceProfileVersion"
+        "PreferenceProfileVersion",
+        "TripProfile"
       ]
     },
     "places": {
@@ -63,6 +78,8 @@
   "crossBorderForeignKeys": [
     "CardEvent.trip -> Trip (recommendations -> trips)",
     "Conflict.trip -> Trip (itinerary -> trips)",
+    "Conversation.trip -> Trip (conversation -> trips)",
+    "ConversationMessage.trip -> Trip (conversation -> trips)",
     "GenerationJob.feedback -> PlanningFeedback (jobs -> recommendations)",
     "GenerationJob.parentItineraryVersion -> ItineraryVersion (jobs -> itinerary)",
     "GenerationJob.preferenceProfileVersion -> PreferenceProfileVersion (jobs -> memory)",
@@ -95,6 +112,7 @@
     "Trip.activePreferenceProfileVersion -> PreferenceProfileVersion (trips -> memory)",
     "Trip.user -> User (trips -> identity)",
     "TripPreference.trip -> Trip (memory -> trips)",
+    "TripProfile.trip -> Trip (memory -> trips)",
     "UserTravelPreference.user -> User (memory -> identity)"
   ]
 }

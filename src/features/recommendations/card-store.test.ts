@@ -48,9 +48,16 @@ function fakeClient() {
 describe("the record of cards", () => {
   it("records each card shown for a slot once", async () => {
     const { client, rows } = fakeClient();
-    await recordPresented(client, "trip-1", "d2-morning", ["a", "b", "c"]);
-    await recordPresented(client, "trip-1", "d2-morning", ["b", "c", "d"]);
-    await recordPresented(client, "trip-1", "d2-morning", []);
+    expect(
+      await recordPresented(client, "trip-1", "d2-morning", ["a", "b", "c"]),
+    ).toEqual(["a", "b", "c"]);
+    // Only the card shown here for the first time is new.
+    expect(
+      await recordPresented(client, "trip-1", "d2-morning", ["b", "c", "d"]),
+    ).toEqual(["d"]);
+    expect(await recordPresented(client, "trip-1", "d2-morning", [])).toEqual(
+      [],
+    );
 
     expect(rows.map((row) => row.placeId)).toEqual(["a", "b", "c", "d"]);
     expect(rows.every((row) => row.action === "PRESENTED")).toBe(true);

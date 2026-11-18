@@ -9,9 +9,12 @@ export {
   recordPresented,
 } from "./card-store";
 export {
+  INTEREST_KINDS,
   noHistory,
+  noTaste,
   proposeCards,
   toCard,
   type CardHistory,
+  type CardTaste,
   type ProposeInput,
 } from "./propose";

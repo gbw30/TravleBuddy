@@ -9,6 +9,7 @@ export {
 } from "./commitment-store";
 export { factsFromTickets } from "./tickets";
 export { findEditable, type Refused } from "./trip-access";
+export { todayIn } from "./trip-state";
 export {
   CitiesInUseError,
   createTrip,
