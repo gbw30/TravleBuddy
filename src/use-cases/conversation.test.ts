@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   readTripTaste: vi.fn(),
   saveTripAnswer: vi.fn(),
   readProfile: vi.fn(),
+  readTripDifference: vi.fn(),
+  saveTripDifference: vi.fn(),
   findCities: vi.fn(),
   planDays: vi.fn(),
   setPlanPace: vi.fn(),
@@ -38,6 +40,8 @@ vi.mock("@/features/memory", async (actual) => ({
   readTripTaste: mocks.readTripTaste,
   saveTripAnswer: mocks.saveTripAnswer,
   readProfile: mocks.readProfile,
+  readTripDifference: mocks.readTripDifference,
+  saveTripDifference: mocks.saveTripDifference,
 }));
 vi.mock("@/features/places", () => ({ findCities: mocks.findCities }));
 vi.mock("./plan", () => ({
@@ -159,6 +163,7 @@ beforeEach(() => {
   mocks.getTrip.mockResolvedValue(trip());
   mocks.readTripTaste.mockResolvedValue({});
   mocks.readProfile.mockResolvedValue({ entries: [] });
+  mocks.readTripDifference.mockResolvedValue({ differs: null, because: null });
   mocks.readSkippedFacts.mockResolvedValue([]);
   mocks.readConversation.mockResolvedValue([]);
   mocks.readUsage.mockResolvedValue({ inputTokens: 0, outputTokens: 0 });
@@ -273,6 +278,112 @@ describe("a traveller the site already knows", () => {
         source: "told",
       },
     );
+  });
+});
+
+describe("an answer that goes against the profile", () => {
+  const remembered = {
+    entries: [
+      {
+        id: "e1",
+        topic: "pace",
+        value: "relaxed",
+        sureness: "usually",
+        source: { type: "trip", tripId: "t0", tripTitle: "Lisbon in spring" },
+      },
+    ],
+  };
+  const answer = (turn: Parameters<typeof takeTurn>[0]["turn"]) =>
+    takeTurn({ userId: "user-1", tripId: "trip-1", control, turn });
+
+  beforeEach(() => {
+    mocks.readProfile.mockResolvedValue(remembered);
+    mocks.readTripTaste.mockResolvedValue({
+      pace: { values: ["packed"], source: "told" },
+    });
+  });
+
+  it("is followed once by the question of why this trip is different", async () => {
+    expect((await loadConversation("user-1", "trip-1"))?.waiting).toMatchObject(
+      {
+        topic: "difference",
+        prompt:
+          "Pace: you chose packed for this trip, and I remember relaxed. Is this trip different from your usual?",
+      },
+    );
+    mocks.readTripDifference.mockResolvedValue({
+      differs: false,
+      because: null,
+    });
+    expect((await loadConversation("user-1", "trip-1"))?.waiting?.topic).toBe(
+      "day_shape",
+    );
+  });
+
+  it("marks the trip as different with the purpose tapped, and saves the exchange", async () => {
+    await answer({
+      type: "answer",
+      topic: "difference",
+      values: ["Honeymoon"],
+    });
+    expect(mocks.saveTripDifference).toHaveBeenCalledWith(
+      tx,
+      "trip-1",
+      "Honeymoon",
+    );
+    expect(saved()).toEqual([
+      [
+        "agent",
+        "question",
+        expect.stringMatching(/Is this trip different from your usual\?$/),
+      ],
+      ["traveller", "text", "Yes, it is a honeymoon"],
+      [
+        "agent",
+        "text",
+        "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
+      ],
+    ]);
+    expect(mocks.saveTripAnswer).not.toHaveBeenCalled();
+  });
+
+  it("keeps it an ordinary trip for a no or a skip, and takes typed words as the reason without the model", async () => {
+    await answer({ type: "answer", topic: "difference", values: ["ordinary"] });
+    expect(mocks.saveTripDifference).toHaveBeenLastCalledWith(
+      tx,
+      "trip-1",
+      null,
+    );
+    await answer({ type: "skip", topic: "difference" });
+    expect(mocks.saveTripDifference).toHaveBeenLastCalledWith(
+      tx,
+      "trip-1",
+      null,
+    );
+    await say("We are travelling with my parents");
+    expect(mocks.saveTripDifference).toHaveBeenLastCalledWith(
+      tx,
+      "trip-1",
+      "We are travelling with my parents",
+    );
+    expect(mocks.modelCall).not.toHaveBeenCalled();
+  });
+
+  it("refuses a value that is not one of the choices, and an answer to another question", async () => {
+    expect(
+      await answer({
+        type: "answer",
+        topic: "difference",
+        values: ["Holiday"],
+      }),
+    ).toEqual({
+      status: "refused",
+      message: "That is not one of the choices.",
+    });
+    expect(
+      await answer({ type: "answer", topic: "day_shape", values: ["early"] }),
+    ).toMatchObject({ status: "refused" });
+    expect(mocks.saveTripDifference).not.toHaveBeenCalled();
   });
 });
 

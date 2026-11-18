@@ -3,6 +3,7 @@ import {
   aiMode,
   appendMessages,
   decide,
+  decideDifference,
   intentOfTap,
   labelsOf,
   lastQuestionTopic,
@@ -32,7 +33,13 @@ import type {
   TurnResult,
 } from "@/features/conversation/contracts";
 import { PACES } from "@/features/itinerary/contracts";
-import { readProfile, readTripTaste, saveTripAnswer } from "@/features/memory";
+import {
+  readProfile,
+  readTripDifference,
+  readTripTaste,
+  saveTripAnswer,
+  saveTripDifference,
+} from "@/features/memory";
 import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
 import {
@@ -58,15 +65,17 @@ async function scriptState(
   trip: TripDetail,
   userId: string,
 ): Promise<ScriptState> {
-  const [taste, skippedFacts, personal] = await Promise.all([
+  const [taste, skippedFacts, personal, difference] = await Promise.all([
     readTripTaste(db, trip.id),
     readSkippedFacts(db, trip.id),
     readProfile(db, userId),
+    readTripDifference(db, trip.id),
   ]);
   return {
     // What is remembered from before this trip: the agent confirms it
     // instead of asking again (TB-AGT-06).
     remembered: personal.entries,
+    differs: difference.differs,
     facts: trip.facts,
     commitments: {
       count: trip.commitments.length,
@@ -158,6 +167,17 @@ async function prepare(
   trip: TripDetail,
   userId: string,
 ): Promise<{ said: string; decision: Decision } | Refusal> {
+  // "Is this trip different?" is answered by a tapped purpose, a skip, or
+  // the traveller's own words. It needs no reading by the model.
+  if (
+    waiting?.topic === "difference" &&
+    (turn.type === "say" || turn.topic === "difference")
+  ) {
+    const answered = decideDifference(waiting, turn);
+    if (!answered) return new Refusal("That is not one of the choices.");
+    const { said, ...decision } = answered;
+    return { said, decision };
+  }
   if (turn.type === "say") {
     const { intent, limited } = await readSaid(turn.text, waiting, trip);
     // Cities are looked up only when they could be saved: a trip keeps the
@@ -282,6 +302,9 @@ export async function takeTurn(input: {
         ) {
           says += ` The plan now follows a ${pace} pace.`;
         }
+      }
+      if (change?.type === "difference") {
+        await saveTripDifference(tx, tripId, change.because);
       }
       if (change?.type === "skip_fact") {
         await skipFact(tx, tripId, change.topic);

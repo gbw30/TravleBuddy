@@ -37,6 +37,8 @@ export type Change =
   | { type: "skip_fact"; topic: FactTopic }
   | { type: "commitment"; commitment: CommitmentInput }
   | { type: "go_to"; slotId: string }
+  /** The answer to "is this trip different?". `because` is null for an ordinary trip. */
+  | { type: "difference"; because: string | null }
   | null;
 
 export type Decision = {
@@ -374,6 +376,49 @@ export function decide(input: DecideInput): Decision {
   }
 }
 
+const NOT_DIFFERENT =
+  /^(no|nope|not really|it is not|it isn'?t|same as usual|as usual|just this once|ordinary)\b/i;
+
+/**
+ * What an answer to "is this trip different?" leads to (TB-AGT-12). A tapped
+ * choice is a purpose or "no"; typed words are the traveller's own reason. A
+ * skip, or a plain no, leaves it an ordinary trip. Null when a tapped value
+ * is not one of the choices.
+ */
+export function decideDifference(
+  question: Question,
+  answer:
+    | { type: "answer"; values: string[] }
+    | { type: "skip" }
+    | { type: "say"; text: string },
+): (Decision & { said: string }) | null {
+  let because: string | null;
+  let said: string;
+  if (answer.type === "skip") {
+    because = null;
+    said = "Skip";
+  } else if (answer.type === "say") {
+    const text = answer.text.trim();
+    because = NOT_DIFFERENT.test(text) ? null : text.slice(0, 120);
+    said = text;
+  } else {
+    const choice = question.choices.find(
+      (item) => item.value === answer.values[0],
+    );
+    if (!choice) return null;
+    because = choice.value === "ordinary" ? null : choice.value;
+    said = choice.label;
+  }
+  return {
+    said,
+    change: { type: "difference", because },
+    says:
+      because === null
+        ? "Understood. I will treat it as an ordinary trip."
+        : "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
+  };
+}
+
 /** The script's state once a change is made, to see whether a topic became ready. */
 export function stateAfter(state: ScriptState, change: Change): ScriptState {
   switch (change?.type) {
@@ -406,6 +451,8 @@ export function stateAfter(state: ScriptState, change: Change): ScriptState {
           count: state.commitments.count + 1,
         },
       };
+    case "difference":
+      return { ...state, differs: change.because !== null };
     default:
       return state;
   }

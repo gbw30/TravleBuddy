@@ -2,7 +2,13 @@
 // the rules of memory. Browser code imports
 // ./contracts instead. The folders `profile` and `preferences` belong to the
 // earlier screens and go when Milestone 6 replaces them.
-export { readTripTaste, saveTripAnswer } from "./trip-profile-store";
+export {
+  readTripDifference,
+  readTripTaste,
+  saveTripAnswer,
+  saveTripDifference,
+  type TripDifference,
+} from "./trip-profile-store";
 export {
   conflicts,
   learnedEntries,

@@ -1,4 +1,4 @@
-import { rememberedFor } from "@/features/memory";
+import { conflicts, rememberedFor } from "@/features/memory";
 import {
   sourceWords,
   TOPIC_NAMES,
@@ -210,6 +210,22 @@ export const QUESTIONS: Record<Topic, Question> = {
     ),
     skipSays: "I will spread the budget evenly.",
   },
+  // Asked once, when an answer goes against the personal profile. Its
+  // wording is filled in with the answer and the memory (PRD 7.6).
+  difference: {
+    topic: "difference",
+    stage: "memory",
+    form: "pick_one",
+    prompt: "Is this trip different from your usual?",
+    choices: choices(
+      ["Honeymoon", "Yes, it is a honeymoon"],
+      ["Family visit", "Yes, it is a family visit"],
+      ["Celebration", "Yes, it is a celebration"],
+      ["Work", "Yes, it is for work"],
+      ["ordinary", "No, just this once"],
+    ),
+    skipSays: "I will treat it as an ordinary trip.",
+  },
 };
 
 export type ScriptState = {
@@ -219,6 +235,8 @@ export type ScriptState = {
   profile: TripProfile;
   /** The traveller's personal profile: what is remembered from before this trip. */
   remembered?: ProfileEntry[];
+  /** Whether the traveller marked this trip as different. Null or absent: not asked yet. */
+  differs?: boolean | null;
 };
 
 /** Whether a fact is already known from the trip, its tickets or what was typed (TB-AGT-03). */
@@ -258,8 +276,40 @@ export function nextQuestion(state: ScriptState): Question | null {
       !factKnown(topic, state) && !state.profile.skippedFacts.includes(topic),
   );
   if (fact) return QUESTIONS[fact];
+  const difference = state.differs == null ? differenceQuestion(state) : null;
+  if (difference) return difference;
   const taste = TASTE_TOPICS.find((topic) => !state.profile.taste[topic]);
   return taste ? confirming(QUESTIONS[taste], state.remembered ?? []) : null;
+}
+
+const words = (labels: string[]) =>
+  labels.length < 3
+    ? labels.join(" and ")
+    : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+
+/**
+ * "Is this trip different?", for the first topic where what was said for
+ * this trip goes against what is remembered; null when nothing does
+ * (TB-AGT-12). It is asked once: the answer settles `differs`.
+ */
+function differenceQuestion(state: ScriptState): Question | null {
+  for (const topic of TASTE_TOPICS) {
+    const answer = state.profile.taste[topic];
+    const remembered = rememberedFor(state.remembered ?? [], topic);
+    if (answer?.source !== "told" || !conflicts(answer.values, remembered)) {
+      continue;
+    }
+    const label = (value: string) =>
+      (
+        QUESTIONS[topic].choices.find((choice) => choice.value === value)
+          ?.label ?? value
+      ).toLowerCase();
+    return {
+      ...QUESTIONS.difference,
+      prompt: `${TOPIC_NAMES[topic]}: you chose ${words(answer.values.map(label))} for this trip, and I remember ${words(remembered.map((entry) => label(entry.value)))}. Is this trip different from your usual?`,
+    };
+  }
+  return null;
 }
 
 /**
@@ -277,10 +327,7 @@ function confirming(question: Question, personal: ProfileEntry[]): Question {
       .find((choice) => choice.value === entry.value)!
       .label.toLowerCase(),
   );
-  const words =
-    labels.length < 3
-      ? labels.join(" and ")
-      : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+  const remembered = words(labels);
   // The trip of the first learned entry is named; stated ones need no trip.
   const source = (
     known.find((entry) => entry.source.type === "trip") ?? known[0]
@@ -289,8 +336,8 @@ function confirming(question: Question, personal: ProfileEntry[]): Question {
     ...question,
     prompt: `${TOPIC_NAMES[question.topic as TasteTopic]}: ${
       source.type === "trip"
-        ? `${sourceWords(source)} I remember ${words}`
-        : `you told me ${words}`
+        ? `${sourceWords(source)} I remember ${remembered}`
+        : `you told me ${remembered}`
     }. Same for this trip?`,
     remembered: known.map((entry) => entry.value),
   };
