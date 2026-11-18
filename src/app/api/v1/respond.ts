@@ -72,6 +72,9 @@ export function outcomeResponse(
       created ? 201 : 200,
     );
   }
+  if (outcome.status === "refused") {
+    return json({ error: "refused", message: outcome.message }, 409);
+  }
   const [error, status] = refusals[outcome.status];
   return json({ error }, status);
 }

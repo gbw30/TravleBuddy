@@ -8,7 +8,7 @@ export {
   type CommitmentsResult,
 } from "./commitment-store";
 export { factsFromTickets } from "./tickets";
-export type { Refused } from "./trip-access";
+export { findEditable, type Refused } from "./trip-access";
 export {
   CitiesInUseError,
   createTrip,

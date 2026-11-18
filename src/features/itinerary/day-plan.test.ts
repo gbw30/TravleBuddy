@@ -1,0 +1,602 @@
+import { describe, expect, it } from "vitest";
+
+import type { PlaceDto } from "@/features/places/contracts";
+import type { CommitmentDto } from "@/features/trips/contracts";
+
+import { emptyPlanState, type PlanEntry, type PlanState } from "./contracts";
+import {
+  buildPlanView,
+  kindSuitsSlot,
+  provisionalStart,
+  slotId,
+  type PlanContext,
+} from "./day-plan";
+
+const city = (name: string, latitude: number, longitude: number) => ({
+  name,
+  region: null,
+  country: "Japan",
+  latitude,
+  longitude,
+  timeZone: "Asia/Tokyo",
+});
+const tokyo = city("Tokyo", 35.6769, 139.7639);
+const kyoto = city("Kyoto", 35.0116, 135.7681);
+
+const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
+  id,
+  origin: "SAMPLE",
+  name: id,
+  kind: "museum",
+  cityKey: "tokyo|japan",
+  latitude: 35.7188,
+  longitude: 139.7765,
+  address: null,
+  openingHours: "Mo-Su 09:00-18:00",
+  notable: true,
+  ...over,
+});
+const commitment = (over: Partial<CommitmentDto>): CommitmentDto => ({
+  id: "c1",
+  kind: "RESERVATION",
+  title: "Dinner at Den",
+  date: null,
+  startTime: null,
+  endDate: null,
+  endTime: null,
+  reference: null,
+  note: null,
+  transport: null,
+  ...over,
+});
+
+// 10 May 2027 is a Monday.
+const context = (over: Partial<PlanContext> = {}): PlanContext => ({
+  facts: {
+    cities: [{ city: tokyo, nights: 2 }],
+    startDate: "2027-05-10",
+    endDate: "2027-05-12",
+    lengthNights: null,
+    timeOfYear: null,
+  },
+  commitments: [],
+  places: {},
+  ...over,
+});
+const state = (over: Partial<PlanState> = {}): PlanState => ({
+  ...emptyPlanState,
+  ...over,
+});
+const kinds = (entries: PlanEntry[]) =>
+  entries.map((entry) => (entry.type === "open" ? entry.kind : entry.type));
+const found = <T extends PlanEntry["type"]>(entries: PlanEntry[], type: T) =>
+  entries.filter((entry) => entry.type === type) as Extract<
+    PlanEntry,
+    { type: T }
+  >[];
+
+describe("what a plan needs before it can be laid out", () => {
+  it("names the missing fact and lays out nothing", () => {
+    const none = context().facts;
+    expect(
+      buildPlanView(state(), context({ facts: { ...none, cities: [] } }))
+        .blockers,
+    ).toEqual(["where"]);
+    expect(
+      buildPlanView(state(), context({ facts: { ...none, startDate: null } }))
+        .blockers,
+    ).toEqual(["when"]);
+    expect(
+      buildPlanView(
+        state(),
+        context({
+          facts: {
+            ...none,
+            cities: [{ city: tokyo, nights: null }],
+            endDate: null,
+          },
+        }),
+      ).blockers,
+    ).toEqual(["nights"]);
+    expect(
+      buildPlanView(
+        state(),
+        context({
+          facts: {
+            ...none,
+            cities: [
+              { city: tokyo, nights: 2 },
+              { city: kyoto, nights: null },
+            ],
+          },
+        }),
+      ),
+    ).toMatchObject({ blockers: ["nights"], days: [] });
+  });
+
+  it("works a single city's nights out from the dates", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: { ...context().facts, cities: [{ city: tokyo, nights: null }] },
+      }),
+    );
+    expect(view.days.map((day) => day.date)).toEqual([
+      "2027-05-10",
+      "2027-05-11",
+      "2027-05-12",
+    ]);
+  });
+});
+
+describe("the days and their slots", () => {
+  it("gives each day the slots of its pace, and time to wander after lunch", () => {
+    const day = (pace: PlanState["pace"]) =>
+      buildPlanView(state({ pace }), context()).days[1].entries;
+    expect(kinds(day("relaxed"))).toEqual([
+      "morning",
+      "lunch",
+      "wander",
+      "afternoon",
+      "dinner",
+    ]);
+    expect(kinds(day("balanced"))).toEqual([
+      "morning",
+      "lunch",
+      "wander",
+      "afternoon",
+      "afternoon-2",
+      "dinner",
+    ]);
+    expect(kinds(day("packed"))).toEqual([
+      "morning",
+      "morning-2",
+      "lunch",
+      "afternoon",
+      "afternoon-2",
+      "dinner",
+    ]);
+    expect(found(day("relaxed"), "wander")[0]).toMatchObject({
+      start: "13:45",
+      minutes: 120,
+    });
+    expect(found(day("balanced"), "wander")[0].minutes).toBe(60);
+  });
+
+  it("starts the first day after the flight lands and ends the last before it leaves", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          commitment({
+            id: "in",
+            kind: "TRANSPORT",
+            title: "Flight in",
+            date: "2027-05-09",
+            startTime: "11:30",
+            endDate: "2027-05-10",
+            endTime: "14:35",
+          }),
+          commitment({
+            id: "out",
+            kind: "TRANSPORT",
+            title: "Flight out",
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "17:10",
+          }),
+        ],
+      }),
+    );
+    // Landing at 14:35 leaves room from 15:35: the afternoon slot is too early.
+    expect(view.days[0].entries).toMatchObject([
+      { type: "commitment", title: "Flight in", start: "14:35" },
+      { type: "open", kind: "afternoon-2", start: "16:00" },
+      { type: "open", kind: "dinner" },
+    ]);
+    // Leaving at 18:00 ends the day at 16:00: no late afternoon, no dinner.
+    expect(kinds(view.days[2].entries)).toEqual([
+      "morning",
+      "lunch",
+      "wander",
+      "afternoon",
+      "commitment",
+    ]);
+    expect(view.unplaced).toEqual([]);
+  });
+
+  it("gives a slot to a commitment with a time and keeps it exactly there", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          commitment({
+            date: "2027-05-11",
+            startTime: "19:00",
+            endTime: "21:00",
+          }),
+        ],
+      }),
+    );
+    const evening = view.days[1].entries.slice(-2);
+    expect(evening).toMatchObject([
+      { type: "open", kind: "afternoon-2" },
+      {
+        type: "commitment",
+        title: "Dinner at Den",
+        start: "19:00",
+        minutes: 120,
+      },
+    ]);
+    expect(kinds(view.days[1].entries)).not.toContain("dinner");
+  });
+
+  it("fits a must-include with no time before anything optional, in the same slot every time", () => {
+    const must = commitment({
+      id: "m",
+      kind: "MUST_SEE",
+      title: "teamLab",
+      date: "2027-05-11",
+    });
+    const undated = commitment({ id: "u", kind: "MUST_SEE", title: "Skytree" });
+    const booking = commitment({
+      id: "r",
+      kind: "RESERVATION",
+      title: "Sushi",
+      date: "2027-05-11",
+    });
+    const ctx = context({
+      commitments: [must, booking, undated],
+      places: { p: place("p") },
+    });
+
+    const view = buildPlanView(state(), ctx);
+    const held = (day: number) =>
+      found(view.days[day].entries, "commitment").map((entry) => [
+        entry.title,
+        entry.slotId,
+      ]);
+    expect(held(1)).toEqual([
+      ["teamLab", "d2-morning"],
+      ["Sushi", "d2-dinner"],
+    ]);
+    expect(held(0)).toEqual([["Skytree", "d1-morning"]]);
+
+    // A pick made earlier in that slot is not consulted; it moves to the shelf.
+    const withPick = buildPlanView(
+      state({ picks: { "d2-morning": { placeId: "p", minutes: null } } }),
+      ctx,
+    );
+    expect(found(withPick.days[1].entries, "commitment")[0].slotId).toBe(
+      "d2-morning",
+    );
+    expect(withPick.shelf).toEqual([
+      { placeId: "p", reason: "Its slot is no longer free in the plan." },
+    ]);
+  });
+
+  it("never drops a commitment it cannot fit or whose date is outside the trip", () => {
+    const many = ["a", "b", "c", "d"].map((id) =>
+      commitment({ id, kind: "MUST_SEE", title: id, date: "2027-05-11" }),
+    );
+    const late = commitment({
+      id: "late",
+      title: "Later",
+      date: "2027-06-01",
+      startTime: "10:00",
+    });
+    const view = buildPlanView(
+      state({ pace: "relaxed" }),
+      context({ commitments: [...many, late] }),
+    );
+    expect(view.unplaced.map((u) => u.commitmentId).sort()).toEqual([
+      "c",
+      "d",
+      "late",
+    ]);
+  });
+
+  it("lists a stay with no time on its day without giving it a slot", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          commitment({
+            id: "h",
+            kind: "STAY",
+            title: "Hotel",
+            date: "2027-05-10",
+          }),
+        ],
+      }),
+    );
+    expect(view.days[0].entries[0]).toMatchObject({
+      type: "commitment",
+      title: "Hotel",
+      start: null,
+      slotId: null,
+    });
+    expect(kinds(view.days[0].entries)).toContain("morning");
+  });
+});
+
+describe("a picked place", () => {
+  const places = {
+    museum: place("museum"),
+    shrine: place("shrine", {
+      kind: "temple",
+      latitude: 35.7202,
+      longitude: 139.7607,
+      openingHours: null,
+    }),
+    closed: place("closed", { openingHours: "Mo off; Tu-Su 09:00-17:00" }),
+    kyotoTemple: place("kyotoTemple", {
+      kind: "temple",
+      cityKey: "kyoto|japan",
+      latitude: 35.0,
+      longitude: 135.77,
+    }),
+    noPosition: place("noPosition", {
+      origin: "USER",
+      latitude: null,
+      longitude: null,
+      openingHours: null,
+    }),
+  };
+  const pick = (id: string, minutes: number | null = null) => ({
+    placeId: id,
+    minutes,
+  });
+
+  it("starts at its slot, lasts the standard visit, and is marked as an estimate", () => {
+    const view = buildPlanView(
+      state({ picks: { "d2-morning": pick("museum") } }),
+      context({ places }),
+    );
+    expect(found(view.days[1].entries, "place")[0]).toEqual({
+      type: "place",
+      slotId: "d2-morning",
+      kind: "morning",
+      cityKey: "tokyo|japan",
+      placeId: "museum",
+      start: "09:30",
+      minutes: 120,
+      minutesEstimated: true,
+      travelIn: null,
+      flags: [],
+    });
+  });
+
+  it("uses the traveller's own visit length when they set one", () => {
+    const view = buildPlanView(
+      state({ picks: { "d2-morning": pick("museum", 45) } }),
+      context({ places }),
+    );
+    expect(found(view.days[1].entries, "place")[0]).toMatchObject({
+      minutes: 45,
+      minutesEstimated: false,
+    });
+  });
+
+  it("leaves the travel time and the pace buffer before the next item", () => {
+    const view = buildPlanView(
+      state({
+        pace: "packed",
+        picks: { "d2-morning": pick("museum"), "d2-morning-2": pick("shrine") },
+      }),
+      context({ places }),
+    );
+    const [first, second] = found(view.days[1].entries, "place");
+    // 09:00 + 120 minutes, then an estimated walk and the packed buffer of 10.
+    expect(first.start).toBe("09:00");
+    expect(second.travelIn).toMatchObject({ means: "walk" });
+    expect(second.start).toBe(
+      `11:${String(second.travelIn!.minutes + 10).padStart(2, "0")}`,
+    );
+  });
+
+  it("flags a place that is closed, and one whose hours are unknown", () => {
+    const view = buildPlanView(
+      state({
+        picks: { "d1-morning": pick("closed"), "d2-morning": pick("shrine") },
+      }),
+      context({ places }),
+    );
+    expect(found(view.days[0].entries, "place")[0].flags).toMatchObject([
+      { rule: "closed" },
+    ]);
+    expect(found(view.days[1].entries, "place")[0].flags).toEqual([
+      {
+        rule: "hours-unknown",
+        message: "Opening hours are not known. Check before you go.",
+        fix: null,
+      },
+    ]);
+  });
+
+  it("flags a visit that runs into a fixed commitment, and leaves the commitment alone", () => {
+    const view = buildPlanView(
+      state({ picks: { "d2-afternoon": pick("museum", 240) } }),
+      context({
+        places,
+        commitments: [
+          commitment({
+            date: "2027-05-11",
+            startTime: "17:00",
+            endTime: "18:00",
+          }),
+        ],
+      }),
+    );
+    // Time to wander pushes the visit to 14:45, so it also outlasts the museum's hours.
+    expect(found(view.days[1].entries, "place")[0].flags).toContainEqual({
+      rule: "overlap",
+      message: "Runs into Dinner at Den at 17:00.",
+      fix: "Shorten the visit, move it earlier, or swap it.",
+    });
+    expect(found(view.days[1].entries, "commitment")[0]).toMatchObject({
+      start: "17:00",
+      minutes: 60,
+    });
+  });
+
+  it("flags a place in another city, and a visit that ends after the day", () => {
+    const view = buildPlanView(
+      state({
+        picks: {
+          "d2-morning": pick("kyotoTemple"),
+          "d2-dinner": pick("museum", 200),
+        },
+      }),
+      context({ places }),
+    );
+    const [morning, dinner] = found(view.days[1].entries, "place");
+    expect(morning.flags.map((flag) => flag.rule)).toContain("city");
+    expect(dinner.flags.map((flag) => flag.rule)).toContain("day");
+  });
+
+  it("shows no travel time to or from a place with no known position", () => {
+    const view = buildPlanView(
+      state({
+        pace: "packed",
+        picks: {
+          "d2-morning": pick("museum"),
+          "d2-morning-2": pick("noPosition"),
+        },
+      }),
+      context({ places }),
+    );
+    expect(found(view.days[1].entries, "place")[1].travelIn).toBeNull();
+  });
+
+  it("gives the same plan for the same choices, every time", () => {
+    const s = state({
+      picks: { "d2-morning": pick("museum"), "d2-afternoon": pick("shrine") },
+    });
+    expect(buildPlanView(s, context({ places }))).toEqual(
+      buildPlanView(s, context({ places })),
+    );
+  });
+});
+
+describe("a trip across cities", () => {
+  const facts = {
+    cities: [
+      { city: tokyo, nights: 2 },
+      { city: kyoto, nights: 1 },
+    ],
+    startDate: "2027-05-10",
+    endDate: null,
+    lengthNights: null,
+    timeOfYear: null,
+  };
+
+  it("adds an assumed transfer at midday on the day the city changes", () => {
+    const view = buildPlanView(state(), context({ facts }));
+    expect(view.days.map((day) => day.city)).toEqual([
+      "Tokyo",
+      "Tokyo",
+      "Tokyo",
+      "Kyoto",
+    ]);
+    const day3 = view.days[2].entries;
+    const transfer = found(day3, "transfer")[0];
+    expect(transfer).toMatchObject({
+      from: "Tokyo",
+      to: "Kyoto",
+      start: "12:00",
+    });
+    expect(transfer.minutes).toBeGreaterThan(240);
+    // Morning in Tokyo before leaving; nothing while travelling.
+    expect(kinds(day3)[0]).toBe("morning");
+    expect(kinds(day3)).not.toContain("lunch");
+  });
+
+  it("lets the traveller move the assumed transfer", () => {
+    const view = buildPlanView(
+      state({ transferTimes: { "3": "08:00" } }),
+      context({ facts }),
+    );
+    expect(found(view.days[2].entries, "transfer")[0].start).toBe("08:00");
+    expect(kinds(view.days[2].entries)).toContain("dinner");
+  });
+
+  it("uses the traveller's ticket in place of the assumed transfer", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts,
+        commitments: [
+          commitment({
+            id: "t",
+            kind: "TRANSPORT",
+            title: "Shinkansen",
+            date: "2027-05-12",
+            startTime: "09:00",
+            endDate: "2027-05-12",
+            endTime: "11:15",
+          }),
+        ],
+      }),
+    );
+    const day3 = view.days[2].entries;
+    expect(found(day3, "transfer")).toEqual([]);
+    expect(day3[0]).toMatchObject({
+      type: "commitment",
+      title: "Shinkansen",
+      start: "09:00",
+      minutes: 135,
+    });
+    // In Kyoto from 11:45: lunch and the afternoon are there.
+    expect(kinds(day3)).toEqual([
+      "commitment",
+      "lunch",
+      "wander",
+      "afternoon",
+      "afternoon-2",
+      "dinner",
+    ]);
+  });
+});
+
+describe("provisional dates and slot fit", () => {
+  it("assumes the second Monday of the month, in the first year still ahead", () => {
+    const facts = { startDate: null, lengthNights: 5, timeOfYear: 5 };
+    expect(provisionalStart(facts, "2026-11-18")).toBe("2027-05-10");
+    expect(provisionalStart(facts, "2027-05-10")).toBe("2028-05-08");
+    expect(
+      provisionalStart({ ...facts, startDate: "2027-01-01" }, "2026-11-18"),
+    ).toBeNull();
+    expect(
+      provisionalStart({ ...facts, timeOfYear: null }, "2026-11-18"),
+    ).toBeNull();
+  });
+
+  it("marks dates as provisional and lays the days out from them", () => {
+    const view = buildPlanView(
+      state({ provisionalStart: "2027-05-10" }),
+      context({
+        facts: {
+          cities: [{ city: tokyo, nights: null }],
+          startDate: null,
+          endDate: null,
+          lengthNights: 3,
+          timeOfYear: 5,
+        },
+      }),
+    );
+    expect(view.provisionalDates).toBe(true);
+    expect(view.days).toHaveLength(4);
+  });
+
+  it("puts meals at meal times and everything else between", () => {
+    expect(kindSuitsSlot("restaurant", "dinner")).toBe(true);
+    expect(kindSuitsSlot("cafe", "dinner")).toBe(false);
+    expect(kindSuitsSlot("cafe", "lunch")).toBe(true);
+    expect(kindSuitsSlot("museum", "lunch")).toBe(false);
+    expect(kindSuitsSlot("museum", "morning")).toBe(true);
+    expect(kindSuitsSlot("restaurant", "afternoon")).toBe(false);
+    expect(slotId(2, "afternoon-2")).toBe("d2-afternoon-2");
+  });
+});

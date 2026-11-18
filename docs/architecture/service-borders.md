@@ -18,16 +18,16 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 
 ## The services
 
-| Service         | Code                                                                | Tables                                                                       |
-| --------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`                     | User, Account, Session, VerificationToken                                    |
-| Trips           | `src/features/trips`                                                | Trip, TripDestination, TripTravelSegment, FixedCommitment                    |
-| Conversation    | `src/features/planning`, `src/lib/ai`                               | PlanningMutation, PlanningEvent                                              |
-| Memory          | `src/features/profile`, `src/features/preferences`                  | UserTravelPreference, TripPreference, PreferenceProfileVersion               |
-| Places          | `src/features/places`, `src/lib/providers/places`, `src/lib/google` | CityLookup                                                                   |
-| Recommendations | `src/features/recommendations`, `src/features/adaptation`           | PlaceSuggestion, PlanningFeedback                                            |
-| Itinerary       | `src/features/itinerary`                                            | ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict |
-| Jobs            | `src/features/jobs`, `src/worker`                                   | GenerationJob, JobAttempt, JobEvent                                          |
+| Service         | Code                                                                | Tables                                                                                          |
+| --------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`                     | User, Account, Session, VerificationToken                                                       |
+| Trips           | `src/features/trips`                                                | Trip, TripDestination, TripTravelSegment, FixedCommitment                                       |
+| Conversation    | `src/features/planning`, `src/lib/ai`                               | PlanningMutation, PlanningEvent                                                                 |
+| Memory          | `src/features/profile`, `src/features/preferences`                  | UserTravelPreference, TripPreference, PreferenceProfileVersion                                  |
+| Places          | `src/features/places`, `src/lib/providers/places`, `src/lib/google` | CityLookup, Place, PlaceFetch, ProviderCall                                                     |
+| Recommendations | `src/features/recommendations`, `src/features/adaptation`           | PlaceSuggestion, PlanningFeedback, CardEvent                                                    |
+| Itinerary       | `src/features/itinerary`                                            | ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict, Plan, PlanVersion |
+| Jobs            | `src/features/jobs`, `src/worker`                                   | GenerationJob, JobAttempt, JobEvent                                                             |
 
 `service-map.json` wins if this table and the map disagree. `src/features/prototype` holds sample data for the design prototype; it is not a service and owns no tables.
 
@@ -53,9 +53,10 @@ Test files are exempt from the lint rules, so a test may set up or inspect any t
 
 A shared transaction is the part that needs rework when a service moves out (ADR-008). Keep this list complete.
 
-| Use case                       | Services            | What shares the transaction                                                     |
-| ------------------------------ | ------------------- | ------------------------------------------------------------------------------- |
-| `src/use-cases/trip-action.ts` | Trips, Conversation | A change to a trip and its entry in the replay ledger, with the revision check. |
+| Use case                       | Services                       | What shares the transaction                                                                                                                     |
+| ------------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/use-cases/trip-action.ts` | Trips, Conversation            | A change to a trip and its entry in the replay ledger, with the revision check.                                                                 |
+| `src/use-cases/plan.ts`        | Trips, Itinerary, Conversation | A change to a plan: the check that the trip may be changed, the new plan version and the ledger entry. Places are read outside the transaction. |
 
 `src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip.
 

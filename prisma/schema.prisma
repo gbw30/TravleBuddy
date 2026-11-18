@@ -43,6 +43,21 @@ enum CommitmentKind {
   OTHER
 }
 
+/// Where a saved place came from (TB-TRU-01).
+enum PlaceOrigin {
+  OSM
+  SAMPLE
+  USER
+}
+
+/// What happened to a card. Every one stays on record (TB-CRD-12).
+enum CardAction {
+  PRESENTED
+  PICKED
+  SAVED
+  DISCARDED
+}
+
 enum BudgetLevel {
   BUDGET
   MODERATE
@@ -372,6 +387,8 @@ model Trip {
   destinations                   TripDestination[]
   travelSegments                 TripTravelSegment[]
   commitments                    FixedCommitment[]
+  plan                           Plan?
+  cardEvents                     CardEvent[]
   preference                     TripPreference?
   suggestions                    PlaceSuggestion[]
   planningFeedback               PlanningFeedback[]
@@ -443,6 +460,104 @@ model FixedCommitment {
 
   @@index([tripId, date])
   @@map("fixed_commitments")
+}
+
+/// A place saved from a provider, or entered by a traveller. OpenStreetMap's
+/// licence allows keeping this data with credit (ADR-009, TB-SYS-12).
+model Place {
+  id            String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  origin        PlaceOrigin
+  /// The provider's own reference, such as "node/123". Null for a traveller's own place.
+  originRef     String?     @map("origin_ref") @db.VarChar(80)
+  /// The city this place was saved for: lower-case "name|country".
+  cityKey       String      @map("city_key") @db.VarChar(170)
+  name          String      @db.VarChar(160)
+  kind          String      @db.VarChar(20)
+  latitude      Decimal?    @db.Decimal(10, 7)
+  longitude     Decimal?    @db.Decimal(10, 7)
+  address       String?     @db.VarChar(240)
+  /// As the provider wrote it. Null means unknown, never a guess.
+  openingHours  String?     @map("opening_hours") @db.VarChar(400)
+  /// Known beyond its neighbourhood: it has an encyclopedia entry.
+  notable       Boolean     @default(false)
+  /// The traveller who entered it. Set only when origin is USER.
+  addedByUserId String?     @map("added_by_user_id")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@unique([origin, originRef])
+  @@index([cityKey, kind])
+  @@map("places")
+}
+
+/// One finished request to a place provider, so it is never repeated.
+model PlaceFetch {
+  id         String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  cityKey    String   @map("city_key") @db.VarChar(170)
+  /// "sights", or "food@35.72,139.78" for the food near one point.
+  scope      String   @db.VarChar(40)
+  placeCount Int      @map("place_count")
+  fetchedAt  DateTime @default(now()) @map("fetched_at")
+
+  @@unique([cityKey, scope])
+  @@map("place_fetches")
+}
+
+/// Requests made to place providers each day, for the daily cap (TB-SYS-11).
+model ProviderCall {
+  day     DateTime @db.Date
+  service String   @db.VarChar(20)
+  count   Int      @default(0)
+
+  @@id([day, service])
+  @@map("provider_calls")
+}
+
+/// The plan of a trip: a pointer to the version now in force.
+model Plan {
+  tripId          String  @id @map("trip_id")
+  activeVersionId String? @map("active_version_id")
+
+  trip     Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  versions PlanVersion[]
+
+  @@map("plans")
+}
+
+/// One saved version of a plan. Versions are never changed; undo points the
+/// plan back at the parent (ADR-001, TB-ITN-12).
+model PlanVersion {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  tripId          String   @map("trip_id")
+  version         Int
+  parentVersionId String?  @map("parent_version_id")
+  /// The traveller's choices, checked against a schema on every read and write.
+  state           Json
+  summary         String   @db.VarChar(200)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  plan Plan @relation(fields: [tripId], references: [tripId], onDelete: Cascade)
+
+  @@unique([tripId, version])
+  @@map("plan_versions")
+}
+
+/// A card shown to a traveller and what they did with it.
+model CardEvent {
+  id        String     @id @default(dbgenerated("(gen_random_uuid())::text"))
+  tripId    String     @map("trip_id")
+  slotId    String     @map("slot_id") @db.VarChar(40)
+  placeId   String     @map("place_id")
+  action    CardAction
+  /// The reason given for a discard, from the common list.
+  reason    String?    @db.VarChar(40)
+  note      String?    @db.VarChar(300)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, action])
+  @@map("card_events")
 }
 
 /// Saved city lookups, keyed by the normalised search text (ADR-009).

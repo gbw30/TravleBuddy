@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+      # A feature branch is verified when it asks to join its milestone branch.
+      - "milestone/**"
   push:
     branches:
       - main
