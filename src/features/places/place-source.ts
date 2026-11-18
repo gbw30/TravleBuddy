@@ -48,10 +48,7 @@ export function activeSource(): PlaceSource {
     : osmSource;
 }
 
-/** The key places are saved under for a city. */
-export function cityKey(city: Pick<City, "name" | "country">): string {
-  return `${city.name}|${city.country}`.toLowerCase();
-}
+export { cityKeyOf as cityKey } from "./contracts";
 
 /** The scope name for the food near a point: one square of about a kilometre. */
 export function foodScope(point: Point): { scope: string; centre: Point } {

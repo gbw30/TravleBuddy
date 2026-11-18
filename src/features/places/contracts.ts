@@ -21,6 +21,8 @@ export type PlaceDto = {
   origin: "OSM" | "SAMPLE" | "USER";
   name: string;
   kind: PlaceKind;
+  /** The city it was saved for: lower-case "name|country". */
+  cityKey: string;
   latitude: number | null;
   longitude: number | null;
   address: string | null;
@@ -46,4 +48,20 @@ export {
   visitMinutes,
   type PlaceKind,
 } from "./kinds";
-export { TRAVEL_MEANS, type TravelEstimate, type TravelMeans } from "./travel";
+export {
+  isOpenFor,
+  parseOpeningHours,
+  type WeeklyHours,
+} from "./opening-hours";
+export {
+  distanceKm,
+  TRAVEL_MEANS,
+  travelEstimate,
+  type TravelEstimate,
+  type TravelMeans,
+} from "./travel";
+
+/** The key places are saved under for a city. */
+export function cityKeyOf(city: Pick<City, "name" | "country">): string {
+  return `${city.name}|${city.country}`.toLowerCase();
+}
