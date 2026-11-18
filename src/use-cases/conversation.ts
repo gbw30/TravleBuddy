@@ -320,7 +320,10 @@ export async function takeTurn(input: {
         { from: "traveller", body: { kind: "text", text: said } },
         { from: "agent", body: { kind: "text", text: says } },
       ]);
-      return { focus: change?.type === "go_to" ? change.slotId : null };
+      return {
+        focus: change?.type === "go_to" ? change.slotId : null,
+        changed: change !== null && change.type !== "go_to",
+      };
     },
   });
 }
