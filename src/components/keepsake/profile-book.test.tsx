@@ -1,0 +1,217 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+
+import type { ProfileTopicInfo } from "@/features/memory/contracts";
+import type { ProfileView, ShownEntry } from "@/use-cases/profile-view";
+
+import { ProfileBook, profileSentence } from "./profile-book";
+
+const info = (
+  topic: ProfileTopicInfo["topic"],
+  name: string,
+  choices: [string, string][],
+  over: Partial<ProfileTopicInfo> = {},
+): ProfileTopicInfo => ({
+  topic,
+  name,
+  kind: "taste",
+  several: false,
+  choices: choices.map(([value, label]) => ({ value, label })),
+  freeText: false,
+  ...over,
+});
+const topics = [
+  info("pace", "Pace", [
+    ["relaxed", "Relaxed"],
+    ["packed", "Packed"],
+  ]),
+  info("day_shape", "Shape of the day", [
+    ["early", "Early starts"],
+    ["late", "Late nights"],
+  ]),
+  info("interests", "Interests", [["museums", "Museums and exhibitions"]], {
+    several: true,
+  }),
+  info("dietary_rules", "Dietary rules", [["vegetarian", "Vegetarian"]], {
+    kind: "hard_limit",
+    several: true,
+  }),
+  info("allergies", "Allergies", [], {
+    kind: "hard_limit",
+    several: true,
+    freeText: true,
+  }),
+];
+const told = (
+  id: string,
+  topic: ShownEntry["topic"],
+  value: string,
+  label = value,
+): ShownEntry => ({
+  id,
+  topic,
+  value,
+  label,
+  sureness: "always",
+  source: { type: "told" },
+});
+const learned = (
+  id: string,
+  topic: ShownEntry["topic"],
+  value: string,
+  label: string,
+  sureness: ShownEntry["sureness"] = "think",
+): ShownEntry => ({
+  id,
+  topic,
+  value,
+  label,
+  sureness,
+  source: { type: "trip", tripId: "t-lisbon", tripTitle: "Lisbon in spring" },
+});
+const view = (over: Partial<ProfileView> = {}): ProfileView => ({
+  revision: 1,
+  entries: [],
+  notes: [],
+  topics,
+  ...over,
+});
+const render = (initial: ProfileView, name: string | null = "Ana") =>
+  renderToStaticMarkup(<ProfileBook initial={initial} name={name} />);
+const count = (html: string, part: string) => html.split(part).length - 1;
+
+describe("the profile's one-sentence picture", () => {
+  it("is written from the entries: pace, the shape of the day, and the first hard limit", () => {
+    expect(
+      profileSentence([
+        told("1", "pace", "relaxed", "Relaxed"),
+        told("2", "day_shape", "late", "Late nights"),
+        told("3", "allergies", "shellfish"),
+      ]),
+    ).toEqual(["You travel slowly", "stay out late", "never eat shellfish"]);
+    expect(
+      profileSentence([told("1", "dietary_rules", "vegetarian", "Vegetarian")]),
+    ).toEqual(["eat vegetarian"]);
+    expect(
+      profileSentence([
+        told("1", "interests", "museums", "Museums and exhibitions"),
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("ProfileBook", () => {
+  it("starts fresh when nothing is known, and still lets the traveller tell it something", () => {
+    const html = render(view());
+    expect(html).toContain("getting to know");
+    expect(html).toContain(
+      "Nothing yet. I will start fresh on your next trip.",
+    );
+    expect(html).toContain("Nothing learned from trips yet");
+    expect(html).toContain("Tell me something");
+    expect(html).toContain("Make it a rule I never break");
+    expect(html).not.toContain('id="rules-heading"');
+    expect(html).not.toContain('id="tastes-heading"');
+  });
+
+  it("lists every entry with its topic, where it came from and how sure, and the means to change and remove it", () => {
+    const html = render(
+      view({
+        entries: [
+          told("e1", "pace", "relaxed", "Relaxed"),
+          learned(
+            "e2",
+            "interests",
+            "museums",
+            "Museums and exhibitions",
+            "usually",
+          ),
+          told("e3", "dietary_rules", "vegetarian", "Vegetarian"),
+          told("e4", "allergies", "shellfish"),
+        ],
+      }),
+    );
+    // Hard limits and tastes are separate sections.
+    expect(html.indexOf('id="rules-heading"')).toBeLessThan(
+      html.indexOf('id="tastes-heading"'),
+    );
+    expect(html).toContain("2 rules · apply to every trip");
+    expect(html).toContain("2 tastes");
+    for (const text of [
+      "Relaxed",
+      "Museums and exhibitions",
+      "Vegetarian",
+      "No shellfish",
+    ]) {
+      expect(html, text).toContain(text);
+    }
+    expect(html).toContain("you told me");
+    expect(html).toContain("from your trip “Lisbon in spring”");
+    expect(html).toContain("usually");
+    expect(html).toContain("always");
+    for (const label of [
+      "Relaxed",
+      "Museums and exhibitions",
+      "Vegetarian",
+      "shellfish",
+    ]) {
+      expect(html, label).toContain(`aria-label="Change ${label}"`);
+      expect(html, label).toContain(`aria-label="Remove ${label}"`);
+    }
+    // The trip it learned from is stamped on the passport, once.
+    expect(html).toContain("Learned from 1 trip");
+    expect(count(html, 'aria-label="Lisbon in spring"')).toBe(1);
+    expect(html).toContain(
+      "<em>You travel slowly</em>, and never eat shellfish.",
+    );
+  });
+
+  it("never calls a place safe for an allergy", () => {
+    const html = render(
+      view({ entries: [told("e4", "allergies", "shellfish")] }),
+    );
+    expect(html).toContain("I never call a place safe for an allergy");
+    expect(html).toContain('aria-label="A rule I never break"');
+  });
+
+  it("asks the traveller to confirm a guess, with a way to correct or remove it", () => {
+    const html = render(
+      view({ entries: [learned("e2", "pace", "relaxed", "Relaxed")] }),
+    );
+    expect(html).toContain("Still a guess. Is this right?");
+    expect(html).toContain('aria-label="Yes, Relaxed is right"');
+    expect(html).toContain('aria-label="Relaxed is not quite right"');
+    expect(html).toContain('aria-label="Remove Relaxed"');
+  });
+
+  it("shows notes as kept but not yet affecting suggestions", () => {
+    const html = render(view({ notes: [{ id: "n1", text: "I hate queues" }] }));
+    expect(html).toContain("1 note · not yet affecting suggestions");
+    expect(html).toContain("I hate queues");
+    expect(html).toContain('aria-label="Remove the note: I hate queues"');
+    expect(html).not.toContain("Nothing yet.");
+  });
+
+  it("offers the values it understands to pick from, marking those already held", () => {
+    const html = render(
+      view({ entries: [told("e1", "pace", "relaxed", "Relaxed")] }),
+    );
+    expect(html).toContain("Or pick from what I understand");
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Relaxed<\/button>/);
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Packed<\/button>/);
+    // A topic with no listed values, such as allergies, is told in words instead.
+    expect(html).not.toMatch(/<legend[^>]*>Allergies<\/legend>/);
+  });
+
+  it("asks before forgetting everything", () => {
+    const html = render(view());
+    expect(html).toContain("Forget everything and start again");
+    expect(html).toContain("your past trips");
+    expect(html).toContain("This cannot be undone.");
+  });
+
+  it("uses the traveller's initial on the passport, and a plain one without a name", () => {
+    expect(render(view(), "gabriel")).toMatch(/>G<\/span>/);
+    expect(render(view(), null)).toMatch(/>T<\/span>/);
+  });
+});

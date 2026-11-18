@@ -1,9 +1,4 @@
 {
-  "src/app/(app)/profile/page.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "src/app/api/trips/[tripId]/conflicts/[conflictId]/resolve/route.ts": {
     "no-restricted-imports": {
       "count": 2
