@@ -72,7 +72,13 @@ Exit evidence: TB-ACC, TB-HOM, TB-FAC, TB-STA-01 to TB-STA-03, TB-FIX-01, TB-FIX
 
 At the end of this milestone a traveller can build a trip slot by slot from ranked cards, with templated reasons and without the conversation.
 
-**Started 2026-11-18** on branch `milestone/4-places-cards-itinerary`. [Plan](superpowers/plans/2026-11-18-places-cards-itinerary.md), which lists each piece, its feature branch, the requirements it covers and its pull request.
+**Built 2026-11-18 on branch `milestone/4-places-cards-itinerary`; exit evidence not yet complete.** [Plan](superpowers/plans/2026-11-18-places-cards-itinerary.md), which lists each piece, its feature branch, the requirements it covers and its pull request (12 to 20).
+
+- Done and checked locally: a traveller builds a trip slot by slot from three ranked cards, with reasons, in a live itinerary that obeys the scheduling rules, and can swap, move, shelve, remove, set a visit length and undo. 707 unit tests, lint, type check and build pass; a browser walk on wide and phone widths against the development database found no serious accessibility problems. Border exceptions fell from 188 to 164.
+- Checked on sample places only. The OpenStreetMap reader is tested against the documented reply shapes; no request to the real services has been made from the app.
+- Partly met: TB-CRD-02 and TB-CRD-04 (no photos yet, so the card shows the postcard back; price level and rating are unknown in OpenStreetMap and shown as unknown; the closer look does not show the position in the day). TB-SYS-09 (Google is not behind the new adapter: its terms forbid saving what a plan needs). TB-ITN-16 (times are local wall-clock values, but a ticket's length across time zones is not worked out). TB-ITN-09 (moving by drag is built as in the prototype but was checked only through the keyboard menu).
+- Still needed for the exit: apply migration `20261118120000_places_plans_and_cards` to the QA database, deploy the QA preview, run the QA gate with scenarios for cards and the itinerary, try the real OpenStreetMap services once, and check Firefox and WebKit.
+- Waiting for the developer: piece 7b, the removal of the earlier planner's routes, services and tables and the matching QA catalogue entries.
 
 Exit evidence: TB-CRD, TB-ITN except the agent's offer in TB-ITN-14, TB-FIX-03, TB-FIX-04, TB-TRU-01, TB-TRU-02, TB-TRU-04 to TB-TRU-06, TB-SYS-08, TB-SYS-09, TB-SYS-12, TB-SYS-14 and the place-data half of TB-SYS-11 pass.
 
