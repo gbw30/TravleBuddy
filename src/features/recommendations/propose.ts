@@ -331,8 +331,12 @@ function unconfirmedFor(ranked: Ranked, input: ProposeInput): string[] {
   ];
 }
 
-/** Two places this near in score are as good as each other. */
-const CLOSE_SCORE = 0.5;
+/**
+ * Two places this near in score are as good as each other: alike in every
+ * way that counts and within about a hundred metres in distance. A wider
+ * margin marked nearly every choice of a built trip as close.
+ */
+const CLOSE_SCORE = 0.1;
 
 /**
  * The proposal for a slot: the three best places that fit, or fewer when

@@ -21,7 +21,7 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 | 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     | #48          |
 | 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          | #49          |
 | 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                | #50          |
-| 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            |              |
+| 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            | #51          |
 | 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                |              |
 | 7. Evidence                                   | `feature/m7-evidence`     | all of the above, re-checked |              |
 
@@ -129,7 +129,25 @@ Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 5: The build on screen and the report
 
-**Produces:** progress in the workspace while the build runs, resuming on return; the report with changeable assumptions.
+**Produced (pull request 51):**
+
+- The brief's last button is **Build my trip**. It saves the step, builds day 1 and opens the trip page.
+- On the trip page, the workspace shows a panel while a build runs: each day as built, being worked on, or to come. It asks for one day after another and reads the plan again after each, so the day appears in the itinerary. A build left part-way continues when the trip page is opened again (TB-QPL-08).
+- When the build is done the panel is the agent's report (TB-QPL-10), in the prototype's four parts:
+  - **What I built:** the days, the cities, what was already decided, and how many places it chose.
+  - **What I assumed:** assumed dates, and each style answer the build goes by that was a memory or a default. Each has a **Change** link to its step of the brief (TB-QPL-11).
+  - **What I could not fit:** what is on the shelf and why, and the slots it found nothing for.
+  - **Where I was unsure:** close choices, meals whose listing does not confirm a dietary rule, places with unknown opening hours, and whether new places could not be looked up.
+  - **Let me choose** turns the workspace to that slot and its cards.
+- The report is part of the plan answer (`build`), written by the pure `buildReportOf` from the plan as it stands and the build's notes. A place the traveller has swapped since no longer counts as built.
+
+**Changed from the decisions above:**
+
+- Decision 7: a choice is "close" within 0.1 in score, not 0.5. At 0.5, 14 of 15 choices of a sample trip were close; at 0.1, 5 were. Three are spelled out and the rest counted.
+- Decision 8: an assumption is changed through a link to the brief's step, as in the approved prototype, not by chips inside the report. After a change the traveller presses "Build my trip" again; only open slots are filled.
+- Only the answers a build goes by are listed as assumptions: pace, interests, atmosphere, food and getting around.
+
+**Known limit:** changing an assumption does not replace places already built. The traveller swaps a slot from its three alternatives, or removes places and builds again.
 
 ### Piece 6: Moving between the two ways
 

@@ -3,6 +3,7 @@ import {
   buildPlanView,
   kindSuitsSlot,
   provisionalStart,
+  readBuild,
   readPlanState,
   settle,
   undoPlan,
@@ -64,6 +65,8 @@ import { findEditable, getTrip } from "@/features/trips";
 import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
+import { briefOf } from "./brief";
+import { buildReportOf } from "./build-report";
 import type { PlanSnapshot } from "./plan-snapshot";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
@@ -392,10 +395,12 @@ export async function loadPlan(
   const context = await contextFor(trip, state, userId);
   const view = buildPlanView(state, context);
   const focus = trip.archived ? null : focusSlot(view, wanted);
+  const progress = view.days.length > 0 ? await readBuild(db, tripId) : null;
   // The taste a trip goes by starts from the personal profile; what was
   // said for this trip wins (TB-MEM-02).
-  const personal = focus ? (await readProfile(db, userId)).entries : [];
-  const said = focus ? await readTripTaste(db, tripId) : {};
+  const reads = focus !== null || progress !== null;
+  const personal = reads ? (await readProfile(db, userId)).entries : [];
+  const said = reads ? await readTripTaste(db, tripId) : {};
   const taste: TasteInUse = tasteInUse(personal, said);
   const limits = limitsInUse(
     personal,
@@ -429,6 +434,17 @@ export async function loadPlan(
       ? shelfOffer(view, context.places, focus.entry)
       : null,
     canUndo: saved.canUndo,
+    build: progress
+      ? buildReportOf({
+          view,
+          places: context.places,
+          progress,
+          style: briefOf(trip, taste, personal).style,
+          dietaryRules: limits.dietaryRules,
+          cities: trip.facts.cities.map(({ city }) => city.name),
+          decided: trip.commitments.length,
+        })
+      : null,
   };
 }
 

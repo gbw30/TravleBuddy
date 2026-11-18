@@ -153,7 +153,7 @@ describe("the trip brief on screen", () => {
     expect(html).toContain("The trip is for: Birdwatching.");
     expect(html.match(/>Edit</g)).toHaveLength(4);
     expect(html).toContain('Edit<span class="sr-only"> Your style</span>');
-    expect(html).toContain(">Open the trip<");
+    expect(html).toContain(">Build my trip<");
   });
 
   it("shows how the “anything else” box was understood, and what awaits a yes", () => {

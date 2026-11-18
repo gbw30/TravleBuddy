@@ -10,6 +10,29 @@ import type { CardDto, CardSet } from "@/features/recommendations/contracts";
  */
 export type ProposalStatus = "ready" | "pending" | "unavailable" | "capped";
 
+/** One sentence of a build's report. `slotId` when the traveller can choose there. */
+export type ReportLine = { line: string; slotId: string | null };
+
+/**
+ * What a Quick plan build did, as the agent reports it (PRD 11.4). Worked
+ * out from the plan as it stands, so it stays true after the traveller
+ * changes things.
+ */
+export type BuildReport = {
+  /** The page asks for the next day until this is false (PRD 11.3). */
+  building: boolean;
+  /** Each day, and whether the build has been through it. */
+  days: { day: number; date: string; built: boolean }[];
+  /** What it built, in two or three sentences. */
+  built: string[];
+  /** What it assumed, each with the step of the brief where it is changed. */
+  assumed: { line: string; step: number }[];
+  /** What is on the shelf and why, and the slots it found nothing for. */
+  unfitted: ReportLine[];
+  /** Where it was unsure. */
+  unsure: ReportLine[];
+};
+
 /** Everything the workspace screen needs to show a plan. */
 export type PlanSnapshot = {
   view: PlanView;
@@ -26,4 +49,6 @@ export type PlanSnapshot = {
   /** A shelved place that fits the open slot in focus, for the agent to offer (TB-ITN-14). */
   shelfOffer: { placeId: string; name: string; slotId: string } | null;
   canUndo: boolean;
+  /** The report of a build, or its progress while it runs. Null when none was started. */
+  build: BuildReport | null;
 };
