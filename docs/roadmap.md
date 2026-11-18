@@ -4,7 +4,7 @@ Status: active-roadmap
 Authority: Ordered delivery milestones from the current implementation to the first version
 Supersedes: The roadmap of 2026-08-09, whose milestones 1 to 7 are replaced by the order below
 Related: [Product vision](product-vision.md), [PRD](prd.md), [requirements](requirements.md), [current implementation](status/current-implementation.md), [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md)
-Last reviewed: 2026-11-12
+Last reviewed: 2026-11-18
 
 This roadmap orders the work toward the first version defined in the [PRD](prd.md). It builds on the existing codebase: sign-in, versioned plans, replay safety and the place-provider layer are kept. The screens and the planning flow are rebuilt.
 
@@ -17,6 +17,7 @@ Each milestone needs its own implementation plan before work starts. This docume
 - Keep sample place data available for tests and offline demos at every stage.
 - Do not begin a milestone until the previous one's exit evidence is recorded.
 - These hold at every milestone and are rechecked at each exit: ownership and authentication (TB-ACC-01), replay safety (TB-SYS-05), all-or-nothing commits (TB-SYS-06), stale-write protection (TB-SYS-07), and an HTTP route for each new action (TB-SYS-04).
+- From Milestone 3 on, the service-border exceptions list (`eslint-suppressions.json`) never grows, and shrinks wherever a milestone replaces code ([ADR-010](architecture/adr-010-service-borders-by-shrinking-exceptions.md)). Its count is part of each exit.
 - Existing trips and data in the QA and production databases are test data and may be discarded. Old screens and tables are replaced outright, not migrated. The QA migration safety process still applies.
 
 ## What happens to earlier plans
@@ -42,15 +43,26 @@ Exit evidence: the product owner approves the prototype (TB-DSN-08, TB-DSN-09). 
 
 ## Milestone 2: Service borders
 
-Apply [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md) to the existing code without changing behaviour: one public interface per service, a table-ownership map that lists foreign keys crossing a border, and an automated border check. Code access is restricted; the database schema is not changed here.
+Apply [ADR-008](architecture/adr-008-modular-services-in-one-deployment.md) without changing behaviour: a table-ownership map that lists foreign keys crossing a border, and automated border checks. The database schema is not changed here.
 
-Exit evidence: TB-SYS-01 to TB-SYS-03 hold; existing tests pass unchanged.
+By [ADR-010](architecture/adr-010-service-borders-by-shrinking-exceptions.md) the existing code is not reworked first. Its violations are recorded as exceptions that may only shrink, new code must be clean, and each later milestone clears the exceptions in the code it replaces. Each service's public interface is written when the service is first rebuilt.
+
+Exit evidence: the ownership map and the checks are in force and fail the build on a new violation; existing tests pass unchanged. TB-SYS-01 to TB-SYS-03 are fully met when the exceptions list is empty, by Milestone 8.
+
+**Done 2026-11-18.** 22 tables mapped to 8 services, 33 cross-border foreign keys listed, 207 exceptions recorded across 55 files; 556 tests pass. Working rules: [service-borders.md](architecture/service-borders.md).
 
 ## Milestone 3: New shell, trip start and fixed commitments
 
 Rebuild Home, the navigation and the start-a-trip flow in the new look. Add tickets, trip facts with firmness and purpose, any-city destinations, and the fixed commitments section. Remove the screens these replace.
 
 Exit evidence: TB-ACC, TB-HOM, TB-FAC, TB-STA-01 to TB-STA-03, TB-FIX-01, TB-FIX-02, TB-FIX-06 and TB-SYS-13 pass, on wide and phone screens.
+
+**Built 2026-11-18; exit evidence not yet complete.** [Plan](superpowers/plans/2026-11-18-shell-trip-start-commitments.md), [API reference](api/v1.md).
+
+- Done and checked locally against the development database: the requirements above in a browser on wide and phone widths, no serious accessibility findings, replay, stale-write and ownership rules on every new route; 612 unit tests pass. Border exceptions fell from 207 to 188.
+- Still needed for the exit: apply the migration to the QA database through the protected workflow, deploy to the QA preview, run the QA gate, add QA scenarios for the new trip start and fixed commitments, and try city lookup against the live service.
+- Partly met: TB-FAC-04 stores several cities, but showing the travel between them belongs to the itinerary in Milestone 4. TB-SYS-13 records the owner and a visibility setting; a list of other viewers is left to the later stage that needs it.
+- Left in place on purpose: the earlier preferences, places and itinerary pages, the `/api/trips` routes and the ticket-timing code they use, until Milestones 4 to 6 replace them.
 
 ## Milestone 4: Places, cards and the live itinerary
 

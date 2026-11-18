@@ -1,110 +1,105 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Settings } from "lucide-react";
+
+import { dateRange } from "@/components/keepsake/format";
+import { PlanStateButton } from "@/components/keepsake/plan-state-button";
+import {
+  eyebrow,
+  pageTitle,
+  quiet,
+  sectionTitle,
+} from "@/components/keepsake/styles";
+import { TripCardActions } from "@/components/keepsake/trip-card-actions";
+import { TripCommitments } from "@/components/keepsake/trip-commitments";
+import { TripFactsForm } from "@/components/keepsake/trip-facts-form";
+import { getTrip } from "@/features/trips";
 import { requireUser } from "@/lib/authorization";
-import { getTripByIdForUser } from "@/features/trips/queries";
-import { TripReadinessPanel } from "@/components/trips/trip-readiness-panel";
 
-type TripPageProps = {
-  params: Promise<{
-    tripId: string;
-  }>;
-};
+const stateLabel = { planning: "Planning", upcoming: "Upcoming", past: "Past" };
 
-function detailValue(value?: string | null) {
-  return value && value.trim() ? value : "Not set";
-}
-
-export default async function TripPage({ params }: TripPageProps) {
+export default async function TripPage({
+  params,
+}: {
+  params: Promise<{ tripId: string }>;
+}) {
   const userId = await requireUser();
   const { tripId } = await params;
-  const trip = await getTripByIdForUser(userId, tripId);
+  const trip = await getTrip(userId, tripId);
+  if (!trip) notFound();
 
-  if (!trip) {
-    notFound();
-  }
-
-  const destinationRoute =
-    trip.destinations && trip.destinations.length > 0
-      ? trip.destinations
-          .map((item) => `${item.city}, ${item.country}`)
-          .join(" -> ")
-      : null;
+  const { facts, commitments, clashes, ...summary } = trip;
 
   return (
-    <main className="flex-1 bg-zinc-50">
-      <section className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Trip overview</p>
-            <h1 className="mt-2 text-3xl font-semibold text-zinc-950">
-              {trip.title}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-              Review the trip basics and readiness requirements before moving
-              into recommendations and itinerary planning.
-            </p>
-          </div>
-          <Link
-            href={`/trips/${trip.id}/settings`}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-medium text-zinc-800 transition-colors hover:bg-white"
-          >
-            <Settings aria-hidden="true" className="size-4" />
-            Settings
-          </Link>
-        </div>
+    <main className="py-10 md:py-14">
+      <p className={eyebrow}>
+        {trip.archived ? "Archived" : stateLabel[trip.state]} ·{" "}
+        {dateRange(trip.startDate, trip.endDate)}
+      </p>
+      <h1 className={`mt-4 ${pageTitle} [overflow-wrap:anywhere]`}>
+        {trip.title}
+      </h1>
+      <p className="mt-5 max-w-[36rem] text-lg text-ink/80">
+        {trip.archived
+          ? "This trip is archived. Restore it to change anything."
+          : trip.planningMode === "QUICK"
+            ? "You asked me to build this one for you. Start with the facts and what is already decided; I plan around both."
+            : "We are planning this one together. Start with the facts and what is already decided; I plan around both."}
+      </p>
+      <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
+        {!trip.archived && (
+          <PlanStateButton
+            tripId={trip.id}
+            revision={trip.revision}
+            finished={trip.state !== "planning"}
+          />
+        )}
+        <TripCardActions trip={summary} afterDelete="/home" />
+      </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <TripReadinessPanel trip={trip} />
-          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-950">Basics</h2>
-            <dl className="mt-5 grid gap-4 text-sm">
-              <div>
-                <dt className="font-medium text-zinc-500">Status</dt>
-                <dd className="mt-1 text-zinc-950">{trip.status}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-zinc-500">Departure</dt>
-                <dd className="mt-1 text-zinc-950">
-                  {trip.departureCity && trip.departureCountry
-                    ? `${trip.departureCity}, ${trip.departureCountry}`
-                    : "Not set"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-zinc-500">Destination</dt>
-                <dd className="mt-1 text-zinc-950">
-                  {destinationRoute ?? "Not set"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-zinc-500">Dates</dt>
-                <dd className="mt-1 text-zinc-950">
-                  {trip.startDate && trip.endDate
-                    ? `${new Date(trip.startDate).toLocaleDateString()} - ${new Date(
-                        trip.endDate,
-                      ).toLocaleDateString()}`
-                    : "Not set"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-zinc-500">Budget</dt>
-                <dd className="mt-1 text-zinc-950">
-                  {trip.budgetAmount && trip.budgetCurrency
-                    ? `${trip.budgetCurrency} ${trip.budgetAmount}`
-                    : "Not set"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-zinc-500">Travel style</dt>
-                <dd className="mt-1 text-zinc-950">
-                  {detailValue(trip.travelStyle)}
-                </dd>
-              </div>
-            </dl>
-          </section>
-        </div>
-      </section>
+      <div className="mt-12 grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-16">
+        <section aria-labelledby="facts-heading" className="min-w-0">
+          <h2 id="facts-heading" className={sectionTitle}>
+            The <em>facts</em>
+          </h2>
+          <p className="mt-2.5 mb-6 text-[16.5px] text-muted">
+            Fill in what you know. Anything left empty I will ask about later.
+          </p>
+          <TripFactsForm
+            key={`${trip.id}-${trip.archived}`}
+            tripId={trip.id}
+            revision={trip.revision}
+            initial={facts}
+            readOnly={trip.archived}
+          />
+        </section>
+
+        <aside className="min-w-0 rounded-2xl bg-tint/60 p-6 [--notch:#f1eadc]">
+          <TripCommitments
+            key={`${trip.id}-${trip.archived}`}
+            tripId={trip.id}
+            revision={trip.revision}
+            initial={{ commitments, clashes }}
+            readOnly={trip.archived}
+          />
+        </aside>
+      </div>
+
+      <p className="mt-16 border-t border-ink/12 pt-6 font-sans text-[13px] text-muted">
+        Choosing places and building the day-by-day plan are being rebuilt in
+        this design. Until then the earlier planner still works for this trip:{" "}
+        <Link href={`/trips/${trip.id}/preferences`} className={quiet}>
+          preferences
+        </Link>
+        ,{" "}
+        <Link href={`/trips/${trip.id}/planning`} className={quiet}>
+          places
+        </Link>{" "}
+        and{" "}
+        <Link href={`/trips/${trip.id}/itinerary`} className={quiet}>
+          itinerary
+        </Link>
+        .
+      </p>
     </main>
   );
 }

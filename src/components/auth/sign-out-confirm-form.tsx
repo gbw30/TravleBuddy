@@ -1,7 +1,5 @@
 "use client";
 
-import { LogOut } from "lucide-react";
-
 export function shouldSubmitSignOut(confirmed: boolean) {
   return confirmed;
 }
@@ -22,9 +20,8 @@ export function SignOutConfirmForm({
     >
       <button
         type="submit"
-        className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100"
+        className="inline-flex min-h-8 items-center font-mono text-xs tracking-[0.12em] text-muted uppercase transition-colors duration-150 ease-settle hover:text-ink"
       >
-        <LogOut aria-hidden="true" className="size-4" />
         Sign out
       </button>
     </form>

@@ -20,7 +20,13 @@ export default function PrototypeLayout({ children }: { children: ReactNode }) {
           Travle<em>Buddy</em>
         </Link>
         <div className="ml-auto">
-          <KeepsakeNav />
+          <KeepsakeNav
+            links={[
+              { href: "/prototype", label: "Home" },
+              { href: "/prototype/new", label: "Create" },
+              { href: "/prototype/profile", label: "Profile" },
+            ]}
+          />
         </div>
       </header>
       <main className="mx-auto max-w-[1240px] px-5 pb-24 md:px-10">

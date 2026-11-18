@@ -3,13 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const links = [
-  { href: "/prototype", label: "Home" },
-  { href: "/prototype/new", label: "Create" },
-  { href: "/prototype/profile", label: "Profile" },
-];
+export type NavLink = { href: string; label: string };
 
-export function KeepsakeNav() {
+/** The three areas of the app. Discover joins them in a later stage (TB-ACC-02). */
+export function KeepsakeNav({ links }: { links: NavLink[] }) {
   const pathname = usePathname();
 
   return (

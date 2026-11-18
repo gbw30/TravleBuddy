@@ -15,7 +15,7 @@ import {
   formatMoney,
   type Currency,
   type Rates,
-} from "@/features/prototype/currency";
+} from "@/lib/currency";
 import {
   confirm,
   guessTopic,

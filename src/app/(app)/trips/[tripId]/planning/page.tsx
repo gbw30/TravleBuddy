@@ -82,10 +82,10 @@ export default async function PlanningPage({
               </>
             )}
             <Link
-              href={`/trips/${tripId}/settings`}
+              href={`/trips/${tripId}/preferences`}
               className="mt-6 inline-flex h-10 items-center rounded-md bg-zinc-950 px-4 text-sm font-medium text-white hover:bg-zinc-800"
             >
-              Complete trip details
+              Complete preferences
             </Link>
           </div>
         </section>

@@ -112,7 +112,7 @@ export default async function TripPreferencesPage({
                   ))}
                 </ul>
                 <Link
-                  href={`/trips/${trip.id}/settings`}
+                  href={`/trips/${trip.id}`}
                   className="mt-6 inline-flex h-10 items-center rounded-md bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
                 >
                   Complete trip details

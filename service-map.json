@@ -1,0 +1,96 @@
+{
+  "services": {
+    "identity": {
+      "code": [
+        "src/lib/auth.ts",
+        "src/lib/auth-policy.ts",
+        "src/lib/auth-routes.ts",
+        "src/lib/authorization.ts",
+        "src/lib/authorization-rules.ts"
+      ],
+      "tables": ["User", "Account", "Session", "VerificationToken"]
+    },
+    "trips": {
+      "code": ["src/features/trips/**"],
+      "tables": [
+        "Trip",
+        "TripDestination",
+        "TripTravelSegment",
+        "FixedCommitment"
+      ]
+    },
+    "conversation": {
+      "code": ["src/features/planning/**", "src/lib/ai/**"],
+      "tables": ["PlanningMutation", "PlanningEvent"]
+    },
+    "memory": {
+      "code": ["src/features/profile/**", "src/features/preferences/**"],
+      "tables": [
+        "UserTravelPreference",
+        "TripPreference",
+        "PreferenceProfileVersion"
+      ]
+    },
+    "places": {
+      "code": [
+        "src/features/places/**",
+        "src/lib/providers/places/**",
+        "src/lib/google/**"
+      ],
+      "tables": ["CityLookup"]
+    },
+    "recommendations": {
+      "code": ["src/features/recommendations/**", "src/features/adaptation/**"],
+      "tables": ["PlaceSuggestion", "PlanningFeedback"]
+    },
+    "itinerary": {
+      "code": ["src/features/itinerary/**"],
+      "tables": [
+        "ItineraryVersion",
+        "ItineraryDay",
+        "ItineraryCityWindow",
+        "ItineraryItem",
+        "Conflict"
+      ]
+    },
+    "jobs": {
+      "code": ["src/features/jobs/**", "src/worker/**"],
+      "tables": ["GenerationJob", "JobAttempt", "JobEvent"]
+    }
+  },
+  "crossBorderForeignKeys": [
+    "Conflict.trip -> Trip (itinerary -> trips)",
+    "GenerationJob.feedback -> PlanningFeedback (jobs -> recommendations)",
+    "GenerationJob.parentItineraryVersion -> ItineraryVersion (jobs -> itinerary)",
+    "GenerationJob.preferenceProfileVersion -> PreferenceProfileVersion (jobs -> memory)",
+    "GenerationJob.trip -> Trip (jobs -> trips)",
+    "ItineraryCityWindow.destination -> TripDestination (itinerary -> trips)",
+    "ItineraryCityWindow.travelSegment -> TripTravelSegment (itinerary -> trips)",
+    "ItineraryCityWindow.trip -> Trip (itinerary -> trips)",
+    "ItineraryDay.trip -> Trip (itinerary -> trips)",
+    "ItineraryItem.placeSuggestion -> PlaceSuggestion (itinerary -> recommendations)",
+    "ItineraryItem.trip -> Trip (itinerary -> trips)",
+    "ItineraryVersion.preferenceProfileVersion -> PreferenceProfileVersion (itinerary -> memory)",
+    "ItineraryVersion.sourceJob -> GenerationJob (itinerary -> jobs)",
+    "ItineraryVersion.trip -> Trip (itinerary -> trips)",
+    "PlaceSuggestion.destination -> TripDestination (recommendations -> trips)",
+    "PlaceSuggestion.trip -> Trip (recommendations -> trips)",
+    "PlanningEvent.trip -> Trip (conversation -> trips)",
+    "PlanningFeedback.capturedItineraryVersion -> ItineraryVersion (recommendations -> itinerary)",
+    "PlanningFeedback.capturedPreferenceProfileVersion -> PreferenceProfileVersion (recommendations -> memory)",
+    "PlanningFeedback.conflict -> Conflict (recommendations -> itinerary)",
+    "PlanningFeedback.itineraryDay -> ItineraryDay (recommendations -> itinerary)",
+    "PlanningFeedback.itineraryItem -> ItineraryItem (recommendations -> itinerary)",
+    "PlanningFeedback.trip -> Trip (recommendations -> trips)",
+    "PlanningFeedback.tripPreference -> TripPreference (recommendations -> memory)",
+    "PlanningFeedback.user -> User (recommendations -> identity)",
+    "PlanningMutation.trip -> Trip (conversation -> trips)",
+    "PreferenceProfileVersion.sourceFeedback -> PlanningFeedback (memory -> recommendations)",
+    "PreferenceProfileVersion.trip -> Trip (memory -> trips)",
+    "Trip.activeItineraryVersion -> ItineraryVersion (trips -> itinerary)",
+    "Trip.activePreferenceProfileVersion -> PreferenceProfileVersion (trips -> memory)",
+    "Trip.user -> User (trips -> identity)",
+    "TripPreference.trip -> Trip (memory -> trips)",
+    "UserTravelPreference.user -> User (memory -> identity)"
+  ]
+}

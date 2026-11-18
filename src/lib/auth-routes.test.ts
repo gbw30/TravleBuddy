@@ -13,8 +13,8 @@ describe("auth route classification", () => {
   });
 
   it("identifies protected app pages", () => {
-    expect(isProtectedPageRoute("/dashboard")).toBe(true);
-    expect(isProtectedPageRoute("/dashboard/settings")).toBe(true);
+    expect(isProtectedPageRoute("/home")).toBe(true);
+    expect(isProtectedPageRoute("/home/settings")).toBe(true);
     expect(isProtectedPageRoute("/profile")).toBe(true);
     expect(isProtectedPageRoute("/trips/new")).toBe(true);
     expect(isProtectedPageRoute("/")).toBe(false);

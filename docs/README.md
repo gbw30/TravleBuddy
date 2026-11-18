@@ -18,7 +18,7 @@ When documents disagree, use this order:
 1. `AGENTS.md` for agent operation and safety.
 2. This knowledge map for documentation routing.
 3. [Canonical product requirements](requirements.md), then the [PRD](prd.md), then the [product vision](product-vision.md), for target behavior.
-4. [Architecture overview](architecture/README.md) and accepted ADRs for system boundaries and decisions.
+4. [Architecture overview](architecture/README.md) and accepted ADRs for system boundaries and decisions; [service borders](architecture/service-borders.md) for the working rules; [HTTP API version 1](api/v1.md) for the routes.
 5. Code, Prisma schema, migrations, and tests for implemented behavior.
 6. [Current implementation status](status/current-implementation.md) as the maintained human summary.
 7. [Active roadmap](roadmap.md) for milestone order.

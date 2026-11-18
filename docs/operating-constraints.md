@@ -12,11 +12,20 @@ environments.
 
 ### Git and GitHub
 
-- `qa` is the active integration branch.
 - `main` is the stable and release branch.
-- Normal promotion is a pull request from `qa` to `main`.
-- Do not create additional feature, release, QA, or `codex/*` branches or
-  worktrees unless the developer explicitly requests one.
+- `qa` is the branch behind the QA preview and the protected QA workflows.
+- Since 2026-11-18, by the developer's instruction, each roadmap milestone is
+  built on a branch `milestone/<number>-<name>`, and each piece of it on a
+  feature branch `feature/m<number>-<piece>` cut from the milestone branch.
+  A finished feature branch is merged into its milestone branch without asking
+  once lint, type check, tests and build pass.
+- A milestone branch is merged into `main` by pull request, together with the
+  developer, when the milestone is done. `qa` is updated from a milestone
+  branch only when the developer asks for the QA preview or the QA gate.
+- Feature and milestone branches are not deployed: `vercel.json` turns
+  automatic Vercel deployments off for them.
+- Do not create any other branch (release, QA, or `codex/*`) or a worktree
+  unless the developer explicitly requests one.
 - Existing historical branches may remain. This policy does not authorize
   deleting them.
 - Reuse the repository's existing workflows and GitHub environments. Do not
@@ -82,8 +91,11 @@ When a proposed step conflicts with this topology:
 
 ## Practical development flow
 
-1. Make and verify active development changes on `qa`.
-2. Push `qa` and use the existing PR path into `main`.
+1. Make and verify changes on a feature branch, and merge it into the
+   milestone branch.
+2. When the milestone is done, open a pull request from the milestone branch
+   into `main`; merge `qa` up to date first if the QA preview or gate is
+   wanted.
 3. Let the existing PR workflow use its already-configured temporary
    PostgreSQL service.
 4. Run extended QA only when requested; it is not scheduled nightly.

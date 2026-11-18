@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { canUseFullPlanning, type TripReadinessInput } from "./readiness";
-import { getTripLocationTimeZone, isKnownTripLocation } from "./location-catalog";
+import {
+  getTripLocationTimeZone,
+  isKnownTripLocation,
+} from "./location-catalog";
 
 export const tripStatusSchema = z.enum(["DRAFT", "PLANNING", "ARCHIVED"]);
 export const supportedBudgetCurrencies = ["USD", "EUR"] as const;
@@ -10,23 +13,21 @@ export const createTripIntentSchema = z.enum(["draft", "continue"]);
 
 const invalidDateSentinel = Symbol("invalid date");
 const optionalTrimmedString = z.preprocess(
-  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
   z.string().trim().optional(),
 );
-const patchStringSchema = z.preprocess(
-  (value) => {
-    if (value === null) {
-      return null;
-    }
+const patchStringSchema = z.preprocess((value) => {
+  if (value === null) {
+    return null;
+  }
 
-    if (typeof value === "string" && value.trim() === "") {
-      return null;
-    }
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
 
-    return value;
-  },
-  z.string().trim().min(1).nullable().optional(),
-);
+  return value;
+}, z.string().trim().min(1).nullable().optional());
 const blankStringToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
 
@@ -90,20 +91,17 @@ const optionalPositiveNumberSchema = z.preprocess(
   blankStringToUndefined,
   z.coerce.number().positive().optional(),
 );
-const patchPositiveNumberSchema = z.preprocess(
-  (value) => {
-    if (value === null) {
-      return null;
-    }
+const patchPositiveNumberSchema = z.preprocess((value) => {
+  if (value === null) {
+    return null;
+  }
 
-    if (typeof value === "string" && value.trim() === "") {
-      return null;
-    }
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
 
-    return value;
-  },
-  z.coerce.number().positive().nullable().optional(),
-);
+  return value;
+}, z.coerce.number().positive().nullable().optional());
 
 const requiredTitleSchema = z.string().trim().min(1, {
   message: "Trip title is required.",
@@ -133,11 +131,16 @@ const tripLocationInputSchema = z
     }
   });
 
-const destinationsInputSchema = z.array(tripLocationInputSchema).max(12).optional();
+const destinationsInputSchema = z
+  .array(tripLocationInputSchema)
+  .max(12)
+  .optional();
 
 type ContinueTripCreationInput = {
   title?: unknown;
-  destinations?: readonly { city?: string | null; country?: string | null }[] | null;
+  destinations?:
+    | readonly { city?: string | null; country?: string | null }[]
+    | null;
   startDate?: Date | string | null;
   endDate?: Date | string | null;
   budgetAmount?: unknown | null;
@@ -167,8 +170,10 @@ function hasValidDateRangeValues(
     return false;
   }
 
-  const start = startDate instanceof Date ? startDate : parseStrictDate(startDate, null);
-  const end = endDate instanceof Date ? endDate : parseStrictDate(endDate, null);
+  const start =
+    startDate instanceof Date ? startDate : parseStrictDate(startDate, null);
+  const end =
+    endDate instanceof Date ? endDate : parseStrictDate(endDate, null);
 
   return start instanceof Date && end instanceof Date && end >= start;
 }
@@ -269,7 +274,10 @@ export const createTripInputSchema = z
           : value,
       supportedBudgetCurrencySchema.optional(),
     ),
-    travelStyle: z.preprocess(blankStringToUndefined, travelStyleSchema.optional()),
+    travelStyle: z.preprocess(
+      blankStringToUndefined,
+      travelStyleSchema.optional(),
+    ),
     useProfilePreferences: profilePreferenceAutofillSchema,
     destinations: destinationsInputSchema,
   })
@@ -376,7 +384,10 @@ export const updateTripInputSchema = z
           : value,
       supportedBudgetCurrencySchema.optional(),
     ),
-    travelStyle: z.preprocess(blankStringToUndefined, travelStyleSchema.optional()),
+    travelStyle: z.preprocess(
+      blankStringToUndefined,
+      travelStyleSchema.optional(),
+    ),
   })
   .refine(
     (value) => Boolean(value.departureCity) === Boolean(value.departureCountry),
@@ -397,7 +408,10 @@ export const updateTripInputSchema = z
   )
   .refine(
     (value) =>
-      !(value.destinations && (value.destinationCity || value.destinationCountry)),
+      !(
+        value.destinations &&
+        (value.destinationCity || value.destinationCountry)
+      ),
     {
       message: "Use destinations or legacy destination fields, not both.",
       path: ["destinations"],
@@ -442,8 +456,7 @@ export const updateTripInputSchema = z
     path: ["endDate"],
   })
   .refine(
-    (value) =>
-      Boolean(value.budgetAmount) === Boolean(value.budgetCurrency),
+    (value) => Boolean(value.budgetAmount) === Boolean(value.budgetCurrency),
     {
       message: "Budget amount and currency must be provided together.",
       path: ["budgetCurrency"],
@@ -457,45 +470,46 @@ export const patchTripInputSchema = z
     departureCountry: patchStringSchema,
     destinationCity: patchStringSchema,
     destinationCountry: patchStringSchema,
-    destinations: z.array(tripLocationInputSchema).max(12).nullable().optional(),
+    destinations: z
+      .array(tripLocationInputSchema)
+      .max(12)
+      .nullable()
+      .optional(),
     startDate: patchDateSchema,
     endDate: patchDateSchema,
     budgetAmount: patchPositiveNumberSchema,
-    budgetCurrency: z.preprocess(
-      (value) => {
-        if (value === null) {
-          return null;
-        }
+    budgetCurrency: z.preprocess((value) => {
+      if (value === null) {
+        return null;
+      }
 
-        if (typeof value === "string" && value.trim() === "") {
-          return null;
-        }
+      if (typeof value === "string" && value.trim() === "") {
+        return null;
+      }
 
-        return typeof value === "string" ? value.trim().toUpperCase() : value;
-      },
-      supportedBudgetCurrencySchema.nullable().optional(),
-    ),
-    travelStyle: z.preprocess(
-      (value) => {
-        if (value === null) {
-          return null;
-        }
+      return typeof value === "string" ? value.trim().toUpperCase() : value;
+    }, supportedBudgetCurrencySchema.nullable().optional()),
+    travelStyle: z.preprocess((value) => {
+      if (value === null) {
+        return null;
+      }
 
-        if (typeof value === "string" && value.trim() === "") {
-          return null;
-        }
+      if (typeof value === "string" && value.trim() === "") {
+        return null;
+      }
 
-        return value;
-      },
-      travelStyleSchema.nullable().optional(),
-    ),
+      return value;
+    }, travelStyleSchema.nullable().optional()),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "PATCH payload must include at least one field.",
   })
   .refine(
     (value) =>
-      !(value.destinations && (value.destinationCity || value.destinationCountry)),
+      !(
+        value.destinations &&
+        (value.destinationCity || value.destinationCountry)
+      ),
     {
       message: "Use destinations or legacy destination fields, not both.",
       path: ["destinations"],
@@ -521,13 +535,10 @@ export const patchTripInputSchema = z
       path: ["destinationCity"],
     },
   )
-  .refine(
-    (value) => !value.startDate || !isBeforeCurrentDay(value.startDate),
-    {
-      message: "Start date cannot be before today.",
-      path: ["startDate"],
-    },
-  )
+  .refine((value) => !value.startDate || !isBeforeCurrentDay(value.startDate), {
+    message: "Start date cannot be before today.",
+    path: ["startDate"],
+  })
   .refine((value) => !value.endDate || !isBeforeCurrentDay(value.endDate), {
     message: "End date cannot be before today.",
     path: ["endDate"],
@@ -538,7 +549,8 @@ export type ParsedCreateTripInput = z.output<typeof createTripInputSchema>;
 export type UpdateTripInput = z.infer<typeof updateTripInputSchema>;
 export type PatchTripInput = z.infer<typeof patchTripInputSchema>;
 export type CreateTripIntent = z.infer<typeof createTripIntentSchema>;
-export type SupportedBudgetCurrency = (typeof supportedBudgetCurrencies)[number];
+export type SupportedBudgetCurrency =
+  (typeof supportedBudgetCurrencies)[number];
 export type TravelStyle = z.infer<typeof travelStyleSchema>;
 
 export function deriveTripStatusFromDetails(

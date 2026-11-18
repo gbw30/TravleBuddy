@@ -97,6 +97,15 @@ export type PlanningMutationControl = {
 };
 
 export type PlanningMutationKind =
+  | "trip_rename"
+  | "trip_facts_save"
+  | "trip_archive"
+  | "trip_restore"
+  | "trip_plan_finish"
+  | "trip_plan_reopen"
+  | "commitment_add"
+  | "commitment_update"
+  | "commitment_remove"
   | "trip_settings_update"
   | "preference_save"
   | "logistics_mode_save"

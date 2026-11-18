@@ -11,21 +11,21 @@ test.describe("production read-only smoke", () => {
 
     const homeResponse = await publicPage.goto("/");
     expect(homeResponse?.ok()).toBe(true);
-    await publicPage.goto("/dashboard");
+    await publicPage.goto("/home");
     await expect(publicPage).toHaveURL(/\/login\?callbackUrl=/);
     await publicContext.close();
   });
 
-  test("@production-readonly synthetic user can read the dashboard", async ({
+  test("@production-readonly synthetic user can read Home", async ({
     browser,
   }) => {
     const context = await browser.newContext({ storageState: ownerStatePath });
     const page = await context.newPage();
     await enforceReadOnlyPage(page);
 
-    const response = await page.goto("/dashboard");
+    const response = await page.goto("/home");
     expect(response?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: /welcome/i })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
     await context.close();
   });
 });

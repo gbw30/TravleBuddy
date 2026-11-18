@@ -11,21 +11,21 @@ describe("auth route policy", () => {
       getAuthRouteDecision("/login", true, "http://localhost:3000/login"),
     ).toEqual({
       kind: "redirect",
-      destination: "/dashboard",
+      destination: "/home",
     });
   });
 
   it("redirects signed-out users from protected pages to login", () => {
     expect(
       getAuthRouteDecision(
-        "/dashboard",
+        "/home",
         false,
-        "http://localhost:3000/dashboard",
+        "http://localhost:3000/home",
       ),
     ).toEqual({
       kind: "redirect",
       destination:
-        "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3000%2Fdashboard",
+        "http://localhost:3000/login?callbackUrl=http%3A%2F%2Flocalhost%3A3000%2Fhome",
     });
   });
 

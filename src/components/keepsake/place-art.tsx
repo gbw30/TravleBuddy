@@ -9,7 +9,7 @@ export function PlaceArt({
   showPhoto,
   className = "",
 }: {
-  place: CardPlace;
+  place: Pick<CardPlace, "name" | "essentials" | "photo">;
   showPhoto: boolean;
   className?: string;
 }) {

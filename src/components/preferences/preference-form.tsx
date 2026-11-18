@@ -246,10 +246,10 @@ export function PreferenceForm({
         <TimedAlert className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
           <span>Preferences saved.</span>
           <a
-            href={`/trips/${tripId}/logistics`}
+            href={`/trips/${tripId}`}
             className="inline-flex h-9 items-center rounded-md bg-emerald-700 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-800"
           >
-            Continue to logistics
+            Back to the trip
           </a>
         </TimedAlert>
       ) : null}
