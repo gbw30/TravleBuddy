@@ -19,7 +19,7 @@ The branch is `milestone/5-guided-planning`, cut from the finished Milestone 4 b
 | 0. Plan                                                      | `feature/m5-plan`                | none (process)                                    | #22          |
 | 1. The script: questions, readiness, reading answers by rule | `feature/m5-script`              | TB-AGT-01 to 05, TB-AGT-07, TB-AGT-08, TB-AGT-15  | #23          |
 | 2. The AI model boundary                                     | `feature/m5-ai-boundary`         | TB-AGT-14, TB-TRU-03, TB-SYS-10, TB-SYS-11 (AI)   | #24          |
-| 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                         |              |
+| 3. Saved conversation and trip profile                       | `feature/m5-conversation-store`  | TB-AGT-13                                         | #25          |
 | 4. Taking a turn                                             | `feature/m5-turns`               | TB-AGT-09 to 11, TB-FIX-05, TB-ITN-14 (the offer) |              |
 | 5. Taste in the ranking and the reasons                      | `feature/m5-taste-ranking`       | TB-RSN-01 to 04, TB-CRD-08                        |              |
 | 6. The conversation on screen                                | `feature/m5-conversation-screen` | TB-AGT-01, TB-AGT-02, TB-AGT-13, TB-AGT-15        |              |
@@ -44,7 +44,7 @@ Not stated in the PRD. Each is open to change.
 2. **The script is data.** Each question has an id, a topic, a form (pick one, pick several, this or that, a scale, open text), its tap choices, a default used when it is skipped, and the sentence that says so.
 3. **Facts are asked only when missing** from the trip, its tickets and its commitments. Taste topics are asked in the order of PRD 7.3.
 4. **Readiness is per topic.** Sights can be proposed once the days can be laid out. Meals can be proposed once the food question is answered or skipped. The agent says when it switches, and says what it still needs when it cannot propose.
-5. **The trip profile** is one row per trip in a new Memory table: topic to value and where it came from (told, default, skipped). The personal profile and confirming remembered answers are Milestone 6.
+5. **The trip profile** is one row per trip in a new Memory table, `trip_profiles`: topic to the values chosen and whether they were told or a default. The taste topics themselves belong to the Memory service (`memory/contracts.ts`); the conversation asks about them. The fact questions a traveller skipped are the conversation's own state and live in `conversations`. The personal profile and confirming remembered answers are Milestone 6.
 6. **The AI cap** is a monthly amount in US dollars, `AI_MONTHLY_CAP_USD`, default 10. Spend is worked out from the token counts each reply reports, at the published price of the model, and kept per month. At the cap the model is off until the month ends.
 7. **Where to stay** is asked as a topic, and the agent says how many nights have no booked stay. Proposing hotels as cards is not in this milestone.
 8. **A typed message that is not an answer** can do three things: set a fact, add a fixed commitment (TB-FIX-05), or point the agent at a day or slot (TB-AGT-11). Anything else gets a plain reply that the agent did not understand, with what it can do.
@@ -80,7 +80,12 @@ The earlier Gemini files in `src/lib/ai` belong to the earlier planner and go wi
 
 ### Piece 3: Saved conversation and trip profile
 
-**Produces:** tables `conversation_messages` (Conversation), `trip_profiles` (Memory) and `ai_usage` (Conversation); `appendMessages`, `readConversation`; `readTripProfile`, `saveTripAnswer`.
+**Produced (pull request 25):**
+
+- Migration `20261119090000_conversation_and_trip_profile`, additive: tables `conversations`, `conversation_messages`, `trip_profiles` and `ai_usage`, and the enum `MessageAuthor`. **Applied to the development database only.** The QA and production databases wait for Gabriel, together with Milestone 4's migration.
+- Conversation service: `conversation-store.ts` with `appendMessages`, `readConversation`, `readSkippedFacts`, `skipFact`; `model/usage-store.ts` with `readUsage`, `addUsage`. A message's order is its id, because rows written in one transaction share a timestamp.
+- Memory service, new folder `src/features/memory`: `contracts.ts` (the taste topics, `TripAnswer`, `TripTaste`), `trip-profile-store.ts` with `readTripTaste`, `saveTripAnswer`.
+- Checked once against the development database inside a transaction that was rolled back: order, skipped questions, taste and spend all read back as written, and nothing was left behind.
 
 ### Piece 4: Taking a turn
 
