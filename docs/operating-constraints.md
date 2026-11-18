@@ -19,6 +19,10 @@ environments.
   feature branch `feature/m<number>-<piece>` cut from the milestone branch.
   A finished feature branch is merged into its milestone branch without asking
   once lint, type check, tests and build pass.
+- Feature branches exist for traceability: each is merged by a pull request
+  with a merge commit, the pull request names the requirement IDs it covers,
+  and its number is recorded in the milestone's plan. The existing `Verify`
+  workflow runs on pull requests into `milestone/**` as well as `main`.
 - A milestone branch is merged into `main` by pull request, together with the
   developer, when the milestone is done. `qa` is updated from a milestone
   branch only when the developer asks for the QA preview or the QA gate.

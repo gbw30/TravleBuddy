@@ -50,6 +50,11 @@ instruction for every Codex session working in this repository:
   QA workflows; update it from a milestone branch only when the developer asks
   for the preview or the QA gate. Do not create a branch outside this pattern
   or a worktree, and do not delete a merged branch without being asked.
+- Feature branches exist for traceability. Merge each one into its milestone
+  branch by a pull request with a merge commit. The pull request names the
+  requirement IDs it covers and its check results, and its number is written
+  into the milestone's plan under `docs/superpowers/plans/`. The existing
+  `Verify` workflow runs on these pull requests.
 - Feature and milestone branches are not deployed: `vercel.json` turns
   automatic deployments off for them, so the Vercel topology below is
   unchanged.

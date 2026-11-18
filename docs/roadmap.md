@@ -72,6 +72,8 @@ Exit evidence: TB-ACC, TB-HOM, TB-FAC, TB-STA-01 to TB-STA-03, TB-FIX-01, TB-FIX
 
 At the end of this milestone a traveller can build a trip slot by slot from ranked cards, with templated reasons and without the conversation.
 
+**Started 2026-11-18** on branch `milestone/4-places-cards-itinerary`. [Plan](superpowers/plans/2026-11-18-places-cards-itinerary.md), which lists each piece, its feature branch, the requirements it covers and its pull request.
+
 Exit evidence: TB-CRD, TB-ITN except the agent's offer in TB-ITN-14, TB-FIX-03, TB-FIX-04, TB-TRU-01, TB-TRU-02, TB-TRU-04 to TB-TRU-06, TB-SYS-08, TB-SYS-09, TB-SYS-12, TB-SYS-14 and the place-data half of TB-SYS-11 pass.
 
 ## Milestone 5: Guided planning
