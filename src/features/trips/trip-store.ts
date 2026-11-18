@@ -8,6 +8,7 @@ import {
   commitmentSelect,
   toCommitmentDto,
 } from "./commitment-store";
+import { NEW_TRIP_TITLE } from "./contracts";
 import type {
   PlanningMode,
   TicketInput,
@@ -145,6 +146,52 @@ export async function listTrips(
     // The facts are for the trip page; Home needs only the summary.
     delete summary.facts;
     return summary;
+  });
+}
+
+/**
+ * The traveller's trips whose plans are marked finished, oldest first. A
+ * trip counts toward what the site learns once its plan is finished (PRD 12.4).
+ * `title` is a name to recognise the trip by: its own title, or its first
+ * city and month while the title is still the one every new trip starts with.
+ */
+export async function listFinishedTrips(
+  userId: string,
+): Promise<{ id: string; title: string; finishedAt: string }[]> {
+  const rows = await db.trip.findMany({
+    where: { userId, planFinishedAt: { not: null } },
+    select: {
+      id: true,
+      title: true,
+      planFinishedAt: true,
+      startDate: true,
+      destinations: {
+        select: { city: true },
+        orderBy: { sortOrder: "asc" },
+        take: 1,
+      },
+    },
+    orderBy: { planFinishedAt: "asc" },
+  });
+  return rows.map((row) => {
+    const city = row.destinations[0]?.city;
+    const month = row.startDate
+      ? new Intl.DateTimeFormat("en-GB", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        }).format(row.startDate)
+      : null;
+    return {
+      id: row.id,
+      title:
+        row.title !== NEW_TRIP_TITLE || !city
+          ? row.title
+          : month
+            ? `${city}, ${month}`
+            : city,
+      finishedAt: row.planFinishedAt!.toISOString(),
+    };
   });
 }
 

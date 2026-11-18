@@ -20,6 +20,11 @@ vi.mock("@/lib/db", () => ({
   ),
 }));
 
+// Which finished trips showed a value is the learning use case's to say.
+vi.mock("./learning", () => ({
+  tripsThatShowed: vi.fn(async () => ["tokyo", "lisbon"]),
+}));
+
 import { readForgotten, replaceLearned } from "@/features/memory";
 
 import {
@@ -189,7 +194,8 @@ describe("changing an entry", () => {
     await changeEntry("ana", guess.id, "packed");
     expect(await lines("ana")).toEqual(["pace=Packed (always)"]);
     expect(await readForgotten(tx(), "ana")).toEqual([
-      { topic: "pace", value: "relaxed", tripIds: ["lisbon"] },
+      // Every trip that showed it is forgotten, not only the one the entry named.
+      { topic: "pace", value: "relaxed", tripIds: ["lisbon", "tokyo"] },
     ]);
   });
 });

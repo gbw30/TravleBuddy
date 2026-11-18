@@ -21,6 +21,7 @@ import {
 } from "@/features/memory/contracts";
 import { db } from "@/lib/db";
 
+import { tripsThatShowed } from "./learning";
 import type { FiledAs, ProfileView, ShownEntry } from "./profile-view";
 
 // The profile page spans two services: Memory holds the profile, and the
@@ -121,6 +122,7 @@ export async function changeEntry(
   value: string,
 ): Promise<"not_found" | "invalid" | ShownEntry> {
   const topics = profileTopics();
+  const evidence = await evidenceBehind(userId, id);
   return db.$transaction(async (tx) => {
     const { entries } = await readProfile(tx, userId);
     const entry = entries.find((item) => item.id === id);
@@ -133,13 +135,27 @@ export async function changeEntry(
     if (!allowed) return "invalid";
     // The old value goes first. If it was learned, its trips are forgotten
     // for it, so it is not learned back (TB-MEM-12).
-    if (wanted !== entry.value) await deleteEntry(tx, userId, id);
+    if (wanted !== entry.value) await deleteEntry(tx, userId, id, evidence);
     return shown(await saveStated(tx, userId, entry.topic, wanted), topics);
   });
 }
 
-export function removeEntry(userId: string, id: string) {
-  return db.$transaction((tx) => deleteEntry(tx, userId, id));
+export async function removeEntry(userId: string, id: string) {
+  const evidence = await evidenceBehind(userId, id);
+  return db.$transaction((tx) => deleteEntry(tx, userId, id, evidence));
+}
+
+/**
+ * Every finished trip that showed a learned entry's value. Deleting the
+ * entry forgets all of them, so it is not learned again from the same past
+ * (TB-MEM-12). Empty for an entry the traveller stated, or not theirs.
+ */
+async function evidenceBehind(userId: string, id: string): Promise<string[]> {
+  const { entries } = await readProfile(db, userId);
+  const entry = entries.find((item) => item.id === id);
+  return entry?.source.type === "trip"
+    ? tripsThatShowed(userId, entry.topic, entry.value)
+    : [];
 }
 
 export function removeNote(userId: string, id: string) {
