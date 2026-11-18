@@ -1,0 +1,94 @@
+# Quick Plan (Milestone 7) Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** A traveller writes a short trip brief in five steps, the agent builds the whole itinerary one day at a time, and the traveller refines it in the same workspace, with a report of what was built, assumed, shelved and uncertain.
+
+**Architecture:** The brief is another screen over the data Guided planning already uses: the trip's facts and fixed commitments in the Trips service, and the trip's taste in the Memory service. Nothing is stored twice. The build is a use case that fills one day per request with the top-ranked place for each slot, through the same ranking, the same scheduling rules and the same replay ledger as a traveller's own picks. The page drives it, so no background worker is involved.
+
+**Tech Stack:** Next.js 16.2 App Router, React 19, Prisma 7 on PostgreSQL (Neon), Zod 4, Vitest, Playwright. No new dependency.
+
+**Spec:** [PRD](../../prd.md) section 11; [requirements](../../requirements.md) TB-QPL-01 to 13 and TB-STA-04; [roadmap](../../roadmap.md) Milestone 7; [ADR-008](../../architecture/adr-008-modular-services-in-one-deployment.md). Builds on [Milestone 5](2026-11-19-guided-planning.md) and [Milestone 6](2026-11-18-memory.md).
+
+## How this milestone is traced
+
+The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch. Each piece is a feature branch merged by pull request into it; the pull request names the requirement IDs it covers and its check results, and its number is written here.
+
+| Piece                                         | Branch                    | Requirements                 | Pull request |
+| --------------------------------------------- | ------------------------- | ---------------------------- | ------------ |
+| 0. Plan                                       | `feature/m7-plan`         | none (process)               |              |
+| 1. The brief as a view, and its checks (pure) | `feature/m7-brief-rules`  | TB-QPL-02, 03, 05, 07        |              |
+| 2. Saving the brief                           | `feature/m7-brief-save`   | TB-QPL-04, 06, TB-STA-04     |              |
+| 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          |              |
+| 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                |              |
+| 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            |              |
+| 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                |              |
+| 7. Evidence                                   | `feature/m7-evidence`     | all of the above, re-checked |              |
+
+## Global Constraints
+
+- Service borders: import a service only through `index.ts` or `contracts.ts`; query only tables the service owns; never add to `eslint-suppressions.json`.
+- Every change to a trip goes through a route under `/api/v1` with `operationId` and `expectedRevision`, through the replay ledger.
+- **Nothing depends on a separately running background worker** (PRD 11.3, ADR-008). The build runs one day per request while the page is open.
+- **The build obeys the same rules as a traveller's own pick** (TB-QPL-09): it uses the ranking of Milestones 4 to 6 (a place known to be closed is never chosen, hard limits hold) and the plan actions that flag every broken scheduling rule. A place is taken only from saved place data.
+- **Only step 1 is required** (TB-QPL-02). A skipped answer falls back to the personal profile, then to a default, and the report lists it as an assumption.
+- **A brief answer changes only this trip** (TB-QPL-03), never the personal profile.
+- Everything works with the AI model off. Tests and QA run with `AI_MODE=off` and `PLACE_PROVIDER_MODE=mock`.
+- Migrations are written with `prisma migrate diff` and applied with `prisma migrate deploy` to the development database only. No table is dropped.
+
+## Decisions made by the builder
+
+Not stated in the PRD. Each is open to change.
+
+1. **The brief stores nothing of its own.** Its answers are the trip's facts, its fixed commitments and its taste answers. That is what makes "Talk it through instead" keep everything (TB-QPL-12): the conversation reads the same data.
+2. **The step a traveller is on is in the page address** (`?step=3`), not in the database. Returning opens the review when step 1 is complete, and step 1 otherwise. Every answer is already saved.
+3. **A step is saved when the traveller leaves it** (Next, Back, or a step marker), in one action through the ledger.
+4. **"Anything else"** is read by the same rule as the profile page with the model off: a part that plainly is a value of a topic becomes a preference for this trip, shown for confirmation first; the rest is kept as said and marked as not used. With the model on, the model reads it into the same shapes. What was typed is saved in the trip's conversation, so the other way of planning sees it.
+5. **Build order** is the Guided order: fixed commitments are already placed; then each day's sights and activities, then its meals. For each open slot the build takes the top-ranked card. A slot with no card stays open and is reported.
+6. **Build progress** is one small JSON value on the plan: the next day to build, and the slots where the choice was close. A build in progress resumes when the trip page is opened.
+7. **"Close"** means the second-ranked place scored within 0.5 of the first. Those slots are listed in the report as "want to pick?".
+8. **The report** is worked out from the trip as it stands, plus the close slots recorded during the build: what was built, every answer that was a memory or a default with chips to change it, what is on the shelf and why, and where the choice was close.
+9. **Places are gathered before the build starts**: one provider request per city and, for meals, per area, as in Guided planning. If the provider cannot be reached, the build uses saved places and the report says so.
+
+## Review Focus
+
+1. A build interrupted by closing the page resumes at the right day and never builds a day twice.
+2. The build never picks a place known to be closed at the slot's time or one that conflicts with a hard limit, and never moves or removes a fixed commitment.
+3. A second press of "Build my trip", or a repeated request, does not double-fill or overwrite the traveller's own picks.
+4. An answer changed in the brief changes this trip only; the personal profile is untouched.
+5. Step 1 with an end date before the start date, or a city with no nights among several, is explained beside the field and cannot be built.
+
+## Pieces
+
+Each piece gets its task list in its pull request. What is fixed here is what each one produces.
+
+### Piece 1: The brief as a view, and its checks (pure)
+
+**Produces:** `src/use-cases/brief-view.ts` (types the browser may import) and pure functions: the brief of a trip from its facts, commitments and the taste in use, each answer with its source (said for this trip, remembered from a named trip, or a default); the problems of step 1 in plain words; whether it can be built; the review as plain sentences.
+
+### Piece 2: Saving the brief
+
+**Produces:** `PUT /api/v1/trips/{tripId}/brief` saving facts and taste answers in one action; a trip action to change the planning mode; reading "anything else" into preferences for confirmation.
+
+### Piece 3: The brief on screen
+
+**Produces:** the five-step brief at `/trips/{tripId}/brief` in the approved prototype's look, filled in from the trip and the profile with sources, checked as the traveller types, saved at every step, with the review and its edit links.
+
+### Piece 4: Building one day at a time
+
+**Produces:** an additive column for build progress on `plans`; `buildNextDay` in a use case; `POST /api/v1/trips/{tripId}/build`.
+
+### Piece 5: The build on screen and the report
+
+**Produces:** progress in the workspace while the build runs, resuming on return; the report with changeable assumptions.
+
+### Piece 6: Moving between the two ways
+
+**Produces:** "Talk it through instead" on the brief; "Build the rest for me" in the conversation.
+
+### Piece 7: Evidence
+
+- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass.
+- [ ] Browser walk of the brief and a build, including closing the page mid-build and returning; wide and phone widths; no serious accessibility findings.
+- [ ] Each requirement checked and recorded in the roadmap's Milestone 7 entry, with what is only partly met.
+- [ ] `docs/status/current-implementation.md` and `docs/api/v1.md` updated.
