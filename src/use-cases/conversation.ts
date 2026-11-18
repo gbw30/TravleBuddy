@@ -7,6 +7,8 @@ import {
   intentOfTap,
   labelsOf,
   lastQuestionTopic,
+  OFFER_ASKS,
+  readLastMessage,
   modelCall,
   nextQuestion,
   readAnswerByRule,
@@ -33,6 +35,7 @@ import type {
   TurnResult,
 } from "@/features/conversation/contracts";
 import { PACES } from "@/features/itinerary/contracts";
+import { TOPIC_NAMES } from "@/features/memory/contracts";
 import {
   readProfile,
   readTripDifference,
@@ -53,6 +56,7 @@ import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
 import { planDays, setPlanPace } from "./plan";
+import { tellProfileIn } from "./profile";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
 // The guided conversation spans five services: Conversation holds the script,
@@ -166,7 +170,21 @@ async function prepare(
   waiting: Question | null,
   trip: TripDetail,
   userId: string,
+  /** The dietary rules the personal profile already holds. */
+  knownRules: string[],
 ): Promise<{ said: string; decision: Decision } | Refusal> {
+  // Yes to the agent's offer: what it offered goes into the personal
+  // profile. The offer is read from the thread, never taken from the request.
+  if (turn.type === "remember") {
+    const last = await readLastMessage(db, trip.id);
+    if (last?.kind !== "offer") {
+      return new Refusal("There is nothing waiting to be remembered.");
+    }
+    return {
+      said: "Yes, remember it for every trip",
+      decision: { change: { type: "remember", ...last.remember }, says: "" },
+    };
+  }
   // "Is this trip different?" is answered by a tapped purpose, a skip, or
   // the traveller's own words. It needs no reading by the model.
   if (
@@ -195,6 +213,7 @@ async function prepare(
         cities: named.length > 0 ? await lookUp(named) : [],
         days: intent.type === "go_to" ? await planDays(userId, trip) : [],
         limited,
+        knownRules,
       }),
     };
   }
@@ -240,6 +259,7 @@ async function prepare(
       cities: [],
       days: [],
       limited: false,
+      knownRules,
     }),
   };
 }
@@ -265,7 +285,15 @@ export async function takeTurn(input: {
   // went through must get its first answer, not "no longer waiting".
   const prepared = trip.archived
     ? null
-    : await prepare(turn, waiting, trip, userId);
+    : await prepare(
+        turn,
+        waiting,
+        trip,
+        userId,
+        (state.remembered ?? [])
+          .filter((entry) => entry.topic === "dietary_rules")
+          .map((entry) => entry.value),
+      );
 
   return runTripAction<TurnResult>({
     userId,
@@ -286,7 +314,10 @@ export async function takeTurn(input: {
         readiness(stateAfter(state, change)),
         change,
       );
-      let says = [decision.says, note].filter(Boolean).join(" ");
+      // An offer's question comes last, after anything else the agent says.
+      let says = [decision.says, note, decision.offer ? OFFER_ASKS : ""]
+        .filter(Boolean)
+        .join(" ");
       if (change?.type === "facts") {
         const saved = await saveTripFacts(tx, userId, tripId, change.facts);
         if (typeof saved === "string") return saved;
@@ -302,6 +333,28 @@ export async function takeTurn(input: {
         ) {
           says += ` The plan now follows a ${pace} pace.`;
         }
+      }
+      if (change?.type === "remember") {
+        // Filed by the same rule as the profile page: an entry when it
+        // plainly is one, otherwise a note (TB-MEM-07, TB-MEM-14).
+        const filed = [];
+        for (const text of change.texts) {
+          filed.push(await tellProfileIn(tx, userId, text, change.hard));
+        }
+        // "Dietary rules: Vegetarian and Gluten-free", one part per topic.
+        const byTopic = new Map<string, string[]>();
+        for (const item of filed) {
+          if (item.type !== "entry") continue;
+          const name = TOPIC_NAMES[item.entry.topic];
+          byTopic.set(name, [...(byTopic.get(name) ?? []), item.entry.label]);
+        }
+        const entries = [...byTopic].map(
+          ([name, labels]) => `${name}: ${labels.join(" and ")}`,
+        );
+        says =
+          entries.length > 0
+            ? `I will remember that for every trip (${entries.join("; ")}).`
+            : "Noted for every trip. It does not affect suggestions yet.";
       }
       if (change?.type === "difference") {
         await saveTripDifference(tx, tripId, change.because);
@@ -348,7 +401,12 @@ export async function takeTurn(input: {
       await appendMessages(tx, tripId, [
         ...asked,
         { from: "traveller", body: { kind: "text", text: said } },
-        { from: "agent", body: { kind: "text", text: says } },
+        {
+          from: "agent",
+          body: decision.offer
+            ? { kind: "offer", text: says, remember: decision.offer }
+            : { kind: "text", text: says },
+        },
       ]);
       return {
         focus: change?.type === "go_to" ? change.slotId : null,

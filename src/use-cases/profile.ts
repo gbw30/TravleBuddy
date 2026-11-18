@@ -1,4 +1,5 @@
 import { QUESTIONS } from "@/features/conversation";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   addNote,
   deleteEntry,
@@ -74,31 +75,39 @@ export async function loadProfile(userId: string): Promise<ProfileView> {
  * plainly is one of a topic's values or an allergy; otherwise it is kept as
  * a note that does not yet affect suggestions (TB-MEM-14).
  */
-export async function tellProfile(
+export function tellProfile(
+  userId: string,
+  text: string,
+  hard: boolean,
+): Promise<FiledAs> {
+  return db.$transaction((tx) => tellProfileIn(tx, userId, text, hard));
+}
+
+/** `tellProfile` inside a change that is already under way, such as a turn of the conversation. */
+export async function tellProfileIn(
+  tx: Prisma.TransactionClient,
   userId: string,
   text: string,
   hard: boolean,
 ): Promise<FiledAs> {
   const topics = profileTopics();
   const filed = fileUnder(text, hard, topics);
-  return db.$transaction(async (tx) => {
-    if (filed.type === "entry") {
-      return {
-        type: "entry",
-        entry: shown(
-          await saveStated(tx, userId, filed.topic, filed.value),
-          topics,
-        ),
-      };
-    }
-    // Saying the same thing twice keeps one note.
-    const { notes } = await readProfile(tx, userId);
-    const same = notes.find((note) => note.text === filed.text);
+  if (filed.type === "entry") {
     return {
-      type: "note",
-      note: same ?? (await addNote(tx, userId, filed.text)),
+      type: "entry",
+      entry: shown(
+        await saveStated(tx, userId, filed.topic, filed.value),
+        topics,
+      ),
     };
-  });
+  }
+  // Saying the same thing twice keeps one note.
+  const { notes } = await readProfile(tx, userId);
+  const same = notes.find((note) => note.text === filed.text);
+  return {
+    type: "note",
+    note: same ?? (await addNote(tx, userId, filed.text)),
+  };
 }
 
 /**

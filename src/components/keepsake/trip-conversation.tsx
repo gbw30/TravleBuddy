@@ -125,8 +125,12 @@ export function TripConversation({
   // The agent's reply to the last thing said stays in view. A proposal made
   // after it is in the thread, and its cards are in the workspace below.
   const reply = messages.findLast(
-    (message) => message.from === "agent" && message.body.kind === "text",
+    (message) =>
+      message.from === "agent" &&
+      (message.body.kind === "text" || message.body.kind === "offer"),
   );
+  // An offer to remember something stands while it is the last thing said.
+  const offered = messages.at(-1)?.body.kind === "offer";
   const several = waiting?.form === "pick_several";
   // Without the model a typed message is read only as an answer to a question.
   const canType = !readOnly && (waiting !== null || !limited);
@@ -172,6 +176,16 @@ export function TripConversation({
           </AgentMessage>
         )}
         {reply && <AgentMessage>{reply.body.text}</AgentMessage>}
+        {offered && !readOnly && (
+          <button
+            type="button"
+            className={button}
+            disabled={busy}
+            onClick={() => void take({ type: "remember" })}
+          >
+            Yes, remember it for every trip
+          </button>
+        )}
         {busy && (
           <p className="font-sans text-[14px] text-muted">One moment…</p>
         )}

@@ -112,6 +112,17 @@ export const intentSchema = z.discriminatedUnion("type", [
     day: z.number().int().min(1).max(400),
     part: z.enum(["morning", "lunch", "afternoon", "dinner"]).optional(),
   }),
+  /**
+   * Something the traveller says about themselves in general, beyond this
+   * trip: "I'm vegetarian", "I hate queues". It is offered for the personal
+   * profile and saved only after they confirm (TB-MEM-07).
+   */
+  z.object({
+    type: z.literal("statement"),
+    text: text(300),
+    /** A dietary rule, an allergy or another limit never to be broken. */
+    rule: z.boolean().optional(),
+  }),
   z.object({ type: z.literal("skip") }),
   /** Nothing the agent can act on. */
   z.object({ type: z.literal("none") }),
@@ -133,6 +144,20 @@ export const messageBodySchema = z.discriminatedUnion("kind", [
     slotId: z.string().max(40),
     text: text(600),
     placeNames: z.array(text(160)).max(3),
+  }),
+  /**
+   * A reply that offers to remember something for every trip. While it is
+   * the last message, one tap accepts it (TB-MEM-07).
+   */
+  z.object({
+    kind: z.literal("offer"),
+    text: text(1200),
+    remember: z.object({
+      /** What would be remembered, in words the profile can file. */
+      texts: z.array(text(300)).min(1).max(8),
+      /** The traveller means a rule never to be broken. */
+      hard: z.boolean(),
+    }),
   }),
 ]);
 export type MessageBody = z.infer<typeof messageBodySchema>;
@@ -158,6 +183,8 @@ export const turnSchema = z.discriminatedUnion("type", [
   }),
   /** A typed message. */
   z.object({ type: z.literal("say"), text: text(600) }),
+  /** Yes to the agent's offer to remember something for every trip. */
+  z.object({ type: z.literal("remember") }),
 ]);
 export type Turn = z.infer<typeof turnSchema>;
 

@@ -39,12 +39,19 @@ export type Change =
   | { type: "go_to"; slotId: string }
   /** The answer to "is this trip different?". `because` is null for an ordinary trip. */
   | { type: "difference"; because: string | null }
+  /** Yes to an offer: these go into the personal profile (TB-MEM-07). */
+  | { type: "remember"; texts: string[]; hard: boolean }
   | null;
 
 export type Decision = {
   change: Change;
   /** What the agent says back. */
   says: string;
+  /**
+   * Something worth remembering for every trip. The agent asks, and it is
+   * saved only when the traveller says yes (TB-MEM-07).
+   */
+  offer?: { texts: string[]; hard: boolean };
 };
 
 export type DecideInput = {
@@ -60,6 +67,8 @@ export type DecideInput = {
   days: PlanDay[];
   /** The AI model is not reading this turn. */
   limited: boolean;
+  /** The dietary rules the personal profile already holds. */
+  knownRules?: string[];
 };
 
 const list = (items: string[]) =>
@@ -346,7 +355,16 @@ export function decide(input: DecideInput): Decision {
   switch (intent.type) {
     case "skip":
       return skip(waiting);
-    case "taste":
+    case "taste": {
+      // A dietary rule given for one trip is offered for every trip, unless
+      // the personal profile already holds it.
+      const rules =
+        intent.topic === "food"
+          ? intent.values.filter(
+              (value) =>
+                value !== "none" && !(input.knownRules ?? []).includes(value),
+            )
+          : [];
       return {
         change: {
           type: "taste",
@@ -356,6 +374,18 @@ export function decide(input: DecideInput): Decision {
         says:
           `Noted: ${list(labelsOf(QUESTIONS[intent.topic], intent.values)).toLowerCase()}.` +
           (intent.topic === "stay" ? stayNote(trip) : ""),
+        ...(rules.length > 0
+          ? {
+              offer: { texts: labelsOf(QUESTIONS.food, rules), hard: true },
+            }
+          : {}),
+      };
+    }
+    case "statement":
+      return {
+        change: null,
+        says: `You said: “${intent.text}”.`,
+        offer: { texts: [intent.text], hard: intent.rule ?? false },
       };
     case "facts":
       return facts(intent, input);
@@ -375,6 +405,9 @@ export function decide(input: DecideInput): Decision {
     }
   }
 }
+
+/** The question that goes with an offer, said last in the agent's reply. */
+export const OFFER_ASKS = "Should I remember that for every trip?";
 
 const NOT_DIFFERENT =
   /^(no|nope|not really|it is not|it isn'?t|same as usual|as usual|just this once|ordinary)\b/i;

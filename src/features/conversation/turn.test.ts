@@ -507,6 +507,62 @@ describe("a message the agent cannot act on", () => {
   });
 });
 
+describe("something worth remembering for every trip", () => {
+  it("is offered when a dietary rule is given for a trip, in words the profile can file", () => {
+    const decision = run(
+      { type: "taste", topic: "food", values: ["vegetarian", "gluten-free"] },
+      { waiting: QUESTIONS.food },
+    );
+    expect(decision).toEqual({
+      change: {
+        type: "taste",
+        topic: "food",
+        answer: { values: ["vegetarian", "gluten-free"], source: "told" },
+      },
+      says: "Noted: vegetarian and gluten-free.",
+      offer: { texts: ["Vegetarian", "Gluten-free"], hard: true },
+    });
+  });
+
+  it("is not offered for a rule the profile already holds, or for no restrictions", () => {
+    expect(
+      run(
+        { type: "taste", topic: "food", values: ["vegetarian"] },
+        { knownRules: ["vegetarian"] },
+      ).offer,
+    ).toBeUndefined();
+    expect(
+      run(
+        { type: "taste", topic: "food", values: ["vegetarian", "vegan"] },
+        { knownRules: ["vegetarian"] },
+      ).offer,
+    ).toEqual({
+      texts: ["Vegan"],
+      hard: true,
+    });
+    expect(
+      run({ type: "taste", topic: "food", values: ["none"] }).offer,
+    ).toBeUndefined();
+    expect(
+      run({ type: "taste", topic: "pace", values: ["relaxed"] }).offer,
+    ).toBeUndefined();
+  });
+
+  it("is offered, and nothing is changed, when the traveller says something about themselves in general", () => {
+    expect(
+      run({ type: "statement", text: "I'm allergic to shellfish", rule: true }),
+    ).toEqual({
+      change: null,
+      says: "You said: “I'm allergic to shellfish”.",
+      offer: { texts: ["I'm allergic to shellfish"], hard: true },
+    });
+    expect(run({ type: "statement", text: "I hate queues" }).offer).toEqual({
+      texts: ["I hate queues"],
+      hard: false,
+    });
+  });
+});
+
 describe("an answer to why this trip is different", () => {
   const question = QUESTIONS.difference;
 
