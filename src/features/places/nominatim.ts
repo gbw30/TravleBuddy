@@ -1,7 +1,7 @@
 import tzLookup from "@photostructure/tz-lookup";
 
 import { citySchema, type City } from "./contracts";
-import { kindFromOsmTags } from "./kinds";
+import { dietsFromOsmTags, kindFromOsmTags } from "./kinds";
 import { politeFetch } from "./osm-http";
 import type { FoundPlace, Point } from "./place-source";
 
@@ -106,6 +106,7 @@ export function placesFromNominatim(reply: unknown): FoundPlace[] {
             : null,
         openingHours: extra.opening_hours?.slice(0, 400) ?? null,
         notable: Boolean(extra.wikidata || extra.wikipedia),
+        ...dietsFromOsmTags(extra),
       },
     ];
   });

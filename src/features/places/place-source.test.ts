@@ -77,6 +77,8 @@ describe("placesFromOverpass", () => {
         address: "2-3-1 Asakusa, Taito",
         openingHours: "Mo-Su 06:00-17:00",
         notable: true,
+        serves: [],
+        servesNot: [],
       },
       {
         originRef: "way/2",
@@ -87,8 +89,34 @@ describe("placesFromOverpass", () => {
         address: null,
         openingHours: null,
         notable: false,
+        serves: [],
+        servesNot: [],
       },
     ]);
+  });
+
+  it("keeps what a listing says about dietary rules", () => {
+    const [place] = placesFromOverpass({
+      elements: [
+        {
+          type: "node",
+          id: 7,
+          lat: 35.7,
+          lon: 139.7,
+          tags: {
+            name: "Green Bowl",
+            amenity: "restaurant",
+            "diet:vegan": "yes",
+            "diet:halal": "no",
+          },
+        },
+      ],
+    });
+    expect(place).toMatchObject({
+      name: "Green Bowl",
+      serves: ["vegetarian", "vegan"],
+      servesNot: ["halal"],
+    });
   });
 
   it("returns nothing for a reply it does not recognise", () => {

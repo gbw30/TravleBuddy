@@ -1,4 +1,4 @@
-import { kindFromOsmTags } from "./kinds";
+import { dietsFromOsmTags, kindFromOsmTags } from "./kinds";
 import { politeFetch } from "./osm-http";
 import type { FoundPlace, Point } from "./place-source";
 
@@ -88,6 +88,7 @@ export function placesFromOverpass(reply: unknown): FoundPlace[] {
         address: addressFrom(tags)?.slice(0, 240) ?? null,
         openingHours: tags.opening_hours?.slice(0, 400) ?? null,
         notable: Boolean(tags.wikidata || tags.wikipedia),
+        ...dietsFromOsmTags(tags),
       },
     ];
   });

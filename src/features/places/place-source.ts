@@ -19,6 +19,9 @@ export type FoundPlace = {
   /** As the provider wrote it; null when it gave none. */
   openingHours: string | null;
   notable: boolean;
+  /** Dietary rules the listing says it serves, and those it says it does not. */
+  serves: string[];
+  servesNot: string[];
 };
 
 /**

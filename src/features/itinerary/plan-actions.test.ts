@@ -26,6 +26,8 @@ const place = (id: string): PlaceDto => ({
   address: null,
   openingHours: "Mo-Su 09:00-18:00",
   notable: true,
+  serves: [],
+  servesNot: [],
 });
 const dinner: CommitmentDto = {
   id: "c1",
