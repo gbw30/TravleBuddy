@@ -1,18 +1,29 @@
-import { QUESTIONS } from "@/features/conversation";
+import { z } from "zod";
+
+import { allowedValues, QUESTIONS } from "@/features/conversation";
 import type { TasteInUse } from "@/features/memory";
 import {
+  fileUnder,
   MULTI_TOPICS,
   sourceWords,
   TASTE_TOPICS,
   TOPIC_NAMES,
   type ProfileEntry,
+  type ProfileTopicInfo,
+  type TasteTopic,
 } from "@/features/memory/contracts";
-import type { TripDetail, TripFacts } from "@/features/trips/contracts";
+import {
+  tripFactsSchema,
+  type TripDetail,
+  type TripFacts,
+} from "@/features/trips/contracts";
 
 import {
   BRIEF_STEPS,
   step1Problems,
   type BriefAnswer,
+  type BriefSaid,
+  type BriefSave,
   type BriefView,
 } from "./brief-view";
 
@@ -121,16 +132,110 @@ function styleLines(style: BriefAnswer[]): string[] {
     if (answer.from === "none" || answer.from === "default") {
       return `${answer.name}: ${answer.assumes}`;
     }
-    const labels = list(
-      answer.values.map(
-        (value) =>
-          answer.choices
-            .find((choice) => choice.value === value)
-            ?.label.toLowerCase() ?? value,
-      ),
+    const each = answer.values.map(
+      (value) =>
+        answer.choices
+          .find((choice) => choice.value === value)
+          ?.label.toLowerCase() ?? value,
     );
+    // "museums and exhibitions and views" would read as three things.
+    const labels = each.some((label) => label.includes(" and "))
+      ? each.join("; ")
+      : list(each);
     return `${answer.name}: ${labels}${answer.source ? ` (${answer.source})` : ""}.`;
   });
+}
+
+const styleSchema = z
+  .partialRecord(z.enum(TASTE_TOPICS), z.array(z.string()).max(8))
+  .refine(
+    (style) =>
+      TASTE_TOPICS.every((topic) => {
+        const values = style[topic] ?? [];
+        return (
+          values.every((value) => allowedValues(topic).includes(value)) &&
+          new Set(values).size === values.length &&
+          (values.length <= 1 || MULTI_TOPICS.includes(topic))
+        );
+      }),
+    { message: "An answer is not one of its question's choices." },
+  );
+
+/** What one save of the brief may carry. */
+export const briefSaveSchema = z.object({
+  facts: tripFactsSchema.optional(),
+  style: styleSchema.optional(),
+  said: z.string().max(600).nullable().optional(),
+}) satisfies z.ZodType<BriefSave>;
+
+/** What free words may name for a trip: each taste topic's own choices. */
+const SAYABLE: ProfileTopicInfo[] = TASTE_TOPICS.map((topic) => ({
+  topic,
+  name: TOPIC_NAMES[topic],
+  kind: "taste",
+  several: MULTI_TOPICS.includes(topic),
+  // "No restrictions" is the absence of a rule, not something to file.
+  choices: QUESTIONS[topic].choices.filter((choice) => choice.value !== "none"),
+  freeText: false,
+}));
+
+/**
+ * Reads the "anything else" box by the rule of the profile page. A sentence
+ * is understood only when all of it plainly names answers: "museums and
+ * markets" is two interests, "no museums and markets" is kept as said,
+ * because reading half of it would say the opposite of what was meant.
+ */
+export function readSaid(
+  typed: string | null,
+  taste: TasteInUse,
+): BriefSaid | null {
+  const text = typed?.trim();
+  if (!text) return null;
+  const said: BriefSaid = { text, understood: [], unused: [], allergies: [] };
+  const sentences = text
+    .split(/[.;!?\n]+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  for (const sentence of sentences) {
+    const whole = fileUnder(sentence, false, SAYABLE);
+    const parts =
+      whole.type === "entry"
+        ? [whole]
+        : sentence
+            .split(/,|&|\band\b/i)
+            .filter((part) => part.trim())
+            .map((part) => fileUnder(part, false, SAYABLE));
+    if (parts.length === 0 || parts.some((part) => part.type !== "entry")) {
+      said.unused.push(sentence);
+      continue;
+    }
+    for (const part of parts) {
+      if (part.type !== "entry") continue;
+      if (part.topic === "allergies") {
+        if (!said.allergies.includes(part.value))
+          said.allergies.push(part.value);
+        continue;
+      }
+      const topic = part.topic as TasteTopic;
+      if (
+        said.understood.some(
+          (item) => item.topic === topic && item.value === part.value,
+        )
+      ) {
+        continue;
+      }
+      said.understood.push({
+        topic,
+        name: TOPIC_NAMES[topic],
+        value: part.value,
+        label:
+          QUESTIONS[topic].choices.find((choice) => choice.value === part.value)
+            ?.label ?? part.value,
+        inUse: taste[topic]?.values.includes(part.value) ?? false,
+      });
+    }
+  }
+  return said;
 }
 
 /**
@@ -142,6 +247,8 @@ export function briefOf(
   trip: TripDetail,
   taste: TasteInUse,
   personal: ProfileEntry[],
+  /** The "anything else" box as saved. */
+  typed: string | null = null,
 ): BriefView {
   const style = styleOf(taste);
   const problems = step1Problems(trip.facts);
@@ -157,6 +264,7 @@ export function briefOf(
     allergies: personal
       .filter((entry) => entry.topic === "allergies")
       .map((entry) => entry.value),
+    said: readSaid(typed, taste),
     review: [
       { step: 1, title: BRIEF_STEPS[0], lines: whereAndWhen(trip.facts) },
       {

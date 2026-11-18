@@ -3,6 +3,7 @@ import {
   renameTrip,
   saveTripFacts,
   setPlanFinished,
+  setPlanningMode,
   setTripArchived,
 } from "@/features/trips";
 import { tripActionSchema } from "@/features/trips/contracts";
@@ -13,7 +14,7 @@ import { json, outcomeResponse, readBody, withUser } from "../../respond";
 
 type Context = { params: Promise<{ tripId: string }> };
 
-/** One change to a trip: rename, facts, archive, restore, finish or reopen. */
+/** One change to a trip: rename, facts, archive, restore, finish, reopen or the way it is planned. */
 export const PATCH = withUser<Context>(async (userId, request, context) => {
   const { tripId } = await context.params;
   const body = await readBody(request, tripActionSchema);
@@ -74,6 +75,12 @@ export const PATCH = withUser<Context>(async (userId, request, context) => {
       if (outcome.status === "ok") await learnQuietly(userId);
       return outcomeResponse(outcome);
     }
+    case "mode":
+      return outcomeResponse(
+        await run("trip_mode_set", (tx) =>
+          setPlanningMode(tx, userId, tripId, change.planningMode),
+        ),
+      );
   }
 });
 

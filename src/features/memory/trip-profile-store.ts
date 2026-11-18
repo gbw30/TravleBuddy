@@ -37,16 +37,25 @@ export async function readTripTaste(
   return tasteFrom(row?.taste);
 }
 
-/** Saves the answer on one topic, replacing an earlier one, and returns the taste as it now stands. */
+/**
+ * Saves the answer on one topic, replacing an earlier one, and returns the
+ * taste as it now stands. Null takes the trip's own answer away, so the
+ * personal profile or a default applies again.
+ */
 export async function saveTripAnswer(
   client: Client,
   tripId: string,
   topic: TasteTopic,
-  answer: TripAnswer,
+  answer: TripAnswer | null,
+  cause: "conversation" | "brief" = "conversation",
 ): Promise<TripTaste> {
   const before = await readTripTaste(client, tripId);
-  const saved = tripAnswerSchema.parse(answer);
-  const taste = { ...before, [topic]: saved };
+  const saved = answer && tripAnswerSchema.parse(answer);
+  const taste = { ...before };
+  if (saved) taste[topic] = saved;
+  else delete taste[topic];
+  // Nothing to take away: no row and no history line.
+  if (!saved && !before[topic]) return before;
   await client.tripProfile.upsert({
     where: { tripId },
     create: { tripId, taste },
@@ -58,11 +67,48 @@ export async function saveTripAnswer(
       tripId,
       topic,
       ...(before[topic] ? { before: before[topic] } : {}),
-      after: saved,
-      cause: "conversation",
+      ...(saved ? { after: saved } : {}),
+      cause,
     },
   });
   return taste;
+}
+
+/** What the traveller typed under "anything else" in the trip brief (PRD 11.2). */
+export async function readTripSaid(
+  client: Client,
+  tripId: string,
+): Promise<string | null> {
+  const row = await client.tripProfile.findUnique({
+    where: { tripId },
+    select: { said: true },
+  });
+  return row?.said ?? null;
+}
+
+/** Keeps the words as typed, or forgets them when there are none. */
+export async function saveTripSaid(
+  client: Client,
+  tripId: string,
+  text: string | null,
+): Promise<void> {
+  const said = text?.trim().slice(0, 600) || null;
+  const before = await readTripSaid(client, tripId);
+  if (said === before) return;
+  await client.tripProfile.upsert({
+    where: { tripId },
+    create: { tripId, said },
+    update: { said },
+  });
+  await client.profileHistory.create({
+    data: {
+      tripId,
+      topic: "said",
+      ...(before ? { before } : {}),
+      ...(said ? { after: said } : {}),
+      cause: "brief",
+    },
+  });
 }
 
 /** Whether the traveller marked this trip as different from their usual, and why. */

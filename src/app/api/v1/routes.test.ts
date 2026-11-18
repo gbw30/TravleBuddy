@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => {
     addTripPlace: vi.fn(),
     takeTurn: vi.fn(),
     loadConversation: vi.fn(),
+    loadBrief: vi.fn(),
+    saveBrief: vi.fn(),
     loadProfile: vi.fn(),
     tellProfile: vi.fn(),
     changeEntry: vi.fn(),
@@ -40,6 +42,7 @@ vi.mock("@/features/trips", () => ({
   renameTrip: vi.fn(),
   saveTripFacts: vi.fn(),
   setPlanFinished: vi.fn(),
+  setPlanningMode: vi.fn(),
   setTripArchived: vi.fn(),
   addCommitment: vi.fn(),
   updateCommitment: vi.fn(),
@@ -58,6 +61,10 @@ vi.mock("@/use-cases/conversation", () => ({
   loadConversation: mocks.loadConversation,
 }));
 
+vi.mock("@/use-cases/save-brief", () => ({
+  loadBrief: mocks.loadBrief,
+  saveBrief: mocks.saveBrief,
+}));
 vi.mock("@/use-cases/learning", () => ({ learnQuietly: mocks.learnQuietly }));
 vi.mock("@/use-cases/profile", () => ({
   loadProfile: mocks.loadProfile,
@@ -80,6 +87,7 @@ import {
   DELETE as deleteCommitment,
   PATCH as patchCommitment,
 } from "./trips/[tripId]/commitments/[commitmentId]/route";
+import { GET as getBrief, PUT as putBrief } from "./trips/[tripId]/brief/route";
 import { POST as addCommitment } from "./trips/[tripId]/commitments/route";
 import {
   GET as getConversation,
@@ -226,6 +234,7 @@ describe("PATCH /api/v1/trips/{tripId}", () => {
     ["restore", {}, "trip_restore"],
     ["finish", {}, "trip_plan_finish"],
     ["reopen", {}, "trip_plan_reopen"],
+    ["mode", { planningMode: "QUICK" }, "trip_mode_set"],
   ])("records %s under its own kind", async (action, extra, kind) => {
     await patchTrip(request("PATCH", { action, ...extra, ...control }), trip);
     expect(mocks.runTripAction).toHaveBeenCalledWith(
@@ -692,6 +701,79 @@ describe("the conversation", () => {
       (await takeTurn(request("POST", { turn, ...control }), trip)).status,
     ).toBe(401);
     expect(mocks.takeTurn).not.toHaveBeenCalled();
+  });
+});
+
+describe("the trip brief", () => {
+  const brief = { tripId: "trip-1", revision: 3, canBuild: false };
+
+  it("answers the brief, or 404 when the trip is not the traveller's", async () => {
+    mocks.loadBrief.mockResolvedValueOnce(brief).mockResolvedValueOnce(null);
+    expect(await (await getBrief(request("GET"), trip)).json()).toEqual({
+      brief,
+    });
+    expect((await getBrief(request("GET"), trip)).status).toBe(404);
+    expect(mocks.loadBrief).toHaveBeenCalledWith("user-1", "trip-1");
+  });
+
+  it("saves one step and answers the brief as it stands afterwards", async () => {
+    mocks.saveBrief.mockResolvedValue({
+      status: "ok",
+      data: { saved: true },
+      revision: 3,
+    });
+    mocks.loadBrief.mockResolvedValue(brief);
+    const save = {
+      facts: { adults: 2 },
+      style: { pace: ["relaxed"] },
+      said: "Quiet places",
+    };
+
+    const answer = await putBrief(
+      request("PUT", { ...save, ...control }),
+      trip,
+    );
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ data: { brief }, revision: 3 });
+    expect(mocks.saveBrief).toHaveBeenCalledWith({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      save,
+    });
+  });
+
+  it("answers 409 for a stale revision without reading the brief again", async () => {
+    mocks.saveBrief.mockResolvedValue({ status: "stale" });
+    const answer = await putBrief(
+      request("PUT", { said: "Quiet", ...control }),
+      trip,
+    );
+    expect(answer.status).toBe(409);
+    expect(mocks.loadBrief).not.toHaveBeenCalled();
+  });
+
+  it("answers 422 for an answer the brief does not have, or a missing revision", async () => {
+    for (const body of [
+      { style: { pace: ["leisurely"] }, ...control },
+      { style: { pace: ["relaxed", "packed"] }, ...control },
+      { facts: { adults: 0 }, ...control },
+      { said: "Quiet" },
+    ]) {
+      expect((await putBrief(request("PUT", body), trip)).status).toBe(422);
+    }
+    expect(mocks.saveBrief).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 signed out", async () => {
+    mocks.user.mockRejectedValue(new mocks.UnauthorizedError());
+    expect((await getBrief(request("GET"), trip)).status).toBe(401);
+    expect(
+      (await putBrief(request("PUT", { said: "Quiet", ...control }), trip))
+        .status,
+    ).toBe(401);
+    expect(mocks.saveBrief).not.toHaveBeenCalled();
   });
 });
 

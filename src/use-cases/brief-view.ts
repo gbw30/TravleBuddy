@@ -6,6 +6,7 @@ import type {
   Clash,
   CommitmentDto,
   TripFacts,
+  TripFactsInput,
 } from "@/features/trips/contracts";
 
 export const BRIEF_STEPS = [
@@ -42,6 +43,36 @@ export type BriefProblem = {
   message: string;
 };
 
+/**
+ * What the traveller typed under "anything else", and what the site makes of
+ * it. A part is used only once the traveller confirms it (TB-QPL-06).
+ */
+export type BriefSaid = {
+  /** The words as typed. */
+  text: string;
+  /** Sentences that plainly name answers. `inUse` once the trip goes by it. */
+  understood: {
+    topic: TasteTopic;
+    name: string;
+    value: string;
+    label: string;
+    inUse: boolean;
+  }[];
+  /** Sentences kept as said. They affect nothing. */
+  unused: string[];
+  /** Allergies named here. They hold for every trip, so the profile page sets them. */
+  allergies: string[];
+};
+
+/** One save of the brief. A part left out is not changed. */
+export type BriefSave = {
+  facts?: TripFactsInput;
+  /** Per topic, the values for this trip. An empty list takes the trip's own answer away. */
+  style?: Partial<Record<TasteTopic, string[]>>;
+  /** The "anything else" box as typed. Null or empty forgets it. */
+  said?: string | null;
+};
+
 export type BriefView = {
   tripId: string;
   revision: number;
@@ -52,6 +83,8 @@ export type BriefView = {
   style: BriefAnswer[];
   /** Allergies from the personal profile: hard limits, changed on the profile page. */
   allergies: string[];
+  /** The "anything else" box; null when it is empty. */
+  said: BriefSaid | null;
   /** The whole brief in plain sentences, one part per step (TB-QPL-07). */
   review: { step: number; title: string; lines: string[] }[];
   problems: BriefProblem[];
