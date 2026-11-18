@@ -114,6 +114,26 @@ describe("reading a typed message with the model", () => {
     expect(sent[0].output_config?.format).toBe(REPLY_FORMAT);
   });
 
+  it("reads a general statement about the traveller, with whether it is a rule", async () => {
+    const intent = {
+      type: "statement",
+      text: "I'm allergic to shellfish",
+      rule: true,
+    };
+    expect(await readTypedInput(input(), standIn({ intent }).call)).toEqual({
+      status: "read",
+      intent,
+      usage,
+    });
+  });
+
+  it("tells the model what a general statement is", async () => {
+    const { call, sent } = standIn({ intent: { type: "none" } });
+    await readTypedInput(input(), call);
+    expect(sent[0].system).toContain('"statement"');
+    expect(sent[0].system).toContain("true beyond this trip");
+  });
+
   it("sends the message as data with the waiting question and the dates, and nothing about places", async () => {
     const { call, sent } = standIn({ intent: { type: "none" } });
     await readTypedInput(

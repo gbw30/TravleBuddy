@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendMessages,
+  readLastMessage,
   readConversation,
   readSkippedFacts,
   skipFact,
@@ -27,6 +28,11 @@ function fakeClient() {
   const now = new Date("2026-11-19T08:00:00Z");
   const client = {
     conversationMessage: {
+      // The newest row of a trip, as the store asks for it.
+      findFirst: async ({ where }: { where: { tripId: string } }) =>
+        messages
+          .filter((row) => row.tripId === where.tripId)
+          .sort((a, b) => b.id - a.id)[0] ?? null,
       createMany: async ({
         data,
       }: {
@@ -178,6 +184,27 @@ describe("the saved conversation", () => {
     expect(
       (await readConversation(client, "t1")).map((message) => message.id),
     ).toEqual(["1", "3"]);
+  });
+});
+
+describe("the last message of a thread", () => {
+  it("is what was said last, for that trip only", async () => {
+    const { client } = fakeClient();
+    expect(await readLastMessage(client, "t1")).toBeNull();
+    const offer = {
+      kind: "offer" as const,
+      text: "Noted: vegetarian. Should I remember that for every trip?",
+      remember: { texts: ["Vegetarian"], hard: true },
+    };
+    await appendMessages(client, "t1", [
+      { from: "traveller", body: text("Vegetarian") },
+      { from: "agent", body: offer },
+    ]);
+    await appendMessages(client, "t2", [
+      { from: "agent", body: text("Hello") },
+    ]);
+    expect(await readLastMessage(client, "t1")).toEqual(offer);
+    expect(await readLastMessage(client, "t2")).toEqual(text("Hello"));
   });
 });
 

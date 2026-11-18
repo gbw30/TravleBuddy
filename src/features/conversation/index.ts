@@ -4,6 +4,7 @@
 export {
   appendMessages,
   lastQuestionTopic,
+  readLastMessage,
   readConversation,
   readSkippedFacts,
   skipFact,
@@ -37,6 +38,7 @@ export {
 export {
   decide,
   decideDifference,
+  OFFER_ASKS,
   intentOfTap,
   labelsOf,
   readinessNote,

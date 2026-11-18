@@ -42,6 +42,7 @@ Report exactly one intent:
 - "taste": the message says something about the traveller's taste for this trip. Give the topic and one or more values from that topic's list below, using the value in quotes, never the label. If the message fits none of the listed values, report "none".
 - "commitment": the traveller has already booked or decided something that has a name: a hotel, a reservation, a ticket, an activity. Give the title as the traveller named it, and a date or times only when the message states them. A weekday means that weekday within the trip when the trip's dates are known.
 - "go_to": the traveller wants to work on a particular day of the trip, and perhaps a part of that day. Day 1 is the trip's first day.
+- "statement": the traveller says something about themselves in general, true beyond this trip: "I'm vegetarian", "I'm allergic to shellfish", "I hate queues". Give their words as "text". Set "rule" to true when it is a dietary rule, an allergy or another limit that must never be broken. An answer to the waiting question is not a statement; report it as "taste" or "facts".
 - "skip": the traveller does not want to answer the waiting question.
 - "none": anything else, including a question to you, small talk, and anything you are unsure about.
 

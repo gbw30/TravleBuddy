@@ -577,6 +577,23 @@ describe("the conversation", () => {
     });
   });
 
+  it("accepts a yes to the agent's offer to remember something", async () => {
+    mocks.takeTurn.mockResolvedValue({
+      status: "ok",
+      data: { focus: null, changed: true },
+      revision: 8,
+    });
+    mocks.loadConversation.mockResolvedValue(conversation);
+    const answer = await takeTurn(
+      request("POST", { turn: { type: "remember" }, ...control }),
+      trip,
+    );
+    expect(answer.status).toBe(200);
+    expect(mocks.takeTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ turn: { type: "remember" } }),
+    );
+  });
+
   it("accepts an answer to why this trip is different", async () => {
     mocks.takeTurn.mockResolvedValue({
       status: "ok",
