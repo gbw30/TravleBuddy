@@ -88,6 +88,8 @@ Add the saved conversation, the AI model boundary with Claude Haiku 5.5, the fac
 
 Exit evidence: TB-AGT except TB-AGT-06 and TB-AGT-12, TB-RSN, TB-FIX-05, TB-TRU-03, the agent's offer in TB-ITN-14, TB-SYS-10 and the AI half of TB-SYS-11 pass. The conversation works with the AI model switched off.
 
+**Started 2026-11-19** on branch `milestone/5-guided-planning`. [Plan](superpowers/plans/2026-11-19-guided-planning.md).
+
 ## Milestone 6: Memory
 
 Add the personal profile with sources and sureness, hard limits, the question about why a trip differs, learning across trips, and the profile page.
