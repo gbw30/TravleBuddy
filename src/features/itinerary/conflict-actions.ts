@@ -32,7 +32,9 @@ export async function checkItineraryConflictsFormAction(formData: FormData) {
   redirect(`/trips/${tripId}/itinerary?conflicts=checked`);
 }
 
-export async function updateItineraryConflictStatusFormAction(formData: FormData) {
+export async function updateItineraryConflictStatusFormAction(
+  formData: FormData,
+) {
   "use server";
 
   const userId = await requireUser();

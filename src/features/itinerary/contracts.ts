@@ -55,6 +55,33 @@ export const emptyPlanState: PlanState = {
   transferTimes: {},
 };
 
+const slot = z.string().regex(/^d\d{1,3}-[a-z0-9-]{4,12}$/);
+const placeId = z.string().min(1).max(80);
+
+/** One change the traveller makes to a plan. */
+export const planActionSchema = z.discriminatedUnion("type", [
+  /** Put a place in a slot: a picked card, or a place from the shelf. */
+  z.object({ type: z.literal("pick"), slotId: slot, placeId }),
+  z.object({ type: z.literal("save"), placeId }),
+  z.object({ type: z.literal("unshelve"), placeId }),
+  z.object({ type: z.literal("move"), fromSlotId: slot, toSlotId: slot }),
+  z.object({ type: z.literal("remove"), slotId: slot }),
+  z.object({
+    type: z.literal("minutes"),
+    slotId: slot,
+    /** Null returns to the standard visit length. */
+    minutes: z.number().int().min(10).max(600).nullable(),
+  }),
+  z.object({ type: z.literal("pace"), pace: z.enum(PACES) }),
+  z.object({
+    type: z.literal("transfer"),
+    day: z.number().int().min(1).max(400),
+    start: clock,
+  }),
+  z.object({ type: z.literal("undo") }),
+]);
+export type PlanAction = z.infer<typeof planActionSchema>;
+
 /** A rule of PRD 9.3 the plan breaks at one item, with a way to mend it. */
 export type PlanFlag = {
   rule: "closed" | "hours-unknown" | "overlap" | "day" | "city";

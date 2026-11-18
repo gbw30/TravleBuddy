@@ -19,7 +19,7 @@ vi.mock("@/features/planning", () => ({
   bindPlanningMutationControl: mocks.bind,
 }));
 
-import { runTripAction } from "./trip-action";
+import { Refusal, runTripAction } from "./trip-action";
 
 const tx = { tx: true };
 const base = {
@@ -87,6 +87,19 @@ describe("runTripAction", () => {
       expect(mocks.finalize).not.toHaveBeenCalled();
     },
   );
+
+  it("reports a change the rules do not allow, with its message, and records nothing", async () => {
+    const outcome = await runTripAction({
+      ...base,
+      apply: async () =>
+        new Refusal("That slot holds something already decided."),
+    });
+    expect(outcome).toEqual({
+      status: "refused",
+      message: "That slot holds something already decided.",
+    });
+    expect(mocks.finalize).not.toHaveBeenCalled();
+  });
 
   it("returns a repeat's first result without applying again", async () => {
     const first = { status: "ok", data: { title: "Tokyo" }, revision: 4 };

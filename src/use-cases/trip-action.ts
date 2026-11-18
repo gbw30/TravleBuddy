@@ -16,9 +16,18 @@ import type { Refused } from "@/features/trips";
 
 export type TripActionOutcome<T> =
   | { status: "ok"; data: T; revision: number }
-  | { status: Refused | "stale" | "conflict" | "too_many" };
+  | { status: Refused | "stale" | "conflict" | "too_many" }
+  | { status: "refused"; message: string };
 
-type Applied<T> = T | Refused | "too_many";
+/**
+ * A change the plan's rules do not allow, such as a move onto a booked item.
+ * Nothing is saved, and the message is shown to the traveller (TB-ITN-10).
+ */
+export class Refusal {
+  constructor(readonly message: string) {}
+}
+
+type Applied<T> = T | Refused | "too_many" | Refusal;
 
 /**
  * Runs `apply` once per operation id. A repeat returns the first result, a
@@ -33,6 +42,8 @@ export async function runTripAction<T extends object>(input: {
   /** The validated request, without the control fields. It identifies a repeat. */
   request: unknown;
   apply: (tx: PlanningTransaction) => Promise<Applied<T>>;
+  /** For a change that needs more than the default five seconds. */
+  transactionOptions?: { maxWait?: number; timeout?: number };
 }): Promise<TripActionOutcome<T>> {
   const control = bindPlanningMutationControl(
     input.control,
@@ -47,9 +58,13 @@ export async function runTripAction<T extends object>(input: {
       userId: input.userId,
       tripId: input.tripId,
       control,
+      transactionOptions: input.transactionOptions,
       transaction: async (tx) => {
         const applied = await input.apply(tx);
         if (typeof applied === "string") return { status: applied };
+        if (applied instanceof Refusal) {
+          return { status: "refused", message: applied.message };
+        }
         return finalizePlanningMutationTx(tx, {
           userId: input.userId,
           tripId: input.tripId,
