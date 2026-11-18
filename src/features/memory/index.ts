@@ -7,6 +7,7 @@ export {
   conflicts,
   learnedEntries,
   limitsInUse,
+  rememberedFor,
   tasteInUse,
   type Forgotten,
   type TasteInUse,

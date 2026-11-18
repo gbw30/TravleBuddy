@@ -15,6 +15,7 @@ import {
   conflicts,
   learnedEntries,
   limitsInUse,
+  rememberedFor,
   tasteInUse,
   type TripEvidence,
 } from "./profile-rules";
@@ -178,13 +179,22 @@ describe("the taste a trip goes by", () => {
     expect(inUse.food).toBeUndefined();
   });
 
-  it("ignores entries on topics that are not tastes", () => {
-    expect(
-      tasteInUse(
-        [told("dietary_rules", "vegetarian"), told("budget", "150 EUR a day")],
-        {},
-      ),
-    ).toEqual({});
+  it("answers a trip's food question from the remembered dietary rules, and ignores what is not a taste", () => {
+    const personal = [
+      told("dietary_rules", "vegetarian"),
+      told("dietary_rules", "gluten-free"),
+      told("allergies", "shellfish"),
+      told("budget", "150 EUR a day"),
+    ];
+    expect(rememberedFor(personal, "food")).toEqual(personal.slice(0, 2));
+    expect(rememberedFor(personal, "pace")).toEqual([]);
+    expect(tasteInUse(personal, {})).toEqual({
+      food: {
+        values: ["vegetarian", "gluten-free"],
+        from: "profile",
+        entries: personal.slice(0, 2),
+      },
+    });
   });
 });
 

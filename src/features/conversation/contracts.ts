@@ -45,6 +45,11 @@ export type Question = {
   choices: Choice[];
   /** What the agent says when the question is skipped: the default it uses. */
   skipSays: string;
+  /**
+   * The answer the personal profile already holds. The question then asks
+   * to confirm it instead of asking from scratch (TB-AGT-06).
+   */
+  remembered?: string[];
 };
 
 /**

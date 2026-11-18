@@ -151,6 +151,18 @@ function skip(waiting: Question | null): Decision {
     };
   }
   const topic = waiting.topic as TasteTopic;
+  // A skipped question the profile can answer goes by what is remembered
+  // (TB-AGT-02). It is kept as a default: skipping is not saying it again.
+  if (waiting.remembered?.length) {
+    return {
+      change: {
+        type: "taste",
+        topic,
+        answer: { values: waiting.remembered, source: "default" },
+      },
+      says: `I will go with what I remember: ${list(labelsOf(QUESTIONS[topic], waiting.remembered)).toLowerCase()}.`,
+    };
+  }
   return {
     change: {
       type: "taste",

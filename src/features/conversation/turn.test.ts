@@ -164,6 +164,21 @@ describe("a skip", () => {
     });
   });
 
+  it("goes by what is remembered when the profile can answer, kept as a default", () => {
+    const waiting = {
+      ...QUESTIONS.interests,
+      remembered: ["museums", "views"],
+    };
+    expect(run({ type: "skip" }, { waiting })).toEqual({
+      change: {
+        type: "taste",
+        topic: "interests",
+        answer: { values: ["museums", "views"], source: "default" },
+      },
+      says: "I will go with what I remember: museums and exhibitions and views.",
+    });
+  });
+
   it("remembers a skipped fact question and says what it will assume", () => {
     expect(run({ type: "skip" }, { waiting: QUESTIONS.who })).toEqual({
       change: { type: "skip_fact", topic: "who" },

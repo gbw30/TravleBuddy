@@ -226,6 +226,43 @@ describe("the traveller's taste in the ranking", () => {
     );
   });
 
+  it("names the trip a memory comes from, and not when it was said for this trip", () => {
+    const remembered = { ...museums, from: "Tokyo in May" };
+    const candidates = [
+      place("z-museum", { kind: "museum" }),
+      place("famous", { ...mid, kind: "park", notable: true }),
+      place("close", { ...near, kind: "market" }),
+    ];
+    const set = proposeCards(
+      input({
+        from: sensoji,
+        candidates,
+        taste: taste({
+          interests: [remembered],
+          atmosphere: "lively",
+          onFoot: true,
+          rememberedFrom: { atmosphere: "Lisbon", onFoot: "Lisbon" },
+        }),
+      }),
+    );
+    expect(reasonOf(set, "z-museum")).toContain(
+      "I remember from your trip “Tokyo in May” that you like museums and exhibitions.",
+    );
+    expect(reasonOf(set, "famous")).toContain(
+      "I remember from your trip “Lisbon” that you like lively places, and this is one of Tokyo's well-known ones.",
+    );
+    expect(reasonOf(set, "close")).toContain(
+      "I remember from your trip “Lisbon” that you like to get around on foot, and this is a walk away.",
+    );
+    // Said for this trip: no trip is named.
+    const now = proposeCards(
+      input({ candidates, taste: taste({ interests: [museums] }) }),
+    );
+    expect(reasonOf(now, "z-museum")).toContain(
+      "You said you like museums and exhibitions.",
+    );
+  });
+
   it("knows the kinds of place every interest in the script means", async () => {
     const { QUESTIONS } = await import("@/features/conversation");
     for (const choice of QUESTIONS.interests.choices) {

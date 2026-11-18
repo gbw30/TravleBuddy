@@ -30,6 +30,17 @@ const about = (entries: ProfileEntry[], topic: ProfileTopic) =>
   entries.filter((entry) => entry.topic === topic);
 
 /**
+ * What the personal profile holds on a topic a trip asks about. A trip's
+ * food answer holds its dietary rules, so the remembered rules answer it.
+ */
+export function rememberedFor(
+  personal: ProfileEntry[],
+  topic: TasteTopic,
+): ProfileEntry[] {
+  return about(personal, topic === "food" ? "dietary_rules" : topic);
+}
+
+/**
  * The taste a trip goes by. What the traveller said for this trip wins; then
  * what is remembered; then the default of a question they skipped (TB-MEM-02).
  */
@@ -40,7 +51,7 @@ export function tasteInUse(
   const inUse: TasteInUse = {};
   for (const topic of TASTE_TOPICS) {
     const answer = trip[topic];
-    const remembered = about(personal, topic);
+    const remembered = rememberedFor(personal, topic);
     if (answer?.source === "told") {
       inUse[topic] = { values: answer.values, from: "trip", entries: [] };
     } else if (remembered.length > 0) {

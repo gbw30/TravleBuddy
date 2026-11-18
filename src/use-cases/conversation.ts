@@ -32,7 +32,7 @@ import type {
   TurnResult,
 } from "@/features/conversation/contracts";
 import { PACES } from "@/features/itinerary/contracts";
-import { readTripTaste, saveTripAnswer } from "@/features/memory";
+import { readProfile, readTripTaste, saveTripAnswer } from "@/features/memory";
 import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
 import {
@@ -54,12 +54,19 @@ import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 // model only reads: every change here goes through the same service functions
 // the forms use (TB-AGT-14, TB-TRU-03).
 
-async function scriptState(trip: TripDetail): Promise<ScriptState> {
-  const [taste, skippedFacts] = await Promise.all([
+async function scriptState(
+  trip: TripDetail,
+  userId: string,
+): Promise<ScriptState> {
+  const [taste, skippedFacts, personal] = await Promise.all([
     readTripTaste(db, trip.id),
     readSkippedFacts(db, trip.id),
+    readProfile(db, userId),
   ]);
   return {
+    // What is remembered from before this trip: the agent confirms it
+    // instead of asking again (TB-AGT-06).
+    remembered: personal.entries,
     facts: trip.facts,
     commitments: {
       count: trip.commitments.length,
@@ -133,7 +140,7 @@ export async function loadConversation(
   if (!trip) return null;
   const [messages, state, call] = await Promise.all([
     readConversation(db, tripId),
-    scriptState(trip),
+    scriptState(trip, userId),
     openModel(new Date()),
   ]);
   return {
@@ -231,7 +238,7 @@ export async function takeTurn(input: {
   const { userId, tripId, turn } = input;
   const trip = await getTrip(userId, tripId);
   if (!trip) return { status: "not_found" };
-  const state = await scriptState(trip);
+  const state = await scriptState(trip, userId);
   const waiting = nextQuestion(state);
   // Worked out before the ledger is asked, because reading a message can call
   // the model. A refusal still goes to the ledger: a repeat of a turn that
