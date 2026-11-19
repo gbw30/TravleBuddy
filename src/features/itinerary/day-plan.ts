@@ -34,6 +34,12 @@ export type PlanContext = {
   /** In the order they should be fitted: by date, then time, then age. */
   commitments: CommitmentDto[];
   places: Record<string, PlaceDto>;
+  /**
+   * Minutes the whole day is moved by the traveller's "shape of the day":
+   * earlier for early starts, later for late nights (PRD 9.4). Nothing
+   * already decided moves with it.
+   */
+  dayShift?: number;
 };
 
 // The default day and the pace table of PRD 9.4.
@@ -191,6 +197,7 @@ export function buildPlanView(
   state: PlanState,
   context: PlanContext,
 ): PlanView {
+  const shift = context.dayShift ?? 0;
   const base = {
     pace: state.pace,
     provisionalDates: false,
@@ -263,8 +270,8 @@ export function buildPlanView(
       (f) => f.commitment.kind === "TRANSPORT" && f.commitment.date === date,
     );
 
-    let from = DAY_START;
-    let until = DAY_END;
+    let from = DAY_START + shift;
+    let until = DAY_END + shift;
     // A ticket landing on the first day, or leaving on the last, bounds it.
     const landing = context.commitments.filter(
       (c) =>
@@ -312,7 +319,8 @@ export function buildPlanView(
     }
 
     const slots: DraftSlot[] = [];
-    for (const [kind, usual] of templates[state.pace]) {
+    for (const [kind, standard] of templates[state.pace]) {
+      const usual = standard + shift;
       const segment = segments.find(
         (s) => s.from <= usual + LATE_START && usual + 60 <= s.until,
       );

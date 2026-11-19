@@ -20,7 +20,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`      | none (removal)                  | #56          |
 | 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner` | none (removal)                  | #57          |
 | 3. Drop its tables                                | waits for the developer     | none (removal)                  |              |
-| 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-MEM-03, TB-ITN-16            |              |
+| 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-ITN-08, TB-MEM-03            | #58          |
 | 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 |              |
 | 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            |              |
 | 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            |              |
@@ -61,7 +61,7 @@ Not stated in the PRD or by the developer. Each is open to change.
 1. **The removal is three pieces.** Cut the links with no change in behaviour; remove code, routes, the worker and QA entries; drop the tables. The first two can be undone from git. The third cannot, so it waits.
 2. **QA features of the earlier planner are removed from the registry**, not marked. The registry has no "retired" state, and a required feature with no code would block the gate for ever. Scenarios that describe behaviour the new product still has (trip readiness, revisions, the place boundary, persistence) are rewritten in piece 12, not deleted.
 3. **The older Google place adapter goes with the earlier planner.** Google is not behind the new place source (ADR-009: its terms forbid saving what a plan needs). `render.yaml` goes too: it holds only the old worker.
-4. **Start of day is the existing "shape of the day" answer, given times.** Early starts begin at 8:00, neither at 9:00, late nights at 10:00. The slider has those three stops. The prototype shows six hourly stops; three keeps one answer for the conversation, the brief and the profile.
+4. **Start of day is the existing "shape of the day" answer.** Early starts move the whole day an hour earlier, late nights an hour later. The slider has those three stops. The prototype shows six hourly stops; three keeps one answer for the conversation, the brief and the profile. (Piece 4 found the first slot depends on the pace, so the stops are named by the answer, not by a clock time.)
 5. **Daily budget is one of three levels kept in yen**, as in the prototype, shown in the traveller's currency at the day's rate. It fills in the brief's budget as a daily amount, labelled as remembered. Nothing ranks by it: place data has no prices.
 6. **"How this shaped" shows the traveller's most recent trip with a plan**, and only effects the plan can prove: the pace of its days, when its days start, how many of its meals are at places that confirm a dietary rule, and which places answer a remembered interest. With no such trip the section is not shown.
 7. **The four sample travellers are scripts**, run against sample places in both ways of planning. They check what a machine can: no invented place, no broken rule, no broken hard limit, days that match the pace, and reasons that name something true. "The developer reads the itinerary and would follow it" stays the developer's.
@@ -116,7 +116,18 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 4: The day starts when the traveller likes
 
-**Produces:** the itinerary laid out from a day start taken from the "shape of the day" in use (8:00, 9:00 or 10:00), in place of the fixed 9:00; the conversation's and the brief's words for that answer saying the time; the report of a build listing it when it was assumed.
+**Produced (pull request 58):**
+
+- The itinerary takes `dayShift` in its context and moves the whole day by it: the day's bounds and every slot's usual time. Early starts move the day an hour earlier, late nights an hour later (PRD 9.4: "Day shape preferences shift these"). Lunch stays between 11:30 and 14:00 and dinner between 18:00 and 21:00 at every pace. Nothing already decided moves.
+- `contextFor` in `src/use-cases/plan.ts` works the shift out from the "shape of the day" in use: this trip's own answer, else the personal profile. Every reader and every change of a plan lays it out from the same shifted day.
+- The question says what the answer does: "Early starts, or late nights? I move the whole day an hour earlier or later." The brief shows the same words.
+- A build's report lists the shape of the day among its assumptions when it was a memory or a default.
+
+**Changed from decision 4:** the day does not begin at a fixed 8:00, 9:00 or 10:00. A day's first slot depends on the pace (9:00 packed, 9:30 balanced, 10:00 relaxed), so the answer moves that by an hour either way. An early riser on a packed day starts at 8:00; on a relaxed day at 9:00. The Profile slider of piece 5 names the three answers, not three clock times.
+
+**Seen in the walk:** a balanced day began at 9:30; with early starts remembered, at 8:30 with dinner at 18:00 before a reservation at 20:00; with "late" said for the trip, at 10:30; with that answer taken away, at 8:30 again. A built trip broke no rule.
+
+**Known limit:** a place chosen before the answer changes keeps its slot and moves with it. If it is then closed at the new time, the plan flags it, as for any other broken rule.
 
 ### Piece 5: Profile: habits as slider cards
 

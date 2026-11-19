@@ -121,7 +121,8 @@ export const QUESTIONS: Record<Topic, Question> = {
     topic: "day_shape",
     stage: "taste",
     form: "this_or_that",
-    prompt: "Early starts, or late nights?",
+    prompt:
+      "Early starts, or late nights? I move the whole day an hour earlier or later.",
     choices: choices(
       ["early", "Early starts"],
       ["late", "Late nights"],

@@ -602,3 +602,119 @@ describe("provisional dates and slot fit", () => {
     expect(slotId(2, "afternoon-2")).toBe("d2-afternoon-2");
   });
 });
+
+describe("the shape of the day", () => {
+  const starts = (view: ReturnType<typeof buildPlanView>, day = 0) =>
+    view.days[day].entries.flatMap((entry) =>
+      entry.type === "open" ? [`${entry.kind} ${entry.start}`] : [],
+    );
+  const minutes = (clock: string) =>
+    Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3));
+
+  it("leaves the day where it was when nothing is said", () => {
+    expect(starts(buildPlanView(emptyPlanState, context()))).toEqual(
+      starts(buildPlanView(emptyPlanState, context({ dayShift: 0 }))),
+    );
+  });
+
+  it("moves the whole day an hour earlier for early starts and an hour later for late nights", () => {
+    const usual = starts(buildPlanView(emptyPlanState, context()));
+    const early = starts(
+      buildPlanView(emptyPlanState, context({ dayShift: -60 })),
+    );
+    const late = starts(
+      buildPlanView(emptyPlanState, context({ dayShift: 60 })),
+    );
+    expect(early).toHaveLength(usual.length);
+    expect(late).toHaveLength(usual.length);
+    usual.forEach((slot, index) => {
+      const [kind, clock] = slot.split(" ");
+      expect(early[index]).toBe(
+        `${kind} ${clock.replace(/^\d\d/, (h) => String(Number(h) - 1).padStart(2, "0"))}`,
+      );
+      expect(late[index]).toBe(
+        `${kind} ${clock.replace(/^\d\d/, (h) => String(Number(h) + 1).padStart(2, "0"))}`,
+      );
+    });
+  });
+
+  it("keeps lunch and dinner inside their hours at every pace, either way", () => {
+    for (const pace of ["relaxed", "balanced", "packed"] as const) {
+      for (const dayShift of [-60, 0, 60]) {
+        const view = buildPlanView(
+          { ...emptyPlanState, pace },
+          context({ dayShift }),
+        );
+        for (const slot of starts(view)) {
+          const [kind, clock] = slot.split(" ");
+          const label = `${pace} ${dayShift} ${slot}`;
+          if (kind === "lunch") {
+            expect(minutes(clock), label).toBeGreaterThanOrEqual(11 * 60 + 30);
+            expect(minutes(clock), label).toBeLessThanOrEqual(14 * 60);
+          }
+          if (kind === "dinner") {
+            expect(minutes(clock), label).toBeGreaterThanOrEqual(18 * 60);
+            expect(minutes(clock), label).toBeLessThanOrEqual(21 * 60);
+          }
+        }
+      }
+    }
+  });
+
+  it("starts a packed day at eight for an early riser", () => {
+    const view = buildPlanView(
+      { ...emptyPlanState, pace: "packed" },
+      context({ dayShift: -60 }),
+    );
+    expect(starts(view)[0]).toBe("morning 08:00");
+  });
+
+  it("never moves what is already decided", () => {
+    const booked = commitment({
+      kind: "RESERVATION",
+      date: "2027-05-10",
+      startTime: "13:00",
+      endTime: "14:30",
+    });
+    for (const dayShift of [-60, 60]) {
+      const view = buildPlanView(
+        emptyPlanState,
+        context({ commitments: [booked], dayShift }),
+      );
+      const kept = view.days[0].entries.find(
+        (entry) => entry.type === "commitment",
+      );
+      expect(kept).toMatchObject({ start: "13:00", minutes: 90 });
+      // No open slot overlaps it.
+      for (const entry of view.days[0].entries) {
+        if (entry.type !== "open") continue;
+        const at = minutes(entry.start);
+        expect(
+          at + 60 <= 13 * 60 || at >= 14 * 60 + 30,
+          `${dayShift} ${entry.kind} ${entry.start}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("moves a chosen place with its slot, and flags it if it is then closed", () => {
+    // Open from nine: fine at the usual time, closed an hour earlier.
+    const state: PlanState = {
+      ...emptyPlanState,
+      pace: "packed",
+      picks: { "d1-morning": { placeId: "museum", minutes: null } },
+    };
+    const places = { museum: place("museum") };
+    const flagsAt = (dayShift: number) =>
+      buildPlanView(
+        state,
+        context({ places, dayShift }),
+      ).days[0].entries.flatMap((entry) =>
+        entry.type === "place"
+          ? [`${entry.start} ${entry.flags.map((flag) => flag.rule).join(",")}`]
+          : [],
+      );
+    expect(flagsAt(0)).toEqual(["09:00 "]);
+    expect(flagsAt(-60)).toEqual(["08:00 closed"]);
+  });
+});
