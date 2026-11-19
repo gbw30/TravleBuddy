@@ -722,7 +722,7 @@ export function TripWorkspace({
 
       <CloserLook
         place={looking}
-        variant="enlarged"
+        variant="overlay"
         showPhoto
         onClose={() => setLooking(null)}
       />
