@@ -209,9 +209,9 @@ describe("reading the conversation", () => {
   it("is limited at the monthly cap even with the model switched on", async () => {
     mocks.modelCall.mockReturnValue(model({ type: "none" }));
     expect((await loadConversation("user-1", "trip-1"))?.limited).toBe(false);
-    // Ten dollars of input tokens: the default cap.
+    // Fifteen dollars of input tokens: the default cap.
     mocks.readUsage.mockResolvedValue({
-      inputTokens: 100_000_000,
+      inputTokens: 150_000_000,
       outputTokens: 0,
     });
     expect((await loadConversation("user-1", "trip-1"))?.limited).toBe(true);
@@ -866,7 +866,7 @@ describe("a typed message with the model on", () => {
     const call = model({ type: "taste", topic: "pace", values: ["packed"] });
     mocks.modelCall.mockReturnValue(call);
     mocks.readUsage.mockResolvedValue({
-      inputTokens: 100_000_000,
+      inputTokens: 150_000_000,
       outputTokens: 0,
     });
     await say("relaxed");
