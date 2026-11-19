@@ -172,7 +172,10 @@ export type PlanEntry =
       from: string;
       to: string;
       start: string;
+      /** How long the journey takes. */
       minutes: number;
+      /** When it arrives by the clock there, if that clock differs from the one left behind. */
+      arriveLocal: string | null;
     }
   | { type: "wander"; start: string; minutes: number; area: string | null };
 

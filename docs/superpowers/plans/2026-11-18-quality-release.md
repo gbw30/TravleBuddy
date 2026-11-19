@@ -27,7 +27,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 8. Defects found on the way                       | `feature/m8-defects`         | TB-MEM-02, TB-DSN-07            | #62          |
 | 9. The four sample travellers                     | `feature/m8-samples`         | TB-SYS-15                       | #63          |
 | 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 | #65          |
-| 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       |              |
+| 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       | #66          |
 | 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  |              |
 | 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    |              |
 
@@ -234,6 +234,21 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 ### Piece 11: Time zones
 
 **Produces:** tests that a trip in a city far from the server's zone, and one across a clock change, shows and stores its days and times in the place's local time; fixes for what they find.
+
+**Built (2026-11-19):**
+
+- **How times are kept.** A plan holds calendar dates (`YYYY-MM-DD`) and wall-clock times (`HH:MM`) of the place and never converts them. A ticket's departure is the local time where it leaves, and its arrival the local time where it lands. The only use of a city's zone was "today" for a trip's state.
+- **Tests (17 new).** `src/lib/in-zone.ts` moves the test runner's clock. The day layout, the offset of a place, today's date, the reading of a date and the date labels of the screens give the same answers with the server in UTC, Kiritimati (UTC+14), Pago Pago (UTC-11), Los Angeles, Kolkata and London. A trip in London across 28 March 2027 and one in New York across 7 November 2027 have one day for each date, the same hours every day and the right weekday.
+- **End to end.** The four sample travellers were planned through the real site with the server's clock at UTC+14 and at UTC-11. Both reports match the one in the repository line for line (552 lines).
+
+**What the tests found, and what was done:**
+
+| Found                                                                                                                                                                                                    | Done                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An assumed transfer between two cities arrived by the clock of the city it left. From Portugal to Spain the afternoon began an hour too early.                                                           | Fixed. It arrives by the clock of the city of arrival (`offsetAt` in `src/features/itinerary/local-time.ts`), and the row says "you arrive about 14:30, Huelva time" when the clocks differ. Nothing shifts when a city's zone is not known. |
+| A ticket that left on an earlier day (a night flight in the middle of a trip) did not bound the day it landed: the plan offered a morning and a lunch in Tokyo while the traveller was still in the air. | Fixed. Such a ticket keeps the landing day free until an hour after it has landed, as a ticket landing on the first day already did.                                                                                                         |
+
+**Known limit, recorded:** a trip that crosses the International Date Line eastwards lives one calendar date twice. The plan has one day for each date, so it shows that date once.
 
 ### Piece 12: QA catalogue for the new product
 
