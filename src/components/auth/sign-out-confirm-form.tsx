@@ -20,7 +20,7 @@ export function SignOutConfirmForm({
     >
       <button
         type="submit"
-        className="inline-flex min-h-8 items-center font-mono text-xs tracking-[0.12em] text-muted uppercase transition-colors duration-150 ease-settle hover:text-ink"
+        className="inline-flex min-h-8 items-center font-mono text-xs tracking-[0.08em] whitespace-nowrap text-muted uppercase sm:tracking-[0.12em] transition-colors duration-150 ease-settle hover:text-ink"
       >
         Sign out
       </button>

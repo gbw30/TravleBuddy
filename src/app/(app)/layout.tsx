@@ -24,7 +24,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         >
           Travle<em>Buddy</em>
         </Link>
-        <div className="ml-auto flex flex-wrap items-center gap-x-6 gap-y-2 md:gap-x-[30px]">
+        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6 md:gap-x-[30px]">
           <KeepsakeNav links={links} />
           <SignOutButton />
         </div>
