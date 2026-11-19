@@ -18,7 +18,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | ------------------------------------------------- | --------------------------- | ------------------------------- | ------------ |
 | 0. Plan                                           | `feature/m8-plan`           | none (process)                  | #55          |
 | 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`      | none (removal)                  | #56          |
-| 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner` | none (removal)                  |              |
+| 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner` | none (removal)                  | #57          |
 | 3. Drop its tables                                | waits for the developer     | none (removal)                  |              |
 | 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-MEM-03, TB-ITN-16            |              |
 | 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 |              |
@@ -91,7 +91,24 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 2: Remove its code, routes, worker and QA entries
 
-**Produces:** the routes under `/api/trips`, the code and tests listed above, `src/worker`, `render.yaml` and the worker scripts gone; the matchers in `src/proxy.ts` and `src/lib/auth-routes.ts`, `e2e/auth.spec.ts`, the test paths in `qa-pr.yml` and the QA registry's source roots updated; the eight QA features and thirteen scenarios of the earlier planner removed from the four files that must change together; `eslint-suppressions.json` pruned; `service-map.json` code globs, `docs/status/current-implementation.md`, the README and the other documents that describe it as current brought up to date. The tables, their models and `CitiesInUseError` stay.
+**Produced (pull request 57):** 149 files and about 30,800 lines removed.
+
+- **Routes:** everything under `/api/trips`, and the empty `/api/export`, `/api/itinerary` and `/api/recommendations` folders. They answer 404. The route matchers in `src/proxy.ts` and `src/lib/auth-routes.ts` name `/api/v1` only.
+- **Code and its tests:** `src/features/adaptation`, `jobs`, `preferences` and `profile`; the earlier planner's files in `recommendations`, `trips`, `itinerary` and `planning`; `src/worker`; `src/lib/ai`, `export`, `google` and `providers`. The replay ledger's types hold only what it needs, and its list of action kinds only the kinds that exist.
+- **Worker:** its scripts in `package.json`, its environment check, its line in `.env.example`, and the dependency `@googlemaps/js-api-loader`.
+- **QA:** the eight features and thirteen scenarios of the earlier planner removed from `qa/feature-states.json`, `qa/contracts/features.ts`, `qa/contracts/schemas.ts` and `qa/scenarios/catalog.ts` (12 features and 19 scenarios remain; `npm run qa:validate` passes); dead source roots and routing prefixes removed from `qa/agent-system/registry.ts`; the removed test dropped from `qa-pr.yml`; `e2e/auth.spec.ts` asks a route that exists.
+- **Borders:** `eslint-suppressions.json` went from 162 exceptions in 34 files to 5 in 2 (the replay ledger and the authorization helper). `service-map.json` names only folders that exist; a service with tables and no code left is skipped by the lint rules.
+- **Documents:** the README rewritten for the product as it is; the status document, the API reference, the folder structure, the service borders and the roadmap brought up to date.
+
+**Checked:** lint, type check, 717 tests and the build pass. Signed in, the old routes answer 404 and the new ones answer. The browser walks of guided planning with memory, the brief, the build with its report and the two switches were repeated with no failed request.
+
+**Left as they are, for the developer:**
+
+- `render.yaml`. `AGENTS.md` says to keep it as a hosting template, but it starts a worker that no longer exists.
+- `AGENTS.md` and `docs/operating-constraints.md`, which still describe the adaptive-planning topology with a local worker. They are the developer's standing rules.
+- `docs/developer-finish-guide.md` and `docs/neon-env-setup.md` keep their worker sections, now marked as removed.
+- Four dependencies nothing imports any more, not part of the earlier planner: `@next/env`, `clsx`, `lucide-react`, `tailwind-merge`.
+- The tables, their models, `qa/runtime/fixtures.ts`, `CitiesInUseError`, and the two schema tests of the earlier planner: piece 3.
 
 ### Piece 3: Drop its tables (waits for the developer)
 

@@ -7,9 +7,5 @@ export const config = {
     "/profile/:path*",
     "/trips/:path*",
     "/api/v1/:path*",
-    "/api/trips/:path*",
-    "/api/export/:path*",
-    "/api/itinerary/:path*",
-    "/api/recommendations/:path*",
   ],
 };

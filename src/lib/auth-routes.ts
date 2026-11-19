@@ -1,12 +1,6 @@
 export const protectedPagePrefixes = ["/home", "/profile", "/trips"] as const;
 
-export const protectedApiPrefixes = [
-  "/api/v1",
-  "/api/trips",
-  "/api/export",
-  "/api/itinerary",
-  "/api/recommendations",
-] as const;
+export const protectedApiPrefixes = ["/api/v1"] as const;
 
 export const authRouteMatcher = [
   "/login",
@@ -14,10 +8,6 @@ export const authRouteMatcher = [
   "/profile/:path*",
   "/trips/:path*",
   "/api/v1/:path*",
-  "/api/trips/:path*",
-  "/api/export/:path*",
-  "/api/itinerary/:path*",
-  "/api/recommendations/:path*",
 ] as const;
 
 function matchesPrefix(pathname: string, prefix: string) {
@@ -29,7 +19,9 @@ export function isLoginRoute(pathname: string) {
 }
 
 export function isProtectedPageRoute(pathname: string) {
-  return protectedPagePrefixes.some((prefix) => matchesPrefix(pathname, prefix));
+  return protectedPagePrefixes.some((prefix) =>
+    matchesPrefix(pathname, prefix),
+  );
 }
 
 export function isProtectedApiRoute(pathname: string) {

@@ -1,6 +1,5 @@
 // The Trips service interface: trips, their facts, and fixed commitments.
-// Browser code imports ./contracts instead. Files not exported here belong to
-// the earlier screens and go when Milestones 4 to 6 replace them.
+// Browser code imports ./contracts instead.
 export {
   addCommitment,
   removeCommitment,

@@ -108,7 +108,9 @@ const block = (files, own) => ({
 /** Code outside every service first, then one block per service that lifts its own limits. */
 export const serviceBorders = [
   block(["src/**/*.ts", "src/**/*.tsx"], null),
-  ...Object.entries(services).map(([name, service]) =>
-    block(service.code, name),
-  ),
+  ...Object.entries(services)
+    // A service whose code is gone still owns its tables until they are
+    // dropped; no code may reach them.
+    .filter(([, service]) => service.code.length > 0)
+    .map(([name, service]) => block(service.code, name)),
 ];

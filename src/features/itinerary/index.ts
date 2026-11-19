@@ -1,6 +1,5 @@
 // The Itinerary service interface: laying a plan out, changing it and saving
-// its versions. Browser code imports ./contracts instead. Files not exported
-// here belong to the earlier planner and go when it is retired.
+// its versions. Browser code imports ./contracts instead.
 export {
   buildPlanView,
   kindSuitsSlot,

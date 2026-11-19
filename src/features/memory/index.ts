@@ -1,7 +1,5 @@
 // The Memory service interface: the personal profile, the trip profile and
-// the rules of memory. Browser code imports
-// ./contracts instead. The folders `profile` and `preferences` belong to the
-// earlier screens and go when Milestone 6 replaces them.
+// the rules of memory. Browser code imports ./contracts instead.
 export {
   readTripDifference,
   readTripSaid,
