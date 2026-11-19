@@ -50,7 +50,7 @@ const sheet =
   "rounded-[14px] bg-card [--notch:var(--color-card)] lg:shadow-sheet";
 // Three postcards fanned on a table; a plain row to swipe on a phone.
 const fan =
-  "w-[84%] shrink-0 snap-start sm:w-auto sm:nth-1:translate-x-2.5 sm:nth-1:translate-y-3.5 sm:nth-1:-rotate-[2.2deg] sm:nth-2:relative sm:nth-2:z-[2] sm:nth-2:-translate-y-1.5 sm:nth-3:-translate-x-2.5 sm:nth-3:translate-y-4 sm:nth-3:rotate-2";
+  "flex w-[84%] shrink-0 snap-start flex-col sm:w-auto sm:nth-1:translate-x-2.5 sm:nth-1:translate-y-3.5 sm:nth-1:-rotate-[2.2deg] sm:nth-2:relative sm:nth-2:z-[2] sm:nth-2:-translate-y-1.5 sm:nth-3:-translate-x-2.5 sm:nth-3:translate-y-4 sm:nth-3:rotate-2";
 
 /**
  * The planning workspace (PRD 6): the cards for the slot being chosen, the
@@ -504,23 +504,25 @@ export function TripWorkspace({
                         : undefined
                     }
                   >
-                    <Postcard
-                      place={toCardPlace(card)}
-                      showPhoto
-                      onPick={
-                        readOnly ? undefined : () => pick(card.placeId, focus)
-                      }
-                      onSave={
-                        readOnly
-                          ? undefined
-                          : () =>
-                              act(
-                                { type: "save", placeId: card.placeId },
-                                focus,
-                              )
-                      }
-                      onCloserLook={() => setLooking(toCardPlace(card))}
-                    />
+                    <div className="min-h-0 flex-1">
+                      <Postcard
+                        place={toCardPlace(card)}
+                        showPhoto
+                        onPick={
+                          readOnly ? undefined : () => pick(card.placeId, focus)
+                        }
+                        onSave={
+                          readOnly
+                            ? undefined
+                            : () =>
+                                act(
+                                  { type: "save", placeId: card.placeId },
+                                  focus,
+                                )
+                        }
+                        onCloserLook={() => setLooking(toCardPlace(card))}
+                      />
+                    </div>
                     {!readOnly && (
                       // No hidden text here: inside a sideways scroller it
                       // would sit outside the row and widen the page.
