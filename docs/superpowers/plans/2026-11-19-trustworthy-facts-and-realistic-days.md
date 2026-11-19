@@ -22,7 +22,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 3. True sentences and doubt rules         | `feature/m9-true-sentences`    | TB-RSN-01, TB-RSN-02, TB-RSN-03, TB-TRU-02, TB-TRU-05, TB-ITN-06 | #83          |
 | 4. Check it yourself                      | `feature/m9-check-yourself`    | TB-TRU-05, TB-CRD-04, TB-DSN-05, TB-DSN-07                       | #84          |
 | 5. Breakfast                              | `feature/m9-breakfast`         | TB-AGT-16, TB-ITN-21                                             | #85          |
-| 6. Ticket clocks across time zones        | `feature/m9-ticket-clocks`     | TB-ITN-16, TB-ITN-24, TB-SYS-15                                  |              |
+| 6. Ticket clocks across time zones        | `feature/m9-ticket-clocks`     | TB-ITN-16, TB-ITN-24, TB-SYS-15                                  | #86          |
 | 7. Airport and station time shown         | `feature/m9-ticket-allowances` | TB-ITN-23                                                        |              |
 | 8. Where you stay                         | `feature/m9-stay`              | TB-FIX-07, TB-ITN-22, TB-ITN-06                                  |              |
 | 9. The private record of card reasons     | `feature/m9-reason-record`     | TB-RSN-03, TB-TRU-02, TB-CRD-03                                  |              |
