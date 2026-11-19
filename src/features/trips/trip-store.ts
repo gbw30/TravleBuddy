@@ -216,7 +216,8 @@ export type NewTrip = {
   startDate: string | null;
   endDate: string | null;
   cities: TripFacts["cities"];
-  tickets: TicketInput[];
+  /** Each ticket with the time zone of its two ends, null where not known. */
+  tickets: (TicketInput & { fromZone: string | null; toZone: string | null })[];
 };
 
 /** Creates the trip, its cities and one transport commitment per ticket, all or nothing. */
@@ -247,6 +248,8 @@ export async function createTrip(
           transportMode: ticket.mode,
           origin: ticket.from,
           destination: ticket.to,
+          originTimeZone: ticket.fromZone,
+          destinationTimeZone: ticket.toZone,
         })),
       },
     },
