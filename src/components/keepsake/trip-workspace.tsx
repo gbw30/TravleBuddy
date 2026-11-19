@@ -93,6 +93,7 @@ export function TripWorkspace({
   const [buildProblem, setBuildProblem] = useState<string | null>(null);
   const [reportHidden, setReportHidden] = useState(false);
   const building = useRef(false);
+  const [starting, setStarting] = useState(false);
 
   const { view, proposal } = plan;
   const focus = proposal?.slotId ?? null;
@@ -170,6 +171,7 @@ export function TripWorkspace({
     building.current = true;
     setBuildProblem(null);
     setReportHidden(false);
+    setStarting(start);
     for (let first = start; ; first = false) {
       const result = await changeTrip<{ done: boolean }>(
         tripId,
@@ -180,11 +182,15 @@ export function TripWorkspace({
       );
       if (!result.ok) {
         setBuildProblem(result.message);
+        // Nothing shows a problem unless a build is on screen.
+        if (first) setProblem(result.message);
         break;
       }
       await refresh(wanted.current);
+      setStarting(false);
       if (result.data.done) break;
     }
+    setStarting(false);
     building.current = false;
   }
 
@@ -286,6 +292,9 @@ export function TripWorkspace({
     );
   }
 
+  const openSlots = view.days
+    .flatMap((day) => day.entries)
+    .filter((entry) => entry.type === "open").length;
   const cards = proposal?.cards ?? [];
   const itinerary = (
     <PlanItinerary
@@ -349,6 +358,22 @@ export function TripWorkspace({
                   ))}
                 </p>
               </div>
+              {!readOnly && openSlots > 0 && !plan.build?.building && (
+                <p className="text-[15.5px] text-ink/80">
+                  {openSlots === 1
+                    ? "One slot is still open."
+                    : `${openSlots} slots are still open.`}{" "}
+                  <button
+                    type="button"
+                    data-qa="build-rest"
+                    className={quiet}
+                    disabled={busy || starting}
+                    onClick={() => void runBuild(true)}
+                  >
+                    {starting ? "Building…" : "Build the rest for me"}
+                  </button>
+                </p>
+              )}
             </div>
 
             {focusSlot && (

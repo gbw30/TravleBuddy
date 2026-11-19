@@ -67,6 +67,7 @@ vi.mock("@/use-cases/save-brief", () => ({
   saveBrief: mocks.saveBrief,
 }));
 vi.mock("@/use-cases/build", () => ({ buildNextDay: mocks.buildNextDay }));
+vi.mock("@/use-cases/planning-mode", () => ({ changePlanningMode: vi.fn() }));
 vi.mock("@/use-cases/learning", () => ({ learnQuietly: mocks.learnQuietly }));
 vi.mock("@/use-cases/profile", () => ({
   loadProfile: mocks.loadProfile,

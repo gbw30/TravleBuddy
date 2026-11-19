@@ -236,6 +236,25 @@ export function BriefSteps({
     router.push(`/trips/${brief.tripId}`);
   }
 
+  /**
+   * Turns to the conversation, keeping everything entered: both ways of
+   * planning read the same trip (PRD 11.5).
+   */
+  async function talkInstead() {
+    if (busy || !(await save())) return;
+    setBusy(true);
+    const result = await changeTrip(brief.tripId, brief.revision, "PATCH", {
+      action: "mode",
+      planningMode: "GUIDED",
+    });
+    if (!result.ok) {
+      setBusy(false);
+      setFailure(result.message);
+      return;
+    }
+    router.push(`/trips/${brief.tripId}`);
+  }
+
   const last = BRIEF_STEPS.length - 1;
 
   return (
@@ -566,6 +585,14 @@ export function BriefSteps({
             {busy ? "Building day 1…" : "Build my trip"}
           </button>
         )}
+        <button
+          type="button"
+          className={`${quietLarge} ml-auto`}
+          disabled={busy}
+          onClick={talkInstead}
+        >
+          Talk it through instead
+        </button>
       </div>
     </div>
   );
