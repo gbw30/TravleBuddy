@@ -135,7 +135,13 @@ Judge both ways of planning against the four sample travellers of PRD 18. Comple
 
 Exit evidence: TB-SYS-15 and TB-DSN-01 to TB-DSN-07 pass; every requirement in sections 2 to 13 of the catalogue has passing evidence; full QA on the existing topology; the demonstration is recorded.
 
-**Started 2026-11-18** on branch `milestone/8-quality-release`. [Plan](superpowers/plans/2026-11-18-quality-release.md). By the developer's decisions of that day it also retires the earlier planner and brings the Profile page to the approved prototype.
+**Built 2026-11-19 on branch `milestone/8-quality-release`; exit evidence not yet complete.** [Plan](superpowers/plans/2026-11-18-quality-release.md), which lists each piece, its feature branch, the requirements it covers and its pull request (55 to 68). By the developer's decisions of 2026-11-18 it also retires the earlier planner and brings the Profile page to the approved prototype.
+
+- Done and checked locally, with sample places and the AI model switched off: the earlier planner is gone (routes, services, worker, QA entries and, with the developer's word of 2026-11-19, its 15 tables); the Profile page matches the prototype; the four sample travellers of PRD 18 plan by both ways with no failed check; the design checks pass in Chromium and Firefox; times are those of the place whatever clock the server keeps; the QA catalogue describes the new product. 796 unit tests, lint, type check and build pass. The list of border exceptions is empty.
+- Met: TB-SYS-15 by the machine's checks, TB-DSN-01 to TB-DSN-07 in two browsers, TB-ITN-16, and TB-SYS-01 to TB-SYS-03. Of the 130 requirements in sections 2 to 13, 116 are met and 14 partly met; [each is listed with its evidence and what is missing](quality/requirements-evidence.md).
+- Faults the checks found and fixed on the way: a card that was closed when the traveller would arrive, a place offered although already decided, time to wander running into a booking, a packed day left without lunch, movement on hover under reduced motion, a slider that jumped back while saving, touch targets under 24 px, an assumed transfer arriving by the wrong clock, and a night flight that did not block the day it landed.
+- Known limits: a trip across the International Date Line eastwards shows the repeated date once; the sample places have six restaurant names and nine sights per city outside Tokyo.
+- Still needed for the exit: the developer's reading of the eight sample itineraries (PRD 18's sixth point); the QA gate, where every feature built since the last one is a `candidate`; WebKit, a real phone and a screen reader; the first real call to the AI model and to the OpenStreetMap services; the portfolio demonstration; and merging Milestones 7 and 8 into `main` with their three migrations on the QA and production databases.
 
 ## Later stages
 

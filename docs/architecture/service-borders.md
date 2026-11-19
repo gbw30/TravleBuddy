@@ -63,7 +63,9 @@ A shared transaction is the part that needs rework when a service moves out (ADR
 
 `src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip.
 
-The older code still shares transactions across services in ways not listed here; those are among the known exceptions.
+The replay ledger (`src/features/planning/mutation.ts`, Conversation) reads and moves a trip's revision inside its own transaction through the Trips service's `tripForAction` and `advanceTripRevision`. That is the revision check every row above names.
+
+No exception is left: `eslint-suppressions.json` has been empty since 2026-11-19.
 
 ## When a check fails
 

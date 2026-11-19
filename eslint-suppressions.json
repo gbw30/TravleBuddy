@@ -1,12 +1,2 @@
 {
-  "src/features/planning/mutation.ts": {
-    "no-restricted-syntax": {
-      "count": 4
-    }
-  },
-  "src/lib/authorization.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  }
 }

@@ -318,6 +318,18 @@ async function planOne(
     };
     findings.push(checkReasons(shown, truth));
   }
+  // No sample traveller adds a place by hand. One in a plan was left on the
+  // account by something else, and makes the run say less than it seems to.
+  const own = Object.values(plan.chosen)
+    .filter((card) => card.origin === "USER")
+    .map((card) => card.name);
+  if (own.length > 0) {
+    findings.push({
+      check: "The account holds no place added by hand",
+      ok: false,
+      detail: `${own.join(", ")}: remove it from the development account and run again`,
+    });
+  }
 
   const places = plan.view.days.flatMap((day) =>
     day.entries.filter((entry) => entry.type === "place"),

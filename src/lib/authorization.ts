@@ -1,7 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
-import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 import { db } from "@/lib/db";
 
 export class UnauthorizedError extends Error {
@@ -40,22 +39,6 @@ export const requireUser = cache(async () => {
 
   return userId;
 });
-
-export async function requireTripOwner(userId: string, tripId: string) {
-  const trip = await db.trip.findFirst({
-    where: buildTripOwnerWhere(userId, tripId),
-    select: {
-      id: true,
-      userId: true,
-    },
-  });
-
-  if (!trip) {
-    notFound();
-  }
-
-  return trip;
-}
 
 export async function assertAuthenticatedApiUser() {
   const userId = await getCurrentUserId();
