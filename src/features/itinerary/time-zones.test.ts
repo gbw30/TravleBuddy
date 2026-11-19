@@ -293,7 +293,8 @@ describe("travel between two cities whose clocks differ", () => {
         minutes: 90,
         arriveLocal: null,
       });
-      expect(after(entries)[0]).toBe("lunch 14:00");
+      // A lunch that would start at two is past the lunch window: none is left open.
+      expect(after(entries)[0]).toBe("afternoon 14:00");
     }
   });
 

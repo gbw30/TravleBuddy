@@ -182,6 +182,15 @@ export type PlanEntry =
       arriveLocal: string | null;
     }
   | { type: "wander"; start: string; minutes: number; area: string | null }
+  | {
+      /** Time the plan allows to get to a ticket, or away from one. Shown, never hidden. */
+      type: "allowance";
+      way: "to" | "from";
+      /** The ticket's mode, as the trip records it. */
+      mode: string;
+      start: string;
+      minutes: number;
+    }
   /** Breakfast that comes with the stay: a quiet row, with nothing to choose. */
   | { type: "breakfast-at-stay"; start: string; minutes: number };
 

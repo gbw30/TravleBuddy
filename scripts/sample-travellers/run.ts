@@ -361,6 +361,8 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
           ? `, arriving about ${entry.arriveLocal} ${entry.to} time`
           : ""
       }`;
+    case "allowance":
+      return `${entry.start}  Allowed ${minutes(entry.minutes)} ${entry.way} the ${entry.mode === "FLIGHT" ? "airport" : "station"} (${entry.mode.toLowerCase()})`;
     case "breakfast-at-stay":
       return `${entry.start}  Breakfast where you stay (${minutes(entry.minutes)})`;
     case "wander":

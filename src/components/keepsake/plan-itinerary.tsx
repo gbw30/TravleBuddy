@@ -49,6 +49,11 @@ const hours = (minutes: number) =>
     ? `${minutes} min`
     : `${Math.round((minutes / 60) * 2) / 2} h`.replace(".5", "½");
 
+/** The word for where a ticket starts and ends; any mode not named here is a station. */
+const placeWord: Record<string, string> = { FLIGHT: "airport", FERRY: "port" };
+const allowed = (minutes: number) =>
+  minutes % 60 === 0 ? `${minutes / 60} h` : hours(minutes);
+
 /**
  * The live itinerary (PRD 9.1): one section per day, with scheduled places,
  * travel between them, time to wander, booked items as ticket stubs, open
@@ -193,6 +198,27 @@ export function PlanItinerary({
                       title="Breakfast where you stay"
                       variant="wander"
                     />
+                  </li>
+                );
+              }
+              if (entry.type === "allowance") {
+                const place = placeWord[entry.mode] ?? "station";
+                const long = allowed(entry.minutes);
+                return (
+                  <li key={`a-${index}`} className="mt-2.5 first:mt-0">
+                    <ItineraryRow
+                      time={entry.start}
+                      title={
+                        entry.way === "from"
+                          ? `From the ${place}, about ${long} allowed`
+                          : `To the ${place} and check-in, ${long} allowed, from ${entry.start}`
+                      }
+                      variant="wander"
+                    >
+                      <p className="basis-full font-sans text-[13px] leading-6 text-muted">
+                        Check the transfer time for your {place}
+                      </p>
+                    </ItineraryRow>
                   </li>
                 );
               }

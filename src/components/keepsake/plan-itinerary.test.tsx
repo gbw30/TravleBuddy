@@ -235,6 +235,45 @@ describe("PlanItinerary", () => {
     expect(html).toContain("Skytree");
   });
 
+  it("shows the time allowed at an airport, station or port, with a quiet doubt line", () => {
+    const allowed = (
+      way: "to" | "from",
+      mode: string,
+      start: string,
+      minutes: number,
+    ): PlanView => ({
+      ...view,
+      days: [
+        {
+          ...view.days[0],
+          entries: [{ type: "allowance", way, mode, start, minutes }],
+        },
+      ],
+    });
+    const from = render(false, allowed("from", "FLIGHT", "14:35", 60));
+    expect(from).toContain("From the airport, about 1 h allowed");
+    expect(from).toContain("Check the transfer time for your airport");
+    expect(from).toContain("font-sans text-[13px] leading-6 text-muted");
+    const to = render(false, allowed("to", "FLIGHT", "15:40", 120));
+    expect(to).toContain(
+      "To the airport and check-in, 2 h allowed, from 15:40",
+    );
+    const train = render(false, allowed("to", "TRAIN", "08:30", 30));
+    expect(train).toContain(
+      "To the station and check-in, 30 min allowed, from 08:30",
+    );
+    expect(train).toContain("Check the transfer time for your station");
+    expect(render(false, allowed("from", "BUS", "11:00", 20))).toContain(
+      "From the station, about 20 min allowed",
+    );
+    expect(render(false, allowed("from", "FERRY", "11:00", 20))).toContain(
+      "Check the transfer time for your port",
+    );
+    for (const html of [from, to, train]) {
+      expect(html).not.toMatch(/travel|min \(estimate\)/i);
+    }
+  });
+
   it("offers no changes when the trip is archived", () => {
     const html = render(true);
     expect(html).toContain("Details for Tokyo National Museum");

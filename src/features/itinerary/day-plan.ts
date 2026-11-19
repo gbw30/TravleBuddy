@@ -83,6 +83,22 @@ const paceRules: Record<Pace, { buffer: number; wander: number }> = {
 /** A slot may start this much later than usual before it is dropped for the day. */
 const LATE_START = 90;
 const MEAL_MINUTES = 75;
+/** A meal may start this much later than usual; after that it is no longer a gap to fill. */
+const MEAL_LATE = 60;
+/**
+ * Minutes the plan allows before and after a ticket: to the airport or station
+ * and through check-in, then out of it. Any mode but a flight is ground.
+ */
+export const ALLOWANCE: Record<
+  "FLIGHT" | "GROUND",
+  { before: number; after: number }
+> = {
+  FLIGHT: { before: 120, after: 60 },
+  GROUND: { before: 30, after: 20 },
+};
+/** An assumed transfer, with no ticket, keeps these. */
+const ASSUMED_BEFORE = 60;
+const ASSUMED_AFTER = 30;
 /** Breakfast starts with the day, if the day starts in this window, and takes this long. */
 export const BREAKFAST = { from: 450, until: 600, minutes: 45 };
 /** Less time than this between lunch and something decided is not time to wander. */
@@ -185,6 +201,16 @@ const withoutCode = (place: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+/** A ticket with no details is taken for a flight, as it always was. */
+const allowanceOf = (commitment: CommitmentDto) =>
+  ALLOWANCE[
+    commitment.transport && commitment.transport.mode !== "FLIGHT"
+      ? "GROUND"
+      : "FLIGHT"
+  ];
+const modeOf = (commitment: CommitmentDto) =>
+  commitment.transport?.mode ?? "FLIGHT";
+
 /** When a commitment with a time starts and ends on one day. */
 function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
   // A ticket that left on an earlier day shows where it lands.
@@ -274,6 +300,8 @@ export function buildPlanView(
     segments: Segment[];
     fixed: Fixed[];
     transfer: Extract<PlanEntry, { type: "transfer" }> | null;
+    /** Time allowed to get to and from tickets today. */
+    allowances: Extract<PlanEntry, { type: "allowance" }>[];
     /** When the transfer arrives, by the clock of the city of arrival. */
     landsAt: number;
     slots: DraftSlot[];
@@ -310,14 +338,33 @@ export function buildPlanView(
     // On the first day any ticket that lands bounds it. Later only one that
     // left on an earlier day does: a night flight lands in the new city.
     const landed = landing.filter((c) => index === 0 || c.date !== date);
+    const allowances: Draft["allowances"] = [];
     if (landed.length > 0) {
-      from = Math.max(
-        from,
-        Math.max(...landed.map((c) => toMinutes(c.endTime!))) + 60,
+      const last = landed.reduce((a, b) =>
+        toMinutes(b.endTime!) > toMinutes(a.endTime!) ? b : a,
       );
+      const { after } = allowanceOf(last);
+      const at = toMinutes(last.endTime!);
+      from = Math.max(from, at + after);
+      allowances.push({
+        type: "allowance",
+        way: "from",
+        mode: modeOf(last),
+        start: toClock(at),
+        minutes: after,
+      });
     }
     if (index === totalNights && totalNights > 0 && tickets.length > 0) {
-      until = Math.min(until, Math.min(...tickets.map((t) => t.start)) - 120);
+      const first = tickets.reduce((a, b) => (b.start < a.start ? b : a));
+      const { before } = allowanceOf(first.commitment);
+      until = Math.min(until, first.start - before);
+      allowances.push({
+        type: "allowance",
+        way: "to",
+        mode: modeOf(first.commitment),
+        start: toClock(first.start - before),
+        minutes: before,
+      });
     }
 
     let segments: Segment[];
@@ -359,10 +406,37 @@ export function buildPlanView(
               : null,
         };
       }
-      segments = [
-        { city: morningCity, from, until: leave - 60 },
-        { city: eveningCity, from: arrive + 30, until },
-      ];
+      // A ticket that does not land today, or has no arrival time, leaves
+      // the rest of the day unplanned: the next city starts tomorrow.
+      const lands =
+        !ticket ||
+        (ticket.commitment.endTime !== null &&
+          (ticket.commitment.endDate ?? date) === date);
+      const { before, after } = ticket
+        ? allowanceOf(ticket.commitment)
+        : { before: ASSUMED_BEFORE, after: ASSUMED_AFTER };
+      if (ticket) {
+        const mode = modeOf(ticket.commitment);
+        allowances.push({
+          type: "allowance",
+          way: "to",
+          mode,
+          start: toClock(leave - before),
+          minutes: before,
+        });
+        if (lands) {
+          allowances.push({
+            type: "allowance",
+            way: "from",
+            mode,
+            start: toClock(arrive),
+            minutes: after,
+          });
+        }
+      }
+      segments = [{ city: morningCity, from, until: leave - before }];
+      if (lands)
+        segments.push({ city: eveningCity, from: arrive + after, until });
     }
 
     const slots: DraftSlot[] = [];
@@ -400,6 +474,7 @@ export function buildPlanView(
         (s) => s.from <= usual + LATE_START && usual + 60 <= s.until,
       );
       if (!segment) continue;
+      if (isMealSlot(kind) && segment.from > usual + MEAL_LATE) continue;
       const earliest = Math.max(usual, segment.from);
       const taken = fixed.some(
         (f) =>
@@ -424,6 +499,7 @@ export function buildPlanView(
       segments,
       fixed,
       transfer,
+      allowances,
       landsAt,
       slots,
       stayBreakfast,
@@ -486,9 +562,14 @@ export function buildPlanView(
     type Step =
       | { at: number; fixed: Fixed }
       | { at: number; transfer: NonNullable<Draft["transfer"]> }
+      | { at: number; allowance: Draft["allowances"][number] }
       | { at: number; slot: DraftSlot };
     const steps: Step[] = [
       ...draft.fixed.map((fixed) => ({ at: fixed.start, fixed })),
+      ...draft.allowances.map((allowance) => ({
+        at: toMinutes(allowance.start),
+        allowance,
+      })),
       ...(draft.transfer
         ? [{ at: toMinutes(draft.transfer.start), transfer: draft.transfer }]
         : []),
@@ -543,6 +624,14 @@ export function buildPlanView(
               : null,
         });
         clock = Math.max(clock, end);
+        lastPoint = null;
+        return;
+      }
+      if ("allowance" in step) {
+        entries.push(step.allowance);
+        if (step.allowance.way === "from") {
+          clock = Math.max(clock, step.at + step.allowance.minutes);
+        }
         lastPoint = null;
         return;
       }

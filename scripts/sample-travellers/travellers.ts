@@ -189,9 +189,9 @@ export const TRAVELLERS: Traveller[] = [
         from: "London",
         to: "Rome",
         departDate: "2027-06-18",
-        departTime: "07:30",
+        departTime: "10:00",
         arriveDate: "2027-06-18",
-        arriveTime: "10:30",
+        arriveTime: "13:00",
         reference: "BA546",
       },
       {
