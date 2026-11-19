@@ -1,4 +1,4 @@
-import { readPlanState } from "@/features/itinerary";
+import { builtPlaceIds, readBuild, readPlanState } from "@/features/itinerary";
 import {
   learnedEntries,
   readForgotten,
@@ -80,16 +80,22 @@ export async function gatherEvidence(userId: string): Promise<TripEvidence[]> {
   );
   return Promise.all(
     counted.map(async (trip) => {
-      const [taste, difference, plan, discards] = await Promise.all([
+      const [taste, difference, plan, discards, build] = await Promise.all([
         readTripTaste(db, trip.id),
         readTripDifference(db, trip.id),
         readPlanState(db, trip.id),
         readDiscards(db, trip.id),
+        readBuild(db, trip.id),
       ]);
+      // A place the build chose is the agent's choice, not the traveller's:
+      // it shows nothing about their taste (PRD 12.4).
+      const built = new Set(builtPlaceIds(build, plan.state));
       const places = await getPlaces(
         [
           ...new Set(
-            Object.values(plan.state.picks).map((pick) => pick.placeId),
+            Object.values(plan.state.picks)
+              .map((pick) => pick.placeId)
+              .filter((placeId) => !built.has(placeId)),
           ),
         ],
         userId,

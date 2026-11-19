@@ -105,7 +105,10 @@ export function StartTrip({ sample }: { sample?: SampleLinks }) {
       body: { tickets, planningMode: ways[way].mode },
     });
     if (result.ok) {
-      router.push(`/trips/${result.data.trip.id}`);
+      // Quick plan begins with its brief; Guided planning with the conversation.
+      router.push(
+        `/trips/${result.data.trip.id}${ways[way].mode === "QUICK" ? "/brief" : ""}`,
+      );
       return;
     }
     setStarting(false);

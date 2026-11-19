@@ -89,6 +89,8 @@ export type ProposeInput = {
   taken: string[];
   /** Kinds of place already in this day. */
   kindsInDay: PlaceKind[];
+  /** Names of the places already in the plan: another branch of one is not a new idea. */
+  namesInPlan?: string[];
   history: CardHistory;
   taste: CardTaste;
 };
@@ -112,6 +114,9 @@ type Ranked = {
 function rank(input: ProposeInput): Ranked[] {
   const { slot, from, history, taste } = input;
   const out = new Set([...input.taken, ...history.discarded]);
+  const sameNames = new Set(
+    (input.namesInPlan ?? []).map((name) => name.toLowerCase()),
+  );
 
   return input.candidates
     .flatMap((place): Ranked[] => {
@@ -159,6 +164,9 @@ function rank(input: ProposeInput): Ranked[] {
       if (dietConfirmed) score += 2;
       if (!fresh) score -= 1.5;
       if (history.dislikedKinds.includes(place.kind)) score -= 3;
+      // Less than a confirmed dietary rule is worth: eating twice at a
+      // place known to serve the rule beats a new place that says nothing.
+      if (sameNames.has(place.name.toLowerCase())) score -= 1.5;
 
       return [
         {
@@ -324,6 +332,13 @@ function unconfirmedFor(ranked: Ranked, input: ProposeInput): string[] {
 }
 
 /**
+ * Two places this near in score are as good as each other: alike in every
+ * way that counts and within about a hundred metres in distance. A wider
+ * margin marked nearly every choice of a built trip as close.
+ */
+const CLOSE_SCORE = 0.1;
+
+/**
  * The proposal for a slot: the three best places that fit, or fewer when
  * fewer fit. It is never padded (TB-CRD-01).
  */
@@ -343,5 +358,6 @@ export function proposeCards(input: ProposeInput): CardSet {
       ),
     ),
     short: best.length < 3,
+    close: best.length > 1 && best[0].score - best[1].score <= CLOSE_SCORE,
   };
 }

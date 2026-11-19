@@ -1,8 +1,14 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { dateRange } from "@/components/keepsake/format";
 import { PlanStateButton } from "@/components/keepsake/plan-state-button";
-import { eyebrow, pageTitle, sectionTitle } from "@/components/keepsake/styles";
+import {
+  buttonSecond,
+  eyebrow,
+  pageTitle,
+  sectionTitle,
+} from "@/components/keepsake/styles";
 import { TripCardActions } from "@/components/keepsake/trip-card-actions";
 import { TripCommitments } from "@/components/keepsake/trip-commitments";
 import { TripConversation } from "@/components/keepsake/trip-conversation";
@@ -56,7 +62,7 @@ export default async function TripPage({
         {trip.archived
           ? "This trip is archived. Restore it to change anything."
           : trip.planningMode === "QUICK"
-            ? "You asked me to build this one for you. Until that is ready, choose each slot from three places; I plan around the facts and what is already decided."
+            ? "You asked me to build this one for you. Tell me the essentials in the trip brief. You can also choose each slot from three places yourself."
             : "We are planning this one together: for each slot I offer three places, and what you pick lands in the itinerary."}
       </p>
       <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -66,6 +72,11 @@ export default async function TripPage({
             revision={trip.revision}
             finished={trip.state !== "planning"}
           />
+        )}
+        {!trip.archived && (
+          <Link href={`/trips/${trip.id}/brief`} className={buttonSecond}>
+            Open the trip brief
+          </Link>
         )}
         <TripCardActions trip={summary} afterDelete="/home" />
       </div>

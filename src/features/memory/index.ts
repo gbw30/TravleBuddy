@@ -4,9 +4,11 @@
 // earlier screens and go when Milestone 6 replaces them.
 export {
   readTripDifference,
+  readTripSaid,
   readTripTaste,
   saveTripAnswer,
   saveTripDifference,
+  saveTripSaid,
   type TripDifference,
 } from "./trip-profile-store";
 export {

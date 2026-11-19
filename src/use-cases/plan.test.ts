@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getTrip: vi.fn(),
   readPlanState: vi.fn(),
   writePlanVersion: vi.fn(),
+  readBuild: vi.fn(),
   getPlaces: vi.fn(),
   listSights: vi.fn(),
   listFoodNear: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/features/itinerary", async (actual) => ({
   ...(await actual<typeof import("@/features/itinerary")>()),
   readPlanState: mocks.readPlanState,
   writePlanVersion: mocks.writePlanVersion,
+  readBuild: mocks.readBuild,
   undoPlan: vi.fn(),
 }));
 vi.mock("@/features/places", () => ({
@@ -128,6 +130,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.getTrip.mockResolvedValue(trip());
   mocks.readPlanState.mockResolvedValue({ state: state(), canUndo: false });
+  mocks.readBuild.mockResolvedValue(null);
   mocks.getPlaces.mockResolvedValue([]);
   mocks.listSights.mockResolvedValue(sights);
   mocks.listFoodNear.mockResolvedValue(food);

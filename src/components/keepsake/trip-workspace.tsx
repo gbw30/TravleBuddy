@@ -13,6 +13,7 @@ import { callApi, changeTrip } from "@/lib/trip-api";
 import type { PlanSnapshot } from "@/use-cases/plan-snapshot";
 
 import { AgentMessage } from "./agent-message";
+import { BuildReportPanel } from "./build-report";
 import { CloserLook } from "./closer-look";
 import { DiscardReasons } from "./discard-reasons";
 import { dayLabel } from "./format";
@@ -89,6 +90,10 @@ export function TripWorkspace({
   const [searchNote, setSearchNote] = useState("");
   const asked = useRef(false);
   const reading = useRef(0);
+  const [buildProblem, setBuildProblem] = useState<string | null>(null);
+  const [reportHidden, setReportHidden] = useState(false);
+  const building = useRef(false);
+  const [starting, setStarting] = useState(false);
 
   const { view, proposal } = plan;
   const focus = proposal?.slotId ?? null;
@@ -155,6 +160,46 @@ export function TripWorkspace({
     if (result.error === "stale_revision") void refresh(focus);
     return null;
   }
+
+  /**
+   * Asks for one day after another until the build says it is done
+   * (PRD 11.3). Each day is saved by the server as it is built, and the plan
+   * is read again so the day appears in the itinerary.
+   */
+  async function runBuild(start: boolean) {
+    if (building.current) return;
+    building.current = true;
+    setBuildProblem(null);
+    setReportHidden(false);
+    setStarting(start);
+    for (let first = start; ; first = false) {
+      const result = await changeTrip<{ done: boolean }>(
+        tripId,
+        revision,
+        "POST",
+        first ? { start: true } : {},
+        "/build",
+      );
+      if (!result.ok) {
+        setBuildProblem(result.message);
+        // Nothing shows a problem unless a build is on screen.
+        if (first) setProblem(result.message);
+        break;
+      }
+      await refresh(wanted.current);
+      setStarting(false);
+      if (result.data.done) break;
+    }
+    setStarting(false);
+    building.current = false;
+  }
+
+  // A build that was left part-way resumes when the traveller returns.
+  const unfinished = plan.build?.building === true && !readOnly;
+  useEffect(() => {
+    if (unfinished) void runBuild(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when a build is found unfinished
+  }, [unfinished]);
 
   async function act(action: PlanAction, nextFocus?: string | null) {
     const next = await send(action, nextFocus);
@@ -247,6 +292,9 @@ export function TripWorkspace({
     );
   }
 
+  const openSlots = view.days
+    .flatMap((day) => day.entries)
+    .filter((entry) => entry.type === "open").length;
   const cards = proposal?.cards ?? [];
   const itinerary = (
     <PlanItinerary
@@ -272,6 +320,16 @@ export function TripWorkspace({
 
   return (
     <section data-qa="trip-workspace" aria-label="The plan">
+      {plan.build && (plan.build.building || !reportHidden) && (
+        <BuildReportPanel
+          tripId={tripId}
+          report={plan.build}
+          problem={buildProblem}
+          onChoose={(slotId) => void refresh(slotId)}
+          onContinue={() => void runBuild(false)}
+          onHide={() => setReportHidden(true)}
+        />
+      )}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-16">
         <div className="min-w-0 space-y-12 pb-24 lg:pb-0">
           <div className="space-y-5">
@@ -300,6 +358,22 @@ export function TripWorkspace({
                   ))}
                 </p>
               </div>
+              {!readOnly && openSlots > 0 && !plan.build?.building && (
+                <p className="text-[15.5px] text-ink/80">
+                  {openSlots === 1
+                    ? "One slot is still open."
+                    : `${openSlots} slots are still open.`}{" "}
+                  <button
+                    type="button"
+                    data-qa="build-rest"
+                    className={quiet}
+                    disabled={busy || starting}
+                    onClick={() => void runBuild(true)}
+                  >
+                    {starting ? "Building…" : "Build the rest for me"}
+                  </button>
+                </p>
+              )}
             </div>
 
             {focusSlot && (
