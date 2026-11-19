@@ -21,17 +21,17 @@ describe("auth route classification", () => {
   });
 
   it("identifies protected API routes", () => {
-    expect(isProtectedApiRoute("/api/trips")).toBe(true);
-    expect(isProtectedApiRoute("/api/trips/trip_1")).toBe(true);
-    expect(isProtectedApiRoute("/api/recommendations")).toBe(true);
-    expect(isProtectedApiRoute("/api/itinerary/build")).toBe(true);
-    expect(isProtectedApiRoute("/api/export/json")).toBe(true);
+    expect(isProtectedApiRoute("/api/v1")).toBe(true);
+    expect(isProtectedApiRoute("/api/v1/trips/trip_1")).toBe(true);
+    expect(isProtectedApiRoute("/api/v1/profile")).toBe(true);
     expect(isProtectedApiRoute("/api/auth/session")).toBe(false);
+    // The earlier planner's routes are gone; nothing there is guarded or served.
+    expect(isProtectedApiRoute("/api/trips")).toBe(false);
   });
 
   it("combines protected page and API routes", () => {
     expect(isProtectedRoute("/profile")).toBe(true);
-    expect(isProtectedRoute("/api/export")).toBe(true);
+    expect(isProtectedRoute("/api/v1/profile")).toBe(true);
     expect(isProtectedRoute("/login")).toBe(false);
   });
 });

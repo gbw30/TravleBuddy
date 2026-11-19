@@ -31,6 +31,8 @@ Never paste connection strings into documentation, chat, screenshots, commits, l
 
 ## Local session use
 
+> **Removed on 2026-11-18.** The standalone worker belonged to the earlier planner and was removed with it; `npm run worker:start` no longer exists. Nothing in the product runs in the background now. This section is kept for the record until the developer rewrites the guide.
+
 Do not edit `.env` for a QA demonstration. Supply the QA pooled application URL only to the current PowerShell session:
 
 ```powershell

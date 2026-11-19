@@ -41,8 +41,8 @@ export interface PlaceSource {
 
 /**
  * The provider chosen by configuration: sample data in mock mode, otherwise
- * OpenStreetMap. Google stays behind the older text-search adapter in
- * src/lib/providers/places until its terms allow saved plans (ADR-009).
+ * OpenStreetMap. Google is not behind this adapter: its terms forbid saving
+ * what a plan needs (ADR-009).
  */
 export function activeSource(): PlaceSource {
   return usesSamplePlaces() ? sampleSource : osmSource;

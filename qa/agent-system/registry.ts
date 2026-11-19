@@ -90,8 +90,6 @@ export const agentRegistry = Object.freeze(
         "docs/conversational-planning/07-cache-production-hardening.md",
       ],
       sourceRoots: [
-        "src/lib/ai",
-        "src/lib/google",
         "src/lib/env.ts",
         "src/lib/db.ts",
         "src/instrumentation.ts",
@@ -132,12 +130,7 @@ const routeRules: readonly RouteRule[] = [
   {
     id: "user-journeys",
     agent: "qa_journeys",
-    prefixes: [
-      "src/app/(auth)/",
-      "src/app/(app)/",
-      "src/components/",
-      "e2e/",
-    ],
+    prefixes: ["src/app/(auth)/", "src/app/(app)/", "src/components/", "e2e/"],
     exact: [
       "src/app/page.tsx",
       "src/app/layout.tsx",
@@ -151,14 +144,9 @@ const routeRules: readonly RouteRule[] = [
     agent: "qa_constraints",
     prefixes: [
       "src/features/trips/",
-      "src/features/profile/",
-      "src/features/preferences/",
       "src/features/recommendations/",
       "src/features/itinerary/",
       "src/features/planning/",
-      "src/app/api/trips/",
-      "src/app/api/recommendations/",
-      "src/app/api/itinerary/",
     ],
     exact: ["prisma/schema.prisma", "prisma/stage0-schema.test.ts"],
     includes: ["validation", "conflict", "logistic", "itinerary"],
@@ -180,7 +168,7 @@ const routeRules: readonly RouteRule[] = [
   {
     id: "resilience-production",
     agent: "qa_resilience_production",
-    prefixes: ["src/lib/ai/", "src/lib/google/", ".github/workflows/"],
+    prefixes: [".github/workflows/"],
     exact: [
       "src/lib/env.ts",
       "src/lib/env.test.ts",
@@ -222,9 +210,9 @@ function normalizeChangedPath(value: string) {
 function matchesRule(file: string, rule: RouteRule) {
   return Boolean(
     rule.exact?.includes(file) ||
-      rule.prefixes?.some((prefix) => file.startsWith(prefix)) ||
-      rule.includes?.some((part) => file.includes(part)) ||
-      rule.suffixes?.some((suffix) => file.endsWith(suffix)),
+    rule.prefixes?.some((prefix) => file.startsWith(prefix)) ||
+    rule.includes?.some((part) => file.includes(part)) ||
+    rule.suffixes?.some((suffix) => file.endsWith(suffix)),
   );
 }
 
@@ -360,7 +348,9 @@ export function selectAgentsForChanges(options: {
   }
 
   if (changedPaths.length === 0) {
-    reasons.push("No changed paths were reported; only baseline and audit roles are needed.");
+    reasons.push(
+      "No changed paths were reported; only baseline and audit roles are needed.",
+    );
   } else if (selectedSpecialists.length === 0) {
     reasons.push("Only non-requirement documentation changed.");
   }

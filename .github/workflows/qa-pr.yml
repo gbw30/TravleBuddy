@@ -106,7 +106,6 @@ jobs:
       - name: Run PostgreSQL integration tests
         run: >-
           npm test --
-          src/features/jobs/postgres-store.integration.test.ts
           prisma/adaptive-planning-migration.integration.test.ts
 
       - name: Run critical Chromium journeys

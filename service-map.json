@@ -20,11 +20,7 @@
       ]
     },
     "conversation": {
-      "code": [
-        "src/features/conversation/**",
-        "src/features/planning/**",
-        "src/lib/ai/**"
-      ],
+      "code": ["src/features/conversation/**", "src/features/planning/**"],
       "tables": [
         "PlanningMutation",
         "PlanningEvent",
@@ -34,11 +30,7 @@
       ]
     },
     "memory": {
-      "code": [
-        "src/features/memory/**",
-        "src/features/profile/**",
-        "src/features/preferences/**"
-      ],
+      "code": ["src/features/memory/**"],
       "tables": [
         "UserTravelPreference",
         "TripPreference",
@@ -52,15 +44,11 @@
       ]
     },
     "places": {
-      "code": [
-        "src/features/places/**",
-        "src/lib/providers/places/**",
-        "src/lib/google/**"
-      ],
+      "code": ["src/features/places/**"],
       "tables": ["CityLookup", "Place", "PlaceFetch", "ProviderCall"]
     },
     "recommendations": {
-      "code": ["src/features/recommendations/**", "src/features/adaptation/**"],
+      "code": ["src/features/recommendations/**"],
       "tables": ["PlaceSuggestion", "PlanningFeedback", "CardEvent"]
     },
     "itinerary": {
@@ -76,7 +64,7 @@
       ]
     },
     "jobs": {
-      "code": ["src/features/jobs/**", "src/worker/**"],
+      "code": [],
       "tables": ["GenerationJob", "JobAttempt", "JobEvent"]
     }
   },

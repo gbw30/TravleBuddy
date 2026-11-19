@@ -5,7 +5,6 @@ import type {
   PlanningMutationControl,
   PlanningMutationKind,
   PlanningMutationReplay,
-  StalePlanningMutationResult,
 } from "./types";
 
 export type PlanningTransaction = Prisma.TransactionClient;
@@ -225,7 +224,7 @@ export async function executePlanningMutation<T>(input: {
     timeout?: number;
   };
   transaction: (tx: PlanningTransaction) => Promise<T>;
-}): Promise<T | StalePlanningMutationResult> {
+}): Promise<T> {
   try {
     return await db.$transaction(async (tx) => {
       const control = input.control;

@@ -186,6 +186,8 @@ milestone.
 
 ## 3. Run the free-first standalone worker
 
+> **Removed on 2026-11-18.** The standalone worker belonged to the earlier planner and was removed with it; `npm run worker:start` no longer exists. Nothing in the product runs in the background now. This section is kept for the record until the developer rewrites the guide.
+
 The active QA/demo topology uses no hosted background-worker service. Vercel
 creates durable jobs in the existing Neon QA database, and the repository's
 standalone worker consumes them locally during the demonstration.

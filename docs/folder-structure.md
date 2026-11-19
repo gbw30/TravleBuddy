@@ -13,11 +13,8 @@ TravleBuddy/
 │   ├── app/                    Next.js App Router pages, layouts, route handlers
 │   ├── components/             Reusable and feature-facing React presentation
 │   ├── features/               Domain services and contracts
-│   │   ├── adaptation/         Feedback policy and copy-on-write replacement
-│   │   └── jobs/               PostgreSQL queue state and execution contracts
-│   ├── lib/                    Shared auth, database, validation, and providers
-│   │   └── providers/places/   Google/mock PlaceProvider boundary
-│   └── worker/                 Standalone durable-job runtime
+│   ├── use-cases/              What spans more than one service
+│   └── lib/                    Shared auth, database, and validation
 ├── prisma/                     Schema, migrations, and seed support
 ├── docs/                       Product, status, architecture, plans, operations, history
 ├── qa/                         Report-only QA system, feature states, scenarios, policies
@@ -35,11 +32,9 @@ TravleBuddy/
 
 ## Domain and infrastructure layer
 
-`src/features` contains use-case logic that can be exercised without the UI. Adaptive policy is callable both inline in tests and from the worker. Job persistence and state transitions remain separate from job-specific business logic.
+`src/features` holds one folder per service, each with its own tables and a public surface in `index.ts` and `contracts.ts` ([service borders](architecture/service-borders.md)). `src/use-cases` holds what spans more than one service. Persistence and rules remain separate from job-specific business logic.
 
-`src/lib` contains shared infrastructure, including Prisma access, Auth.js integration, schemas, observability, and provider adapters. External provider response shapes must not leak into application DTOs.
-
-`src/worker` is a process entry point, not a second business-logic implementation. It claims durable jobs and delegates execution to feature services.
+`src/lib` contains shared infrastructure: Prisma access, Auth.js integration and environment checks. The place provider's adapters live in `src/features/places`; a provider's reply shapes must not leak into what the pages receive.
 
 ## Data layer
 

@@ -74,9 +74,7 @@ export async function runTripAction<T extends object>(input: {
         });
       },
     });
-    return outcome.status === "stale_revision"
-      ? { status: "stale" }
-      : (outcome as TripActionOutcome<T>);
+    return outcome as TripActionOutcome<T>;
   } catch (error) {
     if (error instanceof StalePlanningRevisionError) return { status: "stale" };
     if (error instanceof PlanningMutationConflictError) {

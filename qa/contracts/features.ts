@@ -28,63 +28,11 @@ const registryMetadata = [
     description: "Draft, ready, update, archive, delete, and owned trip reads.",
   },
   {
-    id: "trip-preferences",
-    label: "Trip preferences",
-    documentedStage: "existing foundation",
-    description:
-      "Trip-local preference validation, inheritance, and overrides.",
-  },
-  {
-    id: "mock-recommendations",
-    label: "Mock recommendations",
-    documentedStage: "existing foundation",
-    description: "Deterministic scoring, generation, rerolling, and selection.",
-  },
-  {
-    id: "planning-feedback",
-    label: "Planning feedback",
-    documentedStage: "existing foundation",
-    description: "Selection, rejection, deselection, and feedback history.",
-  },
-  {
-    id: "itinerary-draft",
-    label: "Draft itinerary",
-    documentedStage: "existing foundation",
-    description: "Persisted deterministic itinerary building and cost totals.",
-  },
-  {
-    id: "conflicts",
-    label: "Conflict engine",
-    documentedStage: "existing foundation",
-    description: "Conflict generation, deduplication, resolution, and history.",
-  },
-  {
-    id: "logistics",
-    label: "Trip logistics",
-    documentedStage: "existing foundation",
-    description:
-      "Flexible and ticketed segments, city windows, and travel blocks.",
-  },
-  {
     id: "planning-revision-contracts",
     label: "Planning revision contracts",
     documentedStage: "Stage 0",
     description:
       "Revision checks, replay-safe mutations, snapshots, and telemetry.",
-  },
-  {
-    id: "adaptive-planning",
-    label: "Versioned adaptive planning",
-    documentedStage: "Adaptive planning vertical slice",
-    description:
-      "Immutable item feedback, source-aware preferences, deterministic replacement, and copy-on-write itinerary activation.",
-  },
-  {
-    id: "durable-planning-jobs",
-    label: "Durable planning jobs",
-    documentedStage: "Adaptive planning vertical slice",
-    description:
-      "PostgreSQL claims, leases, heartbeats, retries, recovery, progress, and stale-result protection.",
   },
   {
     id: "conversation-persistence",
