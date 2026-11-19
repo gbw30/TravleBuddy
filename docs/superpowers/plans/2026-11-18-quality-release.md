@@ -32,6 +32,8 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    | #68          |
 | 14. WebKit in the design checks                   | `feature/m8-design-webkit`   | TB-DSN-02 to 07                 | #70          |
 | 15. Moving by drag checked                        | `feature/m8-drag-check`      | TB-ITN-09                       | #72          |
+| 16. An evaluation of the model's reading          | `feature/m8-model-eval`      | TB-SYS-11                       | #73          |
+| 17. The release recorded, and a $15 cap           | `feature/m8-release-records` | TB-SYS-11                       | #74          |
 
 ## Global Constraints
 
@@ -296,12 +298,19 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 **Produced (pull request 72, 2026-11-19):** TB-ITN-09 was partly met because moving an item by drag was built but never checked. The design walk now drags a placed place onto an open slot on the real trip page and confirms through the plan that it moved, and checks that a fixed commitment cannot be dragged. Chromium, Firefox and WebKit: 57 of 57 each. Dropping onto another place swaps the two; that path is not exercised. Requirements: 117 met, 13 partly met.
 
+### Piece 16: An evaluation of the model's reading
+
+**Produced (pull request 73, 2026-11-19):** the developer asked whether Claude Haiku 5.5 is good enough. `scripts/model-eval/` holds 43 typed messages, each with the intent it should become, and runs them through the real `readTypedInput`. `--dry-run` checks the grading without the network; a real run needs `ANTHROPIC_API_KEY`, prints its estimated cost first (about $0.007) and writes `docs/quality/model-eval.md`. Not yet run for real. Found while building it: the prompt names booking kinds (hotel, reservation, ticket, activity) that differ from the schema's (TRANSPORT, STAY, RESERVATION, MUST_SEE, OTHER).
+
+### Piece 17: The release recorded, and a $15 cap
+
+**Produced (pull request 74, 2026-11-19):** Milestones 7 and 8 reached `main` at the developer's request (pull requests 54 and 69). Milestone 7's two migrations went to production and QA before its code; Milestone 8's drop went to both after its code was deployed, with the dropped tables copied out first. The AI cap's default is now 15 US dollars, the developer's monthly allowance.
+
 ## Waiting for the developer
 
-- Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point).
-- Judging the two phone screenshots of piece 10, and the word in a card's picture stamp that breaks in the middle at phone width.
-- Merging Milestone 7 (pull request 54) and then Milestone 8 into `main`, with their migrations on the QA and production databases. The two of Milestone 7 add a column each and go before its code; the one of Milestone 8 drops the earlier planner's tables and goes after its code is deployed.
+- Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point). They and the phone screenshots, with four layout faults at 320 px wide, were shown to the developer on 2026-11-19.
+- Choosing the closer look (enlarged or overlay) and the phone itinerary (sheet or tab). Each option is on a branch for review (`feature/m8-closer-look-overlay`, `feature/m8-phone-sheet`, `feature/m8-phone-tab`) and was shown as a video on 2026-11-19.
 - Running the QA gate, and recording the portfolio demonstration.
-- The Anthropic API key in Vercel for production and QA, then one real reply looked at together.
-- Whether the AI model should word the agent's messages (PRD 17).
-- One try of the real OpenStreetMap services, which needs a contact address for its request header.
+- The Anthropic API key, for the model evaluation of piece 16 and then in Vercel for production and QA.
+- How the AI model words the agent's messages (PRD 17): on 2026-11-19 the developer chose to let the model reword facts the code has verified, provided every fact's source is traceable and reliable. Its design comes first.
+- One try of the real OpenStreetMap services. The contact address for its request header was given on 2026-11-19 and is set as `PLACES_USER_AGENT` outside the repository, which is public.
