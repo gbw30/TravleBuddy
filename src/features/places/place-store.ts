@@ -70,12 +70,14 @@ async function withinCap(service: string): Promise<boolean> {
   return row.count <= DAILY_CAP;
 }
 
-// One upsert for all places: a refetched place keeps its id, so plans that
-// point at it stay valid.
+// One insert for all places. A refetch updates in place, so the id stays and
+// plans that point at it stay valid. A name search only adds new places: its
+// thinner data must not overwrite what a full fetch saved.
 async function save(
   source: PlaceSource,
   key: string,
   found: FoundPlace[],
+  onConflict: "update" | "keep",
 ): Promise<void> {
   const unique = [...new Map(found.map((p) => [p.originRef, p])).values()];
   if (unique.length === 0) return;
@@ -83,13 +85,17 @@ async function save(
     (p) =>
       Prisma.sql`(${source.origin}::"PlaceOrigin", ${p.originRef}, ${key}, ${p.name}, ${p.kind}, ${p.latitude}, ${p.longitude}, ${p.address}, ${p.openingHours}, ${p.notable}, ${p.serves}, ${p.servesNot}, ${p.tags ? JSON.stringify(p.tags) : null}::jsonb, ${p.lastEditedAt}, now(), now())`,
   );
-  await db.$executeRaw`INSERT INTO "places" ("origin", "origin_ref", "city_key", "name", "kind", "latitude", "longitude", "address", "opening_hours", "notable", "serves", "serves_not", "osm_tags", "last_edited_at", "fetched_at", "updated_at")
-VALUES ${Prisma.join(rows)}
-ON CONFLICT ("origin", "origin_ref") DO UPDATE SET
+  const conflict =
+    onConflict === "keep"
+      ? Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO NOTHING`
+      : Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO UPDATE SET
   "name" = EXCLUDED."name", "kind" = EXCLUDED."kind", "latitude" = EXCLUDED."latitude", "longitude" = EXCLUDED."longitude",
   "address" = EXCLUDED."address", "opening_hours" = EXCLUDED."opening_hours", "notable" = EXCLUDED."notable",
   "serves" = EXCLUDED."serves", "serves_not" = EXCLUDED."serves_not", "osm_tags" = EXCLUDED."osm_tags",
   "last_edited_at" = EXCLUDED."last_edited_at", "fetched_at" = EXCLUDED."fetched_at", "updated_at" = EXCLUDED."updated_at"`;
+  await db.$executeRaw`INSERT INTO "places" ("origin", "origin_ref", "city_key", "name", "kind", "latitude", "longitude", "address", "opening_hours", "notable", "serves", "serves_not", "osm_tags", "last_edited_at", "fetched_at", "updated_at")
+VALUES ${Prisma.join(rows)}
+${conflict}`;
 }
 
 /**
@@ -130,7 +136,7 @@ async function gather(
 
   try {
     const found = await request(source, where);
-    await save(source, key, found);
+    await save(source, key, found, "update");
     await db.placeFetch.upsert({
       where: { cityKey_scope: fetchKey },
       create: { ...fetchKey, placeCount: found.length },
@@ -250,7 +256,7 @@ export async function findPlacesByName(
   try {
     const found = await source.byName(where, query);
     const key = cityKey(city);
-    await save(source, key, found);
+    await save(source, key, found, "keep");
     const rows = await db.place.findMany({
       where: {
         origin: source.origin,

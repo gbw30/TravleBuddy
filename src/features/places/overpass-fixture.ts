@@ -1,6 +1,6 @@
 // A reply in Overpass's JSON form for a query ending `out center meta`. It is
-// hand-made, not fetched: the ids and tags are of real Lisbon places as best
-// remembered, and the edit data (version, changeset, user) is illustrative.
+// hand-made, not fetched, in Overpass's JSON format: the ids and tags are
+// illustrative, as are the edit data (version, changeset, user).
 // Tests use it to check that only the kept tags and the edit time survive.
 export const overpassFixture = {
   version: 0.6,

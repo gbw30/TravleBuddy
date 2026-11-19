@@ -118,8 +118,8 @@ describe("gathering places", () => {
     expect(mocks.osm.sights).toHaveBeenCalledTimes(1);
     expect(mocks.db.$executeRaw).toHaveBeenCalledTimes(1);
     // A tagged template: the text pieces, then the joined rows.
-    const [text, rows] = mocks.db.$executeRaw.mock.calls[0];
-    expect(text.join("")).toContain(
+    const [, rows, conflict] = mocks.db.$executeRaw.mock.calls[0];
+    expect(conflict.sql).toContain(
       'ON CONFLICT ("origin", "origin_ref") DO UPDATE',
     );
     expect(rows.values).toContain(JSON.stringify(found.tags));
@@ -309,6 +309,16 @@ describe("adding a place by name or by hand", () => {
 
     expect(mocks.osm.byName).toHaveBeenCalledWith(tokyo, "senso");
     expect(outcome).toMatchObject({ status: "ok", places: [{ id: "p1" }] });
+  });
+
+  it("a name search does not overwrite a place Overpass saved", async () => {
+    mocks.osm.byName.mockResolvedValue([found]);
+
+    await findPlacesByName(tokyo, "senso");
+
+    const [, , conflict] = mocks.db.$executeRaw.mock.calls[0];
+    expect(conflict.sql).toContain("DO NOTHING");
+    expect(conflict.sql).not.toContain("DO UPDATE");
   });
 
   it("does not search for text too short, and reports a failed or capped search", async () => {
