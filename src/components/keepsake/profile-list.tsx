@@ -23,6 +23,7 @@ import type {
 } from "@/features/prototype/sample-home";
 
 import { Stamp } from "./day-stamp";
+import { NoteChip } from "./note-chip";
 import {
   card,
   guessCard,
@@ -206,15 +207,9 @@ export function ProfileList({
     <div className="py-10 md:py-14">
       <section className="grid items-end gap-10 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-[72px]">
         <div>
-          <p
-            className="rise inline-flex min-h-8 items-center gap-2.5 rounded-full bg-card py-1 pr-3.5 pl-1.5 text-[13px] text-ink/75 shadow-[0_0_0_1px_rgb(29_26_22/0.12)]"
-            style={rise(0)}
-          >
-            <span className="inline-flex h-[22px] shrink-0 items-center rounded-full bg-ink px-2.5 font-mono text-[10.5px] tracking-[0.1em] text-paper uppercase">
-              What I remember
-            </span>
+          <NoteChip label="What I remember" style={rise(0)}>
             Learned from 2 trips
-          </p>
+          </NoteChip>
           {/* Sample sentence: the real product writes this from the entries below. */}
           <h1 className={`rise mt-6 ${pageTitle}`} style={rise(1)}>
             You travel <em>slowly,</em> start late, and never eat shellfish.
