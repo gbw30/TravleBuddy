@@ -36,6 +36,10 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   notable: true,
   serves: [],
   servesNot: [],
+  originRef: null,
+  tags: {},
+  lastEditedAt: null,
+  fetchedAt: null,
   ...over,
 });
 const commitment = (over: Partial<CommitmentDto>): CommitmentDto => ({
