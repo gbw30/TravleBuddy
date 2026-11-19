@@ -255,7 +255,7 @@ describe("proposals in guided planning", () => {
     expect(cards.map((card) => card.name)).toEqual(["Kissa Ko"]);
     expect(cards[0].unconfirmed).toEqual(["shellfish allergy"]);
     expect(cards[0].reason).toContain(
-      "Its listing says it serves vegetarian food",
+      "The sample data says it serves vegetarian food",
     );
     expect(cards[0].essentials).toContain("not confirmed: shellfish allergy");
   });
@@ -597,5 +597,66 @@ describe("a place the traveller has already decided", () => {
     const offered = await names();
     expect(offered).not.toContain("Senso-ji");
     expect(offered?.length).toBeGreaterThan(0);
+  });
+});
+
+describe("what the plan says of its chosen places", () => {
+  const picked = (id: string) => ({ placeId: id, minutes: null });
+  const withPick = () => {
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { "d1-morning": picked("s1") } }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([sights[0]]);
+  };
+
+  it("says I chose a built place left in place, and You chose one the traveller picked", async () => {
+    withPick();
+    expect((await load())?.chosen.s1.reason).toBe("You chose this for day 1.");
+    mocks.readBuild.mockResolvedValue({
+      nextDay: 2,
+      built: { "d1-morning": "s1" },
+      close: [],
+      empty: [],
+      unreachable: false,
+    });
+    expect((await load())?.chosen.s1.reason).toBe("I chose this for day 1.");
+    // The traveller moved it elsewhere: it is theirs now.
+    mocks.readBuild.mockResolvedValue({
+      nextDay: 2,
+      built: { "d1-afternoon": "s1" },
+      close: [],
+      empty: [],
+      unreachable: false,
+    });
+    expect((await load())?.chosen.s1.reason).toBe("You chose this for day 1.");
+  });
+
+  it("times travel from the stop before, and not from a place before a booking", async () => {
+    withPick();
+    const slot = "d1-afternoon";
+    expect((await load(slot))?.proposal?.cards[0].travel).not.toBeNull();
+    mocks.getTrip.mockResolvedValue(
+      trip({
+        commitments: [
+          {
+            id: "c-1",
+            kind: "RESERVATION",
+            title: "teamLab Planets",
+            date: "2027-05-10",
+            startTime: "13:00",
+            endDate: null,
+            endTime: "14:00",
+            reference: null,
+            note: null,
+            transport: null,
+          },
+        ],
+      }),
+    );
+    const plan = await load(slot);
+    expect(plan?.proposal?.slotId).toBe(slot);
+    expect(plan?.proposal?.cards[0].travel).toBeNull();
+    expect(plan?.proposal?.cards[0].reason).toMatch(/^It fits your afternoon/);
   });
 });

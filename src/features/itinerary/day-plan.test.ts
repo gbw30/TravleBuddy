@@ -403,6 +403,25 @@ describe("a picked place", () => {
     );
   });
 
+  it("times a leg by the stated means", () => {
+    const picks = {
+      "d2-morning": pick("museum"),
+      "d2-morning-2": pick("shrine"),
+    };
+    const leg = (means?: "walk" | "transit" | "drive") =>
+      found(
+        buildPlanView(
+          state({ pace: "packed", picks }),
+          context({ places, means }),
+        ).days[1].entries,
+        "place",
+      )[1].travelIn;
+    // About a kilometre apart: walked unless the traveller said otherwise.
+    expect(leg()?.means).toBe("walk");
+    expect(leg("drive")?.means).toBe("drive");
+    expect(leg("transit")?.means).toBe("transit");
+  });
+
   it("flags a place that is closed, and one whose hours are unknown", () => {
     const view = buildPlanView(
       state({

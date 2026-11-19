@@ -1,6 +1,7 @@
 import {
   applyPlanAction,
   buildPlanView,
+  builtPlaceIds,
   kindSuitsSlot,
   provisionalStart,
   readBuild,
@@ -42,9 +43,11 @@ import {
 } from "@/features/places";
 import {
   cityKeyOf,
+  TRAVEL_MEANS,
   type City,
   type PlaceDto,
   type PlaceKind,
+  type TravelMeans,
 } from "@/features/places/contracts";
 import {
   proposeCards,
@@ -125,6 +128,10 @@ export async function tasteOf(
   return tasteInUse(profile.entries, said);
 }
 
+/** The way of getting around the traveller named, if they named one. */
+const meansOf = (taste: TasteInUse): TravelMeans | undefined =>
+  TRAVEL_MEANS.find((means) => means === taste.getting_around?.values[0]);
+
 /**
  * What a plan is laid out from. `taste` is passed by a caller that has
  * already read it; otherwise it is read here.
@@ -148,6 +155,7 @@ export async function contextFor(
     commitments: trip.commitments,
     places: Object.fromEntries(places.map((place) => [place.id, place])),
     dayShift: DAY_SHIFT[inUse.day_shape?.values[0] ?? ""] ?? 0,
+    means: meansOf(inUse),
   };
 }
 
@@ -193,6 +201,7 @@ function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
     atmosphere:
       atmosphere === "lively" || atmosphere === "quiet" ? atmosphere : null,
     onFoot: taste.getting_around?.values[0] === "walk",
+    means: meansOf(taste),
     // The dietary rules are hard limits: those remembered always apply,
     // with any given for this trip (TB-MEM-05).
     food: taste.food ? limits.dietaryRules : null,
@@ -271,22 +280,22 @@ export async function cardsFor(
   )?.city;
   if (!city) return null;
 
-  // The stop just before the slot, when its position is known.
-  const before = day.entries
+  // The stop just before the slot, when it is a place with a known
+  // position. A booking or a transfer in between means there is no
+  // stop to measure from.
+  const last = day.entries
     .slice(0, day.entries.indexOf(entry))
-    .filter(
-      (e): e is Extract<PlanEntry, { type: "place" }> => e.type === "place",
-    )
-    .map((e) => places[e.placeId])
-    .filter((p) => p && p.latitude !== null && p.longitude !== null)
+    .filter((e) => e.type !== "open" && e.type !== "wander")
     .at(-1);
-  const from = before
-    ? {
-        name: before.name,
-        latitude: before.latitude!,
-        longitude: before.longitude!,
-      }
-    : null;
+  const before = last?.type === "place" ? places[last.placeId] : undefined;
+  const from =
+    before && before.latitude !== null && before.longitude !== null
+      ? {
+          name: before.name,
+          latitude: before.latitude,
+          longitude: before.longitude,
+        }
+      : null;
   const centre =
     city.latitude === null || city.longitude === null
       ? null
@@ -417,6 +426,7 @@ function chosenCards(
   view: PlanView,
   places: Record<string, PlaceDto>,
   trip: TripDetail,
+  built: Set<string>,
 ): Record<string, CardDto> {
   const cityName = (key: string) =>
     trip.facts.cities.find(({ city }) => cityKeyOf(city) === key)?.city.name ??
@@ -429,7 +439,7 @@ function chosenCards(
       cards[place.id] = toCard(
         place,
         cityName(place.cityKey),
-        `You chose this for day ${day.day}.`,
+        `${built.has(place.id) ? "I" : "You"} chose this for day ${day.day}.`,
         entry.travelIn,
       );
     }
@@ -519,7 +529,12 @@ async function readPlan(
   const proposing = focus !== null && !holding;
   return {
     view,
-    chosen: chosenCards(view, context.places, trip),
+    chosen: chosenCards(
+      view,
+      context.places,
+      trip,
+      new Set(builtPlaceIds(progress, state)),
+    ),
     proposal: proposing
       ? await proposalFor(
           trip,
