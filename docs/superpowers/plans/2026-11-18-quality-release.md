@@ -17,7 +17,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | Piece                                             | Feature branch              | Requirements                    | Pull request |
 | ------------------------------------------------- | --------------------------- | ------------------------------- | ------------ |
 | 0. Plan                                           | `feature/m8-plan`           | none (process)                  | #55          |
-| 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`      | none (removal)                  |              |
+| 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`      | none (removal)                  | #56          |
 | 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner` | none (removal)                  |              |
 | 3. Drop its tables                                | waits for the developer     | none (removal)                  |              |
 | 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-MEM-03, TB-ITN-16            |              |
@@ -81,7 +81,13 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 1: Cut the two links to the earlier planner
 
-**Produces:** `resolvePlaceProviderMode` inside `src/features/places`, with its tests; `planning/mutation.ts` without `loadLatestSnapshot` and `planning/types.ts` without the snapshot types; `mutation.test.ts` updated. No behaviour changes. After it, nothing reachable from the new screens imports the earlier planner.
+**Produced (pull request 56):**
+
+- `usesSamplePlaces()` in `src/features/places/provider-mode.ts`, with its test. `city-lookup.ts` and `place-source.ts` use it in place of `resolvePlaceProviderMode` from the older place adapter.
+- `planning/mutation.ts` no longer loads the earlier planner's workspace when a request names an older revision. It raises the stale-revision error, which `runTripAction` already answers as "stale". The new screens see no change: a stale save still answers 409.
+- After it, nothing the new screens run loads the earlier planner.
+
+**Left for piece 2:** the snapshot types in `planning/types.ts`, and the stale result type of the ledger. The earlier planner's own files still import them, so they go with those files.
 
 ### Piece 2: Remove its code, routes, worker and QA entries
 
