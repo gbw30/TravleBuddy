@@ -23,7 +23,7 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 | 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                | #50          |
 | 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            | #51          |
 | 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                | #52          |
-| 7. Evidence                                   | `feature/m7-evidence`     | all of the above, re-checked |              |
+| 7. Evidence                                   | `feature/m7-evidence`     | all of the above, re-checked | #53          |
 
 ## Global Constraints
 
@@ -161,7 +161,17 @@ Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 7: Evidence
 
-- [ ] `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` pass.
-- [ ] Browser walk of the brief and a build, including closing the page mid-build and returning; wide and phone widths; no serious accessibility findings.
-- [ ] Each requirement checked and recorded in the roadmap's Milestone 7 entry, with what is only partly met.
-- [ ] `docs/status/current-implementation.md` and `docs/api/v1.md` updated.
+**Produced (pull request 53):**
+
+- [x] `npm run lint`, `npm run typecheck`, `npm run test` (1071 tests) and `npm run build` pass.
+- [x] Three browser walks repeated on the final code, in Chromium at 1440 px and 390 px, against the development database with sample places and the model off: the brief from the Create page through its five steps and back; "Build my trip", progress, the report, "Let me choose", a "Change" link, and a build left part-way that the trip page finished; "Talk it through instead" and "Build the rest for me". No serious accessibility findings, no sideways overflow on the phone size, no failed requests.
+- [x] Each requirement checked and recorded in the [roadmap](../../roadmap.md)'s Milestone 7 entry, with what is only partly met.
+- [x] `docs/status/current-implementation.md` updated; `docs/api/v1.md` and `docs/architecture/service-borders.md` were updated with each piece.
+
+## Waiting for the developer
+
+- Review and merge the milestone into `main`.
+- Apply the two migrations to the QA and production databases through the protected workflows. Each adds one column.
+- Judge the four decisions listed in the roadmap entry: what a build teaches the profile, the lower rank of a repeated name, what counts as a close choice, and changing an assumption through a link.
+- Decide whether the AI model should read the brief's "anything else" box. It needs a reply shape that holds several answers.
+- One build against the real OpenStreetMap services.
