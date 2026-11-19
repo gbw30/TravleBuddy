@@ -172,6 +172,17 @@ export function PlanItinerary({
                   </li>
                 );
               }
+              if (entry.type === "breakfast-at-stay") {
+                return (
+                  <li key={`b-${index}`} className="mt-2.5 first:mt-0">
+                    <ItineraryRow
+                      time={entry.start}
+                      title="Breakfast where you stay"
+                      variant="wander"
+                    />
+                  </li>
+                );
+              }
               if (entry.type === "wander") {
                 return (
                   <li key={`w-${index}`} className="mt-2.5 first:mt-0">

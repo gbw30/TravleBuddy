@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { PlaceDto } from "@/features/places/contracts";
 import type { CommitmentDto } from "@/features/trips/contracts";
 
-import { emptyPlanState, type PlanEntry, type PlanState } from "./contracts";
+import {
+  emptyPlanState,
+  type Pace,
+  type PlanEntry,
+  type PlanState,
+} from "./contracts";
 import {
   buildPlanView,
   kindSuitsSlot,
@@ -795,5 +800,139 @@ describe("the time lunch takes", () => {
     expect(wanderWith("17:00")).toEqual(["13:45 120"]);
     // A quarter of an hour is not time to wander.
     expect(wanderWith("14:00")).toEqual([]);
+  });
+});
+
+describe("breakfast", () => {
+  const first = (entries: PlanEntry[]) =>
+    entries.filter((entry) => entry.type !== "commitment");
+  const withBreakfast = (
+    breakfast: PlanContext["breakfast"],
+    over: Partial<PlanContext> = {},
+    pace: Pace = "balanced",
+  ) => buildPlanView(state({ pace }), context({ breakfast, ...over }));
+
+  it("lays a 45-minute slot at the start of the day when asked to suggest, and the first stop moves later", () => {
+    const view = withBreakfast("suggest", {}, "packed");
+    const [breakfast, morning] = first(view.days[1].entries);
+    expect(breakfast).toMatchObject({
+      type: "open",
+      kind: "breakfast",
+      start: "09:00",
+    });
+    expect(morning).toMatchObject({
+      type: "open",
+      kind: "morning",
+      start: "09:45",
+    });
+    expect(slotId(2, "breakfast")).toBe("d2-breakfast");
+    // Every day has one.
+    expect(
+      view.days.every((day) => kinds(day.entries).includes("breakfast")),
+    ).toBe(true);
+  });
+
+  it("starts the place picked for breakfast after the day starts and travels on from it", () => {
+    const cafe = place("c", {
+      kind: "cafe",
+      latitude: 35.68,
+      longitude: 139.76,
+    });
+    const view = buildPlanView(
+      state({ picks: { "d1-breakfast": { placeId: "c", minutes: null } } }),
+      context({ breakfast: "suggest", places: { c: cafe } }),
+    );
+    expect(view.days[0].entries[0]).toMatchObject({
+      type: "place",
+      kind: "breakfast",
+      start: "09:00",
+      minutes: 45,
+    });
+  });
+
+  it("has no slot when the day starts after ten, as on a landing at eleven", () => {
+    const landing = commitment({
+      id: "t",
+      kind: "TRANSPORT",
+      title: "Flight",
+      date: "2027-05-10",
+      startTime: "08:00",
+      endTime: "11:00",
+    });
+    const view = withBreakfast("suggest", { commitments: [landing] });
+    expect(kinds(view.days[0].entries)).not.toContain("breakfast");
+    expect(kinds(view.days[1].entries)).toContain("breakfast");
+  });
+
+  it("starts at ten for late nights, and is gone when the day starts later still", () => {
+    const view = withBreakfast("suggest", { dayShift: 60 });
+    expect(view.days[0].entries[0]).toMatchObject({
+      kind: "breakfast",
+      start: "10:00",
+    });
+    expect(
+      kinds(withBreakfast("suggest", { dayShift: 61 }).days[0].entries),
+    ).not.toContain("breakfast");
+  });
+
+  it("gives a quiet row and no slot when it comes with the stay, but not on the first day", () => {
+    const view = withBreakfast("included");
+    expect(kinds(view.days[0].entries)).not.toContain("breakfast-at-stay");
+    expect(view.days[1].entries[0]).toEqual({
+      type: "breakfast-at-stay",
+      start: "09:00",
+      minutes: 45,
+    });
+    for (const day of view.days) {
+      expect(kinds(day.entries)).not.toContain("breakfast");
+    }
+  });
+
+  it("gives neither when there is none or it is not said", () => {
+    for (const breakfast of ["none", undefined] as const) {
+      const view = withBreakfast(breakfast);
+      for (const day of view.days) {
+        expect(kinds(day.entries)).not.toContain("breakfast");
+        expect(kinds(day.entries)).not.toContain("breakfast-at-stay");
+      }
+    }
+  });
+
+  it("leaves a morning booking where it is and never gives breakfast to a must-see", () => {
+    const booked = commitment({
+      id: "b",
+      title: "Tour",
+      date: "2027-05-11",
+      startTime: "09:00",
+      endTime: "10:00",
+    });
+    const view = withBreakfast("suggest", { commitments: [booked] });
+    expect(
+      view.days[1].entries.find((entry) => entry.type === "commitment"),
+    ).toMatchObject({ start: "09:00" });
+    const seen = commitment({
+      id: "m",
+      kind: "MUST_SEE",
+      title: "Castle",
+      date: "2027-05-11",
+    });
+    const day = withBreakfast("suggest", { commitments: [seen] }).days[1];
+    expect(
+      day.entries.find(
+        (entry) => entry.type === "commitment" && entry.slotId !== null,
+      ),
+    ).toMatchObject({ slotId: "d2-morning" });
+  });
+
+  it("suits a breakfast slot with a cafe or a bakery only", () => {
+    expect(kindSuitsSlot("cafe", "breakfast")).toBe(true);
+    expect(kindSuitsSlot("bakery", "breakfast")).toBe(true);
+    expect(kindSuitsSlot("restaurant", "breakfast")).toBe(false);
+    expect(kindSuitsSlot("museum", "breakfast")).toBe(false);
+    expect(kindSuitsSlot("bakery", "lunch")).toBe(false);
+    expect(kindSuitsSlot("bakery", "dinner")).toBe(false);
+    expect(kindSuitsSlot("bakery", "morning")).toBe(false);
+    expect(kindSuitsSlot("cafe", "lunch")).toBe(true);
+    expect(kindSuitsSlot("restaurant", "lunch")).toBe(true);
   });
 });

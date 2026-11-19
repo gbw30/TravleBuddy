@@ -107,7 +107,8 @@ export type ProposeInput = {
 
 const meansWord = { walk: "walk", transit: "ride", drive: "drive" } as const;
 
-const isMeal = (kind: SlotKind) => kind === "lunch" || kind === "dinner";
+const isMeal = (kind: SlotKind) =>
+  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 
 type Ranked = {
   place: PlaceDto;
