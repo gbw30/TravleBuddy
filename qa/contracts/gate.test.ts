@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  FeatureDefinition,
-  QaRunEvidence,
-  Scenario,
-} from "./schemas";
+import type { FeatureDefinition, QaRunEvidence, Scenario } from "./schemas";
 import { buildQaRunReport, evaluateGate } from "./gate";
 
 const requiredFeature: FeatureDefinition = {
@@ -29,9 +25,7 @@ const requiredScenario: Scenario = {
   expectedInvariants: ["The scenario passes."],
 };
 
-function evidence(
-  overrides: Partial<QaRunEvidence> = {},
-): QaRunEvidence {
+function evidence(overrides: Partial<QaRunEvidence> = {}): QaRunEvidence {
   return {
     reportVersion: 1,
     runId: "qa-contract-test",
@@ -148,7 +142,7 @@ describe("QA gate decisions", () => {
   it("keeps a failing planned feature nonblocking", () => {
     const plannedFeature: FeatureDefinition = {
       ...requiredFeature,
-      id: "conversation-persistence",
+      id: "conversation",
       label: "Conversation persistence",
       state: "planned",
       documentedStage: "Stage 1A",
@@ -156,7 +150,7 @@ describe("QA gate decisions", () => {
     const plannedScenario: Scenario = {
       ...requiredScenario,
       id: "TEST-P0-PLANNED",
-      feature: "conversation-persistence",
+      feature: "conversation",
       documentedStage: "Stage 1A",
     };
     const input = evidence({
@@ -188,7 +182,7 @@ describe("QA gate decisions", () => {
   it("makes the same scenario blocking once its feature is a candidate", () => {
     const candidateFeature: FeatureDefinition = {
       ...requiredFeature,
-      id: "conversation-persistence",
+      id: "conversation",
       label: "Conversation persistence",
       state: "candidate",
       documentedStage: "Stage 1A",
@@ -196,7 +190,7 @@ describe("QA gate decisions", () => {
     const candidateScenario: Scenario = {
       ...requiredScenario,
       id: "TEST-P0-CANDIDATE",
-      feature: "conversation-persistence",
+      feature: "conversation",
       documentedStage: "Stage 1A",
     };
     const input = evidence({
@@ -317,4 +311,3 @@ describe("QA gate decisions", () => {
     expect(report.reportVersion).toBe(1);
   });
 });
-

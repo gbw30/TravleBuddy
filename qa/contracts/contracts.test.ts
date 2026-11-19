@@ -20,11 +20,30 @@ describe("QA contracts", () => {
     expect(featureRegistry).toHaveLength(12);
     expect(featureRegistryById.size).toBe(featureRegistry.length);
     expect(featureRegistryById.get("authentication")?.state).toBe("required");
-    expect(featureRegistryById.get("conversation-persistence")?.state).toBe(
-      "planned",
+    // Built and waiting for its first gate.
+    expect(featureRegistryById.get("quick-plan")?.state).toBe("candidate");
+    // Never run with a real key, so it must not block a gate.
+    expect(featureRegistryById.get("ai-model")?.state).toBe("planned");
+  });
+
+  it("gives every feature a scenario, and every blocking feature a P0 one", () => {
+    for (const feature of featureRegistry) {
+      const own = scenarioCatalog.filter((item) => item.feature === feature.id);
+      expect(own.length, feature.id).toBeGreaterThan(0);
+      if (isBlockingFeatureState(feature.state)) {
+        expect(
+          own.some((item) => item.priority === "P0"),
+          feature.id,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("names no part of the earlier planner", () => {
+    const text = JSON.stringify([featureRegistry, scenarioCatalog]);
+    expect(text).not.toMatch(
+      /google places|redis|\bpdf\b|thirty-minute|\bexport|snapshot/i,
     );
-    expect(featureRegistryById.get("google-places")?.state).toBe("candidate");
-    expect(featureRegistryById.get("maps")?.state).toBe("deferred");
   });
 
   it("treats only required and candidate features as blocking", () => {

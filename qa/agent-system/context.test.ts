@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { buildAgentContext, serializeBoundedContext } from "./context";
+import { qaContextMaxBytes } from "./registry";
 
 const run = {
   runId: "context-contract-test",
@@ -59,5 +60,38 @@ describe("QA agent context", () => {
       agent: "qa_baseline",
     });
     expect(() => serializeBoundedContext(context, 16)).toThrow(/maximum/);
+  });
+});
+
+describe("the committed catalogue", () => {
+  test("fits every agent's context for a release run, on each kind of target", () => {
+    const team = [
+      "qa_baseline",
+      "qa_journeys",
+      "qa_constraints",
+      "qa_security_concurrency",
+      "qa_resilience_production",
+      "qa_auditor",
+    ] as const;
+    for (const targetKind of ["local", "preview"] as const) {
+      for (const agent of team) {
+        const context = buildAgentContext({
+          run: {
+            ...run,
+            runType: "release",
+            targetKind,
+            parentSandbox: "workspace-write",
+          },
+          selectedAgents: [...team],
+          selectionReasons: ["Release run."],
+          agent,
+        });
+        // Throws rather than cuts when a bundle is larger than an agent may be given.
+        const { bytes } = serializeBoundedContext(context);
+        expect(bytes, `${agent} on ${targetKind}`).toBeLessThanOrEqual(
+          qaContextMaxBytes,
+        );
+      }
+    }
   });
 });
