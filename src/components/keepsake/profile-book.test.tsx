@@ -23,15 +23,23 @@ const info = (
 const topics = [
   info("pace", "Pace", [
     ["relaxed", "Relaxed"],
+    ["balanced", "Balanced"],
     ["packed", "Packed"],
   ]),
   info("day_shape", "Shape of the day", [
     ["early", "Early starts"],
     ["late", "Late nights"],
+    ["neither", "Neither"],
   ]),
-  info("interests", "Interests", [["museums", "Museums and exhibitions"]], {
-    several: true,
-  }),
+  info(
+    "interests",
+    "Interests",
+    [
+      ["museums", "Museums and exhibitions"],
+      ["views", "Views"],
+    ],
+    { several: true },
+  ),
   info("dietary_rules", "Dietary rules", [["vegetarian", "Vegetarian"]], {
     kind: "hard_limit",
     several: true,
@@ -136,7 +144,11 @@ describe("ProfileBook", () => {
       html.indexOf('id="tastes-heading"'),
     );
     expect(html).toContain("2 rules · apply to every trip");
-    expect(html).toContain("2 tastes");
+    // Pace is a habit with its own slider; one taste is left in the list.
+    expect(html).toContain("1 taste");
+    expect(html.indexOf('id="habits-heading"')).toBeLessThan(
+      html.indexOf('id="tastes-heading"'),
+    );
     for (const text of [
       "Relaxed",
       "Museums and exhibitions",
@@ -150,7 +162,6 @@ describe("ProfileBook", () => {
     expect(html).toContain("usually");
     expect(html).toContain("always");
     for (const label of [
-      "Relaxed",
       "Museums and exhibitions",
       "Vegetarian",
       "shellfish",
@@ -158,6 +169,9 @@ describe("ProfileBook", () => {
       expect(html, label).toContain(`aria-label="Change ${label}"`);
       expect(html, label).toContain(`aria-label="Remove ${label}"`);
     }
+    // A habit is changed with its slider and removed by its topic's name.
+    expect(html).toContain('aria-label="Remove Pace"');
+    expect(html).not.toContain('aria-label="Change Relaxed"');
     // The trip it learned from is stamped on the passport, once.
     expect(html).toContain("Learned from 1 trip");
     expect(count(html, 'aria-label="Lisbon in spring"')).toBe(1);
@@ -176,12 +190,78 @@ describe("ProfileBook", () => {
 
   it("asks the traveller to confirm a guess, with a way to correct or remove it", () => {
     const html = render(
-      view({ entries: [learned("e2", "pace", "relaxed", "Relaxed")] }),
+      view({
+        entries: [learned("e2", "interests", "views", "Views")],
+      }),
     );
     expect(html).toContain("Still a guess. Is this right?");
-    expect(html).toContain('aria-label="Yes, Relaxed is right"');
-    expect(html).toContain('aria-label="Relaxed is not quite right"');
-    expect(html).toContain('aria-label="Remove Relaxed"');
+    expect(html).toContain('aria-label="Yes, Views is right"');
+    expect(html).toContain('aria-label="Views is not quite right"');
+    expect(html).toContain('aria-label="Remove Views"');
+  });
+
+  describe("habits", () => {
+    const slider = (html: string, name: string) =>
+      html.match(
+        new RegExp(`<input type="range"[^>]*aria-label="${name}"[^>]*>`),
+      )?.[0] ?? "";
+
+    it("shows pace and the shape of the day as sliders, even before anything is known", () => {
+      const html = render(view());
+      expect(html).toContain("How you like your <em>days</em>");
+      expect(html).toContain("2 habits · drag to correct");
+      // Where the site stands when nothing is said, and that it is not a memory.
+      expect(slider(html, "Pace")).toContain('aria-valuetext="Balanced"');
+      expect(slider(html, "Shape of the day")).toContain(
+        'aria-valuetext="Neither"',
+      );
+      expect(count(html, "Not set yet. Move the slider to tell me.")).toBe(2);
+      expect(html).toContain("A balanced pace");
+      expect(html).toContain(
+        "Up to three main sights a day, with an hour to wander.",
+      );
+    });
+
+    it("stands at what is remembered, and says what that does to a plan", () => {
+      const html = render(
+        view({
+          entries: [
+            told("e1", "pace", "packed", "Packed"),
+            told("e2", "day_shape", "early", "Early starts"),
+          ],
+        }),
+      );
+      expect(slider(html, "Pace")).toContain('value="2"');
+      expect(slider(html, "Pace")).toContain('aria-valuetext="Packed"');
+      expect(html).toContain("Full days");
+      expect(html).toContain("Up to four main sights a day.");
+      expect(slider(html, "Shape of the day")).toContain('value="0"');
+      expect(html).toContain(
+        "The whole day runs an hour earlier, dinner included.",
+      );
+      expect(html).not.toContain("Not set yet");
+      expect(html).toContain('aria-label="Remove Shape of the day"');
+    });
+
+    it("asks about a habit it only guessed, naming the trip it comes from", () => {
+      const html = render(
+        view({ entries: [learned("e2", "pace", "relaxed", "Relaxed")] }),
+      );
+      expect(html).toContain(
+        "Still a guess, from your trip “Lisbon in spring”. Is this right?",
+      );
+      expect(html).toContain('aria-label="Yes, Relaxed is right"');
+      expect(html).toContain('aria-label="Remove Pace"');
+    });
+
+    it("orders the stops of the day from early to late", () => {
+      const html = render(view());
+      // The row of stop names under the slider.
+      const from = html.indexOf('aria-label="Shape of the day"');
+      const row = html.slice(html.indexOf('aria-hidden="true"', from));
+      expect(row.indexOf("Early starts")).toBeLessThan(row.indexOf("Neither"));
+      expect(row.indexOf("Neither")).toBeLessThan(row.indexOf("Late nights"));
+    });
   });
 
   it("shows notes as kept but not yet affecting suggestions", () => {
@@ -194,11 +274,16 @@ describe("ProfileBook", () => {
 
   it("offers the values it understands to pick from, marking those already held", () => {
     const html = render(
-      view({ entries: [told("e1", "pace", "relaxed", "Relaxed")] }),
+      view({ entries: [told("e1", "interests", "views", "Views")] }),
     );
     expect(html).toContain("Or pick from what I understand");
-    expect(html).toMatch(/aria-pressed="true"[^>]*>Relaxed<\/button>/);
-    expect(html).toMatch(/aria-pressed="false"[^>]*>Packed<\/button>/);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Views<\/button>/);
+    expect(html).toMatch(
+      /aria-pressed="false"[^>]*>Museums and exhibitions<\/button>/,
+    );
+    // What a slider holds is not offered again as a list.
+    expect(html).not.toMatch(/<legend[^>]*>Pace<\/legend>/);
+    expect(html).not.toMatch(/<legend[^>]*>Shape of the day<\/legend>/);
     // A topic with no listed values, such as allergies, is told in words instead.
     expect(html).not.toMatch(/<legend[^>]*>Allergies<\/legend>/);
   });
