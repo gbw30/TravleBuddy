@@ -2,10 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   class UnauthorizedError extends Error {}
-  class CitiesInUseError extends Error {}
   return {
     UnauthorizedError,
-    CitiesInUseError,
     user: vi.fn(),
     runTripAction: vi.fn(),
     startTrip: vi.fn(),
@@ -39,7 +37,6 @@ vi.mock("@/use-cases/trip-action", () => ({
 }));
 vi.mock("@/use-cases/start-trip", () => ({ startTrip: mocks.startTrip }));
 vi.mock("@/features/trips", () => ({
-  CitiesInUseError: mocks.CitiesInUseError,
   removeTrip: mocks.removeTrip,
   renameTrip: vi.fn(),
   saveTripFacts: vi.fn(),
@@ -280,16 +277,6 @@ describe("PATCH /api/v1/trips/{tripId}", () => {
       trip,
     );
     expect(answer.status).toBe(200);
-  });
-
-  it("answers 409 when the cities are still used by the earlier planner", async () => {
-    mocks.runTripAction.mockRejectedValue(new mocks.CitiesInUseError());
-    const answer = await patchTrip(
-      request("PATCH", { action: "facts", facts: { cities: [] }, ...control }),
-      trip,
-    );
-    expect(answer.status).toBe(409);
-    expect(await answer.json()).toEqual({ error: "cities_in_use" });
   });
 
   it("answers 500 without details for an unexpected failure", async () => {

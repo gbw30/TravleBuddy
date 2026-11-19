@@ -10,7 +10,6 @@ export { factsFromTickets } from "./tickets";
 export { findEditable, type Refused } from "./trip-access";
 export { todayIn } from "./trip-state";
 export {
-  CitiesInUseError,
   createTrip,
   getTrip,
   listFinishedTrips,

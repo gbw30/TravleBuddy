@@ -1,6 +1,5 @@
 import type { ZodType } from "zod";
 
-import { CitiesInUseError } from "@/features/trips";
 import {
   assertAuthenticatedApiUser,
   UnauthorizedError,
@@ -43,9 +42,6 @@ export function withUser<Context>(
     } catch (error) {
       if (error instanceof UnauthorizedError) {
         return json({ error: "unauthorized" }, 401);
-      }
-      if (error instanceof CitiesInUseError) {
-        return json({ error: "cities_in_use" }, 409);
       }
       console.error(error);
       return json({ error: "server_error" }, 500);

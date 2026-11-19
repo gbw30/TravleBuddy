@@ -14,22 +14,22 @@
 
 Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan`. Each piece is a feature branch merged by pull request with a merge commit.
 
-| Piece                                             | Feature branch              | Requirements                    | Pull request |
-| ------------------------------------------------- | --------------------------- | ------------------------------- | ------------ |
-| 0. Plan                                           | `feature/m8-plan`           | none (process)                  | #55          |
-| 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`      | none (removal)                  | #56          |
-| 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner` | none (removal)                  | #57          |
-| 3. Drop its tables                                | waits for the developer     | none (removal)                  |              |
-| 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-ITN-08, TB-MEM-03            | #58          |
-| 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
-| 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            | #60          |
-| 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            | #61          |
-| 8. Defects found on the way                       | `feature/m8-defects`        | TB-MEM-02, TB-DSN-07            | #62          |
-| 9. The four sample travellers                     | `feature/m8-samples`        | TB-SYS-15                       | #63          |
-| 10. Design checks on the real screens             | `feature/m8-design-checks`  | TB-DSN-01 to 07                 |              |
-| 11. Time zones                                    | `feature/m8-time-zones`     | TB-ITN-16                       |              |
-| 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`   | none (process)                  |              |
-| 13. Evidence                                      | `feature/m8-evidence`       | all of the above, re-checked    |              |
+| Piece                                             | Feature branch               | Requirements                    | Pull request |
+| ------------------------------------------------- | ---------------------------- | ------------------------------- | ------------ |
+| 0. Plan                                           | `feature/m8-plan`            | none (process)                  | #55          |
+| 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`       | none (removal)                  | #56          |
+| 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner`  | none (removal)                  | #57          |
+| 3. Drop its tables                                | `feature/m8-drop-old-tables` | none (removal)                  | #64          |
+| 4. The day starts when the traveller likes        | `feature/m8-day-start`       | TB-ITN-08, TB-MEM-03            | #58          |
+| 5. Profile: habits as slider cards                | `feature/m8-profile-habits`  | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
+| 6. Profile: daily budget with currency            | `feature/m8-profile-budget`  | TB-MEM-03, TB-QPL-03            | #60          |
+| 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped`  | TB-MEM-06, TB-MEM-11            | #61          |
+| 8. Defects found on the way                       | `feature/m8-defects`         | TB-MEM-02, TB-DSN-07            | #62          |
+| 9. The four sample travellers                     | `feature/m8-samples`         | TB-SYS-15                       | #63          |
+| 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 |              |
+| 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       |              |
+| 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  |              |
+| 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    |              |
 
 ## Global Constraints
 
@@ -110,9 +110,18 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 - Four dependencies nothing imports any more, not part of the earlier planner: `@next/env`, `clsx`, `lucide-react`, `tailwind-merge`.
 - The tables, their models, `qa/runtime/fixtures.ts`, `CitiesInUseError`, and the two schema tests of the earlier planner: piece 3.
 
-### Piece 3: Drop its tables (waits for the developer)
+### Piece 3: Drop its tables
 
-**Would produce:** one migration that drops the two `trips` columns that point at the old tables, the 15 tables and their 24 enums; `service-map.json` tables and foreign keys, the ownership test, `qa/runtime/fixtures.ts`, `CitiesInUseError` and its error message updated in the same change. It destroys the rows counted above on every database it is applied to.
+**Approved by the developer on 2026-11-19:** "Drop old tables, we have no real data or users."
+
+**Produced (pull request 64):**
+
+- The migration `20261119150000_drop_earlier_planner` drops the 15 tables, their 24 enums and the two columns of `trips` that pointed at them (`active_itinerary_version_id`, `active_preference_profile_version_id`). It creates nothing.
+- Applied to the development database, which held only test rows of the earlier planner. Not applied to QA or production.
+- **QA and production get it with the code of this milestone, not before.** The site on `main` still carries the earlier planner's routes, which read these tables. The migration goes there after Milestone 8 is merged and deployed, with the developer.
+- `CitiesInUseError`, its 409 answer `cities_in_use` and its message are gone: nothing can point at a city row any more.
+- `service-map.json` loses the 15 tables, 31 foreign keys across borders and the empty Jobs service. `qa/runtime/fixtures.ts` no longer writes rows of the dropped tables. The two tests of the earlier planner's migration are removed.
+- Checked on the development database: both existing trips of the development user still open (page, plan, brief, conversation); a trip taken from three cities to one saves; the four sample travellers still plan end to end.
 
 ### Piece 4: The day starts when the traveller likes
 
