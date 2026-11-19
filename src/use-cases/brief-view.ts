@@ -1,7 +1,7 @@
 // The trip brief of Quick plan (PRD 11) as the screen sees it, and the
 // checks on its first step. Safe to import in the browser: this file imports
 // only contracts.
-import type { TasteTopic } from "@/features/memory/contracts";
+import type { DailyBudget, TasteTopic } from "@/features/memory/contracts";
 import type {
   Clash,
   CommitmentDto,
@@ -87,6 +87,11 @@ export type BriefView = {
   style: BriefAnswer[];
   /** Allergies from the personal profile: hard limits, changed on the profile page. */
   allergies: string[];
+  /**
+   * The usual daily budget from the personal profile, when this trip has no
+   * budget of its own. The brief fills it in, labelled with its source.
+   */
+  rememberedBudget: (DailyBudget & { source: string }) | null;
   /** The "anything else" box; null when it is empty. */
   said: BriefSaid | null;
   /** The whole brief in plain sentences, one part per step (TB-QPL-07). */

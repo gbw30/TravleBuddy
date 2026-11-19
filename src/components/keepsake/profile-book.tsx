@@ -3,12 +3,14 @@
 import { useRef, useState, type CSSProperties, type FormEvent } from "react";
 
 import {
+  dailyBudgetOf,
   fileUnder,
   sourceWords,
   SURENESS_WORDS,
   TOPIC_NAMES,
   type ProfileTopic,
 } from "@/features/memory/contracts";
+import type { Rates } from "@/lib/currency";
 import { callApi } from "@/lib/trip-api";
 import type {
   FiledAs,
@@ -17,6 +19,7 @@ import type {
 } from "@/use-cases/profile-view";
 
 import { Stamp } from "./day-stamp";
+import { BudgetCard } from "./profile-budget";
 import {
   card,
   guessCard,
@@ -144,10 +147,13 @@ function Sure({ entry }: { entry: ShownEntry }) {
 export function ProfileBook({
   initial,
   name,
+  rates = null,
 }: {
   initial: ProfileView;
   /** The traveller's name, for the passport's initial. */
   name: string | null;
+  /** The day's exchange rates for the daily budget; null when they cannot be had. */
+  rates?: Rates | null;
 }) {
   const [profile, setProfile] = useState(initial);
   const [editing, setEditing] = useState<string | null>(null);
@@ -162,9 +168,17 @@ export function ProfileBook({
   const kind = (entry: ShownEntry) =>
     topics.find((info) => info.topic === entry.topic)?.kind ?? "taste";
   const rules = entries.filter((entry) => kind(entry) === "hard_limit");
+  // A daily budget that reads as an amount has its own card. Older free
+  // words under "budget" stay in the list below.
+  const budget = entries.find(
+    (entry) => entry.topic === "budget" && dailyBudgetOf(entry.value),
+  );
   // A habit has its own card with a slider; the rest of the tastes are listed.
   const tastes = entries.filter(
-    (entry) => kind(entry) === "taste" && !HABIT_TOPICS.includes(entry.topic),
+    (entry) =>
+      kind(entry) === "taste" &&
+      !HABIT_TOPICS.includes(entry.topic) &&
+      entry !== budget,
   );
   // Where a slider stands while it is moved, before it is saved.
   const [moved, setMoved] = useState<Partial<Record<ProfileTopic, string>>>({});
@@ -183,7 +197,7 @@ export function ProfileBook({
   /** Sends one change and shows the profile it answers. */
   async function send<T extends { profile: ProfileView }>(
     path: string,
-    init: { method: "POST" | "PATCH" | "DELETE"; body?: object },
+    init: { method: "POST" | "PUT" | "PATCH" | "DELETE"; body?: object },
   ): Promise<T | null> {
     setBusy(true);
     setProblem(null);
@@ -459,12 +473,12 @@ export function ProfileBook({
       >
         <SectionHead
           id="habits-heading"
-          label={`${HABITS.length} habits · drag to correct`}
+          label={`${HABITS.length + 1} habits · drag to correct`}
           note="Habits, not rules. I lean this way unless a trip calls for something else."
         >
           How you like your <em>days</em>
         </SectionHead>
-        <ul className="grid gap-[18px] md:grid-cols-2">
+        <ul className="grid gap-[18px] md:grid-cols-2 xl:grid-cols-3">
           {HABITS.map((habit) => {
             const info = topics.find((item) => item.topic === habit.topic);
             const entry = entries.find((item) => item.topic === habit.topic);
@@ -580,6 +594,16 @@ export function ProfileBook({
               </li>
             );
           })}
+          <BudgetCard
+            key={budget?.value ?? "unset"}
+            entry={budget}
+            rates={rates}
+            busy={busy}
+            onSave={(next) =>
+              void send("/budget", { method: "PUT", body: next })
+            }
+            onRemove={(entry) => void remove(entry)}
+          />
         </ul>
       </section>
 

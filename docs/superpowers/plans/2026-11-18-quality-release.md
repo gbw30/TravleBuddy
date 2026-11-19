@@ -22,7 +22,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 3. Drop its tables                                | waits for the developer     | none (removal)                  |              |
 | 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-ITN-08, TB-MEM-03            | #58          |
 | 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
-| 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            |              |
+| 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            | #60          |
 | 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            |              |
 | 8. Defects found on the way                       | `feature/m8-defects`        | TB-DSN-05, TB-DSN-07            |              |
 | 9. The four sample travellers                     | `feature/m8-samples`        | TB-SYS-15                       |              |
@@ -143,7 +143,16 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 6: Profile: daily budget with currency
 
-**Produces:** the third slider card: three levels kept in yen, shown in a chosen currency at the day's rate from `src/lib/currency.ts`, with the prototype's note when rates are unavailable; the brief's budget filled in from it as a daily amount, labelled with its source.
+**Produced (pull request 60):**
+
+- The third slider card of "How you like your days": three levels kept in yen (8,000, 15,000 and 25,000), shown in one of eight currencies at the European Central Bank's rate of the day, from `src/lib/currency.ts`. The card says what the setting does and what it does not: it fills in a new trip's budget, and suggestions do not go by it.
+- A budget is saved as an amount and a currency ("160 USD") in the profile's `budget` entry, through `PUT /api/v1/profile/budget`. Changing the currency keeps the level and saves it in the new currency. Without rates the card stays in yen, and a budget saved in another currency is shown as it is with its slider off.
+- **The brief** fills in the budget of a trip that has none: step 3 shows the amount, the currency and "a day", labelled "What I remember", and saves it for the trip when the traveller leaves the step. The review says "A budget of about 160 USD a day (you told me)". The profile is not changed by anything done in the brief.
+- Older free words under `budget` are not read as a budget; they stay in the list of tastes.
+
+**Seen in the walk:** unset, the card stood at ¥15,000; in euros it read €86; one step right saved 140 EUR; switched to dollars it read $160 and saved 160 USD; a new trip's brief had 160 USD a day filled in at step 3 and saved it for the trip.
+
+**Found and fixed:** on a change of currency the slider jumped to the middle level until the save came back, because the saved level was looked up in the new currency. It is now worked out in the currency the budget was saved in.
 
 ### Piece 7: Profile: how it shaped the latest trip
 

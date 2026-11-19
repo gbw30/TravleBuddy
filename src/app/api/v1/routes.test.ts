@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
     saveBrief: vi.fn(),
     loadProfile: vi.fn(),
     tellProfile: vi.fn(),
+    setDailyBudget: vi.fn(),
     changeEntry: vi.fn(),
     removeEntry: vi.fn(),
     removeNote: vi.fn(),
@@ -72,6 +73,7 @@ vi.mock("@/use-cases/learning", () => ({ learnQuietly: mocks.learnQuietly }));
 vi.mock("@/use-cases/profile", () => ({
   loadProfile: mocks.loadProfile,
   tellProfile: mocks.tellProfile,
+  setDailyBudget: mocks.setDailyBudget,
   changeEntry: mocks.changeEntry,
   removeEntry: mocks.removeEntry,
   removeNote: mocks.removeNote,
@@ -83,6 +85,7 @@ import {
   DELETE as deleteProfileEntry,
   PATCH as changeProfileEntry,
 } from "./profile/entries/[entryId]/route";
+import { PUT as setBudget } from "./profile/budget/route";
 import { POST as tellProfile } from "./profile/entries/route";
 import { DELETE as deleteProfileNote } from "./profile/notes/[noteId]/route";
 import { DELETE as forgetProfile, GET as getProfile } from "./profile/route";
@@ -842,6 +845,45 @@ describe("the profile", () => {
 
   beforeEach(() => {
     mocks.loadProfile.mockResolvedValue(profile);
+  });
+
+  it("sets the daily budget and answers the entry with the profile", async () => {
+    const saved = { id: "b1", topic: "budget", value: "90 EUR" };
+    mocks.setDailyBudget.mockResolvedValue(saved);
+    const answer = await setBudget(
+      request("PUT", { amount: 90, currency: "EUR" }),
+      undefined,
+    );
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ entry: saved, profile });
+    expect(mocks.setDailyBudget).toHaveBeenCalledWith("user-1", {
+      amount: 90,
+      currency: "EUR",
+    });
+  });
+
+  it("answers 422 for a budget that is no amount or a currency it does not know, and 401 signed out", async () => {
+    for (const body of [
+      { amount: 0, currency: "EUR" },
+      { amount: 90.5, currency: "EUR" },
+      { amount: 90, currency: "XYZ" },
+      { amount: "90", currency: "EUR" },
+      {},
+    ]) {
+      expect((await setBudget(request("PUT", body), undefined)).status).toBe(
+        422,
+      );
+    }
+    mocks.user.mockRejectedValue(new mocks.UnauthorizedError());
+    expect(
+      (
+        await setBudget(
+          request("PUT", { amount: 90, currency: "EUR" }),
+          undefined,
+        )
+      ).status,
+    ).toBe(401);
+    expect(mocks.setDailyBudget).not.toHaveBeenCalled();
   });
 
   it("answers the signed-in traveller's profile, and forgets it when asked", async () => {

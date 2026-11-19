@@ -209,13 +209,14 @@ describe("ProfileBook", () => {
     it("shows pace and the shape of the day as sliders, even before anything is known", () => {
       const html = render(view());
       expect(html).toContain("How you like your <em>days</em>");
-      expect(html).toContain("2 habits · drag to correct");
+      expect(html).toContain("3 habits · drag to correct");
       // Where the site stands when nothing is said, and that it is not a memory.
       expect(slider(html, "Pace")).toContain('aria-valuetext="Balanced"');
       expect(slider(html, "Shape of the day")).toContain(
         'aria-valuetext="Neither"',
       );
-      expect(count(html, "Not set yet. Move the slider to tell me.")).toBe(2);
+      // The two habits and the daily budget.
+      expect(count(html, "Not set yet. Move the slider to tell me.")).toBe(3);
       expect(html).toContain("A balanced pace");
       expect(html).toContain(
         "Up to three main sights a day, with an hour to wander.",
@@ -239,7 +240,8 @@ describe("ProfileBook", () => {
       expect(html).toContain(
         "The whole day runs an hour earlier, dinner included.",
       );
-      expect(html).not.toContain("Not set yet");
+      // Only the daily budget is still unset.
+      expect(count(html, "Not set yet")).toBe(1);
       expect(html).toContain('aria-label="Remove Shape of the day"');
     });
 
@@ -252,6 +254,18 @@ describe("ProfileBook", () => {
       );
       expect(html).toContain('aria-label="Yes, Relaxed is right"');
       expect(html).toContain('aria-label="Remove Pace"');
+    });
+
+    it("gives a daily budget its own card, and keeps older free words in the list", () => {
+      const set = render(view({ entries: [told("b1", "budget", "90 EUR")] }));
+      expect(set).toContain('data-qa="profile-budget"');
+      expect(set).toContain('aria-label="Remove Daily budget"');
+      expect(set).not.toContain('id="tastes-heading"');
+      const words = render(
+        view({ entries: [told("b1", "budget", "150 EUR a day")] }),
+      );
+      expect(words).toContain("1 taste");
+      expect(words).toContain('aria-label="Change 150 EUR a day"');
     });
 
     it("orders the stops of the day from early to late", () => {

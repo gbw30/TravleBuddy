@@ -470,3 +470,48 @@ describe("what the brief's screen works out", () => {
     }
   });
 });
+
+describe("the usual daily budget in a brief", () => {
+  const usual: ProfileEntry = {
+    topic: "budget",
+    value: "90 EUR",
+    sureness: "always",
+    source: { type: "told" },
+  };
+
+  it("stands in while the trip has no budget of its own, with its source", () => {
+    const brief = briefOf(trip(tokyoInMay), {}, [usual]);
+    expect(brief.rememberedBudget).toEqual({
+      amount: 90,
+      currency: "EUR",
+      source: "you told me",
+    });
+    expect(brief.review[2].lines[1]).toBe(
+      "A budget of about 90 EUR a day (you told me).",
+    );
+    // The trip's own facts are not changed by it.
+    expect(brief.facts.budgetAmount).toBeNull();
+  });
+
+  it("gives way to the trip's own budget, and is not read from free words", () => {
+    const own = briefOf(
+      trip({
+        ...tokyoInMay,
+        budgetAmount: 1200,
+        budgetCurrency: "USD",
+        budgetBasis: "TRIP",
+      }),
+      {},
+      [usual],
+    );
+    expect(own.rememberedBudget).toBeNull();
+    expect(own.review[2].lines[1]).toBe("A budget of 1,200 USD for the trip.");
+    const words = briefOf(trip(tokyoInMay), {}, [
+      { ...usual, value: "150 EUR a day" },
+    ]);
+    expect(words.rememberedBudget).toBeNull();
+    expect(words.review[2].lines[1]).toBe(
+      "No budget given: I will leave costs for you to judge.",
+    );
+  });
+});
