@@ -57,7 +57,7 @@ type Row = {
   ok: boolean;
   detail: string;
 };
-type Data = { guided: string; quick: string };
+type Data = { guided: string; quick: string; kyoto: string };
 type Screen = { name: string; path: string; cards?: boolean };
 
 const row = (
@@ -930,7 +930,130 @@ async function setUp(call: Call): Promise<Data> {
       children: 0,
     },
   });
-  return { guided: guided.id, quick: quick.id };
+
+  // A trip to Kyoto, which no sample traveller plans: the place the walk adds
+  // by hand is saved for that city and stays out of their plans.
+  const kyoto = await trip("QUICK", []);
+  await kyoto.change("put", "/brief", {
+    facts: {
+      cities: [{ city: await city("Kyoto"), nights: null }],
+      startDate: "2027-07-10",
+      endDate: "2027-07-12",
+      adults: 2,
+      children: 0,
+    },
+  });
+  return { guided: guided.id, quick: quick.id, kyoto: kyoto.id };
+}
+
+/** A place added by hand, opened in its closer look: the links to check it with. */
+async function checkItYourself(
+  page: Page,
+  call: Call,
+  data: Data,
+): Promise<Row[]> {
+  const problems: string[] = [];
+  const name = "Walk Test Gallery";
+  const plan: PlanSnapshot = (await call("get", `/trips/${data.kyoto}/plan`))
+    .json.plan;
+  const slot = plan.view.days
+    .flatMap((day) => day.entries)
+    .find((entry) => entry.type === "open" && entry.kind === "afternoon");
+  if (slot?.type !== "open") {
+    return [
+      row(
+        "Trip",
+        "Check it yourself",
+        "TB-TRU-02",
+        ["the plan has no open afternoon to put a place of my own in"],
+        "",
+      ),
+    ];
+  }
+  const added = await call("post", `/trips/${data.kyoto}/places`, {
+    name,
+    kind: "museum",
+    slotId: slot.slotId,
+  });
+  const placeId: string = added.json.card.placeId;
+  const revision: number = (await call("get", `/trips/${data.kyoto}/brief`))
+    .json.brief.revision;
+  await call("post", `/trips/${data.kyoto}/plan`, {
+    operationId: randomUUID(),
+    expectedRevision: revision,
+    action: { type: "pick", slotId: slot.slotId, placeId },
+  });
+
+  await open(page, `/trips/${data.kyoto}`);
+  await page.getByRole("button", { name: `Details for ${name}` }).click();
+  const dialog = page.getByRole("dialog");
+  const maps = dialog.getByRole("link", {
+    name: `${name} on Google Maps, opens in a new tab`,
+  });
+  if ((await maps.count()) !== 1) {
+    problems.push("the closer look has no Google Maps link");
+  } else {
+    const href = (await maps.getAttribute("href")) ?? "";
+    if (!href.startsWith("https://www.google.com/maps/search/?api=1&query=")) {
+      problems.push(`the Maps link goes to ${href}`);
+    }
+    if ((await maps.getAttribute("target")) !== "_blank") {
+      problems.push("the Maps link does not open in a new tab");
+    }
+    // The links sit just before Close, which has focus when the dialog opens.
+    await dialog.getByRole("button", { name: "Close" }).focus();
+    let reached = false;
+    for (let press = 0; press < 6 && !reached; press += 1) {
+      await page.keyboard.press("Shift+Tab");
+      reached = await maps.evaluate((el) => el === document.activeElement);
+    }
+    if (!reached) problems.push("Tab does not reach the Maps link");
+    else {
+      let ring = false;
+      for (let look = 0; look < 5 && !ring; look += 1) {
+        await page.waitForTimeout(200);
+        ring = (await page.evaluate(focusNow))?.ring ?? false;
+      }
+      if (!ring) problems.push("no visible focus on the Maps link");
+    }
+    const box = await maps.boundingBox();
+    if (!box || box.width < 24 || box.height < 24) {
+      problems.push(
+        `the Maps link is ${Math.round(box?.width ?? 0)} by ${Math.round(box?.height ?? 0)}`,
+      );
+    }
+  }
+  if ((await dialog.getByText("Check it yourself").count()) !== 1) {
+    problems.push("the closer look has no Check it yourself row");
+  }
+  if (
+    (await dialog
+      .getByText("Hours not known. Check before you go.")
+      .count()) !== 1
+  ) {
+    problems.push("the doubt line is not under the hours");
+  }
+  for (const size of [PHONE, NARROW]) {
+    await page.setViewportSize(size);
+    await page.waitForTimeout(250);
+    const found = await page.evaluate(scanWidth);
+    if (found.scroll > found.width + 1) {
+      problems.push(
+        `at ${size.width} px the page is ${found.scroll} px wide: ${found.wide.join(", ")}`,
+      );
+    }
+  }
+  await page.setViewportSize(DESKTOP);
+  await page.keyboard.press("Escape");
+  return [
+    row(
+      "Trip",
+      "A place of my own offers links to check it, reached by Tab, 24 px or more, no sideways scroll at 390 and 320 px",
+      "TB-TRU-02",
+      problems,
+      "the closer look shows its doubt line and the Maps link, reached by Tab with focus showing",
+    ),
+  ];
 }
 
 /** A place is dragged onto an open slot; a fixed commitment cannot be dragged. */
@@ -1011,6 +1134,7 @@ async function walk(browser: Browser, admin: Call, data: Data): Promise<Row[]> {
   }
   rows.push(...(await keyboardActions(desktop.page, admin, data)));
   rows.push(...(await dragMove(desktop.page, admin, data)));
+  rows.push(...(await checkItYourself(desktop.page, admin, data)));
 
   const phone = await (await context({ viewport: PHONE })).newPage();
   for (const screen of screens) {
@@ -1091,6 +1215,7 @@ async function main() {
         if (data) {
           await admin("delete", `/trips/${data.guided}`);
           await admin("delete", `/trips/${data.quick}`);
+          await admin("delete", `/trips/${data.kyoto}`);
         }
       }
     }

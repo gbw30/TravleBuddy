@@ -633,7 +633,26 @@ describe("a card's facts", () => {
       hours: null,
       visitMinutes: 45,
       travel: null,
+      links: {
+        website: null,
+        maps: "https://www.google.com/maps/search/?api=1&query=Nezu%20Shrine%2C35.7188%2C139.7765",
+        osm: null,
+      },
+      hoursDoubt: null,
     });
+  });
+
+  it("carry the place's links and hours doubt, and none for a sample", () => {
+    const real = toCard(
+      place("a", { hoursDoubt: "Worth a check." }),
+      "Tokyo",
+      "r",
+    );
+    expect(real.hoursDoubt).toBe("Worth a check.");
+    expect(real.links).not.toBeNull();
+    expect(
+      toCard(place("a", { origin: "SAMPLE" }), "Tokyo", "r").links,
+    ).toBeNull();
   });
 
   it("marks sample data and a traveller's own place as such", () => {

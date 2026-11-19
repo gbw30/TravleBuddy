@@ -1,6 +1,10 @@
 // What a card and a set of cards look like. Safe to import in the browser:
 // this file must not import server code.
-import type { PlaceDto, TravelMeans } from "@/features/places/contracts";
+import type {
+  PlaceDto,
+  PlaceLinks,
+  TravelMeans,
+} from "@/features/places/contracts";
 
 /** The common reasons for turning a card down (PRD 8.3). */
 export const DISCARD_REASONS = [
@@ -50,6 +54,10 @@ export type CardDto = {
    * no card ever says a place is safe for an allergy. Absent or empty: none.
    */
   unconfirmed?: string[];
+  /** Where to check the place for oneself. Null for a sample place. */
+  links: PlaceLinks | null;
+  /** A quiet line under the hours when they may not be true. */
+  hoursDoubt: string | null;
 };
 
 /** The proposal for one slot. */

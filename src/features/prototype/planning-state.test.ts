@@ -29,6 +29,8 @@ const place = (id: string): SamplePlace => ({
   rating: null,
   photo: null,
   photoCredit: null,
+  links: null,
+  hoursDoubt: null,
   visitMinutes: 60,
 });
 
