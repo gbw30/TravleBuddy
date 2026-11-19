@@ -8,7 +8,7 @@ export type TokenUsage = { inputTokens: number; outputTokens: number };
 // tokens or fewer. The prompts here are about a thousand.
 const INPUT_USD_PER_MTOK = 0.1;
 const OUTPUT_USD_PER_MTOK = 0.5;
-const DEFAULT_CAP_USD = 10;
+const DEFAULT_CAP_USD = 15; // the developer's monthly allowance, set 2026-11-19
 
 export function costUsd(usage: TokenUsage): number {
   return (

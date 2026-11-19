@@ -73,11 +73,11 @@ describe("the monthly cap", () => {
     expect(costUsd(usage)).toBeCloseTo(0.00011);
   });
 
-  it("defaults to ten dollars, and ignores a cap that is not a number", () => {
-    expect(monthlyCapUsd(env({}))).toBe(10);
+  it("defaults to fifteen dollars, and ignores a cap that is not a number", () => {
+    expect(monthlyCapUsd(env({}))).toBe(15);
     expect(monthlyCapUsd(env({ AI_MONTHLY_CAP_USD: "2.5" }))).toBe(2.5);
-    expect(monthlyCapUsd(env({ AI_MONTHLY_CAP_USD: "lots" }))).toBe(10);
-    expect(monthlyCapUsd(env({ AI_MONTHLY_CAP_USD: "-1" }))).toBe(10);
+    expect(monthlyCapUsd(env({ AI_MONTHLY_CAP_USD: "lots" }))).toBe(15);
+    expect(monthlyCapUsd(env({ AI_MONTHLY_CAP_USD: "-1" }))).toBe(15);
   });
 
   it("closes at the cap, and a cap of zero closes it at once", () => {
