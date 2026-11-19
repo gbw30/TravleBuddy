@@ -32,13 +32,13 @@ import {
 // (Memory), with the words for each choice from the conversation's script.
 // That is why the conversation knows everything entered here (TB-QPL-12).
 
-const list = (items: string[]) =>
+export const list = (items: string[]) =>
   items.length < 3
     ? items.join(" and ")
     : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
-const count = (n: number, one: string, many = `${one}s`) =>
+export const count = (n: number, one: string, many = `${one}s`) =>
   `${n} ${n === 1 ? one : many}`;
-const day = (iso: string) =>
+export const day = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", {
     weekday: "short",
     day: "numeric",
@@ -128,23 +128,22 @@ function thisTrip(facts: TripFacts): string[] {
   ];
 }
 
-function styleLines(style: BriefAnswer[]): string[] {
-  return style.map((answer) => {
-    if (answer.from === "none" || answer.from === "default") {
-      return `${answer.name}: ${answer.assumes}`;
-    }
-    const each = answer.values.map(
-      (value) =>
-        answer.choices
-          .find((choice) => choice.value === value)
-          ?.label.toLowerCase() ?? value,
-    );
-    // "museums and exhibitions and views" would read as three things.
-    const labels = each.some((label) => label.includes(" and "))
-      ? each.join("; ")
-      : list(each);
-    return `${answer.name}: ${labels}${answer.source ? ` (${answer.source})` : ""}.`;
-  });
+/** One style answer as a sentence: the answer and its source, or what is assumed. */
+export function styleLine(answer: BriefAnswer): string {
+  if (answer.from === "none" || answer.from === "default") {
+    return `${answer.name}: ${answer.assumes}`;
+  }
+  const each = answer.values.map(
+    (value) =>
+      answer.choices
+        .find((choice) => choice.value === value)
+        ?.label.toLowerCase() ?? value,
+  );
+  // "museums and exhibitions and views" would read as three things.
+  const labels = each.some((label) => label.includes(" and "))
+    ? each.join("; ")
+    : list(each);
+  return `${answer.name}: ${labels}${answer.source ? ` (${answer.source})` : ""}.`;
 }
 
 const styleSchema = z
@@ -281,7 +280,7 @@ export function briefOf(
         ],
       },
       { step: 3, title: BRIEF_STEPS[2], lines: thisTrip(trip.facts) },
-      { step: 4, title: BRIEF_STEPS[3], lines: styleLines(style) },
+      { step: 4, title: BRIEF_STEPS[3], lines: style.map(styleLine) },
     ],
     problems,
     canBuild: problems.length === 0,

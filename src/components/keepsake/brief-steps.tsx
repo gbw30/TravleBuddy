@@ -209,8 +209,30 @@ export function BriefSteps({
     setStep(target);
   }
 
-  async function openTrip() {
+  /**
+   * Starts the build with its first day and opens the trip, where the rest
+   * is built with the itinerary in view (PRD 11.3).
+   */
+  async function buildTrip() {
     if (busy || !(await save())) return;
+    if (problems.length > 0) {
+      setTried(true);
+      setStep(0);
+      return;
+    }
+    setBusy(true);
+    const result = await changeTrip(
+      brief.tripId,
+      brief.revision,
+      "POST",
+      { start: true },
+      "/build",
+    );
+    if (!result.ok) {
+      setBusy(false);
+      setFailure(result.message);
+      return;
+    }
     router.push(`/trips/${brief.tripId}`);
   }
 
@@ -539,9 +561,9 @@ export function BriefSteps({
             type="button"
             className={buttonLarge}
             disabled={busy}
-            onClick={openTrip}
+            onClick={buildTrip}
           >
-            {busy ? "Saving…" : "Open the trip"}
+            {busy ? "Building day 1…" : "Build my trip"}
           </button>
         )}
       </div>
