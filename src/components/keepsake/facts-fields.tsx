@@ -132,19 +132,19 @@ export function WhereFields({
                   type="button"
                   className={quiet}
                   disabled={index === 0}
+                  aria-label={`Earlier: move ${city.name}`}
                   onClick={() => moveCity(index, -1)}
                 >
                   Earlier
-                  <span className="sr-only">: move {city.name}</span>
                 </button>
                 <button
                   type="button"
                   className={quiet}
                   disabled={index === facts.cities.length - 1}
+                  aria-label={`Later: move ${city.name}`}
                   onClick={() => moveCity(index, 1)}
                 >
                   Later
-                  <span className="sr-only">: move {city.name}</span>
                 </button>
                 <button
                   type="button"

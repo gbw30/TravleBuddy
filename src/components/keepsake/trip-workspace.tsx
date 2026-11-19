@@ -610,6 +610,7 @@ export function TripWorkspace({
                           <span className="sr-only"> {card.name}</span>
                         </button>
                         <button
+                          aria-label={`Save for later: ${card.name}`}
                           type="button"
                           className={quiet}
                           onClick={() => {
@@ -621,7 +622,6 @@ export function TripWorkspace({
                           }}
                         >
                           Save for later
-                          <span className="sr-only">: {card.name}</span>
                         </button>
                       </li>
                     ))}

@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { SURENESS_WORDS } from "@/features/memory/contracts";
+
 import { eyebrow, sectionTitle } from "./styles";
 
 // The pieces of the profile page's look, shared by the prototype and the
@@ -113,5 +115,24 @@ export function SectionHead({
         {note}
       </p>
     </header>
+  );
+}
+
+const DOTS = { think: 1, usually: 2, always: 3 };
+
+/** How sure the site is of an entry: one to three dots, and the word for it. */
+export function Sure({ sureness }: { sureness: keyof typeof DOTS }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span aria-hidden className="flex gap-1">
+        {[1, 2, 3].map((dot) => (
+          <span
+            key={dot}
+            className={`size-2 rounded-full ${dot <= DOTS[sureness] ? "bg-ink" : "bg-tint"}`}
+          />
+        ))}
+      </span>
+      {SURENESS_WORDS[sureness]}
+    </span>
   );
 }

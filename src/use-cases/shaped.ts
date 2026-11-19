@@ -15,7 +15,7 @@ import { NEW_TRIP_TITLE } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
 import { count, list } from "./brief";
-import { contextFor, withProvisionalStart } from "./plan";
+import { contextFor, startingState } from "./plan";
 import type { ShapedView } from "./profile-view";
 
 // "How this shaped your trip" on the profile page (PRD 12.5): memory is only
@@ -164,7 +164,7 @@ export async function loadShaped(userId: string): Promise<ShapedView | null> {
       readTripTaste(db, trip.id),
     ]);
     const taste = tasteInUse(profile.entries, said);
-    const state = withProvisionalStart(saved.state, trip);
+    const state = startingState(saved, trip, taste);
     const context = await contextFor(trip, state, userId, [], taste);
     const pairs = shapedBy({
       taste,

@@ -7,7 +7,6 @@ import {
   dailyBudgetOf,
   fileUnder,
   sourceWords,
-  SURENESS_WORDS,
   TOPIC_NAMES,
   type ProfileTopic,
 } from "@/features/memory/contracts";
@@ -29,6 +28,7 @@ import {
   ProfilePrinciples,
   rise,
   SectionHead,
+  Sure,
 } from "./profile-parts";
 import {
   button,
@@ -51,7 +51,6 @@ const icons: Partial<Record<ProfileTopic, string>> = {
   stay: "stay",
   food: "food",
 };
-const dots = { think: 1, usually: 2, always: 3 };
 
 /**
  * Habits: topics that are a point on a scale, set by a slider. `stops` is
@@ -122,22 +121,6 @@ export function profileSentence(entries: ShownEntry[]): string[] {
         ? `eat ${lower(rule.label)}`
         : null,
   ].filter((part): part is string => part !== null);
-}
-
-function Sure({ entry }: { entry: ShownEntry }) {
-  return (
-    <span className="flex items-center gap-2">
-      <span aria-hidden className="flex gap-1">
-        {[1, 2, 3].map((dot) => (
-          <span
-            key={dot}
-            className={`size-2 rounded-full ${dot <= dots[entry.sureness] ? "bg-ink" : "bg-tint"}`}
-          />
-        ))}
-      </span>
-      {SURENESS_WORDS[entry.sureness]}
-    </span>
-  );
 }
 
 /**
@@ -580,7 +563,7 @@ export function ProfileBook({
                     </div>
                   ) : (
                     <p className="flex flex-wrap items-center gap-x-3 border-t border-ink/12 pt-3.5 text-[13px] text-muted">
-                      <Sure entry={entry} />
+                      <Sure sureness={entry.sureness} />
                       <span className="first-letter:uppercase">
                         · {sourceWords(entry.source)}
                       </span>
@@ -679,7 +662,7 @@ export function ProfileBook({
                     </div>
                   ) : (
                     <p className="mt-auto flex flex-wrap items-center gap-x-3 border-t border-ink/12 pt-3.5 text-[13px] text-muted">
-                      <Sure entry={entry} />
+                      <Sure sureness={entry.sureness} />
                       {actions(entry)}
                     </p>
                   )}

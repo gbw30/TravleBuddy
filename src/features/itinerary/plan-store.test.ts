@@ -72,6 +72,8 @@ describe("plan versions", () => {
     expect(await readPlanState(client, "trip-1")).toEqual({
       state: emptyPlanState,
       canUndo: false,
+      // Nobody has chosen anything yet, the pace included.
+      fresh: true,
     });
     expect(await undoPlan(client, "trip-1")).toBe(false);
   });
@@ -88,6 +90,7 @@ describe("plan versions", () => {
     expect(await readPlanState(client, "trip-1")).toEqual({
       state: withPick("b"),
       canUndo: true,
+      fresh: false,
     });
   });
 
@@ -100,6 +103,7 @@ describe("plan versions", () => {
     expect(await readPlanState(client, "trip-1")).toEqual({
       state: withPick("a"),
       canUndo: false,
+      fresh: false,
     });
     expect(versions).toHaveLength(2);
 
@@ -137,6 +141,7 @@ describe("plan versions", () => {
     expect(await readPlanState(client, "trip-2")).toEqual({
       state: withPick("a"),
       canUndo: false,
+      fresh: false,
     });
     expect(versions[1]).toMatchObject({
       tripId: "trip-2",
