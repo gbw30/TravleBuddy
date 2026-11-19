@@ -30,6 +30,7 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   tags: {},
   lastEditedAt: null,
   fetchedAt: null,
+  hoursDoubt: null,
   ...over,
 });
 // Distances from Senso-ji: near about 0.4 km, mid about 1.4 km, far about 9 km.

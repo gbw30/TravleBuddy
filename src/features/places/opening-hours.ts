@@ -117,3 +117,48 @@ export function isOpenFor(
     ? "open"
     : "closed";
 }
+
+/** Hours last judged on the map more than this many months ago are in doubt. */
+export const STALE_MONTHS = 12;
+
+const DATE = /^\d{4}-\d{2}-\d{2}/;
+
+/**
+ * A quiet line for hours that may not be true, or null when there is no
+ * reason to doubt them. For a map place the hours are judged by the date
+ * they were checked, else the date of the last edit. `today` is `YYYY-MM-DD`.
+ */
+export function hoursDoubt(
+  place: {
+    origin: "OSM" | "SAMPLE" | "USER";
+    openingHours: string | null;
+    tags: Record<string, string>;
+    lastEditedAt: string | null;
+  },
+  today: string,
+): string | null {
+  if (!parseOpeningHours(place.openingHours)) {
+    return "Hours not known. Check before you go.";
+  }
+  if (place.origin !== "OSM") return null;
+  const dated = [
+    place.tags["check_date:opening_hours"],
+    place.tags.check_date,
+    place.lastEditedAt,
+  ].find((value) => value && DATE.test(value));
+  if (!dated) {
+    return "Not known when these hours were last checked. Worth a check.";
+  }
+  const checked = dated.slice(0, 10);
+  const cutoff = monthsAgo(today);
+  return checked < cutoff
+    ? `Last updated on the map in ${checked.slice(0, 4)}. Worth a check.`
+    : null;
+}
+
+/** `today` moved back STALE_MONTHS months, as `YYYY-MM-DD`. */
+function monthsAgo(today: string): string {
+  const date = new Date(`${today}T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() - STALE_MONTHS);
+  return date.toISOString().slice(0, 10);
+}

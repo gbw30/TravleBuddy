@@ -60,6 +60,7 @@ const place = (
   tags: {},
   lastEditedAt: null,
   fetchedAt: null,
+  hoursDoubt: null,
   ...over,
 });
 const places = Object.fromEntries(
