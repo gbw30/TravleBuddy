@@ -2,7 +2,7 @@ import type { Pace } from "@/features/itinerary/contracts";
 import type { TasteTopic } from "@/features/memory/contracts";
 import type { CommitmentInput, TicketInput } from "@/features/trips/contracts";
 
-// The four sample travellers of PRD 18, as data. Each is planned twice:
+// The sample travellers of PRD 18, as data. Each is planned twice:
 // by Guided planning, where the traveller picks every slot from the cards
 // offered, and by Quick plan, where the site builds the trip.
 
@@ -39,6 +39,8 @@ export type Traveller = {
     pace: Pace;
     dietaryRules: string[];
     breakfast?: "included" | "suggest" | "none";
+    /** The real length of each ticket, in the order they are flown. */
+    ticketMinutes?: number[];
   };
 };
 
@@ -120,7 +122,12 @@ export const TRAVELLERS: Traveller[] = [
       interests: ["nature", "activities"],
     },
     picks: "first",
-    expected: { pace: "balanced", dietaryRules: [], breakfast: "included" },
+    expected: {
+      pace: "balanced",
+      dietaryRules: [],
+      breakfast: "included",
+      ticketMinutes: [165, 165],
+    },
   },
   {
     key: "dan-priya",
@@ -169,5 +176,48 @@ export const TRAVELLERS: Traveller[] = [
     onlyStepOne: true,
     picks: "first",
     expected: { pace: "packed", dietaryRules: [] },
+  },
+  {
+    key: "lena",
+    name: "Lena",
+    who: "Alone, four nights in Rome, a same-day flight there and back from London, public transport, breakfast suggested.",
+    tests: "A ticket that crosses a time zone, and breakfast.",
+    profile: [],
+    tickets: [
+      {
+        mode: "FLIGHT",
+        from: "London",
+        to: "Rome",
+        departDate: "2027-06-18",
+        departTime: "07:30",
+        arriveDate: "2027-06-18",
+        arriveTime: "10:30",
+        reference: "BA546",
+      },
+      {
+        mode: "FLIGHT",
+        from: "Rome",
+        to: "London",
+        departDate: "2027-06-22",
+        departTime: "18:00",
+        arriveDate: "2027-06-22",
+        arriveTime: "19:00",
+        reference: "BA547",
+      },
+    ] as TicketInput[],
+    cities: [{ name: "Rome", nights: null }],
+    startDate: "2027-06-18",
+    endDate: "2027-06-22",
+    adults: 1,
+    children: 0,
+    commitments: [],
+    answers: { getting_around: ["transit"], breakfast: ["suggest"] },
+    picks: "first",
+    expected: {
+      pace: "balanced",
+      dietaryRules: [],
+      breakfast: "suggest",
+      ticketMinutes: [120, 120],
+    },
   },
 ];

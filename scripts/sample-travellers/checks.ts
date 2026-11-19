@@ -17,6 +17,8 @@ export type Expected = {
   dietaryRules: string[];
   /** What the traveller said about breakfast; only "suggest" must be filled. */
   breakfast?: "included" | "suggest" | "none";
+  /** The real length of each ticket, in the order they are flown. Empty when there is none. */
+  ticketMinutes?: number[];
   /** What was already decided, with the time it must keep. */
   decided: { title: string; start: string | null }[];
 };
@@ -124,6 +126,18 @@ export function checkItinerary(input: {
       .map((entry) => `day ${day.day} has no ${entry.kind}`),
   );
 
+  const lengths = days.flatMap((day) =>
+    day.entries.flatMap((entry) =>
+      entry.type === "commitment" && entry.ticket ? [entry.minutes] : [],
+    ),
+  );
+  const ticketProblems =
+    JSON.stringify(lengths) === JSON.stringify(expected.ticketMinutes ?? [])
+      ? []
+      : [
+          `tickets last ${lengths.map((m) => m ?? "unknown").join(", ") || "none"} minutes, not ${(expected.ticketMinutes ?? []).join(", ") || "none"}`,
+        ];
+
   const most = SIGHTS_A_DAY[expected.pace];
   const paceProblems = [
     ...(plan.view.pace === expected.pace
@@ -170,6 +184,13 @@ export function checkItinerary(input: {
       "Every day has its meals",
       noMeal,
       "no meal asked for is left open",
+    ),
+    finding(
+      "Each ticket lasts its real length",
+      ticketProblems,
+      expected.ticketMinutes?.length
+        ? `${expected.ticketMinutes.join(" and ")} minutes, by the clock of each end`
+        : "no ticket to measure",
     ),
     finding(
       "The days match the pace",

@@ -114,8 +114,34 @@ describe("the checks on a planned trip", () => {
       "Nothing already decided was moved",
       "No hard limit is broken",
       "Every day has its meals",
+      "Each ticket lasts its real length",
       "The days match the pace",
     ]);
+  });
+
+  it("catch a ticket that does not last its real length", () => {
+    const flight = (minutes: number | null): PlanEntry =>
+      ({
+        type: "commitment",
+        commitmentId: "f",
+        commitmentKind: "TRANSPORT",
+        title: "Flight",
+        start: "10:00",
+        minutes,
+        slotId: null,
+        ticket: { from: "London", to: "Rome", arrives: "13:00" },
+      }) as PlanEntry;
+    const check = (minutes: number | null) =>
+      failed(
+        checkItinerary({
+          plan: plan([[flight(minutes)]]),
+          expected: expected({ ticketMinutes: [120] }),
+          known,
+        }),
+      ).filter((text) => text.startsWith("Each ticket"));
+    expect(check(120)).toEqual([]);
+    expect(check(180)).toHaveLength(1);
+    expect(check(null)).toHaveLength(1);
   });
 
   it("find an open breakfast slot only when the traveller asked for suggestions", () => {

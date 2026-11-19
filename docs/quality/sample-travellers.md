@@ -1,4 +1,4 @@
-# The four sample travellers
+# The sample travellers
 
 Status: evidence
 Authority: What the checks of PRD 18 found. Written by `npm run quality:samples`; do not edit by hand.
@@ -23,6 +23,8 @@ Two limits of the sample places show in the itineraries, and are not faults of t
 | Dan and Priya | Quick plan | 31 | all pass |
 | Sam | Guided planning | 15 | all pass |
 | Sam | Quick plan | 15 | all pass |
+| Lena | Guided planning | 22 | all pass |
+| Lena | Quick plan | 22 | all pass |
 
 ## Maya
 
@@ -37,6 +39,7 @@ Alone, six days in Tokyo, mid budget, vegetarian, slow pace, food-led. *Tests: A
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 81 reasons read, sentence by sentence |
 
@@ -105,6 +108,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 
 Pace: relaxed. Shape of the day: I will start the days at about nine. Interests: markets and shopping. Atmosphere: I will mix lively and quiet places. Food: vegetarian.
@@ -183,6 +187,7 @@ Two adults and children of 7 and 11, five days in Lisbon, flights booked, early 
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | 165 and 165 minutes, by the clock of each end |
 | The days match the pace | pass | balanced: no day has more than 3 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 49 reasons read, sentence by sentence |
 
@@ -245,6 +250,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | 165 and 165 minutes, by the clock of each end |
 | The days match the pace | pass | balanced: no day has more than 3 sights or activities |
 
 Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: parks and nature; activities. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
@@ -317,6 +323,7 @@ Honeymoon, nine days by train through Rome, Florence and Venice, high budget, un
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 90 reasons read, sentence by sentence |
 
@@ -328,7 +335,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 12:30  Lunch: **Morning Cafe** (45 min), 7 min walk to get there
 - 13:45  Time to wander around Morning Cafe (120 min)
 - 16:31  Afternoon: **Rome Lookout** (30 min), 16 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Lantern Grill** (75 min), 10 min walk to get there
+- 19:00  Dinner: **Harbour Canteen** (75 min), 8 min walk to get there
 
 **Day 2, Sun 6 Jun, Rome**
 
@@ -341,16 +348,16 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 3, Mon 7 Jun, Rome**
 
 - 10:00  Morning: **Rome Botanical Garden** (60 min)
-- 12:30  Lunch: **Harbour Canteen** (75 min), 7 min walk to get there
-- 13:45  Time to wander around Harbour Canteen (120 min)
-- 16:38  Afternoon: **Rome Riverside Park** (60 min), 23 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Market Kitchen** (75 min), 3 min walk to get there
+- 12:30  Lunch: **Garden Table** (75 min), 11 min walk to get there [opening hours not known]
+- 13:45  Time to wander around Garden Table (120 min)
+- 16:40  Afternoon: **Rome Riverside Park** (60 min), 25 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Harbour Canteen** (75 min), 6 min walk to get there
 
 **Day 4, Tue 8 Jun, Rome**
 
 - 10:00  Morning: **Rome Central Market** (60 min)
 - 12:00  Travel from Rome to Florence, assumed (255 min)
-- 19:00  Dinner: **Garden Table** (75 min) [opening hours not known]
+- 19:00  Dinner: **Lantern Grill** (75 min)
 
 **Day 5, Wed 9 Jun, Florence**
 
@@ -399,6 +406,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 
 Pace: relaxed. Shape of the day: I will start the days at about nine. Interests: views; temples, shrines and history. Atmosphere: quiet. Food: I will assume no restrictions.
@@ -491,6 +499,7 @@ Returning user, three-day city break, Quick plan with only step 1 filled. *Tests
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | packed: no day has more than 4 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 42 reasons read, sentence by sentence |
 
@@ -532,6 +541,7 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | packed: no day has more than 4 sights or activities |
 
 Pace: packed (you told me). Shape of the day: I will start the days at about nine. Interests: museums and exhibitions (you told me). Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
@@ -568,5 +578,141 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 - Built: 3 days in Rome. I chose 15 places: 9 to see and 6 to eat at.
 - Assumed: Pace: packed (you told me). Shape of the day: I will start the days at about nine. Interests: museums and exhibitions (you told me). Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: Nothing I know fits the morning on day 3. Nothing I know fits the afternoon on day 3. Nothing I know fits the late afternoon on day 3.
-- Unsure: Two places were close for the morning on day 1. I chose Rome Botanical Garden. Two places were close for the morning on day 2. I chose Rome Central Market. Two places were close for the afternoon on day 2. I chose Rome Lookout. I do not know the opening hours of Rome Old Town, Rome Lookout and Rome Riverside Park. Check before you go.
+- Unsure: Two places were close for the morning on day 1. I chose Rome Botanical Garden. Two places were close for the morning on day 2. I chose Rome Central Market. Two places were close for lunch on day 2. I chose Morning Cafe. 1 more choice was close too. I do not know the opening hours of Rome Old Town, Rome Lookout and Rome Riverside Park. Check before you go.
+
+## Lena
+
+Alone, four nights in Rome, a same-day flight there and back from London, public transport, breakfast suggested. *Tests: A ticket that crosses a time zone, and breakfast.*
+
+### Guided planning
+
+| Check | Result | What was found |
+| --- | --- | --- |
+| No place is invented | pass | 22 places, each one the place source knows, none twice |
+| No rule is broken | pass | no place carries a broken-rule flag |
+| Nothing already decided was moved | pass | 2 decided, each where it was |
+| No hard limit is broken | pass | the traveller has no dietary rule |
+| Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | 120 and 120 minutes, by the clock of each end |
+| The days match the pace | pass | balanced: no day has more than 3 sights or activities |
+| Every reason is true of the traveller and the trip | pass | 60 reasons read, sentence by sentence |
+
+Pace: I will keep a balanced pace. Shape of the day: I will start the days at about nine. Interests: I will mix a little of everything. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
+
+**Day 1, Fri 18 Jun, Rome**
+
+- 07:30  Already decided: Flight · London → Rome
+- 12:30  Lunch: **Sunrise Cafe** (45 min)
+- 13:45  Time to wander around Sunrise Cafe (60 min)
+- 15:24  Afternoon: **Rome Castle** (60 min), 19 min transit to get there
+- 16:57  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
+- 19:26  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+
+**Day 2, Sat 19 Jun, Rome**
+
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:23  Morning: **Rome Botanical Garden** (60 min), 18 min transit to get there
+- 12:30  Lunch: **Morning Cafe** (45 min), 9 min transit to get there
+- 13:45  Time to wander around Morning Cafe (60 min)
+- 15:20  Afternoon: **Rome Cathedral** (45 min), 15 min transit to get there
+- 16:36  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Harbour Canteen** (75 min), 9 min transit to get there
+
+**Day 3, Sun 20 Jun, Rome**
+
+- 09:00  Breakfast: **Riverside Cafe** (45 min)
+- 10:19  Morning: **Rome Riverside Park** (60 min), 14 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
+- 13:45  Time to wander around Corner Noodles (60 min)
+- 15:16  Afternoon: **Rome City Museum** (120 min), 11 min transit to get there
+- 17:51  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Lantern Grill** (75 min), 11 min transit to get there
+
+**Day 4, Mon 21 Jun, Rome**
+
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:18  Morning: **Rome Central Market** (60 min), 13 min transit to get there
+- 12:30  Lunch: **Garden Table** (75 min), 11 min transit to get there [opening hours not known]
+- 13:45  Time to wander around Garden Table (60 min)
+- 14:45  Afternoon: *open*
+- 16:00  Late afternoon: *open*
+- 19:00  Dinner: **Corner Noodles** (75 min), 9 min transit to get there
+
+**Day 5, Tue 22 Jun, Rome**
+
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 09:45  Morning: *open*
+- 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
+- 13:45  Time to wander around Market Kitchen (60 min)
+- 14:45  Afternoon: *open*
+- 18:00  Already decided: Flight · Rome → London
+
+### Quick plan
+
+| Check | Result | What was found |
+| --- | --- | --- |
+| No place is invented | pass | 22 places, each one the place source knows, none twice |
+| No rule is broken | pass | no place carries a broken-rule flag |
+| Nothing already decided was moved | pass | 2 decided, each where it was |
+| No hard limit is broken | pass | the traveller has no dietary rule |
+| Every day has its meals | pass | no meal asked for is left open |
+| Each ticket lasts its real length | pass | 120 and 120 minutes, by the clock of each end |
+| The days match the pace | pass | balanced: no day has more than 3 sights or activities |
+
+Pace: I will keep a balanced pace. Shape of the day: I will start the days at about nine. Interests: I will mix a little of everything. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
+
+**Day 1, Fri 18 Jun, Rome**
+
+- 07:30  Already decided: Flight · London → Rome
+- 12:30  Lunch: **Sunrise Cafe** (45 min)
+- 13:45  Time to wander around Sunrise Cafe (60 min)
+- 15:24  Afternoon: **Rome Castle** (60 min), 19 min transit to get there
+- 16:57  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
+- 19:26  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+
+**Day 2, Sat 19 Jun, Rome**
+
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:23  Morning: **Rome Botanical Garden** (60 min), 18 min transit to get there
+- 12:30  Lunch: **Morning Cafe** (45 min), 9 min transit to get there
+- 13:45  Time to wander around Morning Cafe (60 min)
+- 15:20  Afternoon: **Rome Cathedral** (45 min), 15 min transit to get there
+- 16:36  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Harbour Canteen** (75 min), 9 min transit to get there
+
+**Day 3, Sun 20 Jun, Rome**
+
+- 09:00  Breakfast: **Riverside Cafe** (45 min)
+- 10:19  Morning: **Rome Riverside Park** (60 min), 14 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
+- 13:45  Time to wander around Corner Noodles (60 min)
+- 15:16  Afternoon: **Rome City Museum** (120 min), 11 min transit to get there
+- 17:51  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Lantern Grill** (75 min), 11 min transit to get there
+
+**Day 4, Mon 21 Jun, Rome**
+
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:18  Morning: **Rome Central Market** (60 min), 13 min transit to get there
+- 12:30  Lunch: **Garden Table** (75 min), 11 min transit to get there [opening hours not known]
+- 13:45  Time to wander around Garden Table (60 min)
+- 14:45  Afternoon: *open*
+- 16:00  Late afternoon: *open*
+- 19:00  Dinner: **Corner Noodles** (75 min), 9 min transit to get there
+
+**Day 5, Tue 22 Jun, Rome**
+
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 09:45  Morning: *open*
+- 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
+- 13:45  Time to wander around Market Kitchen (60 min)
+- 14:45  Afternoon: *open*
+- 18:00  Already decided: Flight · Rome → London
+
+**The agent's report**
+
+- Built: 5 days in Rome, planned around 2 things already decided. I chose 22 places: 9 to see and 13 to eat at.
+- Assumed: Pace: I will keep a balanced pace. Shape of the day: I will start the days at about nine. Interests: I will mix a little of everything. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
+- Could not fit: Nothing I know fits the afternoon on day 4. Nothing I know fits the late afternoon on day 4. Nothing I know fits the morning on day 5. 1 more slot is open for the same reason.
+- Unsure: Two places were close for lunch on day 1. I chose Sunrise Cafe. Two places were close for the afternoon on day 1. I chose Rome Castle. Two places were close for breakfast on day 2. I chose Corner Bakery. 5 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Riverside Park, Rome Lookout and Garden Table. Check before you go.
 
