@@ -95,6 +95,17 @@ export function TripWorkspace({
   const building = useRef(false);
   const [starting, setStarting] = useState(false);
 
+  // Set when a slot is chosen in the itinerary; its Choose button may be hidden.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    (
+      document.getElementById("choosing-heading") ??
+      document.getElementById("plan-message")
+    )?.focus();
+  }, [plan]);
+
   const { view, proposal } = plan;
   const focus = proposal?.slotId ?? null;
   const focusEntry = view.days
@@ -303,7 +314,12 @@ export function TripWorkspace({
       focusSlotId={focus}
       transit={transit}
       readOnly={readOnly}
-      onFocus={(slotId) => void refresh(slotId)}
+      onFocus={(slotId) => {
+        // On a phone the sheet closes on Choose; keyboard focus goes to the cards.
+        setSheetOpen(false);
+        refocus.current = true;
+        void refresh(slotId);
+      }}
       onMove={(fromSlotId, toSlotId) =>
         act({ type: "move", fromSlotId, toSlotId }, focus)
       }
@@ -384,7 +400,11 @@ export function TripWorkspace({
                   </span>{" "}
                   · {slotWord[focusSlot.kind]} · {focusSlot.start}
                 </p>
-                <h2 className="mt-3 text-[32px] leading-[1.06] tracking-[-0.03em] text-balance md:text-[46px]">
+                <h2
+                  id="choosing-heading"
+                  tabIndex={-1}
+                  className="mt-3 text-[32px] leading-[1.06] tracking-[-0.03em] text-balance focus:outline-none md:text-[46px]"
+                >
                   {focusSlot.type === "place" ? "Swapping" : "Choosing"} your{" "}
                   <em>{slotWord[focusSlot.kind].toLowerCase()}</em>
                 </h2>
@@ -392,7 +412,9 @@ export function TripWorkspace({
             )}
 
             <div
-              className="max-w-[620px] space-y-3 text-ink/80"
+              id="plan-message"
+              tabIndex={-1}
+              className="max-w-[620px] space-y-3 text-ink/80 focus:outline-none"
               aria-live="polite"
             >
               {plan.holding === "food" && (
@@ -687,6 +709,7 @@ export function TripWorkspace({
             type="button"
             data-qa="itinerary-toggle"
             aria-expanded={sheetOpen}
+            aria-controls="itinerary-sheet"
             onClick={() => setSheetOpen((open) => !open)}
             className="flex w-full items-center justify-between bg-ink px-5 py-3.5 font-sans text-sm font-medium text-paper lg:hidden"
           >
@@ -694,6 +717,7 @@ export function TripWorkspace({
             <span aria-hidden>{sheetOpen ? "▾" : "▴"}</span>
           </button>
           <div
+            id="itinerary-sheet"
             className={
               sheetOpen
                 ? "max-h-[65vh] overflow-y-auto overscroll-contain p-4 lg:max-h-none lg:overflow-visible lg:p-0"

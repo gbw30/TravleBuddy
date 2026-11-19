@@ -158,12 +158,12 @@ Visit lengths on items, an offered fix on a flagged item, a message when a move 
 
 To be filled in by the product owner. Milestone 1 is complete only when this is filled in.
 
-| Item                             | Decision |
-| -------------------------------- | -------- |
-| Date reviewed                    |          |
-| Overall look approved            |          |
-| Closer look: enlarged or overlay |          |
-| Phone itinerary: sheet or tab    |          |
-| Cards without photos acceptable  |          |
-| Navigation layout                |          |
-| Changes requested                |          |
+| Item                             | Decision                                                          |
+| -------------------------------- | ----------------------------------------------------------------- |
+| Date reviewed                    |                                                                   |
+| Overall look approved            |                                                                   |
+| Closer look: enlarged or overlay | Enlarged (2026-11-19, after videos of both on the real trip page) |
+| Phone itinerary: sheet or tab    | Sheet, with Choose closing it and keeping focus (2026-11-19)      |
+| Cards without photos acceptable  |                                                                   |
+| Navigation layout                |                                                                   |
+| Changes requested                |                                                                   |
