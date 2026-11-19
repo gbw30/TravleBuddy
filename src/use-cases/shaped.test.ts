@@ -32,7 +32,7 @@ vi.mock("@/features/memory", async (actual) => ({
 }));
 vi.mock("./plan", () => ({
   contextFor: mocks.contextFor,
-  withProvisionalStart: (state: PlanState) => state,
+  startingState: (saved: { state: PlanState }) => saved.state,
 }));
 
 import { tasteInUse } from "@/features/memory";

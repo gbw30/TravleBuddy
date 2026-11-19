@@ -30,7 +30,7 @@ import {
   historyFor,
   isMeal,
   isSlot,
-  withProvisionalStart,
+  startingState,
 } from "./plan";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
@@ -89,7 +89,7 @@ async function prepareDay(
     said.food?.source === "told" ? said.food.values : [],
   );
 
-  let state = withProvisionalStart(saved.state, trip);
+  let state = startingState(saved, trip, taste);
   let context = await contextFor(trip, state, userId, [], taste);
   let view = buildPlanView(state, context);
   const changes: Change[] = [];
@@ -229,7 +229,7 @@ export async function buildNextDay(input: {
       // The plan as it is now. A slot the traveller filled in the meantime
       // is left alone.
       const saved = await readPlanState(tx, tripId);
-      let state = withProvisionalStart(saved.state, trip);
+      let state = startingState(saved, trip, prepared.taste);
       const context = await contextFor(
         trip,
         state,

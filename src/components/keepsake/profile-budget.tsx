@@ -5,7 +5,6 @@ import { useState, type CSSProperties } from "react";
 import {
   dailyBudgetOf,
   sourceWords,
-  SURENESS_WORDS,
   type DailyBudget,
 } from "@/features/memory/contracts";
 import {
@@ -17,12 +16,11 @@ import {
 } from "@/lib/currency";
 import type { ShownEntry } from "@/use-cases/profile-view";
 
-import { card } from "./profile-parts";
+import { card, Sure } from "./profile-parts";
 import { eyebrow, field, lift, quiet } from "./styles";
 
 /** The three levels of a day's spending, kept in yen and shown in any currency. */
 const YEN_LEVELS = [8000, 15000, 25000];
-const dots = { think: 1, usually: 2, always: 3 };
 
 /**
  * The traveller's usual daily budget (PRD 12.5): one of three levels, shown
@@ -160,17 +158,7 @@ export function BudgetCard({
       <div className="mt-auto pt-6">
         {entry && saved ? (
           <p className="flex flex-wrap items-center gap-x-3 border-t border-ink/12 pt-3.5 text-[13px] text-muted">
-            <span className="flex items-center gap-2">
-              <span aria-hidden className="flex gap-1">
-                {[1, 2, 3].map((dot) => (
-                  <span
-                    key={dot}
-                    className={`size-2 rounded-full ${dot <= dots[entry.sureness] ? "bg-ink" : "bg-tint"}`}
-                  />
-                ))}
-              </span>
-              {SURENESS_WORDS[entry.sureness]}
-            </span>
+            <Sure sureness={entry.sureness} />
             <span className="first-letter:uppercase">
               · {sourceWords(entry.source)}
             </span>

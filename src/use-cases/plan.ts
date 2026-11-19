@@ -12,6 +12,7 @@ import {
 } from "@/features/itinerary";
 import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
 import {
+  PACES,
   SLOT_WORDS,
   type Pace,
   type PlanAction,
@@ -89,6 +90,24 @@ export function withProvisionalStart(
 ): PlanState {
   if (trip.facts.startDate || state.provisionalStart) return state;
   return { ...state, provisionalStart: provisionalStart(trip.facts, today()) };
+}
+
+/**
+ * The choices a plan is laid out from. A plan nobody has changed yet starts
+ * at the pace the trip goes by, a remembered one included (TB-MEM-02); once
+ * a version is saved, the plan's own pace stands. A trip with no dates gets
+ * provisional ones.
+ */
+export function startingState(
+  saved: { state: PlanState; fresh?: boolean },
+  trip: TripDetail,
+  taste: TasteInUse,
+): PlanState {
+  const pace = PACES.find((item) => item === taste.pace?.values[0]);
+  return withProvisionalStart(
+    saved.fresh && pace ? { ...saved.state, pace } : saved.state,
+    trip,
+  );
 }
 
 /** How far the "shape of the day" moves the whole day (PRD 9.4). */
@@ -393,9 +412,13 @@ export async function planDays(
   userId: string,
   trip: TripDetail,
 ): Promise<PlanDay[]> {
-  const saved = await readPlanState(db, trip.id);
-  const state = withProvisionalStart(saved.state, trip);
-  return buildPlanView(state, await contextFor(trip, state, userId)).days;
+  const [saved, taste] = await Promise.all([
+    readPlanState(db, trip.id),
+    tasteOf(userId, trip.id),
+  ]);
+  const state = startingState(saved, trip, taste);
+  return buildPlanView(state, await contextFor(trip, state, userId, [], taste))
+    .days;
 }
 
 /**
@@ -410,10 +433,26 @@ export async function loadPlan(
   /** False keeps the provider out of a page load; the screen then asks again. */
   gather = true,
 ): Promise<PlanSnapshot | null> {
+  try {
+    return await readPlan(userId, tripId, wanted, gather);
+  } catch (error) {
+    // Reading a plan records the cards it shows against the trip. A trip
+    // deleted while it is being read is gone, not broken: answer as for
+    // any trip that does not exist.
+    if (await getTrip(userId, tripId)) throw error;
+    return null;
+  }
+}
+
+async function readPlan(
+  userId: string,
+  tripId: string,
+  wanted: string | undefined,
+  gather: boolean,
+): Promise<PlanSnapshot | null> {
   const trip = await getTrip(userId, tripId);
   if (!trip) return null;
   const saved = await readPlanState(db, tripId);
-  const state = withProvisionalStart(saved.state, trip);
   // The taste a trip goes by starts from the personal profile; what was
   // said for this trip wins (TB-MEM-02). The layout needs it too: the
   // shape of the day moves the day (TB-ITN-08).
@@ -422,6 +461,7 @@ export async function loadPlan(
     readTripTaste(db, tripId),
   ]);
   const taste: TasteInUse = tasteInUse(personal, said);
+  const state = startingState(saved, trip, taste);
   const context = await contextFor(trip, state, userId, [], taste);
   const view = buildPlanView(state, context);
   const focus = trip.archived ? null : focusSlot(view, wanted);
@@ -502,10 +542,13 @@ export async function setPlanPace(
   userId: string,
   pace: Pace,
 ): Promise<boolean> {
-  const saved = await readPlanState(tx, trip.id);
-  if (saved.state.pace === pace) return false;
-  const state = withProvisionalStart(saved.state, trip);
-  const context = await contextFor(trip, state, userId);
+  const [saved, taste] = await Promise.all([
+    readPlanState(tx, trip.id),
+    tasteOf(userId, trip.id),
+  ]);
+  const state = startingState(saved, trip, taste);
+  if (state.pace === pace) return false;
+  const context = await contextFor(trip, state, userId, [], taste);
   const applied = applyPlanAction(state, buildPlanView(state, context), {
     type: "pace",
     pace,
@@ -574,10 +617,13 @@ export async function runPlanAction(input: {
         return { summary: "Asked for other places" };
       }
 
-      const saved = await readPlanState(tx, tripId);
-      const state = withProvisionalStart(saved.state, trip);
+      const [saved, taste] = await Promise.all([
+        readPlanState(tx, tripId),
+        tasteOf(userId, tripId),
+      ]);
+      const state = startingState(saved, trip, taste);
       const adding = "placeId" in action ? [action.placeId] : [];
-      const context = await contextFor(trip, state, userId, adding);
+      const context = await contextFor(trip, state, userId, adding, taste);
       // Only a saved place the traveller may see can join a plan (TB-TRU-01).
       if (adding.some((id) => !context.places[id])) {
         return new Refusal("That place is not available.");

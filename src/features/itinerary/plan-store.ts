@@ -29,13 +29,15 @@ async function activeVersion(client: Client, tripId: string) {
 export async function readPlanState(
   client: Client,
   tripId: string,
-): Promise<{ state: PlanState; canUndo: boolean }> {
+): Promise<{ state: PlanState; canUndo: boolean; fresh: boolean }> {
   const version = await activeVersion(client, tripId);
   // A saved state that no longer fits the schema is not trusted.
   const parsed = planStateSchema.safeParse(version?.state);
   return {
     state: parsed.success ? parsed.data : emptyPlanState,
     canUndo: Boolean(version?.parentVersionId),
+    // No version yet: nobody has chosen anything, the pace included.
+    fresh: !version,
   };
 }
 

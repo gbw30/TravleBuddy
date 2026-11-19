@@ -433,3 +433,90 @@ describe("the shape of the day in a plan", () => {
     ).toBe(true);
   });
 });
+
+describe("the pace a new plan starts at", () => {
+  const pace = (value: string) => ({
+    entries: [
+      { topic: "pace", value, sureness: "always", source: { type: "told" } },
+    ],
+  });
+  const sightsADay = async () => {
+    const plan = await load();
+    return {
+      pace: plan?.view.pace,
+      sights: plan?.view.days[1].entries.filter(
+        (entry) =>
+          entry.type === "open" &&
+          entry.kind !== "lunch" &&
+          entry.kind !== "dinner",
+      ).length,
+    };
+  };
+
+  it("is the remembered pace while nobody has changed the plan", async () => {
+    mocks.readPlanState.mockResolvedValue({
+      state: state(),
+      canUndo: false,
+      fresh: true,
+    });
+    expect(await sightsADay()).toEqual({ pace: "balanced", sights: 3 });
+    mocks.readProfile.mockResolvedValue(pace("relaxed"));
+    expect(await sightsADay()).toEqual({ pace: "relaxed", sights: 2 });
+    mocks.readProfile.mockResolvedValue(pace("packed"));
+    expect(await sightsADay()).toEqual({ pace: "packed", sights: 4 });
+  });
+
+  it("is this trip's own answer where it differs from the profile", async () => {
+    mocks.readPlanState.mockResolvedValue({
+      state: state(),
+      canUndo: false,
+      fresh: true,
+    });
+    mocks.readProfile.mockResolvedValue(pace("relaxed"));
+    mocks.readTripTaste.mockResolvedValue({
+      pace: { values: ["packed"], source: "told" },
+    });
+    expect((await sightsADay()).pace).toBe("packed");
+  });
+
+  it("gives way to the plan's own pace once the plan has been changed", async () => {
+    mocks.readProfile.mockResolvedValue(pace("relaxed"));
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ pace: "balanced" }),
+      canUndo: true,
+      fresh: false,
+    });
+    expect((await sightsADay()).pace).toBe("balanced");
+  });
+
+  it("writes no plan version when the pace answered is the one the plan already starts at", async () => {
+    mocks.readPlanState.mockResolvedValue({
+      state: state(),
+      canUndo: false,
+      fresh: true,
+    });
+    mocks.readProfile.mockResolvedValue(pace("relaxed"));
+    expect(
+      await setPlanPace({ name: "tx" } as never, trip(), "user-1", "relaxed"),
+    ).toBe(false);
+    expect(mocks.writePlanVersion).not.toHaveBeenCalled();
+    expect(
+      await setPlanPace({ name: "tx" } as never, trip(), "user-1", "packed"),
+    ).toBe(true);
+    expect(mocks.writePlanVersion).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a trip deleted while its plan is read", () => {
+  it("answers as a trip that does not exist, not as a failure", async () => {
+    // The cards shown are recorded against the trip, which is gone by then.
+    mocks.recordPresented.mockRejectedValue(new Error("foreign key"));
+    mocks.getTrip.mockResolvedValueOnce(trip()).mockResolvedValueOnce(null);
+    expect(await load()).toBeNull();
+  });
+
+  it("still fails when the trip is there and something else went wrong", async () => {
+    mocks.recordPresented.mockRejectedValue(new Error("database down"));
+    await expect(load()).rejects.toThrow("database down");
+  });
+});

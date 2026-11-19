@@ -100,6 +100,9 @@ describe("the trip brief on screen", () => {
     expect(html).toContain("Tokyo");
     expect(html).toContain('value="2027-05-10"');
     expect(html).toContain(">Next<");
+    // A button that moves a city says which one, in words that read cleanly.
+    expect(html).toContain('aria-label="Earlier: move Tokyo"');
+    expect(html).not.toContain('sr-only">:');
     expect(html).not.toContain(">Back<");
   });
 

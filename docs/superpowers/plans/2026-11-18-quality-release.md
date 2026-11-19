@@ -24,7 +24,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
 | 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            | #60          |
 | 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            | #61          |
-| 8. Defects found on the way                       | `feature/m8-defects`        | TB-DSN-05, TB-DSN-07            |              |
+| 8. Defects found on the way                       | `feature/m8-defects`        | TB-MEM-02, TB-DSN-07            | #62          |
 | 9. The four sample travellers                     | `feature/m8-samples`        | TB-SYS-15                       |              |
 | 10. Design checks on the real screens             | `feature/m8-design-checks`  | TB-DSN-01 to 07                 |              |
 | 11. Time zones                                    | `feature/m8-time-zones`     | TB-ITN-16                       |              |
@@ -173,7 +173,16 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 8: Defects found on the way
 
-**Produces:** fixes, each with a test, for what Milestones 4 to 7 recorded and did not fix: reading a plan while its trip is deleted answers 404, not 500; buttons whose spoken name gains a stray space or colon from a hidden suffix; and whatever pieces 1 to 7 turn up.
+**Produced (pull request 62):**
+
+- **A trip deleted while its plan is read answers 404.** Reading a plan records the cards it shows against the trip; when the trip was gone by then, the read failed with 500. `loadPlan` now answers as for any trip that does not exist, and still fails when the trip is there and something else went wrong.
+- **A new trip's plan starts at the pace the trip goes by** (TB-MEM-02). Until now a remembered pace changed nothing in Guided planning until it was confirmed, while the Profile page's slider says what it does to a plan. A plan with no saved version is laid out at the pace in use, a remembered one included; once a version is saved, the plan's own pace stands and a later change to the profile does not move it. `readPlanState` reports `fresh` for this.
+- **Three buttons read cleanly to a screen reader** (TB-DSN-07): "Earlier" and "Later" for a city, and "Save for later" on a searched place. A hidden suffix gave them names like "Earlier : move Lisbon".
+- **One set of sureness dots** for the Profile page's cards, in `profile-parts.tsx`, in place of two copies.
+
+**Seen in the walk:** a new trip was laid out balanced with no memory and relaxed once "relaxed" was remembered; after a pick it kept relaxed when the profile changed to packed. Of 24 plan reads racing 8 deletes, 17 answered 200 and 7 answered 404; none failed.
+
+**Left as recorded limits:** a place the traveller searches for is not checked against the dietary rules; the trip page does not show that a trip is marked as different; a proposal made by the workspace joins the thread at the next reload.
 
 ### Piece 9: The four sample travellers
 
