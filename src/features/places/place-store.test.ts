@@ -190,7 +190,7 @@ describe("gathering places", () => {
         where: {
           cityKey_scope: {
             cityKey: "tokyo|japan",
-            scope: "OSM:food@35.71,139.80#2",
+            scope: "OSM:food@35.71,139.80#3",
           },
         },
       }),

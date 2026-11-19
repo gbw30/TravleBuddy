@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { isMealKind } from "./kinds";
+
 import { placesFromNominatim } from "./nominatim";
 import { politeFetch, ProviderBusyError, resetPoliteFetch } from "./osm-http";
 import { foodQuery, placesFromOverpass, sightsQuery } from "./overpass";
@@ -171,6 +173,7 @@ describe("placesFromOverpass", () => {
     );
     expect(foodQuery(tokyo)).toContain("(around:1200,35.6769,139.7639)");
     expect(foodQuery(tokyo)).toContain("restaurant|cafe");
+    expect(foodQuery(tokyo)).toContain('["shop"="bakery"]["name"]');
   });
 });
 
@@ -271,9 +274,10 @@ describe("sample source and keys", () => {
     });
     expect(
       food.every(
-        (place) => place.kind === "restaurant" || place.kind === "cafe",
+        (place) => place.kind === "restaurant" || isMealKind(place.kind),
       ),
     ).toBe(true);
+    expect(food.map((place) => place.kind)).toContain("bakery");
     expect(
       (await sampleSource.byName(tokyo, " skytree ")).map(
         (place) => place.name,

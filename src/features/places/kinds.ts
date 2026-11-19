@@ -10,6 +10,7 @@ export const PLACE_KINDS = [
   "market",
   "restaurant",
   "cafe",
+  "bakery",
   "bar",
   "activity",
 ] as const;
@@ -24,6 +25,7 @@ const labels: Record<PlaceKind, string> = {
   market: "Market",
   restaurant: "Restaurant",
   cafe: "Cafe",
+  bakery: "Bakery",
   bar: "Bar",
   activity: "Activity",
 };
@@ -44,6 +46,7 @@ const standardVisit: Record<PlaceKind, number> = {
   market: 60,
   restaurant: 75,
   cafe: 45,
+  bakery: 45,
   bar: 60,
   activity: 150,
 };
@@ -55,7 +58,7 @@ export function visitMinutes(kind: PlaceKind): number {
 
 /** Somewhere to eat a meal, as opposed to something to see or do. */
 export function isMealKind(kind: PlaceKind): boolean {
-  return kind === "restaurant" || kind === "cafe";
+  return kind === "restaurant" || kind === "cafe" || kind === "bakery";
 }
 
 type Tags = Record<string, string | undefined>;
@@ -65,7 +68,7 @@ type Tags = Record<string, string | undefined>;
  * product plans with. The first rule that fits wins, most specific first.
  */
 export function kindFromOsmTags(tags: Tags): PlaceKind | null {
-  const { amenity, tourism, leisure, historic } = tags;
+  const { amenity, tourism, leisure, historic, shop } = tags;
 
   if (tourism === "museum" || tourism === "gallery") return "museum";
   if (amenity === "place_of_worship") return "temple";
@@ -73,6 +76,7 @@ export function kindFromOsmTags(tags: Tags): PlaceKind | null {
   if (amenity === "marketplace") return "market";
   if (amenity === "restaurant") return "restaurant";
   if (amenity === "cafe") return "cafe";
+  if (shop === "bakery") return "bakery";
   if (amenity === "bar" || amenity === "pub") return "bar";
   if (
     tourism === "theme_park" ||

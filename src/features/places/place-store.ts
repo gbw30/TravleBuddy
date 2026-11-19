@@ -26,7 +26,7 @@ const FOOD_REACH_KM = 1.5;
 /** Saved places are fetched again once their record is this old. */
 export const REFRESH_DAYS = 30;
 /** Raised when a query changes, so its places are fetched again on next use. */
-export const QUERY_VERSION = { sights: 2, food: 2 } as const;
+export const QUERY_VERSION = { sights: 2, food: 3 } as const;
 
 type PlaceRow = Prisma.PlaceGetPayload<object>;
 

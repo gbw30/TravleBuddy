@@ -23,6 +23,7 @@ describe("kinds of place", () => {
       [{ amenity: "marketplace" }, "market"],
       [{ amenity: "restaurant", cuisine: "sushi" }, "restaurant"],
       [{ amenity: "cafe" }, "cafe"],
+      [{ shop: "bakery" }, "bakery"],
       [{ amenity: "pub" }, "bar"],
       [{ tourism: "aquarium" }, "activity"],
       [{ leisure: "garden" }, "park"],
@@ -44,6 +45,9 @@ describe("kinds of place", () => {
     expect(visitMinutes("museum")).toBe(120);
     expect(isMealKind("restaurant")).toBe(true);
     expect(isMealKind("museum")).toBe(false);
+    expect(isMealKind("bakery")).toBe(true);
+    expect(visitMinutes("bakery")).toBe(45);
+    expect(kindLabel("bakery")).toBe("Bakery");
   });
 });
 

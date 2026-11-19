@@ -29,10 +29,14 @@ export function sightsQuery(centre: Point): string {
 out center meta 500;`;
 }
 
-/** Restaurants and cafes within walking distance of a point. */
+/** Restaurants, cafes and bakeries within walking distance of a point. */
 export function foodQuery(centre: Point): string {
+  const area = around(FOOD_RADIUS_M, centre);
   return `[out:json][timeout:20];
-nwr["amenity"~"^(restaurant|cafe)$"]["name"]${around(FOOD_RADIUS_M, centre)};
+(
+  nwr["amenity"~"^(restaurant|cafe)$"]["name"]${area};
+  nwr["shop"="bakery"]["name"]${area};
+);
 out center meta 200;`;
 }
 
