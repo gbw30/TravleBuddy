@@ -26,7 +26,7 @@ import { isMovement, onlyColourDiffers, type Look } from "./rules";
 //
 // It needs a local server started with PLACE_PROVIDER_MODE=mock, AI_MODE=off
 // and the development sign-in. It signs in as the development user, resets
-// that user's profile, and deletes the two trips it makes.
+// that user's profile, and deletes the trips it makes (two per browser).
 
 const base = process.argv[2] ?? "http://localhost:3100";
 const out = process.argv[3] ?? "docs/quality/design-checks.md";

@@ -13,7 +13,7 @@ Built, and checked by unit tests or by a walk of the real site on the developmen
 
 - **The QA gate.** No requirement has passed it. Every feature built since the last gate is a `candidate` in `qa/feature-states.json`.
 - **The real AI model.** No request has been made with a real key.
-- **The real place services.** No request has been made to OpenStreetMap from the app.
+- **The real place services.** No deliberate request has been made to OpenStreetMap from the app. On 2026-11-19 one run of the design checks was started against a server without sample places and probably sent a few city lookups to Nominatim before it stopped; their answers were not looked at.
 - **A real phone, a screen reader.** The design checks ran in Chromium, Firefox and WebKit, at phone width but not on a phone.
 - **Production, signed in.** Only the signed-out pages of the live site were looked at.
 

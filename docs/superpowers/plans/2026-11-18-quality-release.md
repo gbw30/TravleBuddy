@@ -289,6 +289,8 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 - In WebKit a focused dropdown showed no focus ring. Form fields draw their ring as a shadow, and WebKit draws none on a native dropdown. Dropdowns now take the same outline as every other control (TB-DSN-05).
 - A fault of the checks themselves: every browser walked the same trip, and each picks three cards, so the third browser found no open slot and its two motion checks failed with "no cards were offered". Each browser now gets trips of its own.
 
+**Correction (pull request 71):** one run of piece 14 was started against a server without sample places and probably sent a few city lookups to Nominatim before it stopped. The evidence page now says no _deliberate_ request has been made to OpenStreetMap from the app.
+
 ## Waiting for the developer
 
 - Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point).
