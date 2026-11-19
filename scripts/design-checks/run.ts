@@ -57,7 +57,7 @@ type Row = {
   ok: boolean;
   detail: string;
 };
-type Data = { guided: string; quick: string };
+type Data = { guided: string; quick: string; kyoto: string };
 type Screen = { name: string; path: string; cards?: boolean };
 
 const row = (
@@ -930,7 +930,20 @@ async function setUp(call: Call): Promise<Data> {
       children: 0,
     },
   });
-  return { guided: guided.id, quick: quick.id };
+
+  // A trip to Kyoto, which no sample traveller plans: the place the walk adds
+  // by hand is saved for that city and stays out of their plans.
+  const kyoto = await trip("QUICK", []);
+  await kyoto.change("put", "/brief", {
+    facts: {
+      cities: [{ city: await city("Kyoto"), nights: null }],
+      startDate: "2027-07-10",
+      endDate: "2027-07-12",
+      adults: 2,
+      children: 0,
+    },
+  });
+  return { guided: guided.id, quick: quick.id, kyoto: kyoto.id };
 }
 
 /** A place added by hand, opened in its closer look: the links to check it with. */
@@ -941,7 +954,7 @@ async function checkItYourself(
 ): Promise<Row[]> {
   const problems: string[] = [];
   const name = "Walk Test Gallery";
-  const plan: PlanSnapshot = (await call("get", `/trips/${data.guided}/plan`))
+  const plan: PlanSnapshot = (await call("get", `/trips/${data.kyoto}/plan`))
     .json.plan;
   const slot = plan.view.days
     .flatMap((day) => day.entries)
@@ -957,21 +970,21 @@ async function checkItYourself(
       ),
     ];
   }
-  const added = await call("post", `/trips/${data.guided}/places`, {
+  const added = await call("post", `/trips/${data.kyoto}/places`, {
     name,
     kind: "museum",
     slotId: slot.slotId,
   });
   const placeId: string = added.json.card.placeId;
-  const revision: number = (await call("get", `/trips/${data.guided}/brief`))
+  const revision: number = (await call("get", `/trips/${data.kyoto}/brief`))
     .json.brief.revision;
-  await call("post", `/trips/${data.guided}/plan`, {
+  await call("post", `/trips/${data.kyoto}/plan`, {
     operationId: randomUUID(),
     expectedRevision: revision,
     action: { type: "pick", slotId: slot.slotId, placeId },
   });
 
-  await open(page, `/trips/${data.guided}`);
+  await open(page, `/trips/${data.kyoto}`);
   await page.getByRole("button", { name: `Details for ${name}` }).click();
   const dialog = page.getByRole("dialog");
   const maps = dialog.getByRole("link", {
@@ -1202,6 +1215,7 @@ async function main() {
         if (data) {
           await admin("delete", `/trips/${data.guided}`);
           await admin("delete", `/trips/${data.quick}`);
+          await admin("delete", `/trips/${data.kyoto}`);
         }
       }
     }
