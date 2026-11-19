@@ -272,7 +272,7 @@ describe("the check on a card's reason", () => {
   });
   const open = "It is open for the whole visit.";
   const unknown = "Its opening hours are not known, so check before you go.";
-  const stale = "Its hours may be out of date, so check before you go.";
+  const listed = "Its listed hours cover the whole visit.";
 
   it("passes reasons that say only what is true", () => {
     for (const reason of [
@@ -280,7 +280,7 @@ describe("the check on a card's reason", () => {
       `It is about a 12-minute walk from Castle, so it fits your afternoon. I remember from your trip “Porto, May 2027” that you like museums and exhibitions. ${unknown}`,
       `It fits your lunch in Lisbon. You eat vegetarian food, and its listing says it has vegan options. ${open}`,
       `It fits your lunch in Lisbon. You eat vegetarian food, and the sample data says it serves it. ${open}`,
-      `It fits your lunch in Lisbon. You said you like museums and exhibitions. ${stale}`,
+      `It fits your lunch in Lisbon. You said you like museums and exhibitions. ${listed}`,
       `It fits your dinner in Lisbon. You eat vegetarian food, and the place data does not say whether this place serves it, so check with the venue. ${unknown}`,
       `It fits your afternoon in Lisbon. It is not one of the interests you named, but you have no park or garden in this day yet. ${open}`,
     ]) {

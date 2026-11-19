@@ -208,7 +208,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
   const rest = reason.slice(fits[0].length);
   const hours = [
     "It is open for the whole visit.",
-    "Its hours may be out of date, so check before you go.",
+    "Its listed hours cover the whole visit.",
     "Its opening hours are not known, so check before you go.",
   ].find((sentence) => rest.endsWith(sentence));
   if (!hours)

@@ -318,9 +318,9 @@ function reasonFor(ranked: Ranked, input: ProposeInput): string {
       : `It fits your ${slot} in ${input.cityName}.`,
     travellerSentence(ranked, input),
     ranked.open === "open"
-      ? ranked.place.hoursDoubt === null
-        ? "It is open for the whole visit."
-        : "Its hours may be out of date, so check before you go."
+      ? ranked.place.origin === "OSM"
+        ? "Its listed hours cover the whole visit."
+        : "It is open for the whole visit."
       : "Its opening hours are not known, so check before you go.",
   ].join(" ");
 }

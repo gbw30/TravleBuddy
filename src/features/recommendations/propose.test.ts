@@ -91,7 +91,7 @@ describe("proposeCards", () => {
       }),
     );
     expect(ids(set)).toEqual(["open", "unknown"]);
-    expect(set.cards[0].reason).toContain("open for the whole visit");
+    expect(set.cards[0].reason).toContain("listed hours cover the whole visit");
     expect(set.cards[1].reason).toContain("opening hours are not known");
     expect(set.cards[1].hours).toBeNull();
   });
@@ -332,7 +332,7 @@ describe("the traveller's taste in the ranking", () => {
     );
     expect(ids(set)[0]).toBe("z-museum");
     expect(reasonOf(set, "z-museum")).toBe(
-      "It fits your morning in Tokyo. You said you like museums and exhibitions. It is open for the whole visit.",
+      "It fits your morning in Tokyo. You said you like museums and exhibitions. Its listed hours cover the whole visit.",
     );
     expect(reasonOf(set, "a-park")).toContain(
       "It is not one of the interests you named.",
@@ -455,7 +455,7 @@ describe("the traveller's taste in the ranking", () => {
     );
     for (const card of ruled.cards) {
       expect(card.reason).toBe(
-        "It fits your lunch in Tokyo. You eat vegetarian and gluten-free food, and the place data does not say whether this place serves it, so check with the venue. It is open for the whole visit.",
+        "It fits your lunch in Tokyo. You eat vegetarian and gluten-free food, and the place data does not say whether this place serves it, so check with the venue. Its listed hours cover the whole visit.",
       );
     }
     const free = proposeCards(
@@ -732,7 +732,7 @@ describe("true sentences", () => {
     );
   });
 
-  it("says open only when hours are fresh", () => {
+  it("says a real place's listed hours cover the visit, however old, and never doubts in a reason", () => {
     const set = proposeCards(
       input({
         candidates: [
@@ -740,14 +740,22 @@ describe("true sentences", () => {
           place("old", {
             hoursDoubt: "Last updated on the map in 2021. Worth a check.",
           }),
+          place("sample", { origin: "SAMPLE" }),
         ],
       }),
     );
-    expect(reasonOf(set, "fresh")).toContain("It is open for the whole visit.");
-    expect(reasonOf(set, "old")).not.toContain("open for the whole visit");
-    expect(reasonOf(set, "old")).toContain(
-      "Its hours may be out of date, so check before you go.",
+    expect(reasonOf(set, "fresh")).toContain(
+      "Its listed hours cover the whole visit.",
     );
+    expect(reasonOf(set, "old")).toContain(
+      "Its listed hours cover the whole visit.",
+    );
+    expect(reasonOf(set, "sample")).toContain(
+      "It is open for the whole visit.",
+    );
+    for (const card of set.cards) {
+      expect(card.reason).not.toContain("out of date");
+    }
   });
 
   it("names the tag's own diet word", () => {
