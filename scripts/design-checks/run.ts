@@ -933,6 +933,61 @@ async function setUp(call: Call): Promise<Data> {
   return { guided: guided.id, quick: quick.id };
 }
 
+/** A place is dragged onto an open slot; a fixed commitment cannot be dragged. */
+async function dragMove(page: Page, call: Call, data: Data): Promise<Row[]> {
+  const problems: string[] = [];
+  const read = async (): Promise<PlanSnapshot> =>
+    (await call("get", `/trips/${data.guided}/plan`)).json.plan;
+  const plan = await read();
+  const entries = plan.view.days.flatMap((day) => day.entries);
+  const from = entries.findIndex((entry) => entry.type === "place");
+  const to = entries.findIndex((entry) => entry.type === "open");
+  const fixed = entries.findIndex((entry) => entry.type === "commitment");
+  const source = entries[from];
+  const target = entries[to];
+  if (source?.type !== "place" || target?.type !== "open") {
+    problems.push("the plan has no placed place and open slot to drag between");
+  } else {
+    await open(page, `/trips/${data.guided}`);
+    const items = page.locator('section[aria-label^="Day "] ol > li');
+    if ((await items.count()) !== entries.length) {
+      problems.push("the page lists a different number of items than the plan");
+    } else {
+      const name = plan.chosen[source.placeId]?.name;
+      await items.nth(from).dragTo(items.nth(to));
+      let moved = false;
+      for (let attempt = 0; attempt < 20 && !moved; attempt += 1) {
+        await page.waitForTimeout(500);
+        moved = (await read()).view.days.some((day) =>
+          day.entries.some(
+            (entry) =>
+              entry.type === "place" &&
+              entry.slotId === target.slotId &&
+              entry.placeId === source.placeId,
+          ),
+        );
+      }
+      if (!moved)
+        problems.push(`dragging ${name} onto ${target.kind} did not move it`);
+      if (
+        fixed >= 0 &&
+        (await items.nth(fixed).getAttribute("draggable")) === "true"
+      ) {
+        problems.push("the fixed commitment can be dragged");
+      }
+    }
+  }
+  return [
+    row(
+      "Trip",
+      "A place is moved by drag",
+      "TB-ITN-09",
+      problems,
+      "dragging a place onto an open slot moves it; a fixed item is not draggable",
+    ),
+  ];
+}
+
 async function walk(browser: Browser, admin: Call, data: Data): Promise<Row[]> {
   const screens: Screen[] = [
     { name: "Home", path: "/home" },
@@ -955,6 +1010,7 @@ async function walk(browser: Browser, admin: Call, data: Data): Promise<Row[]> {
     rows.push(...(await screenRows(desktop.page, screen, admin, data)));
   }
   rows.push(...(await keyboardActions(desktop.page, admin, data)));
+  rows.push(...(await dragMove(desktop.page, admin, data)));
 
   const phone = await (await context({ viewport: PHONE })).newPage();
   for (const screen of screens) {
@@ -1048,7 +1104,7 @@ async function main() {
     "",
     "Status: evidence",
     "Authority: What the design walk found. Written by `npm run quality:design`; do not edit by hand.",
-    "Related: [requirements](../requirements.md) TB-DSN-01 to TB-DSN-07",
+    "Related: [requirements](../requirements.md) TB-DSN-01 to TB-DSN-07, TB-ITN-09",
     "",
     "Every real screen (Home, Create, a trip with cards, the brief, Profile) is opened in each browser at desktop and phone width, with motion on and asked off, signed in as the development user against the sample places.",
     "",
