@@ -118,6 +118,7 @@ The agent asks about taste for this trip, one topic at a time:
 - **Food:** likes, dislikes, dietary rules and allergies.
 - **Getting around:** walking, public transport, taxis, a hire car.
 - **Where to stay:** type of place, and any hotel loyalty programme.
+- **Breakfast:** where they stay, suggested places, or none.
 - **How the budget should be spent:** for example saving on hotels to spend on food.
 
 When the agent already remembers something, it confirms instead of asking from scratch: "Last time you liked slow days. Same for this trip?"
@@ -209,6 +210,8 @@ These are fixed rules applied by the scheduling service. The AI model cannot ove
 5. Each item is in the city the traveller is in at that time.
 6. The day fits the chosen pace and day shape.
 7. Times are in the local time of the place, including across time zones and clock changes.
+8. Time allowed for airports and stations is shown as an allowance, not hidden.
+9. With a confirmed stay, the day starts and ends there, and the way back counts toward the end of the day.
 
 ### 9.4 Pace
 
@@ -222,7 +225,7 @@ Pace is a measured preference that shapes each day.
 
 When the pace leaves room, the agent proposes areas worth walking around, not only venues.
 
-Default day: 09:00 to 21:30, lunch between 11:30 and 14:00, dinner between 18:00 and 21:00. Day shape preferences shift these.
+Default day: 09:00 to 21:30, lunch between 11:30 and 14:00, dinner between 18:00 and 21:00. Day shape preferences shift these. Breakfast, when wanted, starts between 07:30 and 10:00 and takes 45 minutes. Around a ticket: a flight allows 120 minutes before and 60 after; a train, bus or ferry 30 before and 20 after.
 
 ### 9.5 The shelf
 
