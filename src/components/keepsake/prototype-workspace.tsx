@@ -34,7 +34,7 @@ import { DiscardReasons } from "./discard-reasons";
 import { LiveItinerary } from "./live-itinerary";
 import { Postcard } from "./postcard";
 import { Shelf } from "./shelf";
-import { eyebrow, quiet } from "./styles";
+import { eyebrow, quiet, tab } from "./styles";
 
 export type WorkspaceOptions = {
   photos: boolean;
@@ -529,8 +529,6 @@ const sheetTitle = (
     Itinerary
   </h2>
 );
-const tab =
-  "inline-flex min-h-9 items-center rounded-full px-4 font-sans text-[13px] text-ink shadow-[inset_0_0_0_1px_rgb(29_26_22/0.2)] aria-selected:bg-ink aria-selected:text-paper";
 // Three postcards fanned on a table; a plain row to swipe on a phone.
 const fan =
   "w-[78%] shrink-0 snap-center sm:w-auto sm:nth-1:translate-x-2.5 sm:nth-1:translate-y-3.5 sm:nth-1:-rotate-[2.2deg] sm:nth-2:relative sm:nth-2:z-[2] sm:nth-2:-translate-y-1.5 sm:nth-3:-translate-x-2.5 sm:nth-3:translate-y-4 sm:nth-3:rotate-2";

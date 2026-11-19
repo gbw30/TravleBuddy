@@ -20,7 +20,15 @@ import { dayLabel } from "./format";
 import { PlanItinerary, slotOptions, slotWord } from "./plan-itinerary";
 import { Postcard } from "./postcard";
 import { Shelf } from "./shelf";
-import { button, buttonSecond, chip, eyebrow, field, quiet } from "./styles";
+import {
+  button,
+  buttonSecond,
+  chip,
+  eyebrow,
+  field,
+  quiet,
+  tab,
+} from "./styles";
 import type { CardPlace } from "./types";
 
 /** A card's data in the shape the postcard draws. Unknown facts stay null. */
@@ -85,7 +93,7 @@ export function TripWorkspace({
   const [heard, setHeard] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [itineraryOpen, setItineraryOpen] = useState(false);
   const [found, setFound] = useState<CardDto[] | null>(null);
   const [searchNote, setSearchNote] = useState("");
   const asked = useRef(false);
@@ -94,6 +102,17 @@ export function TripWorkspace({
   const [reportHidden, setReportHidden] = useState(false);
   const building = useRef(false);
   const [starting, setStarting] = useState(false);
+
+  // Set when a slot is chosen in the itinerary; its Choose button may be hidden.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    (
+      document.getElementById("choosing-heading") ??
+      document.getElementById("plan-message")
+    )?.focus();
+  }, [plan]);
 
   const { view, proposal } = plan;
   const focus = proposal?.slotId ?? null;
@@ -303,7 +322,12 @@ export function TripWorkspace({
       focusSlotId={focus}
       transit={transit}
       readOnly={readOnly}
-      onFocus={(slotId) => void refresh(slotId)}
+      onFocus={(slotId) => {
+        // On a phone Choose returns to the plan tab; keyboard focus goes to the cards.
+        setItineraryOpen(false);
+        refocus.current = true;
+        void refresh(slotId);
+      }}
       onMove={(fromSlotId, toSlotId) =>
         act({ type: "move", fromSlotId, toSlotId }, focus)
       }
@@ -330,8 +354,47 @@ export function TripWorkspace({
           onHide={() => setReportHidden(true)}
         />
       )}
+      <div
+        role="tablist"
+        aria-label="Plan or itinerary"
+        className="mb-6 flex gap-2 lg:hidden"
+        onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+            return;
+          event.preventDefault();
+          const next =
+            event.key === "Home" || event.key === "ArrowLeft" ? false : true;
+          setItineraryOpen(next);
+          document.getElementById(next ? "tab-itinerary" : "tab-plan")?.focus();
+        }}
+      >
+        {[
+          { id: "plan", label: "Plan with me", open: false },
+          { id: "itinerary", label: "Itinerary", open: true },
+        ].map(({ id, label, open }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`tab-${id}`}
+            aria-selected={itineraryOpen === open}
+            aria-controls={`${id}-panel`}
+            tabIndex={itineraryOpen === open ? 0 : -1}
+            data-qa={open ? "itinerary-toggle" : undefined}
+            className={tab}
+            onClick={() => setItineraryOpen(open)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-16">
-        <div className="min-w-0 space-y-12 pb-24 lg:pb-0">
+        <div
+          role="tabpanel"
+          id="plan-panel"
+          aria-labelledby="tab-plan"
+          className={`min-w-0 space-y-12 ${itineraryOpen ? "hidden lg:block" : ""}`}
+        >
           <div className="space-y-5">
             <div className="max-w-[620px] space-y-3">
               {view.provisionalDates && view.days[0] && (
@@ -384,7 +447,11 @@ export function TripWorkspace({
                   </span>{" "}
                   · {slotWord[focusSlot.kind]} · {focusSlot.start}
                 </p>
-                <h2 className="mt-3 text-[32px] leading-[1.06] tracking-[-0.03em] text-balance md:text-[46px]">
+                <h2
+                  id="choosing-heading"
+                  tabIndex={-1}
+                  className="mt-3 text-[32px] leading-[1.06] tracking-[-0.03em] text-balance focus:outline-none md:text-[46px]"
+                >
                   {focusSlot.type === "place" ? "Swapping" : "Choosing"} your{" "}
                   <em>{slotWord[focusSlot.kind].toLowerCase()}</em>
                 </h2>
@@ -392,7 +459,9 @@ export function TripWorkspace({
             )}
 
             <div
-              className="max-w-[620px] space-y-3 text-ink/80"
+              id="plan-message"
+              tabIndex={-1}
+              className="max-w-[620px] space-y-3 text-ink/80 focus:outline-none"
               aria-live="polite"
             >
               {plan.holding === "food" && (
@@ -678,27 +747,13 @@ export function TripWorkspace({
           </p>
         </div>
 
-        {/* On a phone the itinerary is a sheet at the foot of the screen. */}
-        <aside
-          aria-label="Itinerary"
-          className={`fixed inset-x-3 bottom-3 z-10 overflow-hidden rounded-2xl shadow-[0_10px_30px_rgb(29_26_22/0.3)] lg:static lg:overflow-visible lg:p-6 ${sheet}`}
-        >
-          <button
-            type="button"
-            data-qa="itinerary-toggle"
-            aria-expanded={sheetOpen}
-            onClick={() => setSheetOpen((open) => !open)}
-            className="flex w-full items-center justify-between bg-ink px-5 py-3.5 font-sans text-sm font-medium text-paper lg:hidden"
-          >
-            <span>Itinerary</span>
-            <span aria-hidden>{sheetOpen ? "▾" : "▴"}</span>
-          </button>
+        {/* On a phone the itinerary is a second tab. */}
+        <aside aria-label="Itinerary" className={`${sheet} lg:p-6`}>
           <div
-            className={
-              sheetOpen
-                ? "max-h-[65vh] overflow-y-auto overscroll-contain p-4 lg:max-h-none lg:overflow-visible lg:p-0"
-                : "hidden lg:block"
-            }
+            role="tabpanel"
+            id="itinerary-panel"
+            aria-labelledby="tab-itinerary"
+            className={itineraryOpen ? "p-5 lg:p-0" : "hidden lg:block"}
           >
             <div className="mb-6 flex items-center justify-between gap-3">
               <h2 className="hidden text-[30px] leading-none tracking-[-0.025em] lg:block">

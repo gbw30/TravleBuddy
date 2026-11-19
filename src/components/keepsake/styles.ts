@@ -37,3 +37,7 @@ export const lift =
 
 /** An answer you can switch on and off. */
 export const chip = `inline-flex min-h-9 items-center rounded-full px-4 font-sans text-[13px] text-ink shadow-[inset_0_0_0_1px_rgb(29_26_22/0.25)] transition-[background-color,color,box-shadow,scale] ${settle} hover:shadow-[inset_0_0_0_1px_rgb(29_26_22/0.7)] active:scale-[0.96] aria-pressed:bg-ink aria-pressed:text-paper`;
+
+/** A phone tab (the plan or the itinerary); filled with ink when selected. */
+export const tab =
+  "inline-flex min-h-9 items-center rounded-full px-4 font-sans text-[13px] text-ink shadow-[inset_0_0_0_1px_rgb(29_26_22/0.2)] aria-selected:bg-ink aria-selected:text-paper";
