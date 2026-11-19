@@ -44,6 +44,8 @@ export type PlanContext = {
   dayShift?: number;
   /** The way of getting around the traveller named; legs are timed by it. */
   means?: TravelMeans;
+  /** What the traveller said about breakfast; nothing said is none. */
+  breakfast?: "included" | "suggest" | "none";
 };
 
 // The default day and the pace table of PRD 9.4.
@@ -81,11 +83,14 @@ const paceRules: Record<Pace, { buffer: number; wander: number }> = {
 /** A slot may start this much later than usual before it is dropped for the day. */
 const LATE_START = 90;
 const MEAL_MINUTES = 75;
+/** Breakfast starts with the day, if the day starts in this window, and takes this long. */
+export const BREAKFAST = { from: 450, until: 600, minutes: 45 };
 /** Less time than this between lunch and something decided is not time to wander. */
 const MIN_WANDER = 30;
 const ASSUMED_TRANSFER_START = 12 * 60;
 
-const isMealSlot = (kind: SlotKind) => kind === "lunch" || kind === "dinner";
+const isMealSlot = (kind: SlotKind) =>
+  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 const toMinutes = (clock: string) =>
   Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
 const toClock = (minutes: number) => {
@@ -257,6 +262,8 @@ export function buildPlanView(
     /** When the transfer arrives, by the clock of the city of arrival. */
     landsAt: number;
     slots: DraftSlot[];
+    /** When breakfast where the traveller stays is shown, if it is. */
+    stayBreakfast: number | null;
     /** Slot id to the must-include that holds it. */
     held: Map<string, CommitmentDto>;
     /** Commitments with a date but no time that take no slot: stays, tickets. */
@@ -344,6 +351,34 @@ export function buildPlanView(
     }
 
     const slots: DraftSlot[] = [];
+    // Breakfast starts with the day, and only a day that starts in the
+    // morning has one. Day 1 has no night behind it, so none is "at the stay".
+    const dayStart = segments[0].from;
+    let stayBreakfast: number | null = null;
+    if (
+      dayStart >= BREAKFAST.from &&
+      dayStart <= BREAKFAST.until &&
+      segments[0].until >= dayStart + BREAKFAST.minutes
+    ) {
+      const taken = fixed.some(
+        (f) =>
+          f.commitment.kind !== "STAY" &&
+          f.start < dayStart + BREAKFAST.minutes &&
+          dayStart < f.end,
+      );
+      if (context.breakfast === "suggest") {
+        if (!taken) {
+          slots.push({
+            id: slotId(day, "breakfast"),
+            kind: "breakfast",
+            earliest: dayStart,
+            city: segments[0].city,
+          });
+        }
+      } else if (context.breakfast === "included" && index > 0 && !taken) {
+        stayBreakfast = dayStart;
+      }
+    }
     for (const [kind, standard] of templates[state.pace]) {
       const usual = standard + shift;
       const segment = segments.find(
@@ -376,6 +411,7 @@ export function buildPlanView(
       transfer,
       landsAt,
       slots,
+      stayBreakfast,
       held: new Map(),
       notes: [],
     });
@@ -388,6 +424,7 @@ export function buildPlanView(
     draft.slots.find(
       (slot) =>
         !draft.held.has(slot.id) &&
+        slot.kind !== "breakfast" &&
         (wantMeal === null || isMealSlot(slot.kind) === wantMeal),
     );
   for (const commitment of context.commitments) {
@@ -452,7 +489,17 @@ export function buildPlanView(
       minutes: null,
       slotId: null,
     }));
-    let clock = draft.segments[0].from;
+    if (draft.stayBreakfast !== null) {
+      entries.push({
+        type: "breakfast-at-stay",
+        start: toClock(draft.stayBreakfast),
+        minutes: BREAKFAST.minutes,
+      });
+    }
+    // Breakfast where the traveller stays takes its time, as a slot does.
+    let clock =
+      draft.segments[0].from +
+      (draft.stayBreakfast === null ? 0 : BREAKFAST.minutes);
     let lastPoint: { latitude: number; longitude: number } | null = null;
     let lastPlaceName: string | null = null;
 
@@ -511,7 +558,11 @@ export function buildPlanView(
           slot.earliest,
           clock + (leg ? leg.minutes + buffer : 0),
         );
-        const minutes = pick.minutes ?? visitMinutes(place.kind);
+        const minutes =
+          pick.minutes ??
+          (slot.kind === "breakfast"
+            ? BREAKFAST.minutes
+            : visitMinutes(place.kind));
         const end = start + minutes;
 
         const flags: PlanFlag[] = [];
@@ -588,6 +639,7 @@ export function buildPlanView(
         // A lunch not chosen yet still takes its time, so what follows is
         // laid out as it will be once there is one.
         if (slot.kind === "lunch") clock = start + MEAL_MINUTES;
+        if (slot.kind === "breakfast") clock = start + BREAKFAST.minutes;
       }
 
       // Time to wander or rest follows lunch, with the last place as its area.
@@ -637,7 +689,8 @@ export function buildPlanView(
 /** Whether a place of this kind suits a slot: meals at meal times, the rest between. */
 export function kindSuitsSlot(kind: PlaceDto["kind"], slot: SlotKind): boolean {
   if (slot === "dinner") return kind === "restaurant";
+  if (slot === "breakfast") return kind === "cafe" || kind === "bakery";
   return isMealSlot(slot)
-    ? isMealKind(kind)
+    ? kind === "restaurant" || kind === "cafe"
     : !isMealKind(kind) && kind !== "bar";
 }

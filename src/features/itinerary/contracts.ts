@@ -9,6 +9,7 @@ export const PACES = ["relaxed", "balanced", "packed"] as const;
 export type Pace = (typeof PACES)[number];
 
 export const SLOT_KINDS = [
+  "breakfast",
   "morning",
   "morning-2",
   "lunch",
@@ -19,6 +20,7 @@ export const SLOT_KINDS = [
 export type SlotKind = (typeof SLOT_KINDS)[number];
 /** What a traveller calls each slot. */
 export const SLOT_WORDS: Record<SlotKind, string> = {
+  breakfast: "Breakfast",
   morning: "Morning",
   "morning-2": "Late morning",
   lunch: "Lunch",
@@ -177,7 +179,9 @@ export type PlanEntry =
       /** When it arrives by the clock there, if that clock differs from the one left behind. */
       arriveLocal: string | null;
     }
-  | { type: "wander"; start: string; minutes: number; area: string | null };
+  | { type: "wander"; start: string; minutes: number; area: string | null }
+  /** Breakfast that comes with the stay: a quiet row, with nothing to choose. */
+  | { type: "breakfast-at-stay"; start: string; minutes: number };
 
 export type PlanDay = {
   day: number;

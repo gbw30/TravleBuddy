@@ -165,6 +165,17 @@ describe("a skip", () => {
     });
   });
 
+  it("leaves breakfast out when the question is skipped, and says so", () => {
+    expect(run({ type: "skip" }, { waiting: QUESTIONS.breakfast })).toEqual({
+      change: {
+        type: "taste",
+        topic: "breakfast",
+        answer: { values: ["none"], source: "default" },
+      },
+      says: "I will leave breakfast out; tell me if you want some.",
+    });
+  });
+
   it("goes by what is remembered when the profile can answer, kept as a default", () => {
     const waiting = {
       ...QUESTIONS.interests,

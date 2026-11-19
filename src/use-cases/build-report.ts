@@ -30,7 +30,7 @@ const USED: TasteTopic[] = [
 const SPELLED_OUT = 3;
 
 const slotWords = (kind: SlotKind) =>
-  kind === "lunch" || kind === "dinner"
+  kind === "breakfast" || kind === "lunch" || kind === "dinner"
     ? kind
     : `the ${SLOT_WORDS[kind].toLowerCase()}`;
 type Slot = Extract<PlanEntry, { type: "open" | "place" }>;
@@ -71,7 +71,10 @@ export function buildReportOf(input: {
       : [];
   });
   const meals = standing.filter(
-    ({ entry }) => entry.kind === "lunch" || entry.kind === "dinner",
+    ({ entry }) =>
+      entry.kind === "breakfast" ||
+      entry.kind === "lunch" ||
+      entry.kind === "dinner",
   );
   const own =
     [...slots.values()].filter(({ entry }) => entry.type === "place").length -

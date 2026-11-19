@@ -200,7 +200,7 @@ describe("the brief of a trip", () => {
       "balanced",
       "packed",
     ]);
-    expect(brief.style).toHaveLength(8);
+    expect(brief.style).toHaveLength(9);
   });
 
   it("writes the whole brief in plain sentences, one part per step", () => {

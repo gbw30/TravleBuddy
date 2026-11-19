@@ -217,6 +217,19 @@ describe("what the profile did to a trip", () => {
     ]);
   });
 
+  it("does not count a breakfast place as a sight or activity", () => {
+    const withBreakfast = view(
+      early.days.map((day, index) =>
+        index === 0
+          ? [at("d1-breakfast", "08:30", "Garden Table"), ...day.entries]
+          : day.entries,
+      ),
+    );
+    expect(shaped([told("interests", "museums")], {}, withBreakfast)).toEqual(
+      shaped([told("interests", "museums")]),
+    );
+  });
+
   it("claims nothing for a trip with no places yet", () => {
     const empty = view([
       [at("d1-morning", "10:00", null), at("d1-lunch", "12:30", null)],

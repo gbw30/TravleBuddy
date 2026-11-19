@@ -118,6 +118,33 @@ describe("the checks on a planned trip", () => {
     ]);
   });
 
+  it("find an open breakfast slot only when the traveller asked for suggestions", () => {
+    const open = plan([
+      [at("d1-breakfast", null), at("d1-morning", "Castle")],
+      [at("d2-breakfast", "Corner Noodles"), at("d2-morning", "Gallery")],
+    ]);
+    expect(
+      failed(
+        checkItinerary({
+          plan: open,
+          expected: expected({ breakfast: "suggest" }),
+          known,
+        }),
+      ),
+    ).toEqual(["Every day has its meals: day 1 has no breakfast"]);
+    for (const breakfast of ["none", "included", undefined] as const) {
+      expect(
+        failed(
+          checkItinerary({
+            plan: open,
+            expected: expected({ breakfast }),
+            known,
+          }),
+        ),
+      ).toEqual([]);
+    }
+  });
+
   it("catch a place the source does not know, and a place used twice", () => {
     const invented = plan([
       [at("d1-morning", "Castle"), at("d1-afternoon", "Moon Garden")],

@@ -84,7 +84,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 export const isSlot = (entry: PlanEntry): entry is SlotEntry =>
   entry.type === "open" || entry.type === "place";
 export const isMeal = (entry: SlotEntry) =>
-  entry.kind === "lunch" || entry.kind === "dinner";
+  entry.kind === "breakfast" ||
+  entry.kind === "lunch" ||
+  entry.kind === "dinner";
 
 /** A trip with no dates is laid out from provisional ones (PRD 9.7). */
 export function withProvisionalStart(
@@ -115,6 +117,7 @@ export function startingState(
 
 /** How far the "shape of the day" moves the whole day (PRD 9.4). */
 const DAY_SHIFT: Record<string, number> = { early: -60, late: 60 };
+const BREAKFASTS = ["included", "suggest", "none"] as const;
 
 /** The taste a trip goes by: the personal profile, with what was said for this trip on top. */
 export async function tasteOf(
@@ -156,6 +159,9 @@ export async function contextFor(
     places: Object.fromEntries(places.map((place) => [place.id, place])),
     dayShift: DAY_SHIFT[inUse.day_shape?.values[0] ?? ""] ?? 0,
     means: meansOf(inUse),
+    breakfast: BREAKFASTS.find(
+      (choice) => choice === inUse.breakfast?.values[0],
+    ),
   };
 }
 

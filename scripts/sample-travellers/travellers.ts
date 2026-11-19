@@ -35,7 +35,11 @@ export type Traveller = {
   onlyStepOne?: boolean;
   /** Which of the three cards the traveller takes in Guided planning. */
   picks: "first" | "middle" | "last";
-  expected: { pace: Pace; dietaryRules: string[] };
+  expected: {
+    pace: Pace;
+    dietaryRules: string[];
+    breakfast?: "included" | "suggest" | "none";
+  };
 };
 
 const reservation = (
@@ -66,10 +70,15 @@ export const TRAVELLERS: Traveller[] = [
     answers: {
       pace: ["relaxed"],
       food: ["vegetarian"],
+      breakfast: ["suggest"],
       interests: ["markets"],
     },
     picks: "last",
-    expected: { pace: "relaxed", dietaryRules: ["vegetarian"] },
+    expected: {
+      pace: "relaxed",
+      dietaryRules: ["vegetarian"],
+      breakfast: "suggest",
+    },
   },
   {
     key: "okafors",
@@ -105,9 +114,13 @@ export const TRAVELLERS: Traveller[] = [
     adults: 2,
     children: 2,
     commitments: [],
-    answers: { day_shape: ["early"], interests: ["nature", "activities"] },
+    answers: {
+      day_shape: ["early"],
+      breakfast: ["included"],
+      interests: ["nature", "activities"],
+    },
     picks: "first",
-    expected: { pace: "balanced", dietaryRules: [] },
+    expected: { pace: "balanced", dietaryRules: [], breakfast: "included" },
   },
   {
     key: "dan-priya",

@@ -1,4 +1,4 @@
-import type { PlaceKind } from "./kinds";
+import { isMealKind, type PlaceKind } from "./kinds";
 import type { FoundPlace, PlaceSource, Point } from "./place-source";
 
 // Sample places for tests, QA and offline demos (PLACE_PROVIDER_MODE=mock).
@@ -64,6 +64,9 @@ const food: [string, PlaceKind, number, number, string | null][] = [
   ["Lantern Grill", "restaurant", -0.003, 0.002, "Tu-Su 17:00-23:00; Mo off"],
   ["Market Kitchen", "restaurant", 0.001, -0.004, "Mo-Su 11:30-21:30"],
   ["Morning Cafe", "cafe", -0.001, -0.002, "Mo-Su 07:30-18:00"],
+  ["Corner Bakery", "bakery", 0.003, -0.001, "Mo-Su 07:00-17:00"],
+  ["Sunrise Cafe", "cafe", -0.002, 0.003, "Mo-Su 07:00-16:00"],
+  ["Riverside Cafe", "cafe", 0.001, 0.004, "Mo-Su 07:30-17:00"],
   ["Garden Table", "restaurant", 0.004, 0.003, null],
   [
     "Harbour Canteen",
@@ -100,7 +103,7 @@ const place = (
   longitude,
   address: null,
   openingHours,
-  notable: kind !== "restaurant" && kind !== "cafe",
+  notable: !isMealKind(kind),
   ...(diets[name] ?? { serves: [], servesNot: [] }),
   tags: null,
   lastEditedAt: null,
