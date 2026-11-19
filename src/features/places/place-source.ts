@@ -21,6 +21,10 @@ export type FoundPlace = {
   /** Dietary rules the listing says it serves, and those it says it does not. */
   serves: string[];
   servesNot: string[];
+  /** The kept OpenStreetMap tags as they arrived; null for sample places. */
+  tags: Record<string, string> | null;
+  /** The element's last edit on the map; null when the provider gave none. */
+  lastEditedAt: Date | null;
 };
 
 /**

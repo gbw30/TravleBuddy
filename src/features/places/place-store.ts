@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 import type { City, PlaceDto } from "./contracts";
@@ -22,6 +22,10 @@ export type GatherOutcome = { status: "ready" | "unavailable" | "capped" };
 
 const DAILY_CAP = Number(process.env.PLACE_DAILY_REQUEST_CAP ?? 100);
 const FOOD_REACH_KM = 1.5;
+/** Saved places are fetched again once their record is this old. */
+export const REFRESH_DAYS = 30;
+/** Raised when a query changes, so its places are fetched again on next use. */
+export const QUERY_VERSION = { sights: 2, food: 2 } as const;
 
 type PlaceRow = Prisma.PlaceGetPayload<object>;
 
@@ -41,6 +45,10 @@ function toDto(row: PlaceRow): PlaceDto {
     notable: row.notable,
     serves: row.serves,
     servesNot: row.servesNot,
+    originRef: row.originRef,
+    tags: (row.osmTags ?? {}) as Record<string, string>,
+    lastEditedAt: row.lastEditedAt?.toISOString() ?? null,
+    fetchedAt: row.fetchedAt?.toISOString() ?? null,
   };
 }
 
@@ -62,41 +70,57 @@ async function withinCap(service: string): Promise<boolean> {
   return row.count <= DAILY_CAP;
 }
 
+// One upsert for all places: a refetched place keeps its id, so plans that
+// point at it stay valid.
 async function save(
   source: PlaceSource,
   key: string,
   found: FoundPlace[],
 ): Promise<void> {
-  if (found.length === 0) return;
-  await db.place.createMany({
-    data: found.map((place) => ({
-      ...place,
-      origin: source.origin,
-      cityKey: key,
-    })),
-    skipDuplicates: true,
-  });
+  const unique = [...new Map(found.map((p) => [p.originRef, p])).values()];
+  if (unique.length === 0) return;
+  const rows = unique.map(
+    (p) =>
+      Prisma.sql`(${source.origin}::"PlaceOrigin", ${p.originRef}, ${key}, ${p.name}, ${p.kind}, ${p.latitude}, ${p.longitude}, ${p.address}, ${p.openingHours}, ${p.notable}, ${p.serves}, ${p.servesNot}, ${p.tags ? JSON.stringify(p.tags) : null}::jsonb, ${p.lastEditedAt}, now(), now())`,
+  );
+  await db.$executeRaw`INSERT INTO "places" ("origin", "origin_ref", "city_key", "name", "kind", "latitude", "longitude", "address", "opening_hours", "notable", "serves", "serves_not", "osm_tags", "last_edited_at", "fetched_at", "updated_at")
+VALUES ${Prisma.join(rows)}
+ON CONFLICT ("origin", "origin_ref") DO UPDATE SET
+  "name" = EXCLUDED."name", "kind" = EXCLUDED."kind", "latitude" = EXCLUDED."latitude", "longitude" = EXCLUDED."longitude",
+  "address" = EXCLUDED."address", "opening_hours" = EXCLUDED."opening_hours", "notable" = EXCLUDED."notable",
+  "serves" = EXCLUDED."serves", "serves_not" = EXCLUDED."serves_not", "osm_tags" = EXCLUDED."osm_tags",
+  "last_edited_at" = EXCLUDED."last_edited_at", "fetched_at" = EXCLUDED."fetched_at", "updated_at" = EXCLUDED."updated_at"`;
 }
 
 /**
- * Makes sure one set of places is saved, asking the provider at most once.
- * The record of a finished request is kept per provider, so sample places
- * never stand in for a real request.
+ * Makes sure one set of places is saved, asking the provider at most once
+ * per REFRESH_DAYS. The record of a finished request is kept per provider and
+ * query version, so sample places never stand in for a real request and a
+ * changed query is fetched again.
  */
 async function gather(
   city: City,
-  scope: string,
+  scope: keyof typeof QUERY_VERSION,
+  detail: string,
   request: (source: PlaceSource, city: City & Point) => Promise<FoundPlace[]>,
 ): Promise<GatherOutcome> {
   const source = activeSource();
   const key = cityKey(city);
-  const fetchKey = { cityKey: key, scope: `${source.origin}:${scope}` };
+  const fetchKey = {
+    cityKey: key,
+    scope: `${source.origin}:${detail}#${QUERY_VERSION[scope]}`,
+  };
 
   const done = await db.placeFetch.findUnique({
     where: { cityKey_scope: fetchKey },
-    select: { id: true },
+    select: { fetchedAt: true },
   });
-  if (done) return { status: "ready" };
+  if (
+    done &&
+    Date.now() - done.fetchedAt.getTime() < REFRESH_DAYS * 86_400_000
+  ) {
+    return { status: "ready" };
+  }
 
   const where = located(city);
   if (!where) return { status: "unavailable" };
@@ -120,7 +144,9 @@ async function gather(
 
 /** Makes sure the city's things to see and do are saved. One provider request at most. */
 export function gatherSights(city: City): Promise<GatherOutcome> {
-  return gather(city, "sights", (source, where) => source.sights(where));
+  return gather(city, "sights", "sights", (source, where) =>
+    source.sights(where),
+  );
 }
 
 /** Makes sure the places to eat near a point are saved. One provider request at most. */
@@ -129,7 +155,9 @@ export function gatherFoodNear(
   point: Point,
 ): Promise<GatherOutcome> {
   const { scope, centre } = foodScope(point);
-  return gather(city, scope, (source, where) => source.foodNear(where, centre));
+  return gather(city, "food", scope, (source, where) =>
+    source.foodNear(where, centre),
+  );
 }
 
 /** Rows the traveller may see: the active provider's, and their own. */

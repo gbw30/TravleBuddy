@@ -1,4 +1,4 @@
-import { dietsFromOsmTags, kindFromOsmTags } from "./kinds";
+import { dietsFromOsmTags, keptTags, kindFromOsmTags } from "./kinds";
 import { politeFetch } from "./osm-http";
 import type { FoundPlace, Point } from "./place-source";
 
@@ -26,14 +26,14 @@ export function sightsQuery(centre: Point): string {
   nwr["amenity"="place_of_worship"]["name"]["wikidata"]${area};
   nwr["leisure"~"^(park|garden)$"]["name"]["wikidata"]${area};
 );
-out center tags 500;`;
+out center meta 500;`;
 }
 
 /** Restaurants and cafes within walking distance of a point. */
 export function foodQuery(centre: Point): string {
   return `[out:json][timeout:20];
 nwr["amenity"~"^(restaurant|cafe)$"]["name"]${around(FOOD_RADIUS_M, centre)};
-out center tags 200;`;
+out center meta 200;`;
 }
 
 type Tags = Record<string, string | undefined>;
@@ -47,6 +47,11 @@ function addressFrom(tags: Tags): string | null {
     Boolean,
   );
   return parts.length > 0 ? parts.join(", ") : null;
+}
+
+function editTime(timestamp: unknown): Date | null {
+  const time = typeof timestamp === "string" ? new Date(timestamp) : null;
+  return time && !Number.isNaN(time.getTime()) ? time : null;
 }
 
 /**
@@ -89,6 +94,9 @@ export function placesFromOverpass(reply: unknown): FoundPlace[] {
         openingHours: tags.opening_hours?.slice(0, 400) ?? null,
         notable: Boolean(tags.wikidata || tags.wikipedia),
         ...dietsFromOsmTags(tags),
+        tags: keptTags(tags),
+        // Only the time: `out meta` also names the editor, which is not kept.
+        lastEditedAt: editTime(element?.timestamp),
       },
     ];
   });

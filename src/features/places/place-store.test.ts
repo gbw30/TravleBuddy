@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   db: {
-    place: { createMany: vi.fn(), findMany: vi.fn(), create: vi.fn() },
+    $executeRaw: vi.fn(),
+    place: { findMany: vi.fn(), create: vi.fn() },
     placeFetch: { findUnique: vi.fn(), upsert: vi.fn() },
     providerCall: { upsert: vi.fn() },
   },
@@ -42,6 +43,8 @@ const found = {
   notable: true,
   serves: [],
   servesNot: [],
+  tags: { amenity: "place_of_worship" } as Record<string, string> | null,
+  lastEditedAt: new Date("2026-03-14T10:22:41Z") as Date | null,
 };
 const row = (over: object = {}) => ({
   id: "p1",
@@ -57,9 +60,14 @@ const row = (over: object = {}) => ({
   notable: true,
   serves: [],
   servesNot: [],
+  osmTags: null,
+  lastEditedAt: null,
+  fetchedAt: null,
   addedByUserId: null,
   ...over,
 });
+
+const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
 
 beforeEach(() => {
   vi.stubEnv("PLACE_PROVIDER_MODE", "auto");
@@ -79,32 +87,76 @@ describe("gathering places", () => {
     expect(await gatherSights(tokyo)).toEqual({ status: "ready" });
 
     expect(mocks.osm.sights).toHaveBeenCalledTimes(1);
-    expect(mocks.db.place.createMany).toHaveBeenCalledWith({
-      data: [{ ...found, origin: "OSM", cityKey: "tokyo|japan" }],
-      skipDuplicates: true,
-    });
+    expect(mocks.db.$executeRaw).toHaveBeenCalledTimes(1);
     expect(mocks.db.placeFetch.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          cityKey_scope: { cityKey: "tokyo|japan", scope: "OSM:sights" },
+          cityKey_scope: { cityKey: "tokyo|japan", scope: "OSM:sights#2" },
         },
       }),
     );
   });
 
-  it("does not ask again once a request is on record", async () => {
-    mocks.db.placeFetch.findUnique.mockResolvedValue({ id: "f1" });
+  it("a recent record means no request", async () => {
+    mocks.db.placeFetch.findUnique.mockResolvedValue({
+      fetchedAt: daysAgo(29),
+    });
 
     expect(await gatherSights(tokyo)).toEqual({ status: "ready" });
     expect(mocks.osm.sights).not.toHaveBeenCalled();
     expect(mocks.db.providerCall.upsert).not.toHaveBeenCalled();
   });
 
+  it("fetches a scope again after 30 days, writing one upsert", async () => {
+    mocks.db.placeFetch.findUnique.mockResolvedValue({
+      fetchedAt: daysAgo(31),
+    });
+    mocks.osm.sights.mockResolvedValue([found]);
+
+    expect(await gatherSights(tokyo)).toEqual({ status: "ready" });
+
+    expect(mocks.osm.sights).toHaveBeenCalledTimes(1);
+    expect(mocks.db.$executeRaw).toHaveBeenCalledTimes(1);
+    // A tagged template: the text pieces, then the joined rows.
+    const [text, rows] = mocks.db.$executeRaw.mock.calls[0];
+    expect(text.join("")).toContain(
+      'ON CONFLICT ("origin", "origin_ref") DO UPDATE',
+    );
+    expect(rows.values).toContain(JSON.stringify(found.tags));
+    expect(mocks.db.placeFetch.upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("a record of an older query version means one request", async () => {
+    // Only the version-1 record exists; the lookup is for "#2".
+    mocks.db.placeFetch.findUnique.mockImplementation(
+      async ({ where }: { where: { cityKey_scope: { scope: string } } }) =>
+        where.cityKey_scope.scope === "OSM:food@35.71,139.80#1"
+          ? { fetchedAt: daysAgo(1) }
+          : null,
+    );
+    mocks.osm.foodNear.mockResolvedValue([]);
+
+    await gatherFoodNear(tokyo, { latitude: 35.7148, longitude: 139.7967 });
+
+    expect(mocks.osm.foodNear).toHaveBeenCalledTimes(1);
+  });
+
+  it("a failed refresh leaves rows and the record as they were and says unavailable", async () => {
+    mocks.db.placeFetch.findUnique.mockResolvedValue({
+      fetchedAt: daysAgo(40),
+    });
+    mocks.osm.sights.mockRejectedValue(new Error("timeout"));
+
+    expect(await gatherSights(tokyo)).toEqual({ status: "unavailable" });
+    expect(mocks.db.$executeRaw).not.toHaveBeenCalled();
+    expect(mocks.db.placeFetch.upsert).not.toHaveBeenCalled();
+  });
+
   it("says the provider is unavailable and records nothing when it fails", async () => {
     mocks.osm.sights.mockRejectedValue(new Error("timeout"));
 
     expect(await gatherSights(tokyo)).toEqual({ status: "unavailable" });
-    expect(mocks.db.place.createMany).not.toHaveBeenCalled();
+    expect(mocks.db.$executeRaw).not.toHaveBeenCalled();
     expect(mocks.db.placeFetch.upsert).not.toHaveBeenCalled();
   });
 
@@ -138,7 +190,7 @@ describe("gathering places", () => {
         where: {
           cityKey_scope: {
             cityKey: "tokyo|japan",
-            scope: "OSM:food@35.71,139.80",
+            scope: "OSM:food@35.71,139.80#2",
           },
         },
       }),
@@ -152,12 +204,10 @@ describe("gathering places", () => {
 
     expect(mocks.osm.sights).not.toHaveBeenCalled();
     expect(mocks.db.providerCall.upsert).not.toHaveBeenCalled();
-    expect(mocks.db.place.createMany.mock.calls[0][0].data[0]).toMatchObject({
-      origin: "SAMPLE",
-    });
+    expect(mocks.db.$executeRaw.mock.calls[0][1].values).toContain("SAMPLE");
     expect(
       mocks.db.placeFetch.upsert.mock.calls[0][0].where.cityKey_scope.scope,
-    ).toBe("SAMPLE:sights");
+    ).toBe("SAMPLE:sights#2");
   });
 });
 
@@ -216,6 +266,32 @@ describe("reading saved places", () => {
       OR: [{ origin: { not: "USER" } }, { addedByUserId: "user-1" }],
     });
     expect(await getPlaces([], "user-1")).toEqual([]);
+  });
+
+  it("returns where a place's facts came from, with empty tags when none", async () => {
+    mocks.db.place.findMany.mockResolvedValue([
+      row({
+        osmTags: { amenity: "place_of_worship" },
+        lastEditedAt: new Date("2026-03-14T10:22:41Z"),
+        fetchedAt: new Date("2026-11-01T00:00:00Z"),
+      }),
+      row({ id: "p2", originRef: null }),
+    ]);
+
+    const [first, second] = await listSights(tokyo, "user-1");
+
+    expect(first).toMatchObject({
+      originRef: "node/1",
+      tags: { amenity: "place_of_worship" },
+      lastEditedAt: "2026-03-14T10:22:41.000Z",
+      fetchedAt: "2026-11-01T00:00:00.000Z",
+    });
+    expect(second).toMatchObject({
+      originRef: null,
+      tags: {},
+      lastEditedAt: null,
+      fetchedAt: null,
+    });
   });
 
   it("reads an unknown kind in old data as a sight rather than failing", async () => {
