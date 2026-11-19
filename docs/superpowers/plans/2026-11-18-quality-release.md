@@ -30,6 +30,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       | #66          |
 | 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  | #67          |
 | 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    | #68          |
+| 14. WebKit in the design checks                   | `feature/m8-design-webkit`   | TB-DSN-02 to 07                 | #70          |
 
 ## Global Constraints
 
@@ -218,7 +219,7 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 **Built (2026-11-19):** `npm run quality:design -- <address of a local server>` opens Home, Create, a trip with cards, the brief and Profile in each browser, at desktop and phone width, with motion on and asked off, and writes [what it found](../../quality/design-checks.md). It checks 56 things per browser: axe at both widths, Tab reaching every control with focus showing, three actions done by keyboard alone (flip and pick a card, move a slider, walk the brief), no sideways scrolling at 390 and 320 px, touch targets of 24 px, a chosen control marked by more than colour, nothing moving under reduced motion, the card flip and the picked card's travel with motion on, and text for pictures, stamps, ticket stubs and cards. Its two judgements that need no browser are in `scripts/design-checks/rules.ts` with tests.
 
-**Result:** Chromium 56 of 56, Firefox 56 of 56. **WebKit was not run:** this machine lacks the system libraries it needs, and installing them needs `sudo npx playwright install-deps webkit` from the developer.
+**Result:** Chromium 56 of 56, Firefox 56 of 56. WebKit could not start then, for lack of system libraries; piece 14 ran it without installing them: 56 of 56.
 
 **What the walk found, and what was done:**
 
@@ -279,11 +280,19 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 - **A fault of the evidence itself, found and fixed:** repeating the Milestone 4 walk left a place added by hand on the development account, and the next sample run offered it to Maya. The place was removed, and the sample runner now fails with a named finding when a plan holds a place added by hand.
 - The roadmap, the status document and this plan are updated. The pull request of this milestone into `main` is open and not merged.
 
+### Piece 14: WebKit in the design checks
+
+**Produced (pull request 70, 2026-11-19):** the design checks ran in Chromium, Firefox and WebKit 26.5 in one run, 56 of 56 in each. This machine lacks WebKit's system libraries and installing them needs administrator rights, so the libraries were unpacked into a private folder and WebKit was started through a small launcher, given to the checks as `WEBKIT_EXECUTABLE`.
+
+**Found and fixed:**
+
+- In WebKit a focused dropdown showed no focus ring. Form fields draw their ring as a shadow, and WebKit draws none on a native dropdown. Dropdowns now take the same outline as every other control (TB-DSN-05).
+- A fault of the checks themselves: every browser walked the same trip, and each picks three cards, so the third browser found no open slot and its two motion checks failed with "no cards were offered". Each browser now gets trips of its own.
+
 ## Waiting for the developer
 
 - Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point).
 - Judging the two phone screenshots of piece 10, and the word in a card's picture stamp that breaks in the middle at phone width.
-- Running `sudo npx playwright install-deps webkit`, if the design checks are wanted in WebKit too.
 - Merging Milestone 7 (pull request 54) and then Milestone 8 into `main`, with their migrations on the QA and production databases. The two of Milestone 7 add a column each and go before its code; the one of Milestone 8 drops the earlier planner's tables and goes after its code is deployed.
 - Running the QA gate, and recording the portfolio demonstration.
 - The Anthropic API key in Vercel for production and QA, then one real reply looked at together.
