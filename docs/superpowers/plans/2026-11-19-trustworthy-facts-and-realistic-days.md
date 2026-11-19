@@ -20,7 +20,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 1. Overpass from Vercel                   | `feature/m9-overpass`          | TB-SYS-09, TB-TRU-06                                             |              |
 | 2. Place provenance and refresh           | `feature/m9-provenance`        | TB-TRU-02, TB-SYS-12                                             | #82          |
 | 3. True sentences and doubt rules         | `feature/m9-true-sentences`    | TB-RSN-01, TB-RSN-02, TB-RSN-03, TB-TRU-02, TB-TRU-05, TB-ITN-06 | #83          |
-| 4. Check it yourself                      | `feature/m9-check-yourself`    | TB-TRU-05, TB-CRD-04, TB-DSN-05, TB-DSN-07                       |              |
+| 4. Check it yourself                      | `feature/m9-check-yourself`    | TB-TRU-05, TB-CRD-04, TB-DSN-05, TB-DSN-07                       | #84          |
 | 5. Breakfast                              | `feature/m9-breakfast`         | TB-AGT-16, TB-ITN-21                                             |              |
 | 6. Ticket clocks across time zones        | `feature/m9-ticket-clocks`     | TB-ITN-16, TB-ITN-24, TB-SYS-15                                  |              |
 | 7. Airport and station time shown         | `feature/m9-ticket-allowances` | TB-ITN-23                                                        |              |
