@@ -145,6 +145,16 @@ Exit evidence: TB-SYS-15 and TB-DSN-01 to TB-DSN-07 pass; every requirement in s
 - Known limits: a trip across the International Date Line eastwards shows the repeated date once; the sample places have six restaurant names and nine sights per city outside Tokyo.
 - Still needed for the exit: the developer's reading of the eight sample itineraries (PRD 18's sixth point); the QA gate, where every feature built since the last one is a `candidate`; a real phone and a screen reader; the first real call to the AI model and to the OpenStreetMap services; and the portfolio demonstration.
 
+## Milestone 9: Trustworthy facts, wording and realistic days
+
+Make every fact on a card traceable to its source, put the model's wording behind a check, and make each day realistic: breakfast, where the traveller stays, time zones and time allowed at airports and stations.
+
+Branch `milestone/9-trustworthy-wording`. [Plan](superpowers/plans/2026-11-19-trustworthy-facts-and-realistic-days.md), which lists each piece, its feature branch, the requirements it covers and its pull request. [Design](superpowers/specs/2026-11-19-traceable-facts-and-model-wording-design.md).
+
+Build order: Overpass from Vercel, then Part 1 (traceable place facts), Part 4 (realistic days), Part 2 (private records of reasons and messages), Part 3 (model wording).
+
+**Status: planned, approved by the developer on 2026-11-19.** Nothing is built yet. It adds TB-AGT-16, TB-FIX-07 and TB-ITN-21 to 24 to the [requirements](requirements.md).
+
 ## Later stages
 
 Discover and collections, templates and starting from another itinerary, publishing, observations on Home, planning together, and a phone app follow the first version. Each needs its own product decisions and is listed under TB-LTR in the [requirements](requirements.md#14-later-stages).

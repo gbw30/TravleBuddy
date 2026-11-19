@@ -42,34 +42,36 @@ Last reviewed: 2026-11-12
 
 ## 4. Fixed commitments (PRD 10)
 
-| ID        | Requirement                                                                                                     |
-| --------- | --------------------------------------------------------------------------------------------------------------- |
-| TB-FIX-01 | A traveller can add, edit and remove fixed commitments of kind transport, stay, reservation, must-see or other. |
-| TB-FIX-02 | A commitment records a name or place, a date, an optional start and end time, an optional reference and a note. |
-| TB-FIX-03 | A commitment with a time is locked into the itinerary and no automatic action moves or removes it.              |
-| TB-FIX-04 | A commitment without a time is scheduled before any optional item and is never dropped.                         |
-| TB-FIX-05 | A commitment can be created by telling the agent in conversation.                                               |
-| TB-FIX-06 | When two commitments clash, the traveller is told immediately and the product does not choose between them.     |
+| ID        | Requirement                                                                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-FIX-01 | A traveller can add, edit and remove fixed commitments of kind transport, stay, reservation, must-see or other.                              |
+| TB-FIX-02 | A commitment records a name or place, a date, an optional start and end time, an optional reference and a note.                              |
+| TB-FIX-03 | A commitment with a time is locked into the itinerary and no automatic action moves or removes it.                                           |
+| TB-FIX-04 | A commitment without a time is scheduled before any optional item and is never dropped.                                                      |
+| TB-FIX-05 | A commitment can be created by telling the agent in conversation.                                                                            |
+| TB-FIX-06 | When two commitments clash, the traveller is told immediately and the product does not choose between them.                                  |
+| TB-FIX-07 | A stay's address can be looked up. Its position counts only after the traveller confirms the found address, and it is saved with its source. |
 
 ## 5. Guided planning (PRD 7)
 
-| ID        | Requirement                                                                                                                    |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| TB-AGT-01 | Every agent question can be answered by tapping a choice or by typing.                                                         |
-| TB-AGT-02 | Any question can be skipped. The agent then uses the profile or a default and says which.                                      |
-| TB-AGT-03 | The agent asks only for facts it does not already have from tickets, the profile or earlier messages.                          |
-| TB-AGT-04 | The agent asks whether anything is already decided and records the answers as fixed commitments.                               |
-| TB-AGT-05 | The agent covers pace, day shape, interests, atmosphere, food, getting around, where to stay and budget priorities.            |
-| TB-AGT-06 | Where the profile already holds an answer, the agent confirms it instead of asking from scratch.                               |
-| TB-AGT-07 | Readiness to propose is judged per topic, and the agent proposes for a topic as soon as that topic is ready.                   |
-| TB-AGT-08 | When the agent cannot propose yet, it says what it still needs.                                                                |
-| TB-AGT-09 | Each proposal is for a named slot with a day and a time.                                                                       |
-| TB-AGT-10 | Slots are filled in the order fixed commitments, stays, main sights or activities, meals, then gaps.                           |
-| TB-AGT-11 | The traveller can direct the agent to any slot or day at any time.                                                             |
-| TB-AGT-12 | When an answer conflicts with the personal profile, the agent asks why this trip is different and records the answer.          |
-| TB-AGT-13 | The conversation, including proposals and answers, is saved in order and restored on reload.                                   |
-| TB-AGT-14 | Typed input is turned into validated structured data before it changes any trip fact, preference or plan.                      |
-| TB-AGT-15 | With the AI model unavailable, Guided planning continues with scripted questions and template reasons, and says it is limited. |
+| ID        | Requirement                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-AGT-01 | Every agent question can be answered by tapping a choice or by typing.                                                                                  |
+| TB-AGT-02 | Any question can be skipped. The agent then uses the profile or a default and says which.                                                               |
+| TB-AGT-03 | The agent asks only for facts it does not already have from tickets, the profile or earlier messages.                                                   |
+| TB-AGT-04 | The agent asks whether anything is already decided and records the answers as fixed commitments.                                                        |
+| TB-AGT-05 | The agent covers pace, day shape, interests, atmosphere, food, getting around, where to stay and budget priorities.                                     |
+| TB-AGT-06 | Where the profile already holds an answer, the agent confirms it instead of asking from scratch.                                                        |
+| TB-AGT-07 | Readiness to propose is judged per topic, and the agent proposes for a topic as soon as that topic is ready.                                            |
+| TB-AGT-08 | When the agent cannot propose yet, it says what it still needs.                                                                                         |
+| TB-AGT-09 | Each proposal is for a named slot with a day and a time.                                                                                                |
+| TB-AGT-10 | Slots are filled in the order fixed commitments, stays, main sights or activities, meals, then gaps.                                                    |
+| TB-AGT-11 | The traveller can direct the agent to any slot or day at any time.                                                                                      |
+| TB-AGT-12 | When an answer conflicts with the personal profile, the agent asks why this trip is different and records the answer.                                   |
+| TB-AGT-13 | The conversation, including proposals and answers, is saved in order and restored on reload.                                                            |
+| TB-AGT-14 | Typed input is turned into validated structured data before it changes any trip fact, preference or plan.                                               |
+| TB-AGT-15 | With the AI model unavailable, Guided planning continues with scripted questions and template reasons, and says it is limited.                          |
+| TB-AGT-16 | The agent asks whether the traveller wants breakfast: where they stay, suggested places, or none. A skipped question means none, and the agent says so. |
 
 ## 6. Recommendation cards (PRD 8)
 
@@ -90,28 +92,32 @@ Last reviewed: 2026-11-12
 
 ## 7. Live itinerary and scheduling (PRD 9)
 
-| ID        | Requirement                                                                                                                                                               |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TB-ITN-01 | The itinerary is visible during planning and updates as soon as a change is saved.                                                                                        |
-| TB-ITN-02 | Each day shows scheduled items with start time and duration, travel between items with means and minutes, and open slots.                                                 |
-| TB-ITN-03 | Time to wander or rest is shown as its own block, with a suggested area when one exists.                                                                                  |
-| TB-ITN-04 | Items do not overlap.                                                                                                                                                     |
-| TB-ITN-05 | An item is scheduled only when the place is open for the whole slot. Unknown hours are flagged.                                                                           |
-| TB-ITN-06 | Consecutive items are separated by at least the travel time by the traveller's preferred means, plus the pace buffer.                                                     |
-| TB-ITN-07 | An item is scheduled only on a day and time when the traveller is in that city.                                                                                           |
-| TB-ITN-08 | Each day respects the trip's pace and day shape.                                                                                                                          |
-| TB-ITN-09 | The traveller can move any item that is not locked, by dragging and by a keyboard-operable control.                                                                       |
-| TB-ITN-10 | After a traveller's move the plan is rechecked. A broken rule is flagged with a reason and an offered fix and the move stays saved. A move onto a locked item is refused. |
-| TB-ITN-11 | The traveller can ask for three alternatives for any slot, and can remove any item that is not locked.                                                                    |
-| TB-ITN-12 | Every change creates a saved version, and the traveller can undo the last change.                                                                                         |
-| TB-ITN-13 | A chosen place that cannot be scheduled is placed on the shelf with the reason and is never dropped.                                                                      |
-| TB-ITN-14 | The shelf lists saved places. The agent offers to schedule them where they fit, and the traveller can place them directly.                                                |
-| TB-ITN-15 | A planning action changes only the items it concerns. Unrelated days and items stay as they were.                                                                         |
-| TB-ITN-16 | All times are stored and shown in the local time of the place, and are correct across time zones and clock changes.                                                       |
-| TB-ITN-17 | Scheduling is repeatable: the same trip state and the same request produce the same plan.                                                                                 |
-| TB-ITN-18 | When a trip has no exact dates, the agent proposes provisional dates, says so, and rechecks the plan when they change.                                                    |
-| TB-ITN-19 | When no ticket covers a change of city, the plan holds an assumed transfer marked as not booked, which can be moved or replaced.                                          |
-| TB-ITN-20 | Each item has a visit length from a standard table by kind of place, shown as an estimate and editable by the traveller.                                                  |
+| ID        | Requirement                                                                                                                                                                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TB-ITN-01 | The itinerary is visible during planning and updates as soon as a change is saved.                                                                                                                                                               |
+| TB-ITN-02 | Each day shows scheduled items with start time and duration, travel between items with means and minutes, and open slots.                                                                                                                        |
+| TB-ITN-03 | Time to wander or rest is shown as its own block, with a suggested area when one exists.                                                                                                                                                         |
+| TB-ITN-04 | Items do not overlap.                                                                                                                                                                                                                            |
+| TB-ITN-05 | An item is scheduled only when the place is open for the whole slot. Unknown hours are flagged.                                                                                                                                                  |
+| TB-ITN-06 | Consecutive items are separated by at least the travel time by the traveller's preferred means, plus the pace buffer.                                                                                                                            |
+| TB-ITN-07 | An item is scheduled only on a day and time when the traveller is in that city.                                                                                                                                                                  |
+| TB-ITN-08 | Each day respects the trip's pace and day shape.                                                                                                                                                                                                 |
+| TB-ITN-09 | The traveller can move any item that is not locked, by dragging and by a keyboard-operable control.                                                                                                                                              |
+| TB-ITN-10 | After a traveller's move the plan is rechecked. A broken rule is flagged with a reason and an offered fix and the move stays saved. A move onto a locked item is refused.                                                                        |
+| TB-ITN-11 | The traveller can ask for three alternatives for any slot, and can remove any item that is not locked.                                                                                                                                           |
+| TB-ITN-12 | Every change creates a saved version, and the traveller can undo the last change.                                                                                                                                                                |
+| TB-ITN-13 | A chosen place that cannot be scheduled is placed on the shelf with the reason and is never dropped.                                                                                                                                             |
+| TB-ITN-14 | The shelf lists saved places. The agent offers to schedule them where they fit, and the traveller can place them directly.                                                                                                                       |
+| TB-ITN-15 | A planning action changes only the items it concerns. Unrelated days and items stay as they were.                                                                                                                                                |
+| TB-ITN-16 | All times are stored and shown in the local time of the place, and are correct across time zones and clock changes.                                                                                                                              |
+| TB-ITN-17 | Scheduling is repeatable: the same trip state and the same request produce the same plan.                                                                                                                                                        |
+| TB-ITN-18 | When a trip has no exact dates, the agent proposes provisional dates, says so, and rechecks the plan when they change.                                                                                                                           |
+| TB-ITN-19 | When no ticket covers a change of city, the plan holds an assumed transfer marked as not booked, which can be moved or replaced.                                                                                                                 |
+| TB-ITN-20 | Each item has a visit length from a standard table by kind of place, shown as an estimate and editable by the traveller.                                                                                                                         |
+| TB-ITN-21 | Each day shows breakfast as the traveller chose: a row where they stay, a breakfast slot offered as cards within the breakfast window, or nothing.                                                                                               |
+| TB-ITN-22 | With a confirmed stay, each day starts and ends there, with estimated legs by the preferred means, and the way back counts toward the day's end. Without one, the plan guesses no position and the day says travel from the stay is not counted. |
+| TB-ITN-23 | Time allowed to reach or leave an airport or station around a ticket is shown as its own row, marked as an allowance and never as a travel time.                                                                                                 |
+| TB-ITN-24 | A ticket's length is worked out from the time zones of both ends, and each of its times is shown with its place. When a zone is unknown, the length is shown as unknown.                                                                         |
 
 ## 8. Quick plan (PRD 11)
 
