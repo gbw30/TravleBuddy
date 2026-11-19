@@ -14,6 +14,7 @@ import type { PlanSnapshot } from "@/use-cases/plan-snapshot";
 
 import { AgentMessage } from "./agent-message";
 import { BuildReportPanel } from "./build-report";
+import { CardRow } from "./card-row";
 import { CloserLook } from "./closer-look";
 import { DiscardReasons } from "./discard-reasons";
 import { dayLabel } from "./format";
@@ -49,7 +50,7 @@ const sheet =
   "rounded-[14px] bg-card [--notch:var(--color-card)] lg:shadow-sheet";
 // Three postcards fanned on a table; a plain row to swipe on a phone.
 const fan =
-  "w-[78%] shrink-0 snap-center sm:w-auto sm:nth-1:translate-x-2.5 sm:nth-1:translate-y-3.5 sm:nth-1:-rotate-[2.2deg] sm:nth-2:relative sm:nth-2:z-[2] sm:nth-2:-translate-y-1.5 sm:nth-3:-translate-x-2.5 sm:nth-3:translate-y-4 sm:nth-3:rotate-2";
+  "w-[84%] shrink-0 snap-start sm:w-auto sm:nth-1:translate-x-2.5 sm:nth-1:translate-y-3.5 sm:nth-1:-rotate-[2.2deg] sm:nth-2:relative sm:nth-2:z-[2] sm:nth-2:-translate-y-1.5 sm:nth-3:-translate-x-2.5 sm:nth-3:translate-y-4 sm:nth-3:rotate-2";
 
 /**
  * The planning workspace (PRD 6): the cards for the slot being chosen, the
@@ -492,7 +493,7 @@ export function TripWorkspace({
             </div>
 
             {cards.length > 0 && focus && (
-              <ul className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pt-2 pb-6 sm:mx-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-0 sm:overflow-visible sm:px-0 sm:pt-6 sm:pb-8">
+              <CardRow count={cards.length}>
                 {cards.map((card) => (
                   <li
                     key={card.placeId}
@@ -534,7 +535,7 @@ export function TripWorkspace({
                     )}
                   </li>
                 ))}
-              </ul>
+              </CardRow>
             )}
 
             {cards.length > 0 &&
