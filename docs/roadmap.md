@@ -135,6 +135,8 @@ Judge both ways of planning against the four sample travellers of PRD 18. Comple
 
 Exit evidence: TB-SYS-15 and TB-DSN-01 to TB-DSN-07 pass; every requirement in sections 2 to 13 of the catalogue has passing evidence; full QA on the existing topology; the demonstration is recorded.
 
+**Started 2026-11-18** on branch `milestone/8-quality-release`. [Plan](superpowers/plans/2026-11-18-quality-release.md). By the developer's decisions of that day it also retires the earlier planner and brings the Profile page to the approved prototype.
+
 ## Later stages
 
 Discover and collections, templates and starting from another itinerary, publishing, observations on Home, planning together, and a phone app follow the first version. Each needs its own product decisions and is listed under TB-LTR in the [requirements](requirements.md#14-later-stages).
