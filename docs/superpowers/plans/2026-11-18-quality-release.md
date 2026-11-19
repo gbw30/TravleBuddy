@@ -35,6 +35,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 16. An evaluation of the model's reading          | `feature/m8-model-eval`      | TB-SYS-11                       | #73          |
 | 17. The release recorded, and a $15 cap           | `feature/m8-release-records` | TB-SYS-11                       | #74          |
 | 18. The phone sheet chosen and fixed              | `feature/m8-phone-sheet`     | TB-DSN-04, TB-DSN-05            | #75          |
+| 19. Phone layouts at 390 and 320                  | `feature/m8-phone-layouts`   | TB-DSN-04                       | #77          |
 
 ## Global Constraints
 
@@ -311,9 +312,21 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 **Produced (pull request 75, 2026-11-19):** the developer watched both open design choices on the real trip page and kept the enlarged closer look and the phone sheet. The real page already had a simple sheet; it now closes when Choose is pressed in it and moves keyboard focus to the new slot's heading, or to the agent's message when that slot has no cards. The overlay and tab versions stay on their branches, unmerged.
 
+### Piece 19: Phone layouts at 390 and 320
+
+**Produced (pull request 77, 2026-11-19):** the developer asked for 390 px as the target phone and for the faults found at 320 px to be fixed.
+
+- The offered cards stay a sideways row: each card is 84% of the width, it snaps to each card, and "1 of 3" shows below.
+- The stamp's kind word never breaks inside itself.
+- Booked items stack on a phone: the time and BOOKED on top, the title full width below.
+- Create's "New trip" note and Profile's "What I remember" note share one component; on a phone its label sits on its own line.
+- Create's step bar fits at 320.
+
+The design checks pass 57 of 57 in Chromium, Firefox and WebKit.
+
 ## Waiting for the developer
 
-- Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point). They and the phone screenshots, with four layout faults at 320 px wide, were shown to the developer on 2026-11-19.
+- Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point). On reading them (2026-11-19) the developer asked why there are no breakfasts, no travel to and from the lodging, and how flights across time zones are handled; the answers are proposed as Milestone 9's "realistic days".
 - Running the QA gate, and recording the portfolio demonstration.
 - The Anthropic API key, for the model evaluation of piece 16 and then in Vercel for production and QA.
 - How the AI model words the agent's messages (PRD 17): on 2026-11-19 the developer chose to let the model reword facts the code has verified, provided every fact's source is traceable and reliable. Its design comes first.

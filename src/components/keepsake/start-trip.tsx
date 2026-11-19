@@ -13,6 +13,7 @@ import {
 import { callApi } from "@/lib/trip-api";
 
 import { Stamp } from "./day-stamp";
+import { NoteChip } from "./note-chip";
 import {
   button,
   buttonArrow,
@@ -118,15 +119,9 @@ export function StartTrip({ sample }: { sample?: SampleLinks }) {
   return (
     <div className="grid items-start gap-16 py-10 lg:grid-cols-[minmax(0,1fr)_440px] lg:gap-20 lg:py-14">
       <div className="min-w-0">
-        <p
-          className="rise inline-flex h-8 items-center gap-2.5 rounded-full bg-card pr-3.5 pl-1.5 text-[13px] text-ink/75 shadow-[0_0_0_1px_rgb(29_26_22/0.12)]"
-          style={rise(0)}
-        >
-          <span className="inline-flex h-[22px] items-center rounded-full bg-ink px-2.5 font-mono text-[10.5px] tracking-[0.1em] text-paper uppercase">
-            New trip
-          </span>
+        <NoteChip label="New trip" style={rise(0)}>
           Two questions · about a minute
-        </p>
+        </NoteChip>
         <h1 className={`rise mt-6 ${pageTitle}`} style={rise(1)}>
           Where to <em>next?</em>
         </h1>
@@ -140,23 +135,23 @@ export function StartTrip({ sample }: { sample?: SampleLinks }) {
 
         <ol
           aria-label="Progress"
-          className="rise mt-10 flex items-center gap-2.5 text-[13.5px] text-muted sm:gap-3.5"
+          className="rise mt-10 flex items-center gap-1 text-[12.5px] whitespace-nowrap text-muted sm:gap-3.5 sm:text-[13.5px]"
           style={rise(3)}
         >
           {["Tickets", "How to plan", "Begin"].map((step, index) => (
             <li
               key={step}
               aria-current={index === 1 ? "step" : undefined}
-              className="flex items-center gap-2.5 aria-[current=step]:font-medium aria-[current=step]:text-ink sm:gap-3.5"
+              className="flex items-center gap-1 aria-[current=step]:font-medium aria-[current=step]:text-ink sm:gap-3.5"
             >
               {index > 0 && (
                 <span
                   aria-hidden
-                  className={`h-[1.5px] w-5 sm:w-14 ${index === 1 ? "bg-ink" : "bg-ink/20"}`}
+                  className={`h-[1.5px] w-2 sm:w-14 ${index === 1 ? "bg-ink" : "bg-ink/20"}`}
                 />
               )}
               <span
-                className={`grid size-[26px] shrink-0 place-items-center rounded-full font-mono text-[11px] ${index === 0 ? "bg-ink text-paper" : index === 1 ? "shadow-[inset_0_0_0_1.5px_var(--color-ink)]" : "shadow-[inset_0_0_0_1.5px_rgb(29_26_22/0.25)]"}`}
+                className={`grid size-[22px] shrink-0 sm:size-[26px] place-items-center rounded-full font-mono text-[11px] ${index === 0 ? "bg-ink text-paper" : index === 1 ? "shadow-[inset_0_0_0_1.5px_var(--color-ink)]" : "shadow-[inset_0_0_0_1.5px_rgb(29_26_22/0.25)]"}`}
               >
                 {index === 0 ? "✓" : index + 1}
               </span>
