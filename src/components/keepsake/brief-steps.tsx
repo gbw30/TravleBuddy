@@ -119,7 +119,19 @@ export function BriefSteps({
 
   const [step, setStep] = useState(startAt);
   // What the traveller has entered and not yet saved.
-  const [facts, setFacts] = useState(initial.facts);
+  const [facts, setFacts] = useState(() =>
+    // Opened straight at "This trip": the remembered budget is filled in.
+    startAt === 2 &&
+    initial.rememberedBudget &&
+    initial.facts.budgetAmount === null
+      ? {
+          ...initial.facts,
+          budgetAmount: initial.rememberedBudget.amount,
+          budgetCurrency: initial.rememberedBudget.currency,
+          budgetBasis: "DAY" as const,
+        }
+      : initial.facts,
+  );
   const [style, setStyle] = useState<Partial<Record<TasteTopic, string[]>>>({});
   const [said, setSaid] = useState(initial.said?.text ?? "");
   const [touched, setTouched] = useState<Group[]>([]);
@@ -198,6 +210,26 @@ export function BriefSteps({
     return send(part);
   }
 
+  const remembered = brief.rememberedBudget;
+  const budgetFromMemory =
+    remembered !== null &&
+    facts.budgetAmount === remembered.amount &&
+    facts.budgetCurrency === remembered.currency &&
+    facts.budgetBasis === "DAY";
+  function fillBudget() {
+    if (!remembered) return;
+    setFacts((current) =>
+      current.budgetAmount === null
+        ? {
+            ...current,
+            budgetAmount: remembered.amount,
+            budgetCurrency: remembered.currency,
+            budgetBasis: "DAY",
+          }
+        : current,
+    );
+  }
+
   async function go(target: number) {
     if (busy || !(await save())) return;
     // Only step 1 is required, and nothing after it opens without it.
@@ -206,6 +238,9 @@ export function BriefSteps({
       setStep(0);
       return;
     }
+    // The brief fills in what the profile knows: here, the usual daily
+    // budget. It is saved for this trip when the traveller leaves the step.
+    if (target === 2) fillBudget();
     setStep(target);
   }
 
@@ -342,7 +377,11 @@ export function BriefSteps({
             </Question>
             <Question
               asks="What is the budget?"
-              note="Leave it empty and I will leave costs for you to judge."
+              note={
+                budgetFromMemory && remembered
+                  ? `What I remember (${remembered.source}). Change it here and only this trip changes.`
+                  : "Leave it empty and I will leave costs for you to judge."
+              }
             >
               <BudgetFields facts={facts} set={setFact} />
               <FirmnessChoice

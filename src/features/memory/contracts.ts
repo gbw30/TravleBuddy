@@ -2,6 +2,8 @@
 // the browser: this file must not import server code.
 import { z } from "zod";
 
+import { CURRENCIES, type Currency } from "@/lib/currency";
+
 /** The topics of taste, in the order the conversation covers them (PRD 7.3). */
 export const TASTE_TOPICS = [
   "pace",
@@ -125,3 +127,18 @@ export type ProfileTopicInfo = {
 };
 
 export { fileUnder, type Filed } from "./profile-filing";
+
+// The usual daily budget is one `budget` entry holding an amount and a
+// currency, such as "90 EUR". Nothing ranks by it: place data has no prices.
+// It fills in the budget of a new trip's brief.
+export type DailyBudget = { amount: number; currency: Currency };
+
+export const dailyBudgetValue = ({ amount, currency }: DailyBudget) =>
+  `${Math.round(amount)} ${currency}`;
+
+/** Reads a `budget` entry's value. Null for words that are not an amount and a currency. */
+export function dailyBudgetOf(value: string): DailyBudget | null {
+  const match = /^([1-9]\d{0,7}) ([A-Z]{3})$/.exec(value);
+  const currency = CURRENCIES.find((code) => code === match?.[2]);
+  return match && currency ? { amount: Number(match[1]), currency } : null;
+}

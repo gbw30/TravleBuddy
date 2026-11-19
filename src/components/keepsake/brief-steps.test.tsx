@@ -140,6 +140,26 @@ describe("the trip brief on screen", () => {
     expect(html).toContain("The dates can move");
   });
 
+  it("fills in the remembered daily budget in step 3, and says where it comes from", () => {
+    const remembered = {
+      ...brief,
+      rememberedBudget: {
+        amount: 90,
+        currency: "EUR" as const,
+        source: "you told me",
+      },
+    };
+    const html = at(2, remembered);
+    expect(html).toContain('value="90"');
+    expect(html).toContain(
+      "What I remember (you told me). Change it here and only this trip changes.",
+    );
+    // Without a memory the note says what an empty budget means.
+    expect(at(2)).toContain(
+      "Leave it empty and I will leave costs for you to judge.",
+    );
+  });
+
   it("fills in the style from memory and says where each answer comes from", () => {
     const html = at(3);
     expect(pressed(html)).toEqual(["Relaxed", "Views"]);

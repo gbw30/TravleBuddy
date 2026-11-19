@@ -3,6 +3,7 @@ import { z } from "zod";
 import { allowedValues, QUESTIONS } from "@/features/conversation";
 import type { TasteInUse } from "@/features/memory";
 import {
+  dailyBudgetOf,
   fileUnder,
   MULTI_TOPICS,
   sourceWords,
@@ -110,7 +111,10 @@ function whereAndWhen(facts: TripFacts): string[] {
   return lines;
 }
 
-function thisTrip(facts: TripFacts): string[] {
+function thisTrip(
+  facts: TripFacts,
+  remembered: BriefView["rememberedBudget"],
+): string[] {
   const firm = (value: string | null) =>
     value === "FLEXIBLE" ? "can move" : "fixed";
   return [
@@ -121,7 +125,9 @@ function thisTrip(facts: TripFacts): string[] {
       ? `A budget of ${facts.budgetAmount.toLocaleString("en-GB")} ${facts.budgetCurrency} ${
           facts.budgetBasis === "DAY" ? "a day" : "for the trip"
         }${facts.budgetFirmness ? `, ${facts.budgetFirmness === "FLEXIBLE" ? "which can stretch" : "which is fixed"}` : ""}.`
-      : "No budget given: I will leave costs for you to judge.",
+      : remembered
+        ? `A budget of about ${remembered.amount.toLocaleString("en-GB")} ${remembered.currency} a day (${remembered.source}).`
+        : "No budget given: I will leave costs for you to judge.",
     facts.datesFirmness
       ? `The dates ${firm(facts.datesFirmness) === "fixed" ? "are fixed" : "can move"}.`
       : "I will treat the dates as fixed.",
@@ -253,6 +259,14 @@ export function briefOf(
   const style = styleOf(taste);
   const problems = step1Problems(trip.facts);
   const decided = trip.commitments.map((item) => item.title);
+  // The profile's daily budget stands in while the trip has none of its own.
+  const usual = personal.find(
+    (entry) => entry.topic === "budget" && dailyBudgetOf(entry.value),
+  );
+  const rememberedBudget =
+    usual && trip.facts.budgetAmount === null
+      ? { ...dailyBudgetOf(usual.value)!, source: sourceWords(usual.source) }
+      : null;
   return {
     tripId: trip.id,
     revision: trip.revision,
@@ -265,6 +279,7 @@ export function briefOf(
     allergies: personal
       .filter((entry) => entry.topic === "allergies")
       .map((entry) => entry.value),
+    rememberedBudget,
     said: readSaid(typed, taste),
     review: [
       { step: 1, title: BRIEF_STEPS[0], lines: whereAndWhen(trip.facts) },
@@ -279,7 +294,11 @@ export function briefOf(
               )}${decided.length > 5 ? `, and ${decided.length - 5} more` : ""}.`,
         ],
       },
-      { step: 3, title: BRIEF_STEPS[2], lines: thisTrip(trip.facts) },
+      {
+        step: 3,
+        title: BRIEF_STEPS[2],
+        lines: thisTrip(trip.facts, rememberedBudget),
+      },
       { step: 4, title: BRIEF_STEPS[3], lines: style.map(styleLine) },
     ],
     problems,
