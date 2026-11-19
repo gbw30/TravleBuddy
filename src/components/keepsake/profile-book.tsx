@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type CSSProperties, type FormEvent } from "react";
 
 import {
   fileUnder,
@@ -47,6 +47,51 @@ const icons: Partial<Record<ProfileTopic, string>> = {
   food: "food",
 };
 const dots = { think: 1, usually: 2, always: 3 };
+
+/**
+ * Habits: topics that are a point on a scale, set by a slider. `stops` is
+ * the scale from left to right, `unset` where the site stands when the
+ * traveller has said nothing, and `does` what each stop changes in a plan.
+ */
+const HABITS: {
+  topic: ProfileTopic;
+  stops: string[];
+  unset: string;
+  says: Record<string, string>;
+  does: Record<string, string>;
+}[] = [
+  {
+    topic: "pace",
+    stops: ["relaxed", "balanced", "packed"],
+    unset: "balanced",
+    says: {
+      relaxed: "A relaxed pace",
+      balanced: "A balanced pace",
+      packed: "Full days",
+    },
+    does: {
+      relaxed: "Up to two main sights a day, with two hours to wander.",
+      balanced: "Up to three main sights a day, with an hour to wander.",
+      packed: "Up to four main sights a day.",
+    },
+  },
+  {
+    topic: "day_shape",
+    stops: ["early", "neither", "late"],
+    unset: "neither",
+    says: {
+      early: "Early starts",
+      neither: "The usual hours",
+      late: "Late nights",
+    },
+    does: {
+      early: "The whole day runs an hour earlier, dinner included.",
+      neither: "Mornings begin between nine and ten.",
+      late: "The whole day runs an hour later, dinner included.",
+    },
+  },
+];
+const HABIT_TOPICS = HABITS.map((habit) => habit.topic);
 const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
 /** The picture of the traveller in one sentence, from the entries themselves. */
@@ -117,7 +162,12 @@ export function ProfileBook({
   const kind = (entry: ShownEntry) =>
     topics.find((info) => info.topic === entry.topic)?.kind ?? "taste";
   const rules = entries.filter((entry) => kind(entry) === "hard_limit");
-  const tastes = entries.filter((entry) => kind(entry) === "taste");
+  // A habit has its own card with a slider; the rest of the tastes are listed.
+  const tastes = entries.filter(
+    (entry) => kind(entry) === "taste" && !HABIT_TOPICS.includes(entry.topic),
+  );
+  // Where a slider stands while it is moved, before it is saved.
+  const [moved, setMoved] = useState<Partial<Record<ProfileTopic, string>>>({});
   const trips = [
     ...new Map(
       entries.flatMap((entry) =>
@@ -402,6 +452,137 @@ export function ProfileBook({
         </section>
       )}
 
+      <section
+        data-qa="profile-habits"
+        aria-labelledby="habits-heading"
+        className="mt-[76px]"
+      >
+        <SectionHead
+          id="habits-heading"
+          label={`${HABITS.length} habits · drag to correct`}
+          note="Habits, not rules. I lean this way unless a trip calls for something else."
+        >
+          How you like your <em>days</em>
+        </SectionHead>
+        <ul className="grid gap-[18px] md:grid-cols-2">
+          {HABITS.map((habit) => {
+            const info = topics.find((item) => item.topic === habit.topic);
+            const entry = entries.find((item) => item.topic === habit.topic);
+            const name = TOPIC_NAMES[habit.topic];
+            const value = moved[habit.topic] ?? entry?.value ?? habit.unset;
+            const index = Math.max(habit.stops.indexOf(value), 0);
+            const label = (stop: string) =>
+              info?.choices.find((choice) => choice.value === stop)?.label ??
+              stop;
+            const guess = entry?.sureness === "think";
+            // Saved when the slider is let go, not at every step on the way.
+            const settle = () => {
+              const next = moved[habit.topic];
+              if (next === undefined) return;
+              setMoved((current) => ({ ...current, [habit.topic]: undefined }));
+              if (next === entry?.value) return;
+              void (entry ? change(entry, next) : tell(label(next), false));
+            };
+            return (
+              <li
+                key={habit.topic}
+                className={`relative flex flex-col px-6 pt-[22px] pb-5 ${lift} ${guess ? guessCard : card}`}
+              >
+                <p className={eyebrow}>{name}</p>
+                <h3 className="mt-2.5 text-[28px] leading-[1.1] tracking-[-0.015em] italic">
+                  {habit.says[habit.stops[index]]}
+                </h3>
+                <p className="mt-2 text-[14px] text-muted">
+                  {habit.does[habit.stops[index]]}
+                </p>
+                <input
+                  type="range"
+                  min={0}
+                  max={habit.stops.length - 1}
+                  step={1}
+                  value={index}
+                  aria-label={name}
+                  aria-valuetext={label(habit.stops[index])}
+                  onChange={(event) =>
+                    setMoved((current) => ({
+                      ...current,
+                      [habit.topic]: habit.stops[Number(event.target.value)],
+                    }))
+                  }
+                  onPointerUp={settle}
+                  onKeyUp={settle}
+                  onBlur={settle}
+                  className="keepsake-range mt-6"
+                  style={
+                    {
+                      "--fill": `${(index / (habit.stops.length - 1)) * 100}%`,
+                    } as CSSProperties
+                  }
+                />
+                <p
+                  aria-hidden
+                  className="mt-1.5 flex justify-between font-mono text-[10px] tracking-[0.06em] text-muted uppercase"
+                >
+                  {habit.stops.map((stop, at) => (
+                    <span key={stop} className={at === index ? "text-ink" : ""}>
+                      {label(stop)}
+                    </span>
+                  ))}
+                </p>
+                <div className="mt-auto pt-6">
+                  {!entry ? (
+                    <p className="border-t border-ink/12 pt-3.5 text-[13px] text-muted">
+                      Not set yet. Move the slider to tell me.
+                    </p>
+                  ) : guess ? (
+                    <div className="flex flex-wrap items-center gap-2.5 rounded-xl bg-terracotta/8 py-3 pr-3 pl-4 text-[13.5px]">
+                      <p className="min-w-0 flex-1 leading-snug font-medium">
+                        Still a guess, {sourceWords(entry.source)}. Is this
+                        right?
+                      </p>
+                      <button
+                        type="button"
+                        className={button}
+                        disabled={busy}
+                        aria-label={`Yes, ${entry.label} is right`}
+                        onClick={() => void change(entry, entry.value)}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        className={quiet}
+                        disabled={busy}
+                        aria-label={`Remove ${name}`}
+                        onClick={() => void remove(entry)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="flex flex-wrap items-center gap-x-3 border-t border-ink/12 pt-3.5 text-[13px] text-muted">
+                      <Sure entry={entry} />
+                      <span className="first-letter:uppercase">
+                        · {sourceWords(entry.source)}
+                      </span>
+                      <button
+                        type="button"
+                        className={`${quiet} ml-auto`}
+                        disabled={busy}
+                        aria-label={`Remove ${name}`}
+                        onClick={() => void remove(entry)}
+                      >
+                        Remove
+                      </button>
+                    </p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
       {tastes.length > 0 && (
         <section aria-labelledby="tastes-heading" className="mt-[76px]">
           <SectionHead
@@ -603,7 +784,11 @@ export function ProfileBook({
             </summary>
             <div className="mt-4 space-y-4">
               {topics
-                .filter((info) => info.choices.length > 0)
+                .filter(
+                  (info) =>
+                    info.choices.length > 0 &&
+                    !HABIT_TOPICS.includes(info.topic),
+                )
                 .map((info) => (
                   <fieldset key={info.topic} disabled={busy}>
                     <legend className={eyebrow}>{info.name}</legend>

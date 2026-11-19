@@ -21,7 +21,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner` | none (removal)                  | #57          |
 | 3. Drop its tables                                | waits for the developer     | none (removal)                  |              |
 | 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-ITN-08, TB-MEM-03            | #58          |
-| 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 |              |
+| 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
 | 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            |              |
 | 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            |              |
 | 8. Defects found on the way                       | `feature/m8-defects`        | TB-DSN-05, TB-DSN-07            |              |
@@ -131,7 +131,15 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 5: Profile: habits as slider cards
 
-**Produces:** the prototype's "How you like your days" section on the real page: slider cards for pace and start of day, each with its sureness, source, confirm and remove, saved through the existing profile routes. The list of values to pick from goes where a slider now holds the topic.
+**Produced (pull request 59):**
+
+- The prototype's section "How you like your days" on the real Profile page, between the rules and the tastes: a slider card for **pace** (relaxed, balanced, packed) and one for **the shape of the day** (early starts, neither, late nights).
+- Each card says the habit in words, says what it does to a plan ("Up to two main sights a day, with two hours to wander", "The whole day runs an hour earlier, dinner included"), and shows its sureness and source with a way to remove it. A guess from a trip names the trip and asks "Is this right?".
+- A card is shown before anything is known, standing where the site stands by default and marked "Not set yet". Moving the slider saves it as something the traveller told the site.
+- A slider saves when it is let go, by pointer or keyboard, through the existing profile routes. No route or table is new.
+- Pace and the shape of the day are no longer in the list of tastes or in the list of values to pick from.
+
+**Seen in the walk:** one key press moved pace to "Full days" and saved it; a drag moved it to "A relaxed pace"; the page's sentence became "You travel slowly, and start early"; a new trip was laid out relaxed and an hour earlier, and its report listed both as assumptions from memory; removing a habit returned its card to "Not set yet".
 
 ### Piece 6: Profile: daily budget with currency
 
