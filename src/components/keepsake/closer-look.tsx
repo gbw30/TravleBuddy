@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { PlaceArt } from "./place-art";
 import { priceLabel, ratingLabel } from "./postcard";
-import { eyebrow, button } from "./styles";
+import { eyebrow, button, quiet } from "./styles";
 import type { CardPlace } from "./types";
 
 // Matches the closing transition in globals.css.
@@ -96,7 +96,14 @@ export function CloserLook({
             <dt className="font-sans text-[13px] leading-6 text-muted">
               Hours
             </dt>
-            <dd>{shown.hours ?? "Hours unknown"}</dd>
+            <dd>
+              {shown.hours ?? "Hours unknown"}
+              {shown.hoursDoubt && (
+                <p className="font-sans text-[13px] leading-6 text-muted">
+                  {shown.hoursDoubt}
+                </p>
+              )}
+            </dd>
             <dt className="font-sans text-[13px] leading-6 text-muted">
               Price
             </dt>
@@ -105,6 +112,35 @@ export function CloserLook({
               Rating
             </dt>
             <dd>{ratingLabel(shown.rating)}</dd>
+            {shown.links && (
+              <>
+                <dt className="font-sans text-[13px] leading-6 text-muted">
+                  Check it yourself
+                </dt>
+                <dd className="flex flex-wrap gap-x-4">
+                  {[
+                    [shown.links.website, "website", "Website"],
+                    [shown.links.maps, "on Google Maps", "Google Maps"],
+                    [shown.links.osm, "on OpenStreetMap", "OpenStreetMap"],
+                  ].flatMap(([href, name, text]) =>
+                    href
+                      ? [
+                          <a
+                            key={href}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`${shown.name} ${name}, opens in a new tab`}
+                            className={quiet}
+                          >
+                            {text}
+                          </a>,
+                        ]
+                      : [],
+                  )}
+                </dd>
+              </>
+            )}
           </dl>
           <form
             method="dialog"

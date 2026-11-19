@@ -82,3 +82,4 @@ export {
 export function cityKeyOf(city: Pick<City, "name" | "country">): string {
   return `${city.name}|${city.country}`.toLowerCase();
 }
+export { placeLinks, type PlaceLinks } from "./links";

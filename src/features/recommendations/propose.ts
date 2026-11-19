@@ -4,6 +4,7 @@ import {
   isOpenFor,
   kindLabel,
   parseOpeningHours,
+  placeLinks,
   travelEstimate,
   visitMinutes,
   type PlaceDto,
@@ -361,6 +362,8 @@ export function toCard(
     hours: place.openingHours,
     visitMinutes: visitMinutes(place.kind),
     travel,
+    links: placeLinks(place, cityName),
+    hoursDoubt: place.hoursDoubt,
     ...(unconfirmed.length > 0 ? { unconfirmed } : {}),
   };
 }

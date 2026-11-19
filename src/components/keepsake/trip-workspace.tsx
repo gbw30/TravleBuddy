@@ -38,6 +38,8 @@ function toCardPlace(card: CardDto): CardPlace {
     rating: null,
     photo: null,
     photoCredit: null,
+    links: card.links,
+    hoursDoubt: card.hoursDoubt,
   };
 }
 

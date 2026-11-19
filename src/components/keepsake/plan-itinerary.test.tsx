@@ -18,6 +18,8 @@ const card = (placeId: string, name: string): CardDto => ({
   hours: null,
   visitMinutes: 120,
   travel: null,
+  links: null,
+  hoursDoubt: null,
 });
 
 const view: PlanView = {

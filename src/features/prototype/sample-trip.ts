@@ -24,6 +24,8 @@ function add(
     rating: null,
     photo: null,
     photoCredit: null,
+    links: null,
+    hoursDoubt: null,
     visitMinutes: 90,
     ...details,
   };

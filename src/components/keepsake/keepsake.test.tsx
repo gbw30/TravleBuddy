@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { CloserLook } from "./closer-look";
 import { DayStamp } from "./day-stamp";
 import { ItineraryRow } from "./itinerary-row";
 import { PlaceArt } from "./place-art";
@@ -20,6 +21,8 @@ const place: CardPlace = {
   rating: null,
   photo: null,
   photoCredit: null,
+  links: null,
+  hoursDoubt: null,
 };
 
 describe("keepsake components", () => {
@@ -48,6 +51,61 @@ describe("keepsake components", () => {
     expect(html).toContain('aria-label="Save Sometaro for later"');
     expect(html).toContain('aria-label="Closer look at Sometaro"');
     expect(html).toContain('aria-live="polite"');
+  });
+
+  describe("the closer look", () => {
+    const look = (over: Partial<CardPlace>) =>
+      renderToStaticMarkup(
+        <CloserLook
+          place={{ ...place, ...over }}
+          variant="overlay"
+          showPhoto
+          onClose={() => {}}
+        />,
+      );
+    const links = {
+      website: "https://sometaro.example",
+      maps: "https://www.google.com/maps/search/?api=1&query=Sometaro",
+      osm: "https://www.openstreetmap.org/node/1",
+    };
+
+    it("puts the doubt under the hours in the label style", () => {
+      const html = look({
+        hours: "Mo-Su 09:00-18:00",
+        hoursDoubt: "Last updated on the map in 2021. Worth a check.",
+      });
+      expect(html).toContain(
+        '<dd>Mo-Su 09:00-18:00<p class="font-sans text-[13px] leading-6 text-muted">Last updated on the map in 2021. Worth a check.</p></dd>',
+      );
+      expect(look({})).not.toContain("Worth a check");
+    });
+
+    it("lists the three links, each opening in a new tab and named", () => {
+      const html = look({ links });
+      expect(html).toContain("Check it yourself");
+      for (const [href, name] of [
+        [links.website, "Sometaro website, opens in a new tab"],
+        [links.maps, "Sometaro on Google Maps, opens in a new tab"],
+        [links.osm, "Sometaro on OpenStreetMap, opens in a new tab"],
+      ]) {
+        const tag = html
+          .match(/<a [^>]*>/g)
+          ?.find((item) =>
+            item.includes(`href="${href?.replace("&", "&amp;")}"`),
+          );
+        expect(tag).toContain('target="_blank"');
+        expect(tag).toContain('rel="noopener noreferrer"');
+        expect(tag).toContain(`aria-label="${name}"`);
+      }
+    });
+
+    it("leaves out a link there is none for, and the row for a sample", () => {
+      const html = look({ links: { ...links, website: null, osm: null } });
+      expect(html).toContain("on Google Maps");
+      expect(html).not.toContain("website");
+      expect(html).not.toContain("OpenStreetMap");
+      expect(look({ links: null })).not.toContain("Check it yourself");
+    });
   });
 
   it("uses the postcard back when there is no photo", () => {
