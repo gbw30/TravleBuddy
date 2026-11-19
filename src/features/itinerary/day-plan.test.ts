@@ -888,6 +888,25 @@ describe("breakfast", () => {
     }
   });
 
+  it("gives the included row its 45 minutes, so the first stop starts after it, and a booking over it suppresses it", () => {
+    const view = withBreakfast("included", {}, "packed");
+    const [row, morning] = view.days[1].entries;
+    expect(row).toMatchObject({ type: "breakfast-at-stay", start: "09:00" });
+    expect(morning).toMatchObject({ kind: "morning", start: "09:45" });
+    const booked = commitment({
+      id: "b",
+      title: "Tour",
+      date: "2027-05-11",
+      startTime: "08:30",
+      endTime: "09:30",
+    });
+    const day = withBreakfast("included", {
+      commitments: [booked],
+      dayShift: -30,
+    }).days[1];
+    expect(kinds(day.entries)).not.toContain("breakfast-at-stay");
+  });
+
   it("gives neither when there is none or it is not said", () => {
     for (const breakfast of ["none", undefined] as const) {
       const view = withBreakfast(breakfast);

@@ -24,7 +24,9 @@ import type { ShapedView } from "./profile-view";
 
 type Placed = Extract<PlanEntry, { type: "place" }>;
 const isMeal = (entry: { kind: string }) =>
-  entry.kind === "lunch" || entry.kind === "dinner";
+  entry.kind === "breakfast" ||
+  entry.kind === "lunch" ||
+  entry.kind === "dinner";
 const PACE_WORDS: Record<string, string> = {
   relaxed: "A relaxed pace",
   balanced: "A balanced pace",

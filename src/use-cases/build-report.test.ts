@@ -257,6 +257,24 @@ describe("the report of a build", () => {
     ]);
   });
 
+  it("words a breakfast like the other meals, and counts it as a place to eat at", () => {
+    const withBreakfast = report({
+      view: view([
+        [at("d1-breakfast", "Corner Noodles"), at("d1-morning", "Castle")],
+      ]),
+      progress: progress({
+        built: { "d1-breakfast": "Corner Noodles", "d1-morning": "Castle" },
+        close: ["d1-breakfast"],
+      }),
+    });
+    expect(withBreakfast.unsure[0].line).toBe(
+      "Two places were close for breakfast on day 1. I chose Corner Noodles.",
+    );
+    expect(withBreakfast.built[1]).toBe(
+      "I chose 2 places: 1 to see and 1 to eat at.",
+    );
+  });
+
   it("spells out three close choices and counts the rest", () => {
     const slots = ["d1-morning", "d1-lunch", "d2-morning", "d2-lunch"];
     const all = buildReportOf({

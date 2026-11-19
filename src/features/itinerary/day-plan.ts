@@ -360,13 +360,13 @@ export function buildPlanView(
       dayStart <= BREAKFAST.until &&
       segments[0].until >= dayStart + BREAKFAST.minutes
     ) {
+      const taken = fixed.some(
+        (f) =>
+          f.commitment.kind !== "STAY" &&
+          f.start < dayStart + BREAKFAST.minutes &&
+          dayStart < f.end,
+      );
       if (context.breakfast === "suggest") {
-        const taken = fixed.some(
-          (f) =>
-            f.commitment.kind !== "STAY" &&
-            f.start < dayStart + BREAKFAST.minutes &&
-            dayStart < f.end,
-        );
         if (!taken) {
           slots.push({
             id: slotId(day, "breakfast"),
@@ -375,7 +375,7 @@ export function buildPlanView(
             city: segments[0].city,
           });
         }
-      } else if (context.breakfast === "included" && index > 0) {
+      } else if (context.breakfast === "included" && index > 0 && !taken) {
         stayBreakfast = dayStart;
       }
     }
@@ -496,7 +496,10 @@ export function buildPlanView(
         minutes: BREAKFAST.minutes,
       });
     }
-    let clock = draft.segments[0].from;
+    // Breakfast where the traveller stays takes its time, as a slot does.
+    let clock =
+      draft.segments[0].from +
+      (draft.stayBreakfast === null ? 0 : BREAKFAST.minutes);
     let lastPoint: { latitude: number; longitude: number } | null = null;
     let lastPlaceName: string | null = null;
 

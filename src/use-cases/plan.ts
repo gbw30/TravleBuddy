@@ -343,6 +343,9 @@ export async function cardsFor(
       ),
       ...view.shelf.map((item) => item.placeId),
     ],
+    takenToday: day.entries.flatMap((e) =>
+      e.type === "place" ? [e.placeId] : [],
+    ),
     kindsInDay: day.entries.flatMap((e) =>
       e.type === "place" && places[e.placeId] ? [places[e.placeId].kind] : [],
     ),
