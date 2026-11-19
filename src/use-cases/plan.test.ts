@@ -520,3 +520,77 @@ describe("a trip deleted while its plan is read", () => {
     await expect(load()).rejects.toThrow("database down");
   });
 });
+
+describe("cards that would break a rule of the plan", () => {
+  it("are not offered: a lunch that would run into something decided gives way to one that fits", async () => {
+    // Meals are proposed once the food question is answered.
+    mocks.readTripTaste.mockResolvedValue({
+      food: { values: ["none"], source: "told" },
+    });
+    // Without anything decided, both places to eat are offered.
+    expect(
+      (await load("d1-lunch"))?.proposal?.cards.map((card) => card.name).sort(),
+    ).toEqual(["Kissa Ko", "Soba House"]);
+    // A lunch from 12:30 takes until 13:45; this is decided from 13:30.
+    mocks.getTrip.mockResolvedValue(
+      trip({
+        commitments: [
+          {
+            id: "c-1",
+            kind: "RESERVATION",
+            title: "teamLab Planets",
+            date: "2027-05-10",
+            startTime: "13:30",
+            endDate: null,
+            endTime: "15:00",
+            reference: null,
+            note: null,
+            transport: null,
+          },
+        ],
+      }),
+    );
+    const plan = await load("d1-lunch");
+    const lunch = plan?.view.days[0].entries.find(
+      (entry) => entry.type === "open" && entry.kind === "lunch",
+    );
+    // The slot is there. The restaurant's 75 minutes would overlap what is
+    // decided; the cafe's shorter stop fits before it, so only it is offered.
+    expect(lunch).toBeDefined();
+    expect(plan?.proposal?.cards.map((card) => card.name)).toEqual([
+      "Kissa Ko",
+    ]);
+    expect(plan?.proposal?.short).toBe(true);
+    // The other days' lunches are untouched.
+    expect((await load("d2-lunch"))?.proposal?.cards.length).toBeGreaterThan(0);
+  });
+});
+
+describe("a place the traveller has already decided", () => {
+  it("is not offered again as a card, whatever the case of its name", async () => {
+    const names = async () =>
+      (await load("d1-morning"))?.proposal?.cards.map((card) => card.name);
+    expect(await names()).toContain("Senso-ji");
+    mocks.getTrip.mockResolvedValue(
+      trip({
+        commitments: [
+          {
+            id: "c-1",
+            kind: "RESERVATION",
+            title: " senso-JI",
+            date: "2027-05-11",
+            startTime: "15:00",
+            endDate: null,
+            endTime: "16:00",
+            reference: null,
+            note: null,
+            transport: null,
+          },
+        ],
+      }),
+    );
+    const offered = await names();
+    expect(offered).not.toContain("Senso-ji");
+    expect(offered?.length).toBeGreaterThan(0);
+  });
+});

@@ -234,6 +234,13 @@ export async function historyFor(
   };
 }
 
+/** Rules a plan breaks. Unknown opening hours are an uncertainty, not a broken rule. */
+export const brokenRules = (view: PlanView) =>
+  view.days
+    .flatMap((day) => day.entries)
+    .flatMap((entry) => (entry.type === "place" ? entry.flags : []))
+    .filter((flag) => flag.rule !== "hours-unknown").length;
+
 /**
  * The ranked cards for one slot, from the saved places of its city. With
  * `gather`, the provider is asked first: one request at most, and a failure
@@ -249,6 +256,11 @@ export async function cardsFor(
   limits: Limits,
   gather: boolean,
   history?: CardHistory,
+  /**
+   * The plan the cards are for. With it, a place is offered only if picking
+   * it leaves no rule newly broken anywhere in the plan.
+   */
+  plan?: { state: PlanState; context: PlanContext },
 ): Promise<{
   set: CardSet;
   cityName: string;
@@ -300,7 +312,16 @@ export async function cardsFor(
     },
     cityName: city.name,
     from,
-    candidates: saved.filter((place) => kindSuitsSlot(place.kind, entry.kind)),
+    // A place the traveller has already decided, by name, is not offered again.
+    candidates: saved.filter(
+      (place) =>
+        kindSuitsSlot(place.kind, entry.kind) &&
+        !trip.commitments.some(
+          (commitment) =>
+            commitment.title.trim().toLowerCase() ===
+            place.name.trim().toLowerCase(),
+        ),
+    ),
     taken: [
       ...view.days.flatMap((d) =>
         d.entries.flatMap((e) => (e.type === "place" ? [e.placeId] : [])),
@@ -317,6 +338,21 @@ export async function cardsFor(
     ),
     history: history ?? (await historyFor(trip.id, userId)),
     taste: cardTaste(taste, limits),
+    fits: plan
+      ? (place) => {
+          const applied = applyPlanAction(plan.state, view, {
+            type: "pick",
+            slotId: entry.slotId,
+            placeId: place.id,
+          });
+          if ("refused" in applied) return false;
+          const after = buildPlanView(applied.state, {
+            ...plan.context,
+            places: { ...plan.context.places, [place.id]: place },
+          });
+          return brokenRules(after) <= brokenRules(view);
+        }
+      : undefined,
   });
   return { set, cityName: city.name, gathered };
 }
@@ -330,6 +366,7 @@ async function proposalFor(
   taste: TasteInUse,
   limits: Limits,
   gather: boolean,
+  plan: { state: PlanState; context: PlanContext },
 ): Promise<PlanSnapshot["proposal"]> {
   const found = await cardsFor(
     trip,
@@ -340,6 +377,8 @@ async function proposalFor(
     taste,
     limits,
     gather,
+    undefined,
+    plan,
   );
   if (!found) return null;
   const { set, cityName, gathered } = found;
@@ -491,6 +530,7 @@ async function readPlan(
           taste,
           limits,
           gather,
+          { state, context },
         )
       : null,
     holding: holding ? "food" : null,

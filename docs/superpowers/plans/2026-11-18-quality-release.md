@@ -25,7 +25,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            | #60          |
 | 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            | #61          |
 | 8. Defects found on the way                       | `feature/m8-defects`        | TB-MEM-02, TB-DSN-07            | #62          |
-| 9. The four sample travellers                     | `feature/m8-samples`        | TB-SYS-15                       |              |
+| 9. The four sample travellers                     | `feature/m8-samples`        | TB-SYS-15                       | #63          |
 | 10. Design checks on the real screens             | `feature/m8-design-checks`  | TB-DSN-01 to 07                 |              |
 | 11. Time zones                                    | `feature/m8-time-zones`     | TB-ITN-16                       |              |
 | 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`   | none (process)                  |              |
@@ -187,6 +187,21 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 ### Piece 9: The four sample travellers
 
 **Produces:** a script per traveller of PRD 18 that plans the trip by Guided planning and by Quick plan against sample places, and the checks of decision 7 as tests; the eight itineraries written out for the developer to read; what the checks found, fixed or recorded.
+
+**Built (2026-11-19):** `npm run quality:samples -- <address of a local server>` signs in as the development user, plans the four travellers both ways through the real routes, checks each plan and writes [the eight itineraries](../../quality/sample-travellers.md). The checks are pure functions in `scripts/sample-travellers/checks.ts` with their own tests. Florence and Venice were added to the sample cities so that Dan and Priya's route exists.
+
+**What the checks and the reading found, and what was done:**
+
+| Found                                                                                                                                                                                 | Done                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Five plans had a place that was closed when the traveller would get there, though its card said it was open: the card judged the slot's usual time, not the time after the way there. | Fixed. A card is offered only if picking it leaves no rule newly broken anywhere in the plan (`fits` in `proposeCards`, used by both ways of planning).                                                                                                                                  |
+| teamLab Planets was offered as a card although Maya had already decided it for another day.                                                                                           | Fixed. A place with the name of something already decided is not offered.                                                                                                                                                                                                                |
+| Time to wander ran into something decided (two hours from 13:45 with a booking at 15:00).                                                                                             | Fixed. It ends where the next decided thing or transfer begins, and is left out under 30 minutes.                                                                                                                                                                                        |
+| At a packed pace Quick plan left Sam without lunch on day 1: the sights were chosen first and left no room.                                                                           | Fixed. A lunch not chosen yet keeps its 75 minutes in the layout, so the sights after it are chosen for the time they will really have.                                                                                                                                                  |
+| A place added by hand in an earlier walk was still in the development database and appeared in a plan.                                                                                | The one row was deleted. The check accepts a traveller's own place as real.                                                                                                                                                                                                              |
+| The same restaurant name on many days; open slots on long or packed trips outside Tokyo.                                                                                              | Recorded, not fixed: limits of the sample places (six restaurant names repeated from area to area; nine sights per city). The report says so above the itineraries. Changing the sample names would leave the saved sample places in the development and QA databases with the old ones. |
+
+**Still the developer's:** PRD 18's sixth point. Read the eight itineraries and say whether you would follow them.
 
 ### Piece 10: Design checks on the real screens
 

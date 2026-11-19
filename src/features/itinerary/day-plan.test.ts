@@ -718,3 +718,58 @@ describe("the shape of the day", () => {
     expect(flagsAt(-60)).toEqual(["08:00 closed"]);
   });
 });
+
+describe("the time lunch takes", () => {
+  const minutesOf = (clock: string) =>
+    Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3));
+
+  it("is kept free while lunch is still open, so what follows is laid out as it will be", () => {
+    // At a packed pace nothing follows lunch but the afternoon. The late
+    // morning runs to 13:15 here, so lunch cannot begin before then.
+    const view = buildPlanView(
+      state({
+        pace: "packed",
+        picks: {
+          "d2-morning-2": { placeId: "museum", minutes: 150 },
+          "d2-afternoon": { placeId: "shrine", minutes: null },
+        },
+      }),
+      context({
+        places: {
+          museum: place("museum"),
+          shrine: place("shrine", { latitude: 35.7202, longitude: 139.7607 }),
+        },
+      }),
+    );
+    const entries = view.days[1].entries;
+    const lunch = entries.find(
+      (entry) => entry.type === "open" && entry.kind === "lunch",
+    )!;
+    const afternoon = found(entries, "place")[1];
+    expect(lunch.start).toBe("13:15");
+    // 75 minutes for lunch, then the way there and the packed buffer of 10.
+    expect(minutesOf(afternoon.start)).toBe(
+      minutesOf("13:15") + 75 + afternoon.travelIn!.minutes + 10,
+    );
+  });
+
+  it("is followed by time to wander only as far as the next thing decided", () => {
+    const wanderWith = (startTime: string) =>
+      found(
+        buildPlanView(
+          state({ pace: "relaxed" }),
+          context({
+            commitments: [
+              commitment({ date: "2027-05-11", startTime, endTime: "17:30" }),
+            ],
+          }),
+        ).days[1].entries,
+        "wander",
+      ).map((entry) => `${entry.start} ${entry.minutes}`);
+    // Lunch ends at 13:45. Two hours to wander would run into 15:00.
+    expect(wanderWith("15:00")).toEqual(["13:45 75"]);
+    expect(wanderWith("17:00")).toEqual(["13:45 120"]);
+    // A quarter of an hour is not time to wander.
+    expect(wanderWith("14:00")).toEqual([]);
+  });
+});
