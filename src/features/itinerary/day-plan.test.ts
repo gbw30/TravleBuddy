@@ -567,6 +567,13 @@ describe("a trip across cities", () => {
             startTime: "09:00",
             endDate: "2027-05-12",
             endTime: "11:15",
+            transport: {
+              mode: "TRAIN",
+              origin: "Tokyo",
+              destination: "Kyoto",
+              originZone: "Asia/Tokyo",
+              destinationZone: "Asia/Tokyo",
+            },
           }),
         ],
       }),

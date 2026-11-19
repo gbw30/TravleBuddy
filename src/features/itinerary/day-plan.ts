@@ -22,7 +22,7 @@ import type {
   PlanView,
   SlotKind,
 } from "./contracts";
-import { offsetAt } from "./local-time";
+import { offsetAt, ticketMinutes } from "./local-time";
 
 // Lays a plan out from the traveller's choices and the trip's facts, and
 // checks it against the rules of PRD 9.3. Pure: no clock, no randomness, no
@@ -178,6 +178,13 @@ function transferMinutes(from: City, to: City): number {
   return Math.max(60, Math.round(((km / 70) * 60 + 60) / 15) * 15);
 }
 
+/** "London (LHR)" is London: an airport or station code is not a place's name. */
+const withoutCode = (place: string) =>
+  place
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /** When a commitment with a time starts and ends on one day. */
 function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
   // A ticket that left on an earlier day shows where it lands.
@@ -192,15 +199,23 @@ function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
   if (commitment.date !== date || !commitment.startTime) return null;
   const start = toMinutes(commitment.startTime);
   const sameDay = (commitment.endDate ?? date) === date;
-  // A stay is its check-in; a ticket that lands another day fills the evening.
+  // A stay is its check-in. A ticket ends at its arrival clock, or fills the
+  // evening when it lands another day; it has no length of its own to guess.
+  const isTicket = commitment.kind === "TRANSPORT";
   const end =
     commitment.kind === "STAY"
       ? start + 30
-      : commitment.endTime && sameDay && toMinutes(commitment.endTime) > start
-        ? toMinutes(commitment.endTime)
-        : sameDay
-          ? start + 60
-          : DAY_END;
+      : isTicket
+        ? sameDay
+          ? commitment.endTime
+            ? toMinutes(commitment.endTime)
+            : start
+          : DAY_END
+        : commitment.endTime && sameDay && toMinutes(commitment.endTime) > start
+          ? toMinutes(commitment.endTime)
+          : sameDay
+            ? start + 60
+            : DAY_END;
   return { commitment, start, end };
 }
 
@@ -488,6 +503,7 @@ export function buildPlanView(
       start: null,
       minutes: null,
       slotId: null,
+      ticket: null,
     }));
     if (draft.stayBreakfast !== null) {
       entries.push({
@@ -506,14 +522,25 @@ export function buildPlanView(
     steps.forEach((step, position) => {
       if ("fixed" in step) {
         const { commitment, start, end } = step.fixed;
+        // A ticket seen on its departure day; one landing today is a point.
+        const ticketBound =
+          commitment.kind === "TRANSPORT" && commitment.date === draft.date;
         entries.push({
           type: "commitment",
           commitmentId: commitment.id,
           commitmentKind: commitment.kind,
           title: commitment.title,
           start: toClock(start),
-          minutes: end - start,
+          minutes: ticketBound ? ticketMinutes(commitment) : end - start,
           slotId: null,
+          ticket:
+            ticketBound && commitment.transport
+              ? {
+                  from: withoutCode(commitment.transport.origin),
+                  to: withoutCode(commitment.transport.destination),
+                  arrives: commitment.endTime,
+                }
+              : null,
         });
         clock = Math.max(clock, end);
         lastPoint = null;
@@ -541,6 +568,7 @@ export function buildPlanView(
           start: null,
           minutes: null,
           slotId: slot.id,
+          ticket: null,
         });
         clock = Math.max(clock, slot.earliest) + 60;
         lastPoint = null;

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { inZone, SERVER_ZONES } from "@/lib/in-zone";
 
-import { offsetAt } from "./local-time";
+import type { CommitmentDto } from "@/features/trips/contracts";
+
+import { offsetAt, ticketMinutes } from "./local-time";
 
 const NOON = 12 * 60;
 
@@ -42,5 +44,86 @@ describe("how far a place's clock is from UTC", () => {
         );
       });
     }
+  });
+});
+
+const ticket = (
+  over: Partial<CommitmentDto>,
+  zones: [string | null, string | null],
+): CommitmentDto => ({
+  id: "t",
+  kind: "TRANSPORT",
+  title: "Flight",
+  date: "2027-06-18",
+  startTime: "10:00",
+  endDate: "2027-06-18",
+  endTime: "13:00",
+  reference: null,
+  note: null,
+  transport: {
+    mode: "FLIGHT",
+    origin: "A",
+    destination: "B",
+    originZone: zones[0],
+    destinationZone: zones[1],
+  },
+  ...over,
+});
+
+describe("how long a ticket lasts", () => {
+  it("is measured with the clock of each end", () => {
+    // London 10:00 (UTC+1 in June) to Rome 13:00 (UTC+2): two hours, not three.
+    expect(ticketMinutes(ticket({}, ["Europe/London", "Europe/Rome"]))).toBe(
+      120,
+    );
+    // Across the date line: Tokyo 18:00 lands at Honolulu 06:30 on the same date.
+    expect(
+      ticketMinutes(
+        ticket({ startTime: "18:00", endTime: "06:30" }, [
+          "Asia/Tokyo",
+          "Pacific/Honolulu",
+        ]),
+      ),
+    ).toBe(450);
+  });
+
+  it("counts an overnight ticket and a clock change on the day", () => {
+    expect(
+      ticketMinutes(
+        ticket(
+          { startTime: "22:00", endDate: "2027-06-19", endTime: "06:00" },
+          ["Europe/London", "Europe/London"],
+        ),
+      ),
+    ).toBe(480);
+    // London springs forward at 01:00 on 28 March 2027.
+    expect(
+      ticketMinutes(
+        ticket(
+          {
+            date: "2027-03-28",
+            endDate: "2027-03-28",
+            startTime: "00:30",
+            endTime: "03:30",
+          },
+          ["Europe/London", "Europe/London"],
+        ),
+      ),
+    ).toBe(120);
+  });
+
+  it("is unknown when a zone or the arrival is missing", () => {
+    expect(ticketMinutes(ticket({}, [null, "Europe/Rome"]))).toBeNull();
+    expect(ticketMinutes(ticket({}, ["Europe/London", null]))).toBeNull();
+    expect(
+      ticketMinutes(
+        ticket({ endTime: null }, ["Europe/London", "Europe/Rome"]),
+      ),
+    ).toBeNull();
+    expect(
+      ticketMinutes(
+        ticket({ transport: null }, ["Europe/London", "Europe/Rome"]),
+      ),
+    ).toBeNull();
   });
 });

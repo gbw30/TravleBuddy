@@ -167,6 +167,8 @@ export type PlanEntry =
       minutes: number | null;
       /** The slot a must-include with no time has been given. */
       slotId: string | null;
+      /** A ticket's ends and arrival clock, each by the clock of its place. */
+      ticket: { from: string; to: string; arrives: string | null } | null;
     }
   | {
       /** Travel between cities with no ticket yet: assumed, not booked (TB-ITN-19). */

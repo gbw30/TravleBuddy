@@ -48,6 +48,7 @@ const view: PlanView = {
           start: "14:35",
           minutes: 0,
           slotId: null,
+          ticket: null,
         },
         {
           type: "commitment",
@@ -57,6 +58,7 @@ const view: PlanView = {
           start: null,
           minutes: null,
           slotId: "d1-afternoon",
+          ticket: null,
         },
         {
           type: "place",
@@ -149,6 +151,35 @@ describe("PlanItinerary", () => {
     expect(html).toContain("time to be set, I plan around it");
     expect(html).not.toContain("Remove Flight in");
     expect(html).not.toContain("Move teamLab");
+  });
+
+  it("reads a ticket by the clock of each end, or says its length is unknown", () => {
+    const flight = (minutes: number | null): PlanView => ({
+      ...view,
+      days: [
+        {
+          ...view.days[0],
+          entries: [
+            {
+              type: "commitment",
+              commitmentId: "f",
+              commitmentKind: "TRANSPORT",
+              title: "Flight",
+              start: "10:00",
+              minutes,
+              slotId: null,
+              ticket: { from: "London", to: "Rome", arrives: "13:00" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(render(false, flight(120))).toContain(
+      "Leaves 10:00 London time · arrives 13:00 Rome time · 2 h",
+    );
+    expect(render(false, flight(null))).toContain(
+      "arrives 13:00 Rome time · length unknown",
+    );
   });
 
   it("shows a place with its estimated travel and visit length, its flag, and its controls", () => {
