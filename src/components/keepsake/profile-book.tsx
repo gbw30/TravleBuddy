@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, type CSSProperties, type FormEvent } from "react";
 
 import {
@@ -15,6 +16,7 @@ import { callApi } from "@/lib/trip-api";
 import type {
   FiledAs,
   ProfileView,
+  ShapedView,
   ShownEntry,
 } from "@/use-cases/profile-view";
 
@@ -148,12 +150,15 @@ export function ProfileBook({
   initial,
   name,
   rates = null,
+  shaped = null,
 }: {
   initial: ProfileView;
   /** The traveller's name, for the passport's initial. */
   name: string | null;
   /** The day's exchange rates for the daily budget; null when they cannot be had. */
   rates?: Rates | null;
+  /** What the profile did to the traveller's latest trip, when there is one to show. */
+  shaped?: ShapedView | null;
 }) {
   const [profile, setProfile] = useState(initial);
   const [editing, setEditing] = useState<string | null>(null);
@@ -714,6 +719,59 @@ export function ProfileBook({
                 >
                   Remove
                 </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {shaped && shaped.pairs.length > 0 && (
+        <section
+          data-qa="profile-shaped"
+          aria-labelledby="shaped-heading"
+          className="mt-[84px] grid gap-8 rounded-[20px] bg-ink px-6 py-8 text-paper md:px-12 md:py-11 lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-16"
+        >
+          <div>
+            <p className="font-mono text-[11px] tracking-[0.14em] text-paper/60 uppercase">
+              Why this matters
+            </p>
+            <h2
+              id="shaped-heading"
+              className="mt-2.5 font-serif text-[34px] leading-[1.04] tracking-[-0.03em] [overflow-wrap:anywhere] md:text-[46px] [&_em]:text-[#e2a07c]"
+            >
+              How this shaped <em>{shaped.title}</em>
+            </h2>
+            <p className="mt-3.5 text-[15.5px] text-paper/70">
+              Each line can be seen in that trip&rsquo;s plan.
+            </p>
+            <Link
+              href={`/trips/${shaped.tripId}`}
+              className="mt-5 inline-flex min-h-8 items-center text-[14.5px] font-medium underline decoration-paper/40 decoration-[1.5px] underline-offset-4 transition-colors duration-150 hover:decoration-paper"
+            >
+              Open the trip
+            </Link>
+          </div>
+          <ul>
+            {shaped.pairs.map(({ memory, effect }) => (
+              <li
+                key={memory}
+                className="grid items-center gap-x-5 gap-y-2 border-b border-paper/15 py-[18px] first:pt-1 md:grid-cols-[1fr_auto_1fr]"
+              >
+                <span className="font-serif text-[23px] leading-[1.15] italic">
+                  {memory}
+                </span>
+                <span
+                  aria-hidden
+                  className="grid size-[34px] place-items-center rounded-full shadow-[inset_0_0_0_1.5px_rgb(244_238_227/0.35)] max-md:rotate-90"
+                >
+                  →
+                </span>
+                <span className="text-[15px] text-paper/85">
+                  <span className="mb-0.5 block font-mono text-[10.5px] tracking-[0.14em] text-paper/60 uppercase">
+                    So in this trip
+                  </span>
+                  {effect}
+                </span>
               </li>
             ))}
           </ul>
