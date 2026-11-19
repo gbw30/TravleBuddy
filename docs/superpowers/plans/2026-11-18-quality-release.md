@@ -28,7 +28,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 9. The four sample travellers                     | `feature/m8-samples`         | TB-SYS-15                       | #63          |
 | 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 | #65          |
 | 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       | #66          |
-| 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  |              |
+| 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  | #67          |
 | 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    |              |
 
 ## Global Constraints
@@ -253,6 +253,18 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 ### Piece 12: QA catalogue for the new product
 
 **Produces:** QA features and scenarios for trip start, fixed commitments, cards and the itinerary, the conversation, memory and Quick plan, in the registry's own form, with the scenarios of decision 2 rewritten; `npm run qa:validate` passing. The gate is not run here.
+
+**Built (2026-11-19):**
+
+- **Features.** The registry holds the new product's twelve: accounts and authorization, Home and starting a trip, fixed commitments, planning revision contracts, the conversation, cards and the live itinerary, memory, Quick plan, the place source, design and accessibility, the AI model boundary, and interaction performance. Each names the requirement groups it covers.
+- **States.** Accounts and the revision contracts stay `required`. Everything built since is `candidate`: it blocks a gate and becomes `required` only after one passes, which is the registry's own rule. The AI model boundary and interaction performance are `planned`, so they do not block: no request has been made with a real key and no budget has been measured.
+- **Scenarios.** 28, in the catalogue's own form, each with its requirement groups among its tags. The seven that still held (authentication, replay and revision, production read-only, performance) are kept; the rest are written for the new product. The scenarios of decision 2 are rewritten: trip readiness as `TRIP-P0-FACTS`, revisions as `REV-P0-IDEMPOTENCY` and `REV-P0-CONCURRENCY`, the place boundary as `PLACES-P0-BOUNDARY`, persistence as `TRIP-P0-START` and `CHAT-P0-SCRIPT`. Two cite the reports of pieces 9 and 10 as required evidence.
+- **Removed:** the features and scenarios for the travel profile, trip CRUD, conversation persistence, AI intent, live scheduling, Google Places, cache and rate limits, maps and export. Maps and export are not in the requirements.
+- **What the agents read.** The earlier planner's stage documents are replaced by the status document, the API reference, the service borders, the operating constraints and ADR-009.
+- **Checks added:** every feature has a scenario and every blocking feature a P0 one; nothing in the registry or the catalogue names a part of the earlier planner; every agent's context for a release run stays within the 32 KB limit (the largest is 14 KB).
+- `npm run qa:validate` passes: 12 features, 28 scenarios, 6 agents, 6 workflows. The gate was not run.
+
+**Still the developer's:** run the gate. A `candidate` feature fails a gate until its P0 scenarios have evidence, so the first release gate needs every specialist.
 
 ### Piece 13: Evidence
 

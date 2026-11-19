@@ -1,14 +1,14 @@
 {
   "authentication": "required",
-  "profile": "required",
-  "trip-crud": "required",
+  "trip-start": "candidate",
+  "fixed-commitments": "candidate",
   "planning-revision-contracts": "required",
-  "conversation-persistence": "planned",
-  "ai-intent": "planned",
-  "live-scheduling": "planned",
-  "google-places": "candidate",
-  "interaction-performance": "planned",
-  "cache-rate-limits": "planned",
-  "maps": "deferred",
-  "export": "deferred"
+  "conversation": "candidate",
+  "cards-itinerary": "candidate",
+  "memory": "candidate",
+  "quick-plan": "candidate",
+  "place-source": "candidate",
+  "design-accessibility": "candidate",
+  "ai-model": "planned",
+  "interaction-performance": "planned"
 }

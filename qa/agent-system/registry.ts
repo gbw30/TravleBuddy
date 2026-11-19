@@ -36,7 +36,7 @@ export const fullAgentTeam = [
 const sharedDocumentation = [
   "qa/context/shared-policy.md",
   "qa/README.md",
-  "docs/conversational-planning/README.md",
+  "docs/status/current-implementation.md",
 ];
 
 export const agentRegistry = Object.freeze(
@@ -73,7 +73,8 @@ export const agentRegistry = Object.freeze(
         ...sharedDocumentation,
         "docs/requirements.md",
         "docs/nextauth-setup.md",
-        "docs/conversational-planning/01-foundation-and-contracts.md",
+        "docs/api/v1.md",
+        "docs/architecture/service-borders.md",
       ],
       sourceRoots: ["src/lib", "src/app/api", "src/features", "src/proxy.ts"],
       testRoots: ["src/lib", "src/app/api", "src/features", "e2e"],
@@ -85,9 +86,8 @@ export const agentRegistry = Object.freeze(
       documentationPaths: [
         ...sharedDocumentation,
         "docs/neon-env-setup.md",
-        "docs/conversational-planning/05-real-place-recommendations.md",
-        "docs/conversational-planning/06-interaction-performance.md",
-        "docs/conversational-planning/07-cache-production-hardening.md",
+        "docs/operating-constraints.md",
+        "docs/architecture/adr-009-place-data-provider.md",
       ],
       sourceRoots: [
         "src/lib/env.ts",
@@ -189,6 +189,7 @@ const fullTeamExactPaths = new Set([
   ".codex/config.toml",
   "qa/feature-states.json",
   "docs/requirements.md",
+  "docs/prd.md",
 ]);
 
 const fullTeamPrefixes = [
@@ -200,7 +201,6 @@ const fullTeamPrefixes = [
   "qa/contracts/",
   "qa/scenarios/",
   "prisma/migrations/",
-  "docs/conversational-planning/",
 ];
 
 function normalizeChangedPath(value: string) {
