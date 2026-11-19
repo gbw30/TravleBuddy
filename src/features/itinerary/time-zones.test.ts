@@ -353,3 +353,52 @@ describe("a ticket that lands the day after it leaves", () => {
     expect(slots(view.days[3].entries)).toHaveLength(5);
   });
 });
+
+describe("a ticket across the date line", () => {
+  const zoned = (leaves: string, lands: string, destZone: string | null) =>
+    commitment({
+      title: "Flight",
+      kind: "TRANSPORT",
+      date: "2027-05-11",
+      startTime: leaves,
+      endDate: "2027-05-11",
+      endTime: lands,
+      transport: {
+        mode: "FLIGHT",
+        origin: "Tokyo",
+        destination: "Honolulu",
+        originZone: "Asia/Tokyo",
+        destinationZone: destZone,
+      },
+    });
+  const view = (destZone: string | null) =>
+    buildPlanView(
+      state(),
+      trip(
+        [
+          { city: tokyo, nights: 1 },
+          { city: honolulu, nights: 2 },
+        ],
+        "2027-05-10",
+        "2027-05-13",
+        { commitments: [zoned("18:00", "06:30", destZone)] },
+      ),
+    );
+
+  it("puts the Honolulu dinner after landing, and gives the ticket its real length", () => {
+    const day = view("Pacific/Honolulu").days[1];
+    expect(slots(day.entries)).toContain("dinner 19:00");
+    expect(day.entries.find((e) => e.type === "commitment")).toMatchObject({
+      start: "18:00",
+      minutes: 450,
+      ticket: { from: "Tokyo", to: "Honolulu", arrives: "06:30" },
+    });
+  });
+
+  it("shows no length and no 60-minute end when a zone is unknown", () => {
+    const entry = view(null).days[1].entries.find(
+      (e) => e.type === "commitment",
+    );
+    expect(entry).toMatchObject({ start: "18:00", minutes: null });
+  });
+});

@@ -121,16 +121,29 @@ export function PlanItinerary({
                     <TicketStub
                       time={entry.start ?? "—"}
                       title={entry.title}
-                      note={[
-                        kindWord[entry.commitmentKind],
-                        entry.start
-                          ? entry.minutes
-                            ? hours(entry.minutes)
-                            : null
-                          : "time to be set, I plan around it",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      note={
+                        entry.ticket && entry.start
+                          ? [
+                              `Leaves ${entry.start} ${entry.ticket.from} time`,
+                              entry.ticket.arrives &&
+                                `arrives ${entry.ticket.arrives} ${entry.ticket.to} time`,
+                              entry.minutes
+                                ? hours(entry.minutes)
+                                : "length unknown",
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : [
+                              kindWord[entry.commitmentKind],
+                              entry.start
+                                ? entry.minutes
+                                  ? hours(entry.minutes)
+                                  : null
+                                : "time to be set, I plan around it",
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")
+                      }
                     />
                   </li>
                 );

@@ -223,7 +223,14 @@ export type CommitmentDto = {
   endTime: string | null;
   reference: string | null;
   note: string | null;
-  transport: { mode: string; origin: string; destination: string } | null;
+  transport: {
+    mode: string;
+    origin: string;
+    destination: string;
+    /** The time zone of each end, when known: the length of a ticket needs both. */
+    originZone: string | null;
+    destinationZone: string | null;
+  } | null;
 };
 
 /** Two commitments whose times overlap. The traveller decides; the product does not. */

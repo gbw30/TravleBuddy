@@ -20,7 +20,7 @@ import {
 import { signedIn, type Call } from "../site";
 import { TRAVELLERS, type Traveller } from "./travellers";
 
-// Plans the four sample travellers of PRD 18 through the running site, by
+// Plans the sample travellers of PRD 18 through the running site, by
 // Guided planning and by Quick plan, checks each plan, and writes the eight
 // itineraries out for the developer to read (TB-SYS-15).
 //
@@ -83,7 +83,7 @@ async function main() {
   }
 
   const document = [
-    "# The four sample travellers",
+    "# The sample travellers",
     "",
     "Status: evidence",
     "Authority: What the checks of PRD 18 found. Written by `npm run quality:samples`; do not edit by hand.",

@@ -1,6 +1,11 @@
 import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
-import { createTrip, factsFromTickets } from "@/features/trips";
+import {
+  createTrip,
+  factsFromTickets,
+  placeKey,
+  placeName,
+} from "@/features/trips";
 import {
   NEW_TRIP_TITLE,
   type StartTripInput,
@@ -30,6 +35,30 @@ export async function startTrip(
     if (city) cities.push({ city, nights: stop.nights });
   }
 
+  // The zone of each ticket end: a trip city of that name, else one lookup.
+  const zones = new Map(
+    cities.map(({ city }) => [city.name.toLowerCase(), city.timeZone]),
+  );
+  const zoneOf = async (end: string) => {
+    const key = placeKey(end);
+    if (!zones.has(key)) {
+      const found = await findCities(placeName(end));
+      zones.set(
+        key,
+        (found.status === "ok" ? found.cities[0]?.timeZone : null) ?? null,
+      );
+    }
+    return zones.get(key) ?? null;
+  };
+  const tickets = [];
+  for (const ticket of input.tickets) {
+    tickets.push({
+      ...ticket,
+      fromZone: await zoneOf(ticket.from),
+      toZone: await zoneOf(ticket.to),
+    });
+  }
+
   const names = cities.length
     ? cities.map(({ city }) => city.name)
     : fromTickets.stops.map((stop) => stop.place);
@@ -40,6 +69,6 @@ export async function startTrip(
     startDate: fromTickets.startDate,
     endDate: fromTickets.endDate,
     cities,
-    tickets: input.tickets,
+    tickets,
   });
 }

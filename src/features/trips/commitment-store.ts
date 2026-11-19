@@ -22,6 +22,8 @@ export const commitmentSelect = {
   transportMode: true,
   origin: true,
   destination: true,
+  originTimeZone: true,
+  destinationTimeZone: true,
 } satisfies Prisma.FixedCommitmentSelect;
 
 export const commitmentOrder = [
@@ -56,6 +58,8 @@ export function toCommitmentDto(row: CommitmentRow): CommitmentDto {
             mode: row.transportMode,
             origin: row.origin,
             destination: row.destination,
+            originZone: row.originTimeZone,
+            destinationZone: row.destinationTimeZone,
           }
         : null,
   };
@@ -127,7 +131,13 @@ export async function updateCommitment(
       // A ticket turned into something else no longer has a route.
       ...(input.kind === "TRANSPORT"
         ? {}
-        : { transportMode: null, origin: null, destination: null }),
+        : {
+            transportMode: null,
+            origin: null,
+            destination: null,
+            originTimeZone: null,
+            destinationTimeZone: null,
+          }),
     },
   });
   if (updated.count !== 1) return "not_found";

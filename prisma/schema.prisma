@@ -209,21 +209,24 @@ model TripDestination {
 /// Something already decided: a ticket, a stay, a reservation, a must-see.
 /// Dates and times are wall-clock values at the place, with no time zone.
 model FixedCommitment {
-  id            String             @id @default(dbgenerated("(gen_random_uuid())::text"))
-  tripId        String             @map("trip_id")
-  kind          CommitmentKind
-  title         String             @db.VarChar(160)
-  date          DateTime?          @db.Date
-  startTime     String?            @map("start_time") @db.VarChar(5)
-  endDate       DateTime?          @map("end_date") @db.Date
-  endTime       String?            @map("end_time") @db.VarChar(5)
-  reference     String?            @db.VarChar(80)
-  note          String?            @db.VarChar(500)
-  transportMode TravelSegmentMode? @map("transport_mode")
-  origin        String?            @db.VarChar(120)
-  destination   String?            @db.VarChar(120)
-  createdAt     DateTime           @default(now()) @map("created_at")
-  updatedAt     DateTime           @updatedAt @map("updated_at")
+  id                  String             @id @default(dbgenerated("(gen_random_uuid())::text"))
+  tripId              String             @map("trip_id")
+  kind                CommitmentKind
+  title               String             @db.VarChar(160)
+  date                DateTime?          @db.Date
+  startTime           String?            @map("start_time") @db.VarChar(5)
+  endDate             DateTime?          @map("end_date") @db.Date
+  endTime             String?            @map("end_time") @db.VarChar(5)
+  reference           String?            @db.VarChar(80)
+  note                String?            @db.VarChar(500)
+  transportMode       TravelSegmentMode? @map("transport_mode")
+  origin              String?            @db.VarChar(120)
+  destination         String?            @db.VarChar(120)
+  /// The time zone of each end of a ticket, so its length is measured with both clocks.
+  originTimeZone      String?            @map("origin_time_zone") @db.VarChar(64)
+  destinationTimeZone String?            @map("destination_time_zone") @db.VarChar(64)
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
