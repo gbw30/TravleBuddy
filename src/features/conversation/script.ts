@@ -172,6 +172,18 @@ export const QUESTIONS: Record<Topic, Question> = {
     ),
     skipSays: "I will assume no restrictions.",
   },
+  breakfast: {
+    topic: "breakfast",
+    stage: "taste",
+    form: "pick_one",
+    prompt: "Breakfast?",
+    choices: choices(
+      ["included", "It comes with where I stay"],
+      ["suggest", "Suggest somewhere"],
+      ["none", "No breakfast, thanks"],
+    ),
+    skipSays: "I will leave breakfast out; tell me if you want some.",
+  },
   getting_around: {
     topic: "getting_around",
     stage: "taste",
@@ -385,6 +397,7 @@ export const TASTE_DEFAULTS: Record<TasteTopic, string[]> = {
   interests: [],
   atmosphere: ["either"],
   food: ["none"],
+  breakfast: ["none"],
   getting_around: [],
   stay: [],
   budget_priorities: ["even"],

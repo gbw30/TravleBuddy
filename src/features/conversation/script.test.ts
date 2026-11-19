@@ -82,6 +82,24 @@ describe("the script", () => {
     }
   });
 
+  it("asks about breakfast with three choices, and a skip says so and stores none", () => {
+    const question = QUESTIONS.breakfast;
+    expect(question.prompt).toBe("Breakfast?");
+    expect(question.form).toBe("pick_one");
+    expect(question.choices).toEqual([
+      { value: "included", label: "It comes with where I stay" },
+      { value: "suggest", label: "Suggest somewhere" },
+      { value: "none", label: "No breakfast, thanks" },
+    ]);
+    expect(question.skipSays).toBe(
+      "I will leave breakfast out; tell me if you want some.",
+    );
+    expect(TASTE_DEFAULTS.breakfast).toEqual(["none"]);
+    expect(TASTE_TOPICS.indexOf("breakfast")).toBe(
+      TASTE_TOPICS.indexOf("food") + 1,
+    );
+  });
+
   it("asks the facts first, in order, and only those it does not have", () => {
     expect(nextQuestion(state())?.topic).toBe("where");
     // Tickets already gave the city and the dates.
