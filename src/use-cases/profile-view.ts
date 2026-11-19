@@ -25,3 +25,14 @@ export type ProfileView = {
 export type FiledAs =
   | { type: "entry"; entry: ShownEntry }
   | { type: "note"; note: ProfileNote & { id: string } };
+
+/**
+ * What the profile did to one trip: each memory the trip went by, with an
+ * effect its plan shows. Nothing here is claimed that the plan cannot prove.
+ */
+export type ShapedView = {
+  tripId: string;
+  /** A name to recognise the trip by. */
+  title: string;
+  pairs: { memory: string; effect: string }[];
+};

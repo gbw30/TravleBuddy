@@ -3,15 +3,17 @@ import { auth } from "@/lib/auth";
 import { requireUser } from "@/lib/authorization";
 import { getRates } from "@/lib/currency";
 import { loadProfile } from "@/use-cases/profile";
+import { loadShaped } from "@/use-cases/shaped";
 
 /** The personal profile: everything the site believes about the traveller (PRD 12.5). */
 export default async function ProfilePage() {
   const userId = await requireUser();
   // The rates are for the daily budget; without them it stays in yen.
-  const [profile, session, rates] = await Promise.all([
+  const [profile, session, rates, shaped] = await Promise.all([
     loadProfile(userId),
     auth(),
     getRates(),
+    loadShaped(userId),
   ]);
   return (
     <main>
@@ -19,6 +21,7 @@ export default async function ProfilePage() {
         initial={profile}
         name={session?.user?.name ?? null}
         rates={rates}
+        shaped={shaped}
       />
     </main>
   );

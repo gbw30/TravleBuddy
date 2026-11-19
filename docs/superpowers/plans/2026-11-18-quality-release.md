@@ -23,7 +23,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 4. The day starts when the traveller likes        | `feature/m8-day-start`      | TB-ITN-08, TB-MEM-03            | #58          |
 | 5. Profile: habits as slider cards                | `feature/m8-profile-habits` | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
 | 6. Profile: daily budget with currency            | `feature/m8-profile-budget` | TB-MEM-03, TB-QPL-03            | #60          |
-| 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            |              |
+| 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped` | TB-MEM-06, TB-MEM-11            | #61          |
 | 8. Defects found on the way                       | `feature/m8-defects`        | TB-DSN-05, TB-DSN-07            |              |
 | 9. The four sample travellers                     | `feature/m8-samples`        | TB-SYS-15                       |              |
 | 10. Design checks on the real screens             | `feature/m8-design-checks`  | TB-DSN-01 to 07                 |              |
@@ -156,7 +156,20 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 ### Piece 7: Profile: how it shaped the latest trip
 
-**Produces:** a pure function from a trip's plan and the profile to "memory, so in this trip" pairs, each provable from the plan; the prototype's dark section on the real page with the trip's name and a link to it.
+**Produced (pull request 61):**
+
+- `shapedBy` in `src/use-cases/shaped.ts`, pure: from the taste a trip goes by, the profile's dietary rules and the trip's laid-out plan, it gives "memory, so in this trip" pairs. Each effect is counted from the plan:
+  - a remembered **pace** the plan follows: the most sights or activities any day has;
+  - a remembered **shape of the day**: when the days begin and when dinner is, as one time or as a span;
+  - **dietary rules**: how many meals are at a place whose listing confirms them, and how many at one that says it does not;
+  - each remembered **interest** that shows: how many sights are of that kind, by name.
+- A memory the trip overrode, a plan set to another pace, an interest that shows nowhere and a trip with no places give no line. Allergies, atmosphere, getting around and the budget give none, because a plan cannot show them.
+- `loadShaped` picks the traveller's most recently changed trip that has places in its plan, among the newest five.
+- The prototype's dark section on the real page, before "Tell me something new", with the trip's name and a link to it. It is not shown when there is nothing to say.
+
+**Seen in the walk:** a traveller with five memories built a three-day trip. The page said: no day has more than 2 sights or activities; its days begin at 09:00, with dinner between 18:00 and 18:06; 6 of 6 meals are at a place that says it serves vegetarian food; 2 of 6 sights are museums, by name; 1 is a market. Each matched the plan read separately. When the trip chose its own pace, the pace line went.
+
+**Found and fixed:** the first wording said "dinner at 18:00" when the dinners were at 18:00, 18:01 and 18:06. Times that differ are now given as a span.
 
 ### Piece 8: Defects found on the way
 

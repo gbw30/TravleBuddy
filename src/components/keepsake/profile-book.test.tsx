@@ -278,6 +278,43 @@ describe("ProfileBook", () => {
     });
   });
 
+  it("shows what the profile did to the latest trip, with a link to it, and nothing when there is nothing to show", () => {
+    const html = renderToStaticMarkup(
+      <ProfileBook
+        initial={view()}
+        name="Ana"
+        shaped={{
+          tripId: "trip-9",
+          title: "Lisbon",
+          pairs: [
+            {
+              memory: "A relaxed pace",
+              effect: "No day has more than 2 sights or activities.",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(html).toContain("How this shaped <em>Lisbon</em>");
+    expect(html).toContain('href="/trips/trip-9"');
+    expect(html).toContain("A relaxed pace");
+    expect(html).toContain("So in this trip");
+    expect(html).toContain("No day has more than 2 sights or activities.");
+    expect(html.indexOf('id="shaped-heading"')).toBeLessThan(
+      html.indexOf('id="tell-heading"'),
+    );
+    expect(render(view())).not.toContain("How this shaped");
+    expect(
+      renderToStaticMarkup(
+        <ProfileBook
+          initial={view()}
+          name="Ana"
+          shaped={{ tripId: "t", title: "Lisbon", pairs: [] }}
+        />,
+      ),
+    ).not.toContain("How this shaped");
+  });
+
   it("shows notes as kept but not yet affecting suggestions", () => {
     const html = render(view({ notes: [{ id: "n1", text: "I hate queues" }] }));
     expect(html).toContain("1 note · not yet affecting suggestions");
