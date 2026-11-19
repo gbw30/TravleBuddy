@@ -8,6 +8,7 @@ import {
   visitMinutes,
   type City,
   type PlaceDto,
+  type TravelMeans,
 } from "@/features/places/contracts";
 import type { CommitmentDto, TripFacts } from "@/features/trips/contracts";
 
@@ -41,6 +42,8 @@ export type PlanContext = {
    * already decided moves with it.
    */
   dayShift?: number;
+  /** The way of getting around the traveller named; legs are timed by it. */
+  means?: TravelMeans;
 };
 
 // The default day and the pace table of PRD 9.4.
@@ -501,7 +504,9 @@ export function buildPlanView(
             ? null
             : { latitude: place.latitude, longitude: place.longitude };
         const leg =
-          lastPoint && point ? travelEstimate(lastPoint, point) : null;
+          lastPoint && point
+            ? travelEstimate(lastPoint, point, context.means)
+            : null;
         const start = Math.max(
           slot.earliest,
           clock + (leg ? leg.minutes + buffer : 0),

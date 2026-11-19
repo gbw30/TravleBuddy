@@ -43,6 +43,8 @@ export type PlaceDto = {
   lastEditedAt: string | null;
   /** When this row was last fetched, ISO. Null: fetched before provenance was kept. */
   fetchedAt: string | null;
+  /** A quiet line when the hours may not be true; null when there is no reason to doubt them. */
+  hoursDoubt: string | null;
 };
 
 /** "unavailable" means the lookup could not be reached, not that nothing matched. */
@@ -63,6 +65,7 @@ export {
   type PlaceKind,
 } from "./kinds";
 export {
+  hoursDoubt,
   isOpenFor,
   parseOpeningHours,
   type WeeklyHours,

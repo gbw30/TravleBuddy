@@ -11,6 +11,7 @@ import {
   type PlaceSource,
   type Point,
 } from "./place-source";
+import { hoursDoubt } from "./opening-hours";
 import { distanceKm } from "./travel";
 
 /**
@@ -30,7 +31,7 @@ export const QUERY_VERSION = { sights: 2, food: 2 } as const;
 type PlaceRow = Prisma.PlaceGetPayload<object>;
 
 function toDto(row: PlaceRow): PlaceDto {
-  return {
+  const dto = {
     id: row.id,
     origin: row.origin,
     name: row.name,
@@ -49,6 +50,10 @@ function toDto(row: PlaceRow): PlaceDto {
     tags: (row.osmTags ?? {}) as Record<string, string>,
     lastEditedAt: row.lastEditedAt?.toISOString() ?? null,
     fetchedAt: row.fetchedAt?.toISOString() ?? null,
+  };
+  return {
+    ...dto,
+    hoursDoubt: hoursDoubt(dto, new Date().toISOString().slice(0, 10)),
   };
 }
 

@@ -32,6 +32,7 @@ const place = (id: string): PlaceDto => ({
   tags: {},
   lastEditedAt: null,
   fetchedAt: null,
+  hoursDoubt: null,
 });
 const dinner: CommitmentDto = {
   id: "c1",

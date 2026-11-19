@@ -40,6 +40,7 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   tags: {},
   lastEditedAt: null,
   fetchedAt: null,
+  hoursDoubt: null,
   ...over,
 });
 const commitment = (over: Partial<CommitmentDto>): CommitmentDto => ({
@@ -400,6 +401,25 @@ describe("a picked place", () => {
     expect(second.start).toBe(
       `11:${String(second.travelIn!.minutes + 10).padStart(2, "0")}`,
     );
+  });
+
+  it("times a leg by the stated means", () => {
+    const picks = {
+      "d2-morning": pick("museum"),
+      "d2-morning-2": pick("shrine"),
+    };
+    const leg = (means?: "walk" | "transit" | "drive") =>
+      found(
+        buildPlanView(
+          state({ pace: "packed", picks }),
+          context({ places, means }),
+        ).days[1].entries,
+        "place",
+      )[1].travelIn;
+    // About a kilometre apart: walked unless the traveller said otherwise.
+    expect(leg()?.means).toBe("walk");
+    expect(leg("drive")?.means).toBe("drive");
+    expect(leg("transit")?.means).toBe("transit");
   });
 
   it("flags a place that is closed, and one whose hours are unknown", () => {

@@ -44,6 +44,7 @@ const place = (
   tags: {},
   lastEditedAt: null,
   fetchedAt: null,
+  hoursDoubt: null,
 });
 const commitment = (over: Partial<CommitmentDto>): CommitmentDto => ({
   id: over.title ?? "c",

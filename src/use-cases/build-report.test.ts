@@ -27,6 +27,7 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   tags: {},
   lastEditedAt: null,
   fetchedAt: null,
+  hoursDoubt: null,
   ...over,
 });
 const open = (slotId: string, kind: PlanEntry & { type: "open" }): PlanEntry =>
