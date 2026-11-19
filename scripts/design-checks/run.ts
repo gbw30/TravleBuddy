@@ -987,14 +987,18 @@ async function main() {
   const summary: string[] = [];
   const sections: string[] = [];
   let failures = 0;
-  let data: Data | null = null;
   try {
-    data = await setUp(admin);
     for (const [name, type] of Object.entries(BROWSERS)) {
       if (only && !only.includes(name)) continue;
       let browser: Browser;
       try {
-        browser = await type.launch();
+        // WebKit can be started through a script of one's own, for a
+        // machine whose system libraries are unpacked in a private folder.
+        browser = await type.launch(
+          name === "WebKit" && process.env.WEBKIT_EXECUTABLE
+            ? { executablePath: process.env.WEBKIT_EXECUTABLE }
+            : undefined,
+        );
       } catch (error) {
         const why = String(error).includes("missing dependencies")
           ? "this machine lacks the system libraries it needs (`sudo npx playwright install-deps webkit`)"
@@ -1002,7 +1006,11 @@ async function main() {
         summary.push(`| ${name} | not run | ${why} |`);
         continue;
       }
+      // Trips of its own for each browser: every walk picks three cards, and
+      // one shared trip ran out of open slots before the third browser.
+      let data: Data | null = null;
       try {
+        data = await setUp(admin);
         const rows = await walk(browser, admin, data);
         const failed = rows.filter((item) => !item.ok);
         failures += failed.length;
@@ -1024,13 +1032,13 @@ async function main() {
         );
       } finally {
         await browser.close();
+        if (data) {
+          await admin("delete", `/trips/${data.guided}`);
+          await admin("delete", `/trips/${data.quick}`);
+        }
       }
     }
   } finally {
-    if (data) {
-      await admin("delete", `/trips/${data.guided}`);
-      await admin("delete", `/trips/${data.quick}`);
-    }
     await admin("delete", "/profile");
     await adminBrowser.close();
   }

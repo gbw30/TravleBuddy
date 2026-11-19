@@ -14,14 +14,14 @@ Built, and checked by unit tests or by a walk of the real site on the developmen
 - **The QA gate.** No requirement has passed it. Every feature built since the last gate is a `candidate` in `qa/feature-states.json`.
 - **The real AI model.** No request has been made with a real key.
 - **The real place services.** No request has been made to OpenStreetMap from the app.
-- **WebKit, a real phone, a screen reader.** The design checks ran in Chromium and Firefox.
+- **A real phone, a screen reader.** The design checks ran in Chromium, Firefox and WebKit, at phone width but not on a phone.
 - **Production, signed in.** Only the signed-out pages of the live site were looked at.
 
 ## What was run for this page (2026-11-19)
 
 - `npm run lint`, `npm run typecheck`, `npm test` (796 tests) and `npm run build`: all pass.
 - `npm run quality:samples`: eight plans, 0 failed checks, identical to the report in the repository.
-- `npm run quality:design`: 56 of 56 checks in Chromium and in Firefox; WebKit could not start on this machine.
+- `npm run quality:design`: 56 of 56 checks in each of Chromium, Firefox and WebKit, in one run. WebKit was started through a launcher, because this machine lacks its system libraries (pull request 70).
 - The 25 walks kept from Milestones 4 to 8 were run again. 24 ran to the end without an error. The Milestone 6 walk of the Profile page stops at a pace chip that Milestone 8 replaced with a slider; the three Milestone 8 walks of that page pass.
 
 ## 2. Accounts and Home
@@ -185,12 +185,12 @@ Built, and checked by unit tests or by a walk of the real site on the developmen
 | Requirement | State | Evidence, and what is missing                                                                                                            |
 | ----------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | TB-DSN-01   | Met   | Paper and serif type are checked by the [design checks](design-checks.md). Whether it looks like a keepsake is the developer's to judge. |
-| TB-DSN-02   | Met   | [design checks](design-checks.md): Chromium and Firefox. WebKit not run.                                                                 |
-| TB-DSN-03   | Met   | [design checks](design-checks.md): Chromium and Firefox. WebKit not run.                                                                 |
-| TB-DSN-04   | Met   | [design checks](design-checks.md) at 390 and 320 px in Chromium and Firefox. No real phone was used.                                     |
-| TB-DSN-05   | Met   | [design checks](design-checks.md): Chromium and Firefox. WebKit not run.                                                                 |
-| TB-DSN-06   | Met   | [design checks](design-checks.md): Chromium and Firefox. WebKit and the dark colour scheme not run.                                      |
-| TB-DSN-07   | Met   | [design checks](design-checks.md): Chromium and Firefox. No screen reader was used.                                                      |
+| TB-DSN-02   | Met   | [design checks](design-checks.md): Chromium, Firefox and WebKit.                                                                         |
+| TB-DSN-03   | Met   | [design checks](design-checks.md): Chromium, Firefox and WebKit.                                                                         |
+| TB-DSN-04   | Met   | [design checks](design-checks.md) at 390 and 320 px in Chromium, Firefox and WebKit. No real phone was used.                             |
+| TB-DSN-05   | Met   | [design checks](design-checks.md): Chromium, Firefox and WebKit.                                                                         |
+| TB-DSN-06   | Met   | [design checks](design-checks.md): Chromium, Firefox and WebKit. The dark colour scheme not run.                                         |
+| TB-DSN-07   | Met   | [design checks](design-checks.md): Chromium, Firefox and WebKit. No screen reader was used.                                              |
 | TB-DSN-08   | Met   | The product owner approved the prototype in Milestone 1.                                                                                 |
 | TB-DSN-09   | Met   | Every place in every walk lacks a photo, a price level and a rating, and is shown with a drawn picture and "unknown".                    |
 
