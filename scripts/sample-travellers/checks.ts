@@ -15,6 +15,8 @@ export type KnownPlace = { serves: string[]; servesNot: string[] };
 export type Expected = {
   pace: Pace;
   dietaryRules: string[];
+  /** What the traveller said about breakfast; only "suggest" must be filled. */
+  breakfast?: "included" | "suggest" | "none";
   /** What was already decided, with the time it must keep. */
   decided: { title: string; start: string | null }[];
 };
@@ -28,7 +30,9 @@ type Slot = Extract<PlanEntry, { type: "open" | "place" }>;
 const isSlot = (entry: PlanEntry): entry is Slot =>
   entry.type === "open" || entry.type === "place";
 const isMeal = (entry: Slot) =>
-  entry.kind === "lunch" || entry.kind === "dinner";
+  entry.kind === "breakfast" ||
+  entry.kind === "lunch" ||
+  entry.kind === "dinner";
 const finding = (check: string, problems: string[], fine: string): Finding => ({
   check,
   ok: problems.length === 0,
@@ -111,7 +115,12 @@ export function checkItinerary(input: {
   const noMeal = days.flatMap((day) =>
     day.entries
       .filter(isSlot)
-      .filter((entry) => entry.type === "open" && isMeal(entry))
+      .filter(
+        (entry) =>
+          entry.type === "open" &&
+          isMeal(entry) &&
+          (entry.kind !== "breakfast" || expected.breakfast === "suggest"),
+      )
       .map((entry) => `day ${day.day} has no ${entry.kind}`),
   );
 
@@ -160,7 +169,7 @@ export function checkItinerary(input: {
     finding(
       "Every day has its meals",
       noMeal,
-      "no lunch or dinner is left open",
+      "no meal asked for is left open",
     ),
     finding(
       "The days match the pace",

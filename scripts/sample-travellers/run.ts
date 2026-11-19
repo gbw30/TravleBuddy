@@ -231,7 +231,8 @@ async function planOne(
           entry.type === "open" && !tried.has(entry.slotId) ? [entry] : [],
         ),
       );
-      const isMeal = (kind: string) => kind === "lunch" || kind === "dinner";
+      const isMeal = (kind: string) =>
+        kind === "breakfast" || kind === "lunch" || kind === "dinner";
       const slot = open.find((entry) => !isMeal(entry.kind)) ?? open[0];
       if (!slot) break;
       tried.add(slot.slotId);
@@ -360,6 +361,8 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
           ? `, arriving about ${entry.arriveLocal} ${entry.to} time`
           : ""
       }`;
+    case "breakfast-at-stay":
+      return `${entry.start}  Breakfast where you stay (${minutes(entry.minutes)})`;
     case "wander":
       return `${entry.start}  Time to wander${entry.area ? ` around ${entry.area}` : ""} (${minutes(entry.minutes)})`;
   }
