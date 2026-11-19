@@ -3,11 +3,11 @@ import {
   renameTrip,
   saveTripFacts,
   setPlanFinished,
-  setPlanningMode,
   setTripArchived,
 } from "@/features/trips";
 import { tripActionSchema } from "@/features/trips/contracts";
 import { learnQuietly } from "@/use-cases/learning";
+import { changePlanningMode } from "@/use-cases/planning-mode";
 import { runTripAction } from "@/use-cases/trip-action";
 
 import { json, outcomeResponse, readBody, withUser } from "../../respond";
@@ -78,7 +78,7 @@ export const PATCH = withUser<Context>(async (userId, request, context) => {
     case "mode":
       return outcomeResponse(
         await run("trip_mode_set", (tx) =>
-          setPlanningMode(tx, userId, tripId, change.planningMode),
+          changePlanningMode(tx, userId, tripId, change.planningMode),
         ),
       );
   }

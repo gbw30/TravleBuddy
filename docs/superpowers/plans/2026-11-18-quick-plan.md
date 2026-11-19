@@ -22,7 +22,7 @@ The branch is `milestone/7-quick-plan`, cut from the finished Milestone 6 branch
 | 3. The brief on screen                        | `feature/m7-brief-screen` | TB-QPL-01 to 05, 07          | #49          |
 | 4. Building one day at a time                 | `feature/m7-build`        | TB-QPL-08, 09                | #50          |
 | 5. The build on screen and the report         | `feature/m7-report`       | TB-QPL-08, 10, 11            | #51          |
-| 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                |              |
+| 6. Moving between the two ways                | `feature/m7-switch`       | TB-QPL-12, 13                | #52          |
 | 7. Evidence                                   | `feature/m7-evidence`     | all of the above, re-checked |              |
 
 ## Global Constraints
@@ -151,7 +151,13 @@ Nothing uses these yet; pieces 2 and 3 do.
 
 ### Piece 6: Moving between the two ways
 
-**Produces:** "Talk it through instead" on the brief; "Build the rest for me" in the conversation.
+**Produced (pull request 52):**
+
+- **Talk it through instead**, on every step of the brief (TB-QPL-12). It saves the step, changes the trip to Guided planning and opens the trip page. The conversation reads the same facts, commitments and taste, so it asks only for what is still missing. The words of the "anything else" box are the one thing only the brief shows: `changePlanningMode` puts them into the thread as "In your brief you also wrote: …", once.
+- **Build the rest for me**, in the workspace of any trip with open slots (TB-QPL-13). It starts a build from day 1, which fills only open slots, shows the same progress and ends with the same report.
+- The trip page links to the brief for both ways of planning, so a traveller who turned to the conversation can go back.
+
+**Decided here:** "Build the rest for me" does not change the trip's way of planning; the conversation stays. It is a button, not something typed: the model's reply has no shape for it yet.
 
 ### Piece 7: Evidence
 

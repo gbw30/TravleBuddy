@@ -77,6 +77,12 @@ const pressed = (html: string) =>
   );
 
 describe("the trip brief on screen", () => {
+  it("offers the conversation instead, on every step", () => {
+    for (const step of [0, 2, 4]) {
+      expect(at(step), `step ${step + 1}`).toContain("Talk it through instead");
+    }
+  });
+
   it("names the step it is on, out of five", () => {
     expect(at(0)).toContain("Step 1 of 5: Where and when");
     expect(at(4)).toContain("Step 5 of 5: Review");

@@ -73,7 +73,7 @@ export default async function TripPage({
             finished={trip.state !== "planning"}
           />
         )}
-        {!trip.archived && trip.planningMode === "QUICK" && (
+        {!trip.archived && (
           <Link href={`/trips/${trip.id}/brief`} className={buttonSecond}>
             Open the trip brief
           </Link>
