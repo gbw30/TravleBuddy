@@ -29,7 +29,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 | #65          |
 | 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       | #66          |
 | 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  | #67          |
-| 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    |              |
+| 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    | #68          |
 
 ## Global Constraints
 
@@ -270,10 +270,22 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 **Produces:** lint, type check, tests and build; the walks of Milestones 4 to 7 repeated; each requirement of sections 2 to 13 of the catalogue marked with its evidence or what is missing; the roadmap, the status document and this plan updated; the pull request into `main`.
 
+**Produced (pull request 68, 2026-11-19):**
+
+- **Checks on the final code:** lint, type check, 796 tests and the build pass. The sample travellers' report came out identical to the one in the repository; the design checks pass 56 of 56 in Chromium and in Firefox.
+- **The walks repeated:** the 25 walks kept from Milestones 4 to 8 were run again. 24 ran to the end without an error. The Milestone 6 walk of the Profile page stops at a pace chip that piece 5 replaced with a slider; the three walks of pieces 5 to 7 cover that page and pass.
+- **Each requirement marked:** [requirements and their evidence](../../quality/requirements-evidence.md) lists the 130 requirements of sections 2 to 13: 116 met, 14 partly met, each with what it rests on and what is missing.
+- **The last border exceptions cleared.** The replay ledger read and moved a trip's revision in the Trips service's table, and an unused ownership helper read it too. The ledger now goes through `tripForAction` and `advanceTripRevision` of the Trips service, the helper is deleted, and `eslint-suppressions.json` is empty. This completes TB-SYS-01 to TB-SYS-03, which Milestone 2 left for Milestone 8.
+- **A fault of the evidence itself, found and fixed:** repeating the Milestone 4 walk left a place added by hand on the development account, and the next sample run offered it to Maya. The place was removed, and the sample runner now fails with a named finding when a plan holds a place added by hand.
+- The roadmap, the status document and this plan are updated. The pull request of this milestone into `main` is open and not merged.
+
 ## Waiting for the developer
 
-- The word on piece 3, dropping the earlier planner's tables.
+- Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point).
+- Judging the two phone screenshots of piece 10, and the word in a card's picture stamp that breaks in the middle at phone width.
+- Running `sudo npx playwright install-deps webkit`, if the design checks are wanted in WebKit too.
+- Merging Milestone 7 (pull request 54) and then Milestone 8 into `main`, with their migrations on the QA and production databases. The two of Milestone 7 add a column each and go before its code; the one of Milestone 8 drops the earlier planner's tables and goes after its code is deployed.
 - Running the QA gate, and recording the portfolio demonstration.
-- Reading the eight sample itineraries of piece 9.
 - The Anthropic API key in Vercel for production and QA, then one real reply looked at together.
 - Whether the AI model should word the agent's messages (PRD 17).
+- One try of the real OpenStreetMap services, which needs a contact address for its request header.

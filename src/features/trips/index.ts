@@ -6,6 +6,7 @@ export {
   updateCommitment,
   type CommitmentsResult,
 } from "./commitment-store";
+export { advanceTripRevision, tripForAction } from "./revision";
 export { factsFromTickets } from "./tickets";
 export { findEditable, type Refused } from "./trip-access";
 export { todayIn } from "./trip-state";

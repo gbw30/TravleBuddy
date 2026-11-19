@@ -23,7 +23,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Home | Pictures, stamps, ticket stubs and cards have text for screen readers | TB-DSN-07 | pass | every picture and icon is named or hidden |
 | Home | Paper background and serif headings | TB-DSN-01 | pass | the page is on paper and its heading is in the serif |
 | Home | A chosen control differs by more than colour | TB-DSN-06 | pass | 1 groups, each marked by more than colour |
-| Home | Tab reaches every control, focus shows, nothing is click-only | TB-DSN-05 | pass | 22 controls, each reached by Tab with focus showing |
+| Home | Tab reaches every control, focus shows, nothing is click-only | TB-DSN-05 | pass | 82 controls, each reached by Tab with focus showing |
 | Create | Text contrast is AA (axe, desktop) | TB-DSN-06 | pass | no contrast violation |
 | Create | Names, roles and structure (axe, desktop) | TB-DSN-07 | pass | no violation |
 | Create | Pictures, stamps, ticket stubs and cards have text for screen readers | TB-DSN-07 | pass | every picture and icon is named or hidden |
@@ -54,7 +54,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Home | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Home | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Home | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |
-| Home | Touch targets are at least 24 by 24 px | TB-DSN-04 | pass | 22 controls, none too small |
+| Home | Touch targets are at least 24 by 24 px | TB-DSN-04 | pass | 82 controls, none too small |
 | Create | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Create | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Create | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |
@@ -84,7 +84,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Home | Pictures, stamps, ticket stubs and cards have text for screen readers | TB-DSN-07 | pass | every picture and icon is named or hidden |
 | Home | Paper background and serif headings | TB-DSN-01 | pass | the page is on paper and its heading is in the serif |
 | Home | A chosen control differs by more than colour | TB-DSN-06 | pass | 1 groups, each marked by more than colour |
-| Home | Tab reaches every control, focus shows, nothing is click-only | TB-DSN-05 | pass | 22 controls, each reached by Tab with focus showing |
+| Home | Tab reaches every control, focus shows, nothing is click-only | TB-DSN-05 | pass | 82 controls, each reached by Tab with focus showing |
 | Create | Text contrast is AA (axe, desktop) | TB-DSN-06 | pass | no contrast violation |
 | Create | Names, roles and structure (axe, desktop) | TB-DSN-07 | pass | no violation |
 | Create | Pictures, stamps, ticket stubs and cards have text for screen readers | TB-DSN-07 | pass | every picture and icon is named or hidden |
@@ -115,7 +115,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Home | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Home | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Home | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |
-| Home | Touch targets are at least 24 by 24 px | TB-DSN-04 | pass | 22 controls, none too small |
+| Home | Touch targets are at least 24 by 24 px | TB-DSN-04 | pass | 82 controls, none too small |
 | Create | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Create | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Create | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |
