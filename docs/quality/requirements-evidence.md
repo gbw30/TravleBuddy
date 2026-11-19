@@ -5,7 +5,7 @@ Authority: What each requirement of sections 2 to 13 of the [catalogue](../requi
 Related: [roadmap](../roadmap.md), [current implementation](../status/current-implementation.md), [sample travellers](sample-travellers.md), [design checks](design-checks.md)
 Last reviewed: 2026-11-19
 
-**116 of 130 are met and 14 are partly met. None is unbuilt.** Each partly met line says what is missing.
+**117 of 130 are met and 13 are partly met. None is unbuilt.** Each partly met line says what is missing.
 
 ## What "met" means here
 
@@ -21,7 +21,7 @@ Built, and checked by unit tests or by a walk of the real site on the developmen
 
 - `npm run lint`, `npm run typecheck`, `npm test` (796 tests) and `npm run build`: all pass.
 - `npm run quality:samples`: eight plans, 0 failed checks, identical to the report in the repository.
-- `npm run quality:design`: 56 of 56 checks in each of Chromium, Firefox and WebKit, in one run. WebKit was started through a launcher, because this machine lacks its system libraries (pull request 70).
+- `npm run quality:design`: 57 of 57 checks in each of Chromium, Firefox and WebKit, in one run. WebKit was started through a launcher, because this machine lacks its system libraries (pull request 70); the drag check was added by pull request 72.
 - The 25 walks kept from Milestones 4 to 8 were run again. 24 ran to the end without an error. The Milestone 6 walk of the Profile page stops at a pace chip that Milestone 8 replaced with a slider; the three Milestone 8 walks of that page pass.
 
 ## 2. Accounts and Home
@@ -100,28 +100,28 @@ Built, and checked by unit tests or by a walk of the real site on the developmen
 
 ## 7. Live itinerary and scheduling
 
-| Requirement | State          | Evidence, and what is missing                                                                                                                                                                                                                |
-| ----------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TB-ITN-01   | Met            | Walks of Milestone 4; the [design checks](design-checks.md) see a pick land.                                                                                                                                                                 |
-| TB-ITN-02   | Met            | `day-plan.test.ts`; each itinerary of the [sample travellers](sample-travellers.md) shows times, lengths, the way there and open slots.                                                                                                      |
-| TB-ITN-03   | Met            | `day-plan.test.ts`: time to wander, ending where the next decided thing begins.                                                                                                                                                              |
-| TB-ITN-04   | Met            | `day-plan.test.ts`; "No rule is broken" in the [sample travellers](sample-travellers.md).                                                                                                                                                    |
-| TB-ITN-05   | Met            | `day-plan.test.ts`, `plan.test.ts`: a card is judged at the time the traveller would arrive; unknown hours are said.                                                                                                                         |
-| TB-ITN-06   | Met            | `day-plan.test.ts`: the way there plus the pace buffer.                                                                                                                                                                                      |
-| TB-ITN-07   | Met            | `day-plan.test.ts`: a place in another city is flagged; nothing is offered while the traveller is on the way.                                                                                                                                |
-| TB-ITN-08   | Met            | `day-plan.test.ts`; "The days match the pace" in the [sample travellers](sample-travellers.md); the shape of the day moves the day's start.                                                                                                  |
-| TB-ITN-09   | **Partly met** | Moving by the keyboard menu is tested and walked. **Missing:** moving by drag is built but was not checked.                                                                                                                                  |
-| TB-ITN-10   | Met            | Plan action tests: a move is kept and flagged with a fix; a move onto something decided is refused.                                                                                                                                          |
-| TB-ITN-11   | Met            | Plan action tests; Milestone 4 walk.                                                                                                                                                                                                         |
-| TB-ITN-12   | Met            | Plan store tests: versions and undo.                                                                                                                                                                                                         |
-| TB-ITN-13   | Met            | `day-plan.test.ts`: a pick whose slot is gone waits on the shelf.                                                                                                                                                                            |
-| TB-ITN-14   | Met            | Shelf tests; the agent's offer in `plan.test.ts`.                                                                                                                                                                                            |
-| TB-ITN-15   | Met            | `plan.test.ts`: other days are unchanged.                                                                                                                                                                                                    |
-| TB-ITN-16   | Met            | `time-zones.test.ts`, `local-time.test.ts`; the [sample travellers](sample-travellers.md) are identical with the server at UTC+14 and UTC-11. Known limit: a trip across the International Date Line eastwards shows the repeated date once. |
-| TB-ITN-17   | Met            | Ranking breaks ties by place id (`propose.ts`); the [sample travellers](sample-travellers.md) came out identical in four runs, two of them with the server's clock moved.                                                                    |
-| TB-ITN-18   | Met            | `day-plan.test.ts`, `time-zones.test.ts`: provisional dates.                                                                                                                                                                                 |
-| TB-ITN-19   | Met            | `day-plan.test.ts`, `time-zones.test.ts`: assumed, not booked, re-timed, replaced by a ticket.                                                                                                                                               |
-| TB-ITN-20   | Met            | `day-plan.test.ts`, plan action tests: an estimated length the traveller can set.                                                                                                                                                            |
+| Requirement | State | Evidence, and what is missing                                                                                                                                                                                                                |
+| ----------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TB-ITN-01   | Met   | Walks of Milestone 4; the [design checks](design-checks.md) see a pick land.                                                                                                                                                                 |
+| TB-ITN-02   | Met   | `day-plan.test.ts`; each itinerary of the [sample travellers](sample-travellers.md) shows times, lengths, the way there and open slots.                                                                                                      |
+| TB-ITN-03   | Met   | `day-plan.test.ts`: time to wander, ending where the next decided thing begins.                                                                                                                                                              |
+| TB-ITN-04   | Met   | `day-plan.test.ts`; "No rule is broken" in the [sample travellers](sample-travellers.md).                                                                                                                                                    |
+| TB-ITN-05   | Met   | `day-plan.test.ts`, `plan.test.ts`: a card is judged at the time the traveller would arrive; unknown hours are said.                                                                                                                         |
+| TB-ITN-06   | Met   | `day-plan.test.ts`: the way there plus the pace buffer.                                                                                                                                                                                      |
+| TB-ITN-07   | Met   | `day-plan.test.ts`: a place in another city is flagged; nothing is offered while the traveller is on the way.                                                                                                                                |
+| TB-ITN-08   | Met   | `day-plan.test.ts`; "The days match the pace" in the [sample travellers](sample-travellers.md); the shape of the day moves the day's start.                                                                                                  |
+| TB-ITN-09   | Met   | Moving by the keyboard menu is tested and walked; moving by drag is checked by the [design checks](design-checks.md) in Chromium, Firefox and WebKit, and a fixed commitment cannot be dragged.                                              |
+| TB-ITN-10   | Met   | Plan action tests: a move is kept and flagged with a fix; a move onto something decided is refused.                                                                                                                                          |
+| TB-ITN-11   | Met   | Plan action tests; Milestone 4 walk.                                                                                                                                                                                                         |
+| TB-ITN-12   | Met   | Plan store tests: versions and undo.                                                                                                                                                                                                         |
+| TB-ITN-13   | Met   | `day-plan.test.ts`: a pick whose slot is gone waits on the shelf.                                                                                                                                                                            |
+| TB-ITN-14   | Met   | Shelf tests; the agent's offer in `plan.test.ts`.                                                                                                                                                                                            |
+| TB-ITN-15   | Met   | `plan.test.ts`: other days are unchanged.                                                                                                                                                                                                    |
+| TB-ITN-16   | Met   | `time-zones.test.ts`, `local-time.test.ts`; the [sample travellers](sample-travellers.md) are identical with the server at UTC+14 and UTC-11. Known limit: a trip across the International Date Line eastwards shows the repeated date once. |
+| TB-ITN-17   | Met   | Ranking breaks ties by place id (`propose.ts`); the [sample travellers](sample-travellers.md) came out identical in four runs, two of them with the server's clock moved.                                                                    |
+| TB-ITN-18   | Met   | `day-plan.test.ts`, `time-zones.test.ts`: provisional dates.                                                                                                                                                                                 |
+| TB-ITN-19   | Met   | `day-plan.test.ts`, `time-zones.test.ts`: assumed, not booked, re-timed, replaced by a ticket.                                                                                                                                               |
+| TB-ITN-20   | Met   | `day-plan.test.ts`, plan action tests: an estimated length the traveller can set.                                                                                                                                                            |
 
 ## 8. Quick plan
 

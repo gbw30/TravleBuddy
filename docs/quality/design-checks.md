@@ -2,7 +2,7 @@
 
 Status: evidence
 Authority: What the design walk found. Written by `npm run quality:design`; do not edit by hand.
-Related: [requirements](../requirements.md) TB-DSN-01 to TB-DSN-07
+Related: [requirements](../requirements.md) TB-DSN-01 to TB-DSN-07, TB-ITN-09
 
 Every real screen (Home, Create, a trip with cards, the brief, Profile) is opened in each browser at desktop and phone width, with motion on and asked off, signed in as the development user against the sample places.
 
@@ -10,9 +10,9 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 
 | Browser | Checks | Requirements with a failed check |
 | --- | --- | --- |
-| Chromium 149.0.7827.55 | 56 of 56 pass |  |
-| Firefox 151.0 | 56 of 56 pass |  |
-| WebKit 26.5 | 56 of 56 pass |  |
+| Chromium 149.0.7827.55 | 57 of 57 pass |  |
+| Firefox 151.0 | 57 of 57 pass |  |
+| WebKit 26.5 | 57 of 57 pass |  |
 
 ## Chromium
 
@@ -51,6 +51,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Trip | A card is flipped and picked with the keyboard | TB-DSN-05 | pass | Enter flips the card; Enter on Pick puts the place in the plan |
 | Profile | A slider is moved with the arrow keys | TB-DSN-05 | pass | the arrow key changes the pace, and its spoken value |
 | Brief | The brief's steps are walked with the keyboard | TB-DSN-05 | pass | Enter on the step button moves to the next step |
+| Trip | A place is moved by drag | TB-ITN-09 | pass | dragging a place onto an open slot moves it; a fixed item is not draggable |
 | Home | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Home | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Home | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |
@@ -112,6 +113,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Trip | A card is flipped and picked with the keyboard | TB-DSN-05 | pass | Enter flips the card; Enter on Pick puts the place in the plan |
 | Profile | A slider is moved with the arrow keys | TB-DSN-05 | pass | the arrow key changes the pace, and its spoken value |
 | Brief | The brief's steps are walked with the keyboard | TB-DSN-05 | pass | Enter on the step button moves to the next step |
+| Trip | A place is moved by drag | TB-ITN-09 | pass | dragging a place onto an open slot moves it; a fixed item is not draggable |
 | Home | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Home | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Home | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |
@@ -173,6 +175,7 @@ A machine cannot judge whether the screens look like a keepsake, or whether a ph
 | Trip | A card is flipped and picked with the keyboard | TB-DSN-05 | pass | Enter flips the card; Enter on Pick puts the place in the plan |
 | Profile | A slider is moved with the arrow keys | TB-DSN-05 | pass | the arrow key changes the pace, and its spoken value |
 | Brief | The brief's steps are walked with the keyboard | TB-DSN-05 | pass | Enter on the step button moves to the next step |
+| Trip | A place is moved by drag | TB-ITN-09 | pass | dragging a place onto an open slot moves it; a fixed item is not draggable |
 | Home | Text contrast is AA (axe, phone) | TB-DSN-06 | pass | no contrast violation |
 | Home | Names, roles and structure (axe, phone) | TB-DSN-07 | pass | no violation |
 | Home | No sideways scrolling at 390 and 320 px | TB-DSN-04 | pass | the page fits both widths |

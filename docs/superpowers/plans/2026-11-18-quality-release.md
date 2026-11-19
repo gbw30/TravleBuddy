@@ -31,6 +31,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  | #67          |
 | 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    | #68          |
 | 14. WebKit in the design checks                   | `feature/m8-design-webkit`   | TB-DSN-02 to 07                 | #70          |
+| 15. Moving by drag checked                        | `feature/m8-drag-check`      | TB-ITN-09                       | #72          |
 
 ## Global Constraints
 
@@ -290,6 +291,10 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 - A fault of the checks themselves: every browser walked the same trip, and each picks three cards, so the third browser found no open slot and its two motion checks failed with "no cards were offered". Each browser now gets trips of its own.
 
 **Correction (pull request 71):** one run of piece 14 was started against a server without sample places and probably sent a few city lookups to Nominatim before it stopped. The evidence page now says no _deliberate_ request has been made to OpenStreetMap from the app.
+
+### Piece 15: Moving by drag checked
+
+**Produced (pull request 72, 2026-11-19):** TB-ITN-09 was partly met because moving an item by drag was built but never checked. The design walk now drags a placed place onto an open slot on the real trip page and confirms through the plan that it moved, and checks that a fixed commitment cannot be dragged. Chromium, Firefox and WebKit: 57 of 57 each. Dropping onto another place swaps the two; that path is not exercised. Requirements: 117 met, 13 partly met.
 
 ## Waiting for the developer
 
