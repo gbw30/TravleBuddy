@@ -889,6 +889,7 @@ async function setUp(call: Call): Promise<Data> {
   const answers: Record<string, string[]> = {
     pace: ["relaxed"],
     food: ["vegetarian"],
+    breakfast: ["suggest"],
     interests: ["markets"],
   };
   for (let turn = 0; turn < 40; turn += 1) {
