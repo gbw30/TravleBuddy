@@ -140,7 +140,7 @@ export function PlanItinerary({
                   <li key={`t-${index}`} className="mt-2.5 first:mt-0">
                     <ItineraryRow
                       time={entry.start}
-                      title={`Travel from ${entry.from} to ${entry.to} · about ${hours(entry.minutes)} · assumed, not booked`}
+                      title={`Travel from ${entry.from} to ${entry.to} · about ${hours(entry.minutes)} · assumed, not booked${entry.arriveLocal ? ` · you arrive about ${entry.arriveLocal}, ${entry.to} time` : ""}`}
                       variant="wander"
                     >
                       {!readOnly && (

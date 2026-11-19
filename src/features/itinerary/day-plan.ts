@@ -21,6 +21,7 @@ import type {
   PlanView,
   SlotKind,
 } from "./contracts";
+import { offsetAt } from "./local-time";
 
 // Lays a plan out from the traveller's choices and the trip's facts, and
 // checks it against the rules of PRD 9.3. Pure: no clock, no randomness, no
@@ -250,6 +251,8 @@ export function buildPlanView(
     segments: Segment[];
     fixed: Fixed[];
     transfer: Extract<PlanEntry, { type: "transfer" }> | null;
+    /** When the transfer arrives, by the clock of the city of arrival. */
+    landsAt: number;
     slots: DraftSlot[];
     /** Slot id to the must-include that holds it. */
     held: Map<string, CommitmentDto>;
@@ -279,10 +282,13 @@ export function buildPlanView(
       (c) =>
         c.kind === "TRANSPORT" && c.endTime && (c.endDate ?? c.date) === date,
     );
-    if (index === 0 && landing.length > 0) {
+    // On the first day any ticket that lands bounds it. Later only one that
+    // left on an earlier day does: a night flight lands in the new city.
+    const landed = landing.filter((c) => index === 0 || c.date !== date);
+    if (landed.length > 0) {
       from = Math.max(
         from,
-        Math.max(...landing.map((c) => toMinutes(c.endTime!))) + 60,
+        Math.max(...landed.map((c) => toMinutes(c.endTime!))) + 60,
       );
     }
     if (index === totalNights && totalNights > 0 && tickets.length > 0) {
@@ -291,6 +297,7 @@ export function buildPlanView(
 
     let segments: Segment[];
     let transfer: Draft["transfer"] = null;
+    let landsAt = 0;
     if (cityKeyOf(morningCity) === cityKeyOf(eveningCity)) {
       segments = [{ city: morningCity, from, until }];
     } else {
@@ -302,16 +309,29 @@ export function buildPlanView(
         : toMinutes(
             state.transferTimes[String(day)] ?? toClock(ASSUMED_TRANSFER_START),
           );
+      const travel = ticket ? 0 : transferMinutes(morningCity, eveningCity);
+      // The clock of the city of arrival may differ from the one left
+      // behind (TB-ITN-16). Nothing shifts when either zone is unknown.
+      const ahead =
+        ticket || !morningCity.timeZone || !eveningCity.timeZone
+          ? 0
+          : offsetAt(eveningCity.timeZone, date, leave) -
+            offsetAt(morningCity.timeZone, date, leave);
       const arrive = ticket
         ? ticket.end
-        : leave + transferMinutes(morningCity, eveningCity);
+        : Math.max(leave, leave + travel + ahead);
+      landsAt = arrive;
       if (!ticket) {
         transfer = {
           type: "transfer",
           from: morningCity.name,
           to: eveningCity.name,
           start: toClock(leave),
-          minutes: arrive - leave,
+          minutes: travel,
+          arriveLocal:
+            ahead !== 0 && leave + travel + ahead >= leave && arrive < 24 * 60
+              ? toClock(arrive)
+              : null,
         };
       }
       segments = [
@@ -351,6 +371,7 @@ export function buildPlanView(
       segments,
       fixed,
       transfer,
+      landsAt,
       slots,
       held: new Map(),
       notes: [],
@@ -450,7 +471,7 @@ export function buildPlanView(
       }
       if ("transfer" in step) {
         entries.push(step.transfer);
-        clock = Math.max(clock, step.at + step.transfer.minutes);
+        clock = Math.max(clock, draft.landsAt);
         lastPoint = null;
         return;
       }

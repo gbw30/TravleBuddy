@@ -343,7 +343,11 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
     case "commitment":
       return `${entry.start ?? "--:--"}  Already decided: ${entry.title}`;
     case "transfer":
-      return `${entry.start}  Travel from ${entry.from} to ${entry.to}, assumed (${minutes(entry.minutes)})`;
+      return `${entry.start}  Travel from ${entry.from} to ${entry.to}, assumed (${minutes(entry.minutes)})${
+        entry.arriveLocal
+          ? `, arriving about ${entry.arriveLocal} ${entry.to} time`
+          : ""
+      }`;
     case "wander":
       return `${entry.start}  Time to wander${entry.area ? ` around ${entry.area}` : ""} (${minutes(entry.minutes)})`;
   }
