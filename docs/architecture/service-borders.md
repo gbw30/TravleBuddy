@@ -18,18 +18,17 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 
 ## The services
 
-| Service         | Code                                                                               | Tables                                                                                                                                             |
-| --------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`                                    | User, Account, Session, VerificationToken                                                                                                          |
-| Trips           | `src/features/trips`                                                               | Trip, TripDestination, TripTravelSegment, FixedCommitment                                                                                          |
-| Conversation    | `src/features/conversation`, `src/features/planning`                               | PlanningMutation, PlanningEvent, Conversation, ConversationMessage, AiUsage                                                                        |
-| Memory          | `src/features/memory`                                                              | UserTravelPreference, TripPreference, PreferenceProfileVersion, TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
-| Places          | `src/features/places`                                                              | CityLookup, Place, PlaceFetch, ProviderCall                                                                                                        |
-| Recommendations | `src/features/recommendations`                                                     | PlaceSuggestion, PlanningFeedback, CardEvent                                                                                                       |
-| Itinerary       | `src/features/itinerary`                                                           | ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict, Plan, PlanVersion                                                    |
-| Jobs            | none: its code was removed with the earlier planner; the tables wait to be dropped | GenerationJob, JobAttempt, JobEvent                                                                                                                |
+| Service         | Code                                                 | Tables                                                                             |
+| --------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`      | User, Account, Session, VerificationToken                                          |
+| Trips           | `src/features/trips`                                 | Trip, TripDestination, FixedCommitment                                             |
+| Conversation    | `src/features/conversation`, `src/features/planning` | PlanningMutation, Conversation, ConversationMessage, AiUsage                       |
+| Memory          | `src/features/memory`                                | TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
+| Places          | `src/features/places`                                | CityLookup, Place, PlaceFetch, ProviderCall                                        |
+| Recommendations | `src/features/recommendations`                       | CardEvent                                                                          |
+| Itinerary       | `src/features/itinerary`                             | Plan, PlanVersion                                                                  |
 
-`service-map.json` wins if this table and the map disagree. The earlier planner's code was removed on 2026-11-18. Its tables are still listed here under the service that owns them, and nothing reads them, until they are dropped: TripTravelSegment, PlanningEvent, UserTravelPreference, TripPreference, PreferenceProfileVersion, PlaceSuggestion, PlanningFeedback, ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict, GenerationJob, JobAttempt and JobEvent. `src/features/prototype` holds sample data for the design prototype; it is not a service and owns no tables.
+`service-map.json` wins if this table and the map disagree. The earlier planner's code was removed on 2026-11-18, and its 15 tables were dropped by the migration `20261119150000_drop_earlier_planner`.
 
 ## The rules
 
