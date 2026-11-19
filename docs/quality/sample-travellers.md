@@ -64,7 +64,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 12:30  Lunch: **Market Kitchen** (75 min), 15 min walk to get there
 - 13:45  Time to wander around Market Kitchen (75 min)
 - 15:00  Already decided: teamLab Planets
-- 19:00  Dinner: **Market Kitchen** (75 min)
+- 19:00  Dinner: **Corner Noodles** (75 min)
 
 **Day 4, Thu 13 May, Tokyo**
 
@@ -72,7 +72,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 12:30  Lunch: **Morning Cafe** (45 min), 6 min walk to get there
 - 13:45  Time to wander around Morning Cafe (120 min)
 - 17:14  Afternoon: **Tokyo Skytree** (30 min), 59 min transit to get there
-- 19:00  Dinner: **Garden Table** (75 min), 8 min walk to get there [opening hours not known]
+- 19:00  Dinner: **Market Kitchen** (75 min), 22 min walk to get there
 
 **Day 5, Fri 14 May, Tokyo**
 
@@ -80,7 +80,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 12:46  Lunch: **Market Kitchen** (75 min), 16 min walk to get there
 - 14:01  Time to wander around Market Kitchen (120 min)
 - 17:13  Afternoon: **Meiji Jingu** (45 min), 42 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
+- 19:00  Dinner: **Garden Table** (75 min), 15 min walk to get there [opening hours not known]
 
 **Day 6, Sat 15 May, Tokyo**
 
@@ -122,10 +122,10 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 3, Wed 12 May, Tokyo**
 
 - 10:00  Morning: **Imperial Palace East Gardens** (60 min)
-- 12:30  Lunch: **Corner Noodles** (75 min), 13 min walk to get there
-- 13:45  Time to wander around Corner Noodles (75 min)
+- 12:30  Lunch: **Market Kitchen** (75 min), 9 min walk to get there
+- 13:45  Time to wander around Market Kitchen (75 min)
 - 15:00  Already decided: teamLab Planets
-- 19:00  Dinner: **Market Kitchen** (75 min)
+- 19:00  Dinner: **Corner Noodles** (75 min)
 
 **Day 4, Thu 13 May, Tokyo**
 
@@ -156,7 +156,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - Built: 6 days in Tokyo, planned around 1 thing already decided. I chose 23 places: 11 to see and 12 to eat at.
 - Assumed: Shape of the day: I will start the days at about nine. Atmosphere: I will mix lively and quiet places. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: nothing was left over.
-- Unsure: Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 3. I chose Imperial Palace East Gardens. Two places were close for the morning on day 4. I chose Shinjuku Gyoen. 5 more choices were close too. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
+- Unsure: Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 3. I chose Imperial Palace East Gardens. Two places were close for dinner on day 3. I chose Corner Noodles. 6 more choices were close too. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
 
 ## The Okafors
 
@@ -330,7 +330,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 - 10:00  Morning: **Rome Central Market** (60 min)
 - 12:00  Travel from Rome to Florence, assumed (255 min)
-- 19:00  Dinner: **Corner Noodles** (75 min)
+- 19:00  Dinner: **Harbour Canteen** (75 min)
 
 **Day 5, Wed 9 Jun, Florence**
 
@@ -338,21 +338,21 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 12:30  Lunch: **Garden Table** (75 min) [opening hours not known]
 - 13:45  Time to wander around Garden Table (120 min)
 - 16:30  Afternoon: **Florence Castle** (60 min), 15 min transit to get there
-- 19:00  Dinner: **Lantern Grill** (75 min), 1 min walk to get there
+- 19:00  Dinner: **Harbour Canteen** (75 min), 7 min walk to get there
 
 **Day 6, Thu 10 Jun, Florence**
 
 - 10:00  Morning: **Florence Old Town** (60 min) [opening hours not known]
-- 12:30  Lunch: **Harbour Canteen** (75 min), 21 min walk to get there
-- 13:45  Time to wander around Harbour Canteen (120 min)
-- 16:28  Afternoon: **Florence Lookout** (30 min), 13 min walk to get there [opening hours not known]
+- 12:30  Lunch: **Market Kitchen** (75 min), 6 min walk to get there
+- 13:45  Time to wander around Market Kitchen (120 min)
+- 16:30  Afternoon: **Florence Lookout** (30 min), 15 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 5 min walk to get there
 
 **Day 7, Fri 11 Jun, Florence**
 
 - 10:00  Morning: **Florence Central Market** (60 min)
 - 12:00  Travel from Florence to Venice, assumed (240 min)
-- 19:00  Dinner: **Garden Table** (75 min) [opening hours not known]
+- 19:00  Dinner: **Market Kitchen** (75 min)
 
 **Day 8, Sat 12 Jun, Venice**
 
@@ -360,7 +360,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 12:30  Lunch: **Market Kitchen** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Market Kitchen (120 min)
 - 16:35  Afternoon: **Venice Lookout** (30 min), 20 min walk to get there [opening hours not known]
-- 19:00  Dinner: **Harbour Canteen** (75 min), 7 min walk to get there
+- 19:00  Dinner: **Corner Noodles** (75 min), 7 min walk to get there
 
 **Day 9, Sun 13 Jun, Venice**
 
@@ -411,7 +411,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 - 10:00  Morning: **Rome Central Market** (60 min)
 - 12:00  Travel from Rome to Florence, assumed (255 min)
-- 19:00  Dinner: **Corner Noodles** (75 min)
+- 19:00  Dinner: **Harbour Canteen** (75 min)
 
 **Day 5, Wed 9 Jun, Florence**
 
@@ -433,7 +433,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 - 10:00  Morning: **Florence Lookout** (30 min) [opening hours not known]
 - 12:00  Travel from Florence to Venice, assumed (240 min)
-- 19:00  Dinner: **Market Kitchen** (75 min)
+- 19:00  Dinner: **Harbour Canteen** (75 min)
 
 **Day 8, Sat 12 Jun, Venice**
 
@@ -456,7 +456,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - Built: 9 days in Rome, Florence and Venice, planned around 1 thing already decided. I chose 31 places: 15 to see and 16 to eat at.
 - Assumed: Shape of the day: I will start the days at about nine. Food: I will assume no restrictions. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: nothing was left over.
-- Unsure: Two places were close for the morning on day 1. I chose Rome Castle. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 2. I chose Rome Old Town. 10 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Lookout, Garden Table, Florence Old Town, Florence Lookout, Venice Old Town and Venice Lookout. Check before you go.
+- Unsure: Two places were close for the morning on day 1. I chose Rome Castle. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 2. I chose Rome Old Town. 11 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Lookout, Garden Table, Florence Old Town, Florence Lookout, Venice Old Town and Venice Lookout. Check before you go.
 
 ## Sam
 
