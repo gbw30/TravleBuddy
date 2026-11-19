@@ -8,28 +8,26 @@ import {
   writePlanVersion,
   type Change,
 } from "@/features/itinerary";
-import {
-  PACES,
-  type BuildProgress,
-  type PlanView,
-} from "@/features/itinerary/contracts";
+import { PACES, type BuildProgress } from "@/features/itinerary/contracts";
 import {
   limitsInUse,
   readProfile,
   readTripTaste,
   tasteInUse,
+  type TasteInUse,
 } from "@/features/memory";
 import { findEditable, getTrip } from "@/features/trips";
 import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
 import {
+  brokenRules,
   cardsFor,
   contextFor,
   historyFor,
   isMeal,
   isSlot,
-  withProvisionalStart,
+  startingState,
 } from "./plan";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
@@ -49,19 +47,14 @@ export type BuildStep = {
   done: boolean;
 };
 
-/** Rules a plan breaks. Unknown opening hours are an uncertainty, not a broken rule. */
-const brokenRules = (view: PlanView) =>
-  view.days
-    .flatMap((day) => day.entries)
-    .flatMap((entry) => (entry.type === "place" ? entry.flags : []))
-    .filter((flag) => flag.rule !== "hours-unknown").length;
-
 type Prepared = {
   day: number;
   days: number;
   /** The pace to set first, then the picks, in the order they were made. */
   changes: Change[];
   progress: BuildProgress;
+  /** The taste the day was worked out with, so it is saved from the same layout. */
+  taste: TasteInUse;
 };
 
 /**
@@ -86,8 +79,8 @@ async function prepareDay(
     said.food?.source === "told" ? said.food.values : [],
   );
 
-  let state = withProvisionalStart(saved.state, trip);
-  let context = await contextFor(trip, state, userId);
+  let state = startingState(saved, trip, taste);
+  let context = await contextFor(trip, state, userId, [], taste);
   let view = buildPlanView(state, context);
   const changes: Change[] = [];
 
@@ -147,6 +140,7 @@ async function prepareDay(
       limits,
       true,
       history,
+      { state, context },
     );
     if (found?.gathered && found.gathered.status !== "ready") {
       progress.unreachable = true;
@@ -162,7 +156,13 @@ async function prepareDay(
       };
       const applied = applyPlanAction(state, view, pick);
       if ("refused" in applied) continue;
-      const withPlace = await contextFor(trip, applied.state, userId);
+      const withPlace = await contextFor(
+        trip,
+        applied.state,
+        userId,
+        [],
+        taste,
+      );
       const next = buildPlanView(applied.state, withPlace);
       if (brokenRules(next) > brokenRules(view)) continue;
       state = applied.state;
@@ -178,7 +178,13 @@ async function prepareDay(
   }
 
   progress.nextDay = dayNumber + 1;
-  return { day: dayNumber, days: view.days.length, changes, progress };
+  return {
+    day: dayNumber,
+    days: view.days.length,
+    changes,
+    progress,
+    taste,
+  };
 }
 
 /**
@@ -214,7 +220,7 @@ export async function buildNextDay(input: {
       // The plan as it is now. A slot the traveller filled in the meantime
       // is left alone.
       const saved = await readPlanState(tx, tripId);
-      let state = withProvisionalStart(saved.state, trip);
+      let state = startingState(saved, trip, prepared.taste);
       const context = await contextFor(
         trip,
         state,
@@ -222,6 +228,7 @@ export async function buildNextDay(input: {
         prepared.changes.flatMap((change) =>
           change.type === "pick" ? [change.placeId] : [],
         ),
+        prepared.taste,
       );
       const built = { ...prepared.progress.built };
       let filled = 0;

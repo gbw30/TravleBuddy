@@ -32,7 +32,7 @@ describe("auth route policy", () => {
   it("returns API unauthorized for signed-out protected APIs", () => {
     expect(
       getAuthRouteDecision(
-        "/api/recommendations",
+        "/api/v1/profile",
         false,
         "http://localhost:3000/api/recommendations",
       ),

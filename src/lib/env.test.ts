@@ -100,24 +100,6 @@ describe("server environment validation", () => {
       DIRECT_URL: undefined,
     });
   });
-
-  it("validates worker and optional provider configuration without web secrets", async () => {
-    const { validateWorkerEnv } = await import("./env");
-
-    expect(
-      validateWorkerEnv({
-        DATABASE_URL: validEnv.DATABASE_URL,
-        NODE_ENV: "production",
-        PLACE_PROVIDER_MODE: "google",
-        GOOGLE_PLACES_API_KEY: "server-key",
-        PLANNING_WORKER_ID: "worker-1",
-      }),
-    ).toMatchObject({
-      DATABASE_URL: validEnv.DATABASE_URL,
-      PLACE_PROVIDER_MODE: "google",
-      PLANNING_WORKER_ID: "worker-1",
-    });
-  });
 });
 
 describe("development sign-in switch", () => {

@@ -62,6 +62,9 @@ Never infer implementation from a target requirement, permanent scope from a sta
 - [Architecture and ADRs](architecture/README.md)
 - [Conversational implementation pack](conversational-planning/README.md)
 - [Adaptive demonstration](demo/adaptive-planning-demo.md)
+- [Requirements and their evidence](quality/requirements-evidence.md): each requirement of sections 2 to 13, met or partly met, with what it rests on
+- [The four sample travellers](quality/sample-travellers.md): the itineraries and checks of PRD 18, written by `npm run quality:samples`
+- [Design checks on the real screens](quality/design-checks.md): keyboard, phone width, contrast, motion and screen-reader text in each browser, written by `npm run quality:design`
 - [Developer finish guide](developer-finish-guide.md)
 - [Repository structure](folder-structure.md)
 - [Historical archive](history/README.md)

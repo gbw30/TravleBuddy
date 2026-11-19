@@ -1,93 +1,5 @@
-import type {
-  GenerationJobStatus,
-  GenerationJobType,
-  ItineraryChangeScope,
-  ItineraryVersionStatus,
-} from "@/generated/prisma/client";
-import type {
-  ItineraryDto,
-  ItineraryConflictDto,
-} from "@/features/itinerary/types";
-import type {
-  PlanningTopic,
-  RecommendationDto,
-  RecommendationPreferenceSnapshot,
-  SelectedPlanningPlace,
-} from "@/features/recommendations/types";
-import type { JobEventType, JsonValue } from "@/features/jobs/contracts";
-
-export type PlanningContext = {
-  topic: PlanningTopic;
-  destinationId: string | null;
-  planningDayNumber: number | null;
-};
-
-export type PlanningReadiness = {
-  activeTopic: PlanningTopic;
-  isReady: boolean;
-  missingQuestionKeys: string[];
-};
-
-export type PlanningItineraryConflictDto = Omit<
-  ItineraryConflictDto,
-  "metadata"
->;
-
-export type PlanningItineraryDto = Omit<ItineraryDto, "conflicts"> & {
-  conflicts: PlanningItineraryConflictDto[];
-};
-
-export type PlanningJobSummary = {
-  id: string;
-  type: GenerationJobType;
-  status: GenerationJobStatus;
-  progress: number;
-  progressMessage: string | null;
-  attemptCount: number;
-  errorCode: string | null;
-  maxAttempts?: number;
-  availableAt?: string;
-  completedAt?: string | null;
-  result?: JsonValue | null;
-  events?: Array<{
-    id: string;
-    type: JobEventType;
-    progress: number | null;
-    message: string | null;
-    createdAt: string;
-  }>;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PlanningItineraryVersionSummary = {
-  id: string;
-  version: number;
-  status: ItineraryVersionStatus;
-  changeScope: ItineraryChangeScope;
-  createdAt: string;
-  activatedAt: string | null;
-};
-
-export type PlanningSnapshot = {
-  revision: number;
-  conversationId: string | null;
-  context: PlanningContext;
-  preference: RecommendationPreferenceSnapshot;
-  readiness: PlanningReadiness;
-  recommendations: RecommendationDto[];
-  selectedPlaces: SelectedPlanningPlace[];
-  itinerary: PlanningItineraryDto;
-  activeJobs: PlanningJobSummary[];
-  itineraryVersions: PlanningItineraryVersionSummary[];
-};
-
-export type PlanningTurnResult<TMessage = never, TWarning = never> = {
-  revision: number;
-  messages: TMessage[];
-  snapshot: PlanningSnapshot;
-  warnings: TWarning[];
-};
+// The shapes of the replay ledger (TB-SYS-05 to TB-SYS-07): what a change
+// to a trip names so that a repeat is recognised and a stale screen refused.
 
 export type PlanningMutationControl = {
   expectedRevision?: number;
@@ -119,34 +31,11 @@ export type PlanningMutationKind =
   | "plan_build"
   | "conversation_turn"
   | "trip_mode_set"
-  | "brief_save"
-  | "trip_settings_update"
-  | "preference_save"
-  | "logistics_mode_save"
-  | "travel_segment_add"
-  | "travel_segment_update"
-  | "travel_segment_delete"
-  | "planning_message_save"
-  | "recommendations_generate"
-  | "planning_place_add"
-  | "recommendation_select"
-  | "recommendation_reject"
-  | "recommendation_deselect"
-  | "recommendations_refresh"
-  | "itinerary_item_feedback"
-  | "itinerary_rebuild"
-  | "conflicts_check"
-  | "conflict_status_update";
+  | "brief_save";
 
 export type PlanningMutationReplay = {
   kind: string;
   requestFingerprint: string | null;
   result: unknown;
   resultingRevision: number;
-};
-
-export type StalePlanningMutationResult = {
-  status: "stale_revision";
-  revision: number;
-  snapshot: PlanningSnapshot;
 };

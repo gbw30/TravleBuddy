@@ -23,14 +23,6 @@ import { missingFacts, todayIn, tripState } from "./trip-state";
 
 type Tx = Prisma.TransactionClient;
 
-/** The cities cannot be replaced while the earlier planner's places point at them. */
-export class CitiesInUseError extends Error {
-  constructor() {
-    super("Trip cities are in use by the earlier planner.");
-    this.name = "CitiesInUseError";
-  }
-}
-
 const summarySelect = {
   id: true,
   title: true,
@@ -340,15 +332,7 @@ async function replaceCities(
   }
   const surplus = existing.slice(cities.length).map((row) => row.id);
   if (surplus.length === 0) return;
-  try {
-    await tx.tripDestination.deleteMany({ where: { id: { in: surplus } } });
-  } catch (error) {
-    // P2003: a foreign key still points at one of these rows.
-    if ((error as { code?: string }).code === "P2003") {
-      throw new CitiesInUseError();
-    }
-    throw error;
-  }
+  await tx.tripDestination.deleteMany({ where: { id: { in: surplus } } });
 }
 
 /** Archiving hides a trip from Home; restoring puts it back in planning. */

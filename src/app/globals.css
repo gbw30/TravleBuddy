@@ -62,11 +62,14 @@ body {
   font-weight: 400;
 }
 
-/* Keyboard users always see where they are. Text fields draw their own ring. */
-.keepsake-paper
-  :focus-visible:not(input:not([type="range"]), textarea, select) {
+/* Keyboard users always see where they are. Text fields draw their own ring.
+   A select takes the outline instead: WebKit draws no shadow on a native one. */
+.keepsake-paper :focus-visible:not(input:not([type="range"]), textarea) {
   outline: 2px solid var(--color-terracotta);
   outline-offset: 3px;
+}
+.keepsake-paper select:focus-visible {
+  box-shadow: none;
 }
 
 /* Content arrives in reading order: set --i to 0, 1, 2… on each block.
@@ -153,7 +156,7 @@ body {
 .keepsake-range {
   appearance: none;
   width: 100%;
-  height: 22px;
+  height: 24px;
   background: transparent;
   cursor: grab;
 }

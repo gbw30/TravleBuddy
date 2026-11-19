@@ -62,7 +62,7 @@ Exit evidence: TB-ACC, TB-HOM, TB-FAC, TB-STA-01 to TB-STA-03, TB-FIX-01, TB-FIX
 - Done and checked locally against the development database: the requirements above in a browser on wide and phone widths, no serious accessibility findings, replay, stale-write and ownership rules on every new route; 612 unit tests pass. Border exceptions fell from 207 to 188.
 - Still needed for the exit: apply the migration to the QA database through the protected workflow, deploy to the QA preview, run the QA gate, add QA scenarios for the new trip start and fixed commitments, and try city lookup against the live service.
 - Partly met: TB-FAC-04 stores several cities, but showing the travel between them belongs to the itinerary in Milestone 4. TB-SYS-13 records the owner and a visibility setting; a list of other viewers is left to the later stage that needs it.
-- Left in place on purpose: the earlier preferences, places and itinerary pages, the `/api/trips` routes and the ticket-timing code they use, until Milestones 4 to 6 replace them.
+- The earlier preferences, places and itinerary pages were removed in Milestone 4, and the `/api/trips` routes and the code behind them in Milestone 8.
 
 ## Milestone 4: Places, cards and the live itinerary
 
@@ -78,7 +78,7 @@ At the end of this milestone a traveller can build a trip slot by slot from rank
 - Checked on sample places only. The OpenStreetMap reader is tested against the documented reply shapes; no request to the real services has been made from the app.
 - Partly met: TB-CRD-02 and TB-CRD-04 (no photos yet, so the card shows the postcard back; price level and rating are unknown in OpenStreetMap and shown as unknown; the closer look does not show the position in the day). TB-SYS-09 (Google is not behind the new adapter: its terms forbid saving what a plan needs). TB-ITN-16 (times are local wall-clock values, but a ticket's length across time zones is not worked out). TB-ITN-09 (moving by drag is built as in the prototype but was checked only through the keyboard menu).
 - **On `main` since 2026-11-18** (pull request 21, merge commit `3eff116`). Its migration is on the QA and production databases, and the QA preview and production were deployed from it. What remains for the exit: the QA gate with scenarios for cards and the itinerary, one try of the real OpenStreetMap services, and Firefox and WebKit.
-- Waiting for the developer: piece 7b, the removal of the earlier planner's routes, services and tables and the matching QA catalogue entries.
+- Piece 7b, the removal of the earlier planner, was approved by the developer on 2026-11-18 and is done in Milestone 8: its routes, services and QA catalogue entries are gone; its tables wait for the developer's word.
 
 Exit evidence: TB-CRD, TB-ITN except the agent's offer in TB-ITN-14, TB-FIX-03, TB-FIX-04, TB-TRU-01, TB-TRU-02, TB-TRU-04 to TB-TRU-06, TB-SYS-08, TB-SYS-09, TB-SYS-12, TB-SYS-14 and the place-data half of TB-SYS-11 pass.
 
@@ -112,7 +112,7 @@ Exit evidence: TB-MEM, TB-AGT-06 and TB-AGT-12 pass, including isolation between
 - Differs from the approved prototype: the profile page leaves out the slider cards (pace, start of day, daily budget with currency) and the "How this shaped Tokyo" section, and adds a list of values to pick from. The earlier page's change of account name is gone. For the developer to judge.
 - Known limits: places saved before the dietary tags existed count as unknown and are not fetched again; most real listings say nothing about diets, so most meal cards will be marked "not confirmed"; a place the traveller searches for or has already picked is not checked against the limits; a remembered pace does not set the plan's pace until it is confirmed; the trip page does not show that a trip is marked as different.
 - **On `main` since 2026-11-18** (pull request 44, merge commit `0a21c84`). Its three migrations are on the QA and production databases. What remains for the exit: the QA gate with scenarios for memory, one general statement read by the real model, and Firefox, WebKit and a real phone.
-- Left in place on purpose: the earlier preference tables and the code in `src/features/profile` and `src/features/preferences`, until the developer approves their removal.
+- The code in `src/features/profile` and `src/features/preferences` was removed in Milestone 8. The earlier preference tables wait for the developer's word.
 
 ## Milestone 7: Quick plan
 
@@ -134,6 +134,14 @@ Exit evidence: TB-QPL and TB-STA-04 pass; a build interrupted by closing the pag
 Judge both ways of planning against the four sample travellers of PRD 18. Complete accessibility, phone layouts, time zones, performance and cost-cap checks. Record a portfolio demonstration.
 
 Exit evidence: TB-SYS-15 and TB-DSN-01 to TB-DSN-07 pass; every requirement in sections 2 to 13 of the catalogue has passing evidence; full QA on the existing topology; the demonstration is recorded.
+
+**Built 2026-11-19 on branch `milestone/8-quality-release`; exit evidence not yet complete.** [Plan](superpowers/plans/2026-11-18-quality-release.md), which lists each piece, its feature branch, the requirements it covers and its pull request (55 to 68, and 70 to 72). By the developer's decisions of 2026-11-18 it also retires the earlier planner and brings the Profile page to the approved prototype.
+
+- Done and checked locally, with sample places and the AI model switched off: the earlier planner is gone (routes, services, worker, QA entries and, with the developer's word of 2026-11-19, its 15 tables); the Profile page matches the prototype; the four sample travellers of PRD 18 plan by both ways with no failed check; the design checks pass in Chromium, Firefox and WebKit; times are those of the place whatever clock the server keeps; the QA catalogue describes the new product. 796 unit tests, lint, type check and build pass. The list of border exceptions is empty.
+- Met: TB-SYS-15 by the machine's checks, TB-DSN-01 to TB-DSN-07 in three browsers, TB-ITN-09 (moving by drag, checked in three browsers), TB-ITN-16, and TB-SYS-01 to TB-SYS-03. Of the 130 requirements in sections 2 to 13, 117 are met and 13 partly met; [each is listed with its evidence and what is missing](quality/requirements-evidence.md).
+- Faults the checks found and fixed on the way: a card that was closed when the traveller would arrive, a place offered although already decided, time to wander running into a booking, a packed day left without lunch, movement on hover under reduced motion, a slider that jumped back while saving, touch targets under 24 px, an assumed transfer arriving by the wrong clock, and a night flight that did not block the day it landed.
+- Known limits: a trip across the International Date Line eastwards shows the repeated date once; the sample places have six restaurant names and nine sights per city outside Tokyo.
+- Still needed for the exit: the developer's reading of the eight sample itineraries (PRD 18's sixth point); the QA gate, where every feature built since the last one is a `candidate`; a real phone and a screen reader; the first real call to the AI model and to the OpenStreetMap services; the portfolio demonstration; and merging Milestones 7 and 8 into `main` with their three migrations on the QA and production databases.
 
 ## Later stages
 

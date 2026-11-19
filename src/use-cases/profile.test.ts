@@ -34,6 +34,7 @@ import {
   profileTopics,
   removeEntry,
   removeNote,
+  setDailyBudget,
   tellProfile,
 } from "./profile";
 
@@ -197,6 +198,27 @@ describe("changing an entry", () => {
       // Every trip that showed it is forgotten, not only the one the entry named.
       { topic: "pace", value: "relaxed", tripIds: ["lisbon", "tokyo"] },
     ]);
+  });
+});
+
+describe("the usual daily budget", () => {
+  it("is saved as one amount in one currency, stated by the traveller, and replaces the one before", async () => {
+    const first = await setDailyBudget("ana", { amount: 90, currency: "EUR" });
+    expect(first).toMatchObject({
+      topic: "budget",
+      value: "90 EUR",
+      sureness: "always",
+      source: { type: "told" },
+    });
+    await setDailyBudget("ana", { amount: 15000, currency: "JPY" });
+    const { entries } = await loadProfile("ana");
+    expect(
+      entries
+        .filter((entry) => entry.topic === "budget")
+        .map((entry) => entry.value),
+    ).toEqual(["15000 JPY"]);
+    // Another traveller's budget is untouched.
+    expect((await loadProfile("ben")).entries).toEqual([]);
   });
 });
 

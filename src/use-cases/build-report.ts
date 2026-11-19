@@ -20,6 +20,7 @@ import type { BuildReport, ReportLine } from "./plan-snapshot";
 /** The style answers a build goes by. The others do not shape it yet. */
 const USED: TasteTopic[] = [
   "pace",
+  "day_shape",
   "interests",
   "atmosphere",
   "food",

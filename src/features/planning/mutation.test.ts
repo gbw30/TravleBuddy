@@ -4,7 +4,6 @@ const mocks = vi.hoisted(() => ({
   db: {
     $transaction: vi.fn(),
   },
-  workspace: vi.fn(),
   tx: {
     trip: {
       updateMany: vi.fn(),
@@ -19,54 +18,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({ db: mocks.db }));
-vi.mock("@/features/recommendations/service", () => ({
-  getPlanningWorkspace: mocks.workspace,
-}));
 
 import {
   executePlanningMutation,
   finalizePlanningMutationTx,
   getPlanningMutationReplayTx,
   PlanningMutationConflictError,
+  StalePlanningRevisionError,
 } from "./mutation";
-
-const snapshot = {
-  revision: 8,
-  conversationId: null,
-  context: {
-    topic: "HOTEL_BASE",
-    destinationId: "destination_1",
-    planningDayNumber: 1,
-  },
-  preference: {
-    budgetLevel: null,
-    pace: null,
-    interests: [],
-    transportationModes: [],
-    accommodationTypes: [],
-    hotelPriority: null,
-    walkingToleranceKm: null,
-    customPreferences: [],
-    mustAvoid: [],
-  },
-  readiness: {
-    activeTopic: "HOTEL_BASE",
-    isReady: false,
-    missingQuestionKeys: ["accommodationTypes", "hotelPriority"],
-  },
-  recommendations: [],
-  selectedPlaces: [],
-  itinerary: {
-    days: [],
-    totals: {
-      itemCount: 0,
-      estimatedCostAmount: null,
-      estimatedCostCurrency: null,
-    },
-    conflicts: [],
-    conflictSummary: { total: 0, low: 0, medium: 0, high: 0 },
-  },
-};
 
 describe("planning mutation finalizer", () => {
   beforeEach(() => {
@@ -80,14 +39,13 @@ describe("planning mutation finalizer", () => {
     });
     mocks.tx.planningMutation.findUnique.mockResolvedValue(null);
     mocks.tx.planningMutation.create.mockResolvedValue({ id: "mutation_1" });
-    mocks.workspace.mockResolvedValue({ status: "ok", snapshot });
   });
 
   it("increments once and stores a versioned compact replay result", async () => {
     const result = await finalizePlanningMutationTx(mocks.tx as never, {
       userId: "user_1",
       tripId: "trip_1",
-      kind: "recommendation_select",
+      kind: "plan_pick",
       control: { expectedRevision: 3, operationId: " operation_1 " },
       result: { status: "selected" as const },
     });
@@ -109,7 +67,7 @@ describe("planning mutation finalizer", () => {
       data: {
         tripId: "trip_1",
         operationId: "operation_1",
-        kind: "recommendation_select",
+        kind: "plan_pick",
         requestFingerprint: null,
         requestedRevision: 3,
         resultingRevision: 4,
@@ -121,7 +79,7 @@ describe("planning mutation finalizer", () => {
 
   it("returns a sequential replay before evaluating an old revision", async () => {
     mocks.tx.planningMutation.findUnique.mockResolvedValue({
-      kind: "recommendation_select",
+      kind: "plan_pick",
       requestFingerprint: "a".repeat(64),
       result: { status: "selected", revision: 2 },
     });
@@ -133,7 +91,7 @@ describe("planning mutation finalizer", () => {
       }>(tx as never, "trip_1", {
         expectedRevision: 1,
         operationId: "operation_1",
-        mutationKind: "recommendation_select",
+        mutationKind: "plan_pick",
         requestFingerprint: "a".repeat(64),
       });
 
@@ -142,7 +100,7 @@ describe("planning mutation finalizer", () => {
       return finalizePlanningMutationTx(tx as never, {
         userId: "user_1",
         tripId: "trip_1",
-        kind: "recommendation_select",
+        kind: "plan_pick",
         result: { status: "selected" },
       });
     });
@@ -151,7 +109,7 @@ describe("planning mutation finalizer", () => {
     expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
   });
 
-  it("returns the latest snapshot when the expected revision misses", async () => {
+  it("refuses a request made against an older revision, without running it", async () => {
     mocks.tx.trip.findFirst.mockResolvedValue({
       id: "trip_1",
       status: "PLANNING",
@@ -161,34 +119,31 @@ describe("planning mutation finalizer", () => {
     const control = {
       expectedRevision: 7,
       operationId: "00000000-0000-4000-8000-000000000002",
-      mutationKind: "recommendation_reject" as const,
+      mutationKind: "plan_remove" as const,
       requestFingerprint: "b".repeat(64),
     };
 
-    const result = await executePlanningMutation({
-      userId: "user_1",
-      tripId: "trip_1",
-      control,
-      transaction: async (tx) => {
-        domainWrite();
-        return finalizePlanningMutationTx(tx, {
-          userId: "user_1",
-          tripId: "trip_1",
-          kind: "recommendation_reject",
-          control,
-          result: { status: "rejected" },
-        });
-      },
-    });
+    await expect(
+      executePlanningMutation({
+        userId: "user_1",
+        tripId: "trip_1",
+        control,
+        transaction: async (tx) => {
+          domainWrite();
+          return finalizePlanningMutationTx(tx, {
+            userId: "user_1",
+            tripId: "trip_1",
+            kind: "plan_remove",
+            control,
+            result: { status: "rejected" },
+          });
+        },
+      }),
+    ).rejects.toBeInstanceOf(StalePlanningRevisionError);
 
     expect(domainWrite).not.toHaveBeenCalled();
     expect(mocks.tx.trip.updateMany).not.toHaveBeenCalled();
     expect(mocks.tx.planningMutation.create).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      status: "stale_revision",
-      revision: 8,
-      snapshot,
-    });
   });
 
   it("rejects operation-id reuse with a different request binding", async () => {
@@ -198,7 +153,7 @@ describe("planning mutation finalizer", () => {
       planningRevision: 3,
     });
     mocks.tx.planningMutation.findUnique.mockResolvedValue({
-      kind: "recommendation_select",
+      kind: "plan_pick",
       requestFingerprint: "a".repeat(64),
       result: { status: "selected", revision: 4 },
     });
@@ -211,7 +166,7 @@ describe("planning mutation finalizer", () => {
         control: {
           expectedRevision: 3,
           operationId: "00000000-0000-4000-8000-000000000003",
-          mutationKind: "recommendation_reject",
+          mutationKind: "plan_remove",
           requestFingerprint: "b".repeat(64),
         },
         transaction: async () => {
@@ -242,7 +197,7 @@ describe("planning mutation finalizer", () => {
         return finalizePlanningMutationTx(tx, {
           userId: "user_1",
           tripId: "trip_1",
-          kind: "recommendation_select",
+          kind: "plan_pick",
           control: { expectedRevision: 3, operationId: "operation_3" },
           result: { status: "selected" },
         });
@@ -260,7 +215,7 @@ describe("planning mutation finalizer", () => {
     const control = {
       expectedRevision: 3,
       operationId: "00000000-0000-4000-8000-000000000004",
-      mutationKind: "recommendation_select" as const,
+      mutationKind: "plan_pick" as const,
       requestFingerprint: "c".repeat(64),
     };
     mocks.tx.trip.findFirst
@@ -276,7 +231,7 @@ describe("planning mutation finalizer", () => {
     mocks.tx.planningMutation.findUnique
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
-        kind: "recommendation_select",
+        kind: "plan_pick",
         requestFingerprint: "c".repeat(64),
         result: { status: "selected", revision: 4 },
         resultingRevision: 4,
@@ -291,14 +246,13 @@ describe("planning mutation finalizer", () => {
         finalizePlanningMutationTx(tx, {
           userId: "user_1",
           tripId: "trip_1",
-          kind: "recommendation_select",
+          kind: "plan_pick",
           control,
           result: { status: "selected" },
         }),
     });
 
     expect(result).toEqual({ status: "selected", revision: 4 });
-    expect(mocks.workspace).not.toHaveBeenCalled();
   });
 
   it("does not expose a replay until trip ownership is verified", async () => {
@@ -314,7 +268,7 @@ describe("planning mutation finalizer", () => {
           finalizePlanningMutationTx(tx, {
             userId: "other_user",
             tripId: "trip_1",
-            kind: "recommendation_select",
+            kind: "plan_pick",
             control: { operationId: "operation_4" },
             result: { status: "selected" },
           }),
@@ -339,7 +293,7 @@ describe("planning mutation finalizer", () => {
         finalizePlanningMutationTx(tx, {
           userId: "user_1",
           tripId: "trip_1",
-          kind: "recommendation_select",
+          kind: "plan_pick",
           control: { operationId: "operation_archived" },
           result: { status: "selected" },
         }),
@@ -354,7 +308,7 @@ describe("planning mutation finalizer", () => {
       finalizePlanningMutationTx(mocks.tx as never, {
         userId: "user_1",
         tripId: "trip_1",
-        kind: "planning_message_save",
+        kind: "conversation_turn",
         control: { operationId: "operation_5" },
         result: { status: "saved", content: "x".repeat(70 * 1024) },
       }),

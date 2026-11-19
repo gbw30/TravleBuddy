@@ -12,6 +12,7 @@ import {
 } from "@/features/itinerary";
 import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
 import {
+  PACES,
   SLOT_WORDS,
   type Pace,
   type PlanAction,
@@ -91,11 +92,49 @@ export function withProvisionalStart(
   return { ...state, provisionalStart: provisionalStart(trip.facts, today()) };
 }
 
+/**
+ * The choices a plan is laid out from. A plan nobody has changed yet starts
+ * at the pace the trip goes by, a remembered one included (TB-MEM-02); once
+ * a version is saved, the plan's own pace stands. A trip with no dates gets
+ * provisional ones.
+ */
+export function startingState(
+  saved: { state: PlanState; fresh?: boolean },
+  trip: TripDetail,
+  taste: TasteInUse,
+): PlanState {
+  const pace = PACES.find((item) => item === taste.pace?.values[0]);
+  return withProvisionalStart(
+    saved.fresh && pace ? { ...saved.state, pace } : saved.state,
+    trip,
+  );
+}
+
+/** How far the "shape of the day" moves the whole day (PRD 9.4). */
+const DAY_SHIFT: Record<string, number> = { early: -60, late: 60 };
+
+/** The taste a trip goes by: the personal profile, with what was said for this trip on top. */
+export async function tasteOf(
+  userId: string,
+  tripId: string,
+): Promise<TasteInUse> {
+  const [profile, said] = await Promise.all([
+    readProfile(db, userId),
+    readTripTaste(db, tripId),
+  ]);
+  return tasteInUse(profile.entries, said);
+}
+
+/**
+ * What a plan is laid out from. `taste` is passed by a caller that has
+ * already read it; otherwise it is read here.
+ */
 export async function contextFor(
   trip: TripDetail,
   state: PlanState,
   userId: string,
   alsoPlaceIds: string[] = [],
+  taste?: TasteInUse,
 ): Promise<PlanContext> {
   const ids = [
     ...Object.values(state.picks).map((pick) => pick.placeId),
@@ -103,10 +142,12 @@ export async function contextFor(
     ...alsoPlaceIds,
   ];
   const places = await getPlaces([...new Set(ids)], userId);
+  const inUse = taste ?? (await tasteOf(userId, trip.id));
   return {
     facts: trip.facts,
     commitments: trip.commitments,
     places: Object.fromEntries(places.map((place) => [place.id, place])),
+    dayShift: DAY_SHIFT[inUse.day_shape?.values[0] ?? ""] ?? 0,
   };
 }
 
@@ -193,6 +234,13 @@ export async function historyFor(
   };
 }
 
+/** Rules a plan breaks. Unknown opening hours are an uncertainty, not a broken rule. */
+export const brokenRules = (view: PlanView) =>
+  view.days
+    .flatMap((day) => day.entries)
+    .flatMap((entry) => (entry.type === "place" ? entry.flags : []))
+    .filter((flag) => flag.rule !== "hours-unknown").length;
+
 /**
  * The ranked cards for one slot, from the saved places of its city. With
  * `gather`, the provider is asked first: one request at most, and a failure
@@ -208,6 +256,11 @@ export async function cardsFor(
   limits: Limits,
   gather: boolean,
   history?: CardHistory,
+  /**
+   * The plan the cards are for. With it, a place is offered only if picking
+   * it leaves no rule newly broken anywhere in the plan.
+   */
+  plan?: { state: PlanState; context: PlanContext },
 ): Promise<{
   set: CardSet;
   cityName: string;
@@ -259,7 +312,16 @@ export async function cardsFor(
     },
     cityName: city.name,
     from,
-    candidates: saved.filter((place) => kindSuitsSlot(place.kind, entry.kind)),
+    // A place the traveller has already decided, by name, is not offered again.
+    candidates: saved.filter(
+      (place) =>
+        kindSuitsSlot(place.kind, entry.kind) &&
+        !trip.commitments.some(
+          (commitment) =>
+            commitment.title.trim().toLowerCase() ===
+            place.name.trim().toLowerCase(),
+        ),
+    ),
     taken: [
       ...view.days.flatMap((d) =>
         d.entries.flatMap((e) => (e.type === "place" ? [e.placeId] : [])),
@@ -276,6 +338,21 @@ export async function cardsFor(
     ),
     history: history ?? (await historyFor(trip.id, userId)),
     taste: cardTaste(taste, limits),
+    fits: plan
+      ? (place) => {
+          const applied = applyPlanAction(plan.state, view, {
+            type: "pick",
+            slotId: entry.slotId,
+            placeId: place.id,
+          });
+          if ("refused" in applied) return false;
+          const after = buildPlanView(applied.state, {
+            ...plan.context,
+            places: { ...plan.context.places, [place.id]: place },
+          });
+          return brokenRules(after) <= brokenRules(view);
+        }
+      : undefined,
   });
   return { set, cityName: city.name, gathered };
 }
@@ -289,6 +366,7 @@ async function proposalFor(
   taste: TasteInUse,
   limits: Limits,
   gather: boolean,
+  plan: { state: PlanState; context: PlanContext },
 ): Promise<PlanSnapshot["proposal"]> {
   const found = await cardsFor(
     trip,
@@ -299,6 +377,8 @@ async function proposalFor(
     taste,
     limits,
     gather,
+    undefined,
+    plan,
   );
   if (!found) return null;
   const { set, cityName, gathered } = found;
@@ -371,9 +451,13 @@ export async function planDays(
   userId: string,
   trip: TripDetail,
 ): Promise<PlanDay[]> {
-  const saved = await readPlanState(db, trip.id);
-  const state = withProvisionalStart(saved.state, trip);
-  return buildPlanView(state, await contextFor(trip, state, userId)).days;
+  const [saved, taste] = await Promise.all([
+    readPlanState(db, trip.id),
+    tasteOf(userId, trip.id),
+  ]);
+  const state = startingState(saved, trip, taste);
+  return buildPlanView(state, await contextFor(trip, state, userId, [], taste))
+    .days;
 }
 
 /**
@@ -388,20 +472,39 @@ export async function loadPlan(
   /** False keeps the provider out of a page load; the screen then asks again. */
   gather = true,
 ): Promise<PlanSnapshot | null> {
+  try {
+    return await readPlan(userId, tripId, wanted, gather);
+  } catch (error) {
+    // Reading a plan records the cards it shows against the trip. A trip
+    // deleted while it is being read is gone, not broken: answer as for
+    // any trip that does not exist.
+    if (await getTrip(userId, tripId)) throw error;
+    return null;
+  }
+}
+
+async function readPlan(
+  userId: string,
+  tripId: string,
+  wanted: string | undefined,
+  gather: boolean,
+): Promise<PlanSnapshot | null> {
   const trip = await getTrip(userId, tripId);
   if (!trip) return null;
   const saved = await readPlanState(db, tripId);
-  const state = withProvisionalStart(saved.state, trip);
-  const context = await contextFor(trip, state, userId);
+  // The taste a trip goes by starts from the personal profile; what was
+  // said for this trip wins (TB-MEM-02). The layout needs it too: the
+  // shape of the day moves the day (TB-ITN-08).
+  const [personal, said] = await Promise.all([
+    readProfile(db, userId).then((profile) => profile.entries),
+    readTripTaste(db, tripId),
+  ]);
+  const taste: TasteInUse = tasteInUse(personal, said);
+  const state = startingState(saved, trip, taste);
+  const context = await contextFor(trip, state, userId, [], taste);
   const view = buildPlanView(state, context);
   const focus = trip.archived ? null : focusSlot(view, wanted);
   const progress = view.days.length > 0 ? await readBuild(db, tripId) : null;
-  // The taste a trip goes by starts from the personal profile; what was
-  // said for this trip wins (TB-MEM-02).
-  const reads = focus !== null || progress !== null;
-  const personal = reads ? (await readProfile(db, userId)).entries : [];
-  const said = reads ? await readTripTaste(db, tripId) : {};
-  const taste: TasteInUse = tasteInUse(personal, said);
   const limits = limitsInUse(
     personal,
     said.food?.source === "told" ? said.food.values : [],
@@ -427,6 +530,7 @@ export async function loadPlan(
           taste,
           limits,
           gather,
+          { state, context },
         )
       : null,
     holding: holding ? "food" : null,
@@ -478,10 +582,13 @@ export async function setPlanPace(
   userId: string,
   pace: Pace,
 ): Promise<boolean> {
-  const saved = await readPlanState(tx, trip.id);
-  if (saved.state.pace === pace) return false;
-  const state = withProvisionalStart(saved.state, trip);
-  const context = await contextFor(trip, state, userId);
+  const [saved, taste] = await Promise.all([
+    readPlanState(tx, trip.id),
+    tasteOf(userId, trip.id),
+  ]);
+  const state = startingState(saved, trip, taste);
+  if (state.pace === pace) return false;
+  const context = await contextFor(trip, state, userId, [], taste);
   const applied = applyPlanAction(state, buildPlanView(state, context), {
     type: "pace",
     pace,
@@ -550,10 +657,13 @@ export async function runPlanAction(input: {
         return { summary: "Asked for other places" };
       }
 
-      const saved = await readPlanState(tx, tripId);
-      const state = withProvisionalStart(saved.state, trip);
+      const [saved, taste] = await Promise.all([
+        readPlanState(tx, tripId),
+        tasteOf(userId, tripId),
+      ]);
+      const state = startingState(saved, trip, taste);
       const adding = "placeId" in action ? [action.placeId] : [];
-      const context = await contextFor(trip, state, userId, adding);
+      const context = await contextFor(trip, state, userId, adding, taste);
       // Only a saved place the traveller may see can join a plan (TB-TRU-01).
       if (adding.some((id) => !context.places[id])) {
         return new Refusal("That place is not available.");

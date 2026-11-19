@@ -1,12 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { buildTripOwnerWhere } from "@/lib/authorization-rules";
+import { advanceTripRevision, tripForAction } from "@/features/trips";
 import { db } from "@/lib/db";
 import type {
   PlanningMutationControl,
   PlanningMutationKind,
   PlanningMutationReplay,
-  PlanningSnapshot,
-  StalePlanningMutationResult,
 } from "./types";
 
 export type PlanningTransaction = Prisma.TransactionClient;
@@ -128,34 +126,20 @@ export async function finalizePlanningMutationTx<T extends object>(
     throw new PlanningMutationConflictError();
   }
 
-  const updated = await tx.trip.updateMany({
-    where: {
-      ...buildTripOwnerWhere(input.userId, input.tripId),
-      ...(expectedRevision === undefined
-        ? {}
-        : { planningRevision: expectedRevision }),
-    },
-    data: {
-      planningRevision: {
-        increment: 1,
-      },
-      tripVersion: {
-        increment: 1,
-      },
-    },
-  });
+  const revision = await advanceTripRevision(
+    tx,
+    input.userId,
+    input.tripId,
+    expectedRevision,
+  );
 
-  if (updated.count !== 1) {
+  if (revision === null) {
     throw new StalePlanningRevisionError();
   }
 
-  const trip = await tx.trip.findUniqueOrThrow({
-    where: { id: input.tripId },
-    select: { planningRevision: true },
-  });
   const result = {
     ...input.result,
-    revision: trip.planningRevision,
+    revision,
   };
 
   if (operationId) {
@@ -166,7 +150,7 @@ export async function finalizePlanningMutationTx<T extends object>(
         kind: input.kind,
         requestFingerprint: requestFingerprint ?? null,
         requestedRevision: expectedRevision ?? null,
-        resultingRevision: trip.planningRevision,
+        resultingRevision: revision,
         resultVersion: mutationResultVersion,
         result: jsonResult(result),
       },
@@ -186,10 +170,7 @@ async function loadReplayForOwner<T>(
   if (!operationId) return null;
 
   return db.$transaction(async (tx) => {
-    const trip = await tx.trip.findFirst({
-      where: buildTripOwnerWhere(userId, tripId),
-      select: { id: true, status: true },
-    });
+    const trip = await tripForAction(tx, userId, tripId);
 
     if (!trip) return null;
     if (trip.status === "ARCHIVED") return { status: "archived" } as T;
@@ -217,14 +198,6 @@ async function loadReplayForOwner<T>(
   });
 }
 
-async function loadLatestSnapshot(userId: string, tripId: string) {
-  const { getPlanningWorkspace } =
-    await import("@/features/recommendations/service");
-  const workspace = await getPlanningWorkspace(userId, tripId);
-
-  return workspace.status === "ok" ? workspace.snapshot : null;
-}
-
 export async function executePlanningMutation<T>(input: {
   userId: string;
   tripId: string;
@@ -234,7 +207,7 @@ export async function executePlanningMutation<T>(input: {
     timeout?: number;
   };
   transaction: (tx: PlanningTransaction) => Promise<T>;
-}): Promise<T | StalePlanningMutationResult> {
+}): Promise<T> {
   try {
     return await db.$transaction(async (tx) => {
       const control = input.control;
@@ -244,14 +217,7 @@ export async function executePlanningMutation<T>(input: {
         Boolean(control.requestFingerprint);
 
       if (hasBoundRequest) {
-        const trip = await tx.trip.findFirst({
-          where: buildTripOwnerWhere(input.userId, input.tripId),
-          select: {
-            id: true,
-            status: true,
-            planningRevision: true,
-          },
-        });
+        const trip = await tripForAction(tx, input.userId, input.tripId);
 
         // Preserve each domain service's established not-found/archived
         // result without exposing replay data across the ownership boundary.
@@ -294,19 +260,6 @@ export async function executePlanningMutation<T>(input: {
         );
 
         if (replay) return replay;
-      }
-
-      const snapshot: PlanningSnapshot | null = await loadLatestSnapshot(
-        input.userId,
-        input.tripId,
-      );
-
-      if (snapshot) {
-        return {
-          status: "stale_revision",
-          revision: snapshot.revision,
-          snapshot,
-        };
       }
     }
 

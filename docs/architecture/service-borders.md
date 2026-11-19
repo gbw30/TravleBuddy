@@ -18,18 +18,17 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 
 ## The services
 
-| Service         | Code                                                                      | Tables                                                                                                                                             |
-| --------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`                           | User, Account, Session, VerificationToken                                                                                                          |
-| Trips           | `src/features/trips`                                                      | Trip, TripDestination, TripTravelSegment, FixedCommitment                                                                                          |
-| Conversation    | `src/features/conversation`, `src/features/planning`, `src/lib/ai`        | PlanningMutation, PlanningEvent, Conversation, ConversationMessage, AiUsage                                                                        |
-| Memory          | `src/features/memory`, `src/features/profile`, `src/features/preferences` | UserTravelPreference, TripPreference, PreferenceProfileVersion, TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
-| Places          | `src/features/places`, `src/lib/providers/places`, `src/lib/google`       | CityLookup, Place, PlaceFetch, ProviderCall                                                                                                        |
-| Recommendations | `src/features/recommendations`, `src/features/adaptation`                 | PlaceSuggestion, PlanningFeedback, CardEvent                                                                                                       |
-| Itinerary       | `src/features/itinerary`                                                  | ItineraryVersion, ItineraryDay, ItineraryCityWindow, ItineraryItem, Conflict, Plan, PlanVersion                                                    |
-| Jobs            | `src/features/jobs`, `src/worker`                                         | GenerationJob, JobAttempt, JobEvent                                                                                                                |
+| Service         | Code                                                 | Tables                                                                             |
+| --------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`      | User, Account, Session, VerificationToken                                          |
+| Trips           | `src/features/trips`                                 | Trip, TripDestination, FixedCommitment                                             |
+| Conversation    | `src/features/conversation`, `src/features/planning` | PlanningMutation, Conversation, ConversationMessage, AiUsage                       |
+| Memory          | `src/features/memory`                                | TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
+| Places          | `src/features/places`                                | CityLookup, Place, PlaceFetch, ProviderCall                                        |
+| Recommendations | `src/features/recommendations`                       | CardEvent                                                                          |
+| Itinerary       | `src/features/itinerary`                             | Plan, PlanVersion                                                                  |
 
-`service-map.json` wins if this table and the map disagree. `src/features/prototype` holds sample data for the design prototype; it is not a service and owns no tables.
+`service-map.json` wins if this table and the map disagree. The earlier planner's code was removed on 2026-11-18, and its 15 tables were dropped by the migration `20261119150000_drop_earlier_planner`.
 
 ## The rules
 
@@ -64,7 +63,9 @@ A shared transaction is the part that needs rework when a service moves out (ADR
 
 `src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip.
 
-The older code still shares transactions across services in ways not listed here; those are among the known exceptions.
+The replay ledger (`src/features/planning/mutation.ts`, Conversation) reads and moves a trip's revision inside its own transaction through the Trips service's `tripForAction` and `advanceTripRevision`. That is the revision check every row above names.
+
+No exception is left: `eslint-suppressions.json` has been empty since 2026-11-19.
 
 ## When a check fails
 

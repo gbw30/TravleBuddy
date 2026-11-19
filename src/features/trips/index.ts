@@ -1,17 +1,16 @@
 // The Trips service interface: trips, their facts, and fixed commitments.
-// Browser code imports ./contracts instead. Files not exported here belong to
-// the earlier screens and go when Milestones 4 to 6 replace them.
+// Browser code imports ./contracts instead.
 export {
   addCommitment,
   removeCommitment,
   updateCommitment,
   type CommitmentsResult,
 } from "./commitment-store";
+export { advanceTripRevision, tripForAction } from "./revision";
 export { factsFromTickets } from "./tickets";
 export { findEditable, type Refused } from "./trip-access";
 export { todayIn } from "./trip-state";
 export {
-  CitiesInUseError,
   createTrip,
   getTrip,
   listFinishedTrips,

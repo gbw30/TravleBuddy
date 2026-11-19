@@ -24,15 +24,6 @@ const serverEnvSchema = databaseEnvSchema.extend({
   GOOGLE_ROUTES_API_KEY: nonEmpty.optional(),
 });
 
-const workerEnvSchema = databaseEnvSchema.extend({
-  NODE_ENV: z.enum(["development", "test", "production"]).optional(),
-  PLANNING_WORKER_ID: nonEmpty.max(128).optional(),
-  RENDER_INSTANCE_ID: nonEmpty.max(128).optional(),
-  PLACE_PROVIDER_MODE: z.enum(["mock", "google", "auto"]).optional(),
-  QA_PROVIDER_MODE: z.enum(["mock", "google", "auto"]).optional(),
-  GOOGLE_PLACES_API_KEY: nonEmpty.optional(),
-});
-
 type RawServerEnv = Record<string, string | undefined>;
 
 function normalizeServerEnv(source: RawServerEnv) {
@@ -59,18 +50,6 @@ function normalizeDatabaseEnv(source: RawServerEnv) {
   };
 }
 
-function normalizeWorkerEnv(source: RawServerEnv) {
-  return {
-    ...normalizeDatabaseEnv(source),
-    NODE_ENV: source.NODE_ENV,
-    PLANNING_WORKER_ID: source.PLANNING_WORKER_ID,
-    RENDER_INSTANCE_ID: source.RENDER_INSTANCE_ID,
-    PLACE_PROVIDER_MODE: source.PLACE_PROVIDER_MODE,
-    QA_PROVIDER_MODE: source.QA_PROVIDER_MODE,
-    GOOGLE_PLACES_API_KEY: source.GOOGLE_PLACES_API_KEY,
-  };
-}
-
 function formatEnvErrors(error: z.ZodError) {
   return error.issues
     .map((issue) => `- ${issue.path.join(".")}: ${issue.message}`)
@@ -91,7 +70,6 @@ export function validateServerEnv(source: RawServerEnv = process.env) {
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
-export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
 export function getServerEnv(source: RawServerEnv = process.env) {
   return validateServerEnv(source);
@@ -111,18 +89,6 @@ export function validateDatabaseEnv(source: RawServerEnv = process.env) {
 
 export function getDatabaseEnv(source: RawServerEnv = process.env) {
   return validateDatabaseEnv(source);
-}
-
-export function validateWorkerEnv(source: RawServerEnv = process.env) {
-  const parsed = workerEnvSchema.safeParse(normalizeWorkerEnv(source));
-
-  if (!parsed.success) {
-    throw new Error(
-      `Invalid worker environment variables:\n${formatEnvErrors(parsed.error)}`,
-    );
-  }
-
-  return parsed.data;
 }
 
 /**

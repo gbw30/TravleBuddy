@@ -11,131 +11,87 @@ import featureStatesJson from "../feature-states.json";
 const registryMetadata = [
   {
     id: "authentication",
-    label: "Authentication and authorization",
-    documentedStage: "existing foundation",
-    description: "Session protection, ownership, logout, and route policy.",
-  },
-  {
-    id: "profile",
-    label: "Travel profile",
-    documentedStage: "existing foundation",
-    description: "Persisted user-level travel defaults and preference profile.",
-  },
-  {
-    id: "trip-crud",
-    label: "Trip CRUD",
-    documentedStage: "existing foundation",
-    description: "Draft, ready, update, archive, delete, and owned trip reads.",
-  },
-  {
-    id: "trip-preferences",
-    label: "Trip preferences",
-    documentedStage: "existing foundation",
+    label: "Accounts and authorization",
+    documentedStage: "Milestone 2",
     description:
-      "Trip-local preference validation, inheritance, and overrides.",
+      "Sign-in, session protection, ownership and route policy (TB-ACC).",
   },
   {
-    id: "mock-recommendations",
-    label: "Mock recommendations",
-    documentedStage: "existing foundation",
-    description: "Deterministic scoring, generation, rerolling, and selection.",
-  },
-  {
-    id: "planning-feedback",
-    label: "Planning feedback",
-    documentedStage: "existing foundation",
-    description: "Selection, rejection, deselection, and feedback history.",
-  },
-  {
-    id: "itinerary-draft",
-    label: "Draft itinerary",
-    documentedStage: "existing foundation",
-    description: "Persisted deterministic itinerary building and cost totals.",
-  },
-  {
-    id: "conflicts",
-    label: "Conflict engine",
-    documentedStage: "existing foundation",
-    description: "Conflict generation, deduplication, resolution, and history.",
-  },
-  {
-    id: "logistics",
-    label: "Trip logistics",
-    documentedStage: "existing foundation",
+    id: "trip-start",
+    label: "Home and starting a trip",
+    documentedStage: "Milestone 3",
     description:
-      "Flexible and ticketed segments, city windows, and travel blocks.",
+      "Home, a trip from tickets or from nothing, its facts and states, rename, archive and delete (TB-HOM, TB-STA, TB-FAC).",
+  },
+  {
+    id: "fixed-commitments",
+    label: "Fixed commitments",
+    documentedStage: "Milestone 3",
+    description:
+      "Flights, stays, reservations and must-sees: kept, planned around, never moved (TB-FIX).",
   },
   {
     id: "planning-revision-contracts",
     label: "Planning revision contracts",
-    documentedStage: "Stage 0",
+    documentedStage: "Milestone 4",
     description:
-      "Revision checks, replay-safe mutations, snapshots, and telemetry.",
+      "Every change to a trip names an operation and a revision: replays are recognised and stale screens refused (TB-SYS).",
   },
   {
-    id: "adaptive-planning",
-    label: "Versioned adaptive planning",
-    documentedStage: "Adaptive planning vertical slice",
+    id: "conversation",
+    label: "Guided planning conversation",
+    documentedStage: "Milestone 5",
     description:
-      "Immutable item feedback, source-aware preferences, deterministic replacement, and copy-on-write itinerary activation.",
+      "One question at a time, the thread, typed answers read by rules, and why a trip differs from the profile (TB-AGT).",
   },
   {
-    id: "durable-planning-jobs",
-    label: "Durable planning jobs",
-    documentedStage: "Adaptive planning vertical slice",
+    id: "cards-itinerary",
+    label: "Recommendation cards and the live itinerary",
+    documentedStage: "Milestone 4",
     description:
-      "PostgreSQL claims, leases, heartbeats, retries, recovery, progress, and stale-result protection.",
+      "Three cards for a slot with true reasons; picks, the day layout, its rules, the shelf and undo (TB-CRD, TB-ITN, TB-RSN).",
   },
   {
-    id: "conversation-persistence",
-    label: "Conversation persistence",
-    documentedStage: "Stage 1A",
-    description: "Persisted ordered conversation and optimistic UI recovery.",
-  },
-  {
-    id: "ai-intent",
-    label: "Conversational intelligence",
-    documentedStage: "Stage 1B",
+    id: "memory",
+    label: "Memory",
+    documentedStage: "Milestone 6",
     description:
-      "Schema-validated intent extraction and deterministic fallback.",
+      "The trip profile and the personal profile: sources, corrections, forgetting and learning (TB-MEM, TB-TRU).",
   },
   {
-    id: "live-scheduling",
-    label: "Live itinerary scheduling",
-    documentedStage: "Stage 2A",
-    description: "Thirty-minute activity and meal slot assignment.",
+    id: "quick-plan",
+    label: "Quick plan",
+    documentedStage: "Milestone 7",
+    description:
+      "The brief in five steps, the build day by day, its report, and moving between the two ways of planning (TB-QPL).",
   },
   {
-    id: "google-places",
-    label: "Google Places recommendations",
-    documentedStage: "Stage 2B",
-    description: "Validated provider-backed place recommendations.",
+    id: "place-source",
+    label: "Place source",
+    documentedStage: "Milestone 4",
+    description:
+      "Place data behind one adapter: OpenStreetMap or sample places, saved once and capped per day (TB-SYS, TB-TRU).",
+  },
+  {
+    id: "design-accessibility",
+    label: "Design and accessibility",
+    documentedStage: "Milestone 8",
+    description:
+      "The keepsake direction, keyboard, phone width, contrast, motion and text for screen readers (TB-DSN).",
+  },
+  {
+    id: "ai-model",
+    label: "AI model boundary",
+    documentedStage: "Milestone 5",
+    description:
+      "The model reads typed input only, behind a schema and a cost cap; everything works with it off. No request has been made with a real key.",
   },
   {
     id: "interaction-performance",
     label: "Interaction performance",
-    documentedStage: "Stage 3A",
+    documentedStage: "Milestone 8",
     description:
-      "Measured latency, compact reads, and refresh-free interactions.",
-  },
-  {
-    id: "cache-rate-limits",
-    label: "Cache and production hardening",
-    documentedStage: "Stage 3B",
-    description:
-      "Optional Redis, rate limits, resilience, and safe invalidation.",
-  },
-  {
-    id: "maps",
-    label: "Map presentation",
-    documentedStage: "post-prototype",
-    description: "Map markers, filters, provider fallback, and key isolation.",
-  },
-  {
-    id: "export",
-    label: "Trip export",
-    documentedStage: "post-prototype",
-    description: "Authenticated PDF and JSON export with integrity checks.",
+      "Measured latency of planning interactions. No budget has been measured yet.",
   },
 ] satisfies Array<Omit<FeatureDefinition, "state">>;
 

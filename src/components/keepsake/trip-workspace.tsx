@@ -560,7 +560,7 @@ export function TripWorkspace({
 
             {!readOnly && focus && (
               <details className="max-w-[620px] pt-2">
-                <summary className="cursor-pointer font-sans text-[13px] font-medium text-ink underline decoration-ink/25 decoration-[1.5px] underline-offset-4">
+                <summary className="cursor-pointer py-0.5 font-sans text-[13px] font-medium text-ink underline decoration-ink/25 decoration-[1.5px] underline-offset-4">
                   Add a place of my own
                 </summary>
                 <form
@@ -610,6 +610,7 @@ export function TripWorkspace({
                           <span className="sr-only"> {card.name}</span>
                         </button>
                         <button
+                          aria-label={`Save for later: ${card.name}`}
                           type="button"
                           className={quiet}
                           onClick={() => {
@@ -621,7 +622,6 @@ export function TripWorkspace({
                           }}
                         >
                           Save for later
-                          <span className="sr-only">: {card.name}</span>
                         </button>
                       </li>
                     ))}

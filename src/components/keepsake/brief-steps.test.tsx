@@ -100,6 +100,9 @@ describe("the trip brief on screen", () => {
     expect(html).toContain("Tokyo");
     expect(html).toContain('value="2027-05-10"');
     expect(html).toContain(">Next<");
+    // A button that moves a city says which one, in words that read cleanly.
+    expect(html).toContain('aria-label="Earlier: move Tokyo"');
+    expect(html).not.toContain('sr-only">:');
     expect(html).not.toContain(">Back<");
   });
 
@@ -138,6 +141,26 @@ describe("the trip brief on screen", () => {
     expect(html).toContain(">Honeymoon<");
     expect(html).toContain("The budget can stretch");
     expect(html).toContain("The dates can move");
+  });
+
+  it("fills in the remembered daily budget in step 3, and says where it comes from", () => {
+    const remembered = {
+      ...brief,
+      rememberedBudget: {
+        amount: 90,
+        currency: "EUR" as const,
+        source: "you told me",
+      },
+    };
+    const html = at(2, remembered);
+    expect(html).toContain('value="90"');
+    expect(html).toContain(
+      "What I remember (you told me). Change it here and only this trip changes.",
+    );
+    // Without a memory the note says what an empty budget means.
+    expect(at(2)).toContain(
+      "Leave it empty and I will leave costs for you to judge.",
+    );
   });
 
   it("fills in the style from memory and says where each answer comes from", () => {

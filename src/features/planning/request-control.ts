@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import type {
-  PlanningMutationControl,
-  PlanningMutationKind,
-} from "./types";
+import type { PlanningMutationControl, PlanningMutationKind } from "./types";
 
 const planningMutationControlSchema = z.object({
   expectedRevision: z.number().int().nonnegative().max(2_147_483_647),

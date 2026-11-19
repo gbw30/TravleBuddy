@@ -10,8 +10,6 @@ const messages: Record<string, string> = {
   operation_id_conflict: "That did not save. Please try again.",
   archived: "This trip is archived. Restore it to make changes.",
   not_found: "This trip no longer exists.",
-  cities_in_use:
-    "These cities are still used by places chosen in the earlier planner, so they cannot be removed yet.",
   too_many: "This trip already holds as many commitments as it can.",
   invalid_request:
     "Something in the form is not valid. Check it and try again.",

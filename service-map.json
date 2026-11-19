@@ -12,37 +12,20 @@
     },
     "trips": {
       "code": ["src/features/trips/**"],
-      "tables": [
-        "Trip",
-        "TripDestination",
-        "TripTravelSegment",
-        "FixedCommitment"
-      ]
+      "tables": ["Trip", "TripDestination", "FixedCommitment"]
     },
     "conversation": {
-      "code": [
-        "src/features/conversation/**",
-        "src/features/planning/**",
-        "src/lib/ai/**"
-      ],
+      "code": ["src/features/conversation/**", "src/features/planning/**"],
       "tables": [
         "PlanningMutation",
-        "PlanningEvent",
         "Conversation",
         "ConversationMessage",
         "AiUsage"
       ]
     },
     "memory": {
-      "code": [
-        "src/features/memory/**",
-        "src/features/profile/**",
-        "src/features/preferences/**"
-      ],
+      "code": ["src/features/memory/**"],
       "tables": [
-        "UserTravelPreference",
-        "TripPreference",
-        "PreferenceProfileVersion",
         "TripProfile",
         "Profile",
         "ProfileEntry",
@@ -52,73 +35,26 @@
       ]
     },
     "places": {
-      "code": [
-        "src/features/places/**",
-        "src/lib/providers/places/**",
-        "src/lib/google/**"
-      ],
+      "code": ["src/features/places/**"],
       "tables": ["CityLookup", "Place", "PlaceFetch", "ProviderCall"]
     },
     "recommendations": {
-      "code": ["src/features/recommendations/**", "src/features/adaptation/**"],
-      "tables": ["PlaceSuggestion", "PlanningFeedback", "CardEvent"]
+      "code": ["src/features/recommendations/**"],
+      "tables": ["CardEvent"]
     },
     "itinerary": {
       "code": ["src/features/itinerary/**"],
-      "tables": [
-        "ItineraryVersion",
-        "ItineraryDay",
-        "ItineraryCityWindow",
-        "ItineraryItem",
-        "Conflict",
-        "Plan",
-        "PlanVersion"
-      ]
-    },
-    "jobs": {
-      "code": ["src/features/jobs/**", "src/worker/**"],
-      "tables": ["GenerationJob", "JobAttempt", "JobEvent"]
+      "tables": ["Plan", "PlanVersion"]
     }
   },
   "crossBorderForeignKeys": [
     "CardEvent.trip -> Trip (recommendations -> trips)",
-    "Conflict.trip -> Trip (itinerary -> trips)",
     "Conversation.trip -> Trip (conversation -> trips)",
     "ConversationMessage.trip -> Trip (conversation -> trips)",
-    "GenerationJob.feedback -> PlanningFeedback (jobs -> recommendations)",
-    "GenerationJob.parentItineraryVersion -> ItineraryVersion (jobs -> itinerary)",
-    "GenerationJob.preferenceProfileVersion -> PreferenceProfileVersion (jobs -> memory)",
-    "GenerationJob.trip -> Trip (jobs -> trips)",
-    "ItineraryCityWindow.destination -> TripDestination (itinerary -> trips)",
-    "ItineraryCityWindow.travelSegment -> TripTravelSegment (itinerary -> trips)",
-    "ItineraryCityWindow.trip -> Trip (itinerary -> trips)",
-    "ItineraryDay.trip -> Trip (itinerary -> trips)",
-    "ItineraryItem.placeSuggestion -> PlaceSuggestion (itinerary -> recommendations)",
-    "ItineraryItem.trip -> Trip (itinerary -> trips)",
-    "ItineraryVersion.preferenceProfileVersion -> PreferenceProfileVersion (itinerary -> memory)",
-    "ItineraryVersion.sourceJob -> GenerationJob (itinerary -> jobs)",
-    "ItineraryVersion.trip -> Trip (itinerary -> trips)",
-    "PlaceSuggestion.destination -> TripDestination (recommendations -> trips)",
-    "PlaceSuggestion.trip -> Trip (recommendations -> trips)",
     "Plan.trip -> Trip (itinerary -> trips)",
-    "PlanningEvent.trip -> Trip (conversation -> trips)",
-    "PlanningFeedback.capturedItineraryVersion -> ItineraryVersion (recommendations -> itinerary)",
-    "PlanningFeedback.capturedPreferenceProfileVersion -> PreferenceProfileVersion (recommendations -> memory)",
-    "PlanningFeedback.conflict -> Conflict (recommendations -> itinerary)",
-    "PlanningFeedback.itineraryDay -> ItineraryDay (recommendations -> itinerary)",
-    "PlanningFeedback.itineraryItem -> ItineraryItem (recommendations -> itinerary)",
-    "PlanningFeedback.trip -> Trip (recommendations -> trips)",
-    "PlanningFeedback.tripPreference -> TripPreference (recommendations -> memory)",
-    "PlanningFeedback.user -> User (recommendations -> identity)",
     "PlanningMutation.trip -> Trip (conversation -> trips)",
-    "PreferenceProfileVersion.sourceFeedback -> PlanningFeedback (memory -> recommendations)",
-    "PreferenceProfileVersion.trip -> Trip (memory -> trips)",
     "Profile.user -> User (memory -> identity)",
-    "Trip.activeItineraryVersion -> ItineraryVersion (trips -> itinerary)",
-    "Trip.activePreferenceProfileVersion -> PreferenceProfileVersion (trips -> memory)",
     "Trip.user -> User (trips -> identity)",
-    "TripPreference.trip -> Trip (memory -> trips)",
-    "TripProfile.trip -> Trip (memory -> trips)",
-    "UserTravelPreference.user -> User (memory -> identity)"
+    "TripProfile.trip -> Trip (memory -> trips)"
   ]
 }

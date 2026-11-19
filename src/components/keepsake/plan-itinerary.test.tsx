@@ -101,6 +101,7 @@ const view: PlanView = {
           to: "Kyoto",
           start: "12:00",
           minutes: 345,
+          arriveLocal: null,
         },
         { type: "wander", start: "13:45", minutes: 60, area: "Ueno Park" },
       ],
@@ -115,10 +116,10 @@ const handlers = {
   onMinutes: vi.fn(),
   onTransfer: vi.fn(),
 };
-const render = (readOnly = false) =>
+const render = (readOnly = false, shown: PlanView = view) =>
   renderToStaticMarkup(
     <PlanItinerary
-      view={view}
+      view={shown}
       chosen={{ p1: card("p1", "Tokyo National Museum") }}
       focusSlotId="d1-dinner"
       transit={null}
@@ -171,6 +172,24 @@ describe("PlanItinerary", () => {
     expect(html).toContain("choosing now");
     expect(html).toContain('aria-label="Choose Day 2 · 09:30 Morning"');
     expect(html).not.toContain('aria-label="Choose Day 1 · 19:00 Dinner"');
+  });
+
+  it("says when a transfer arrives by the clock there, when that clock differs", () => {
+    const abroad: PlanView = {
+      ...view,
+      days: view.days.map((day) => ({
+        ...day,
+        entries: day.entries.map((entry) =>
+          entry.type === "transfer"
+            ? { ...entry, arriveLocal: "18:45" }
+            : entry,
+        ),
+      })),
+    };
+    expect(render(false, abroad)).toContain(
+      "Travel from Tokyo to Kyoto · about 6 h · assumed, not booked · you arrive about 18:45, Kyoto time",
+    );
+    expect(render()).not.toContain("you arrive about");
   });
 
   it("shows an assumed transfer as not booked, time to wander, and what is still to fit in", () => {

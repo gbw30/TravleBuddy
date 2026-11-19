@@ -27,6 +27,8 @@ const cities: City[] = [
     "Europe/London",
   ),
   city("Rome", "Lazio", "Italy", 41.8933, 12.4829, "Europe/Rome"),
+  city("Florence", "Tuscany", "Italy", 43.7696, 11.2558, "Europe/Rome"),
+  city("Venice", "Veneto", "Italy", 45.4408, 12.3155, "Europe/Rome"),
   city(
     "New York",
     "New York",

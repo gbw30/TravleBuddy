@@ -110,16 +110,8 @@ describe("runTripAction", () => {
     expect(apply).not.toHaveBeenCalled();
   });
 
-  it("reports a stale revision, however the ledger signals it", async () => {
+  it("reports a request made against an older revision as stale", async () => {
     mocks.execute.mockRejectedValueOnce(new mocks.StalePlanningRevisionError());
-    expect(await runTripAction({ ...base, apply: vi.fn() })).toEqual({
-      status: "stale",
-    });
-
-    mocks.execute.mockResolvedValueOnce({
-      status: "stale_revision",
-      revision: 9,
-    });
     expect(await runTripAction({ ...base, apply: vi.fn() })).toEqual({
       status: "stale",
     });

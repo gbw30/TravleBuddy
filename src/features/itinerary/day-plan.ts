@@ -21,6 +21,7 @@ import type {
   PlanView,
   SlotKind,
 } from "./contracts";
+import { offsetAt } from "./local-time";
 
 // Lays a plan out from the traveller's choices and the trip's facts, and
 // checks it against the rules of PRD 9.3. Pure: no clock, no randomness, no
@@ -34,6 +35,12 @@ export type PlanContext = {
   /** In the order they should be fitted: by date, then time, then age. */
   commitments: CommitmentDto[];
   places: Record<string, PlaceDto>;
+  /**
+   * Minutes the whole day is moved by the traveller's "shape of the day":
+   * earlier for early starts, later for late nights (PRD 9.4). Nothing
+   * already decided moves with it.
+   */
+  dayShift?: number;
 };
 
 // The default day and the pace table of PRD 9.4.
@@ -71,6 +78,8 @@ const paceRules: Record<Pace, { buffer: number; wander: number }> = {
 /** A slot may start this much later than usual before it is dropped for the day. */
 const LATE_START = 90;
 const MEAL_MINUTES = 75;
+/** Less time than this between lunch and something decided is not time to wander. */
+const MIN_WANDER = 30;
 const ASSUMED_TRANSFER_START = 12 * 60;
 
 const isMealSlot = (kind: SlotKind) => kind === "lunch" || kind === "dinner";
@@ -191,6 +200,7 @@ export function buildPlanView(
   state: PlanState,
   context: PlanContext,
 ): PlanView {
+  const shift = context.dayShift ?? 0;
   const base = {
     pace: state.pace,
     provisionalDates: false,
@@ -241,6 +251,8 @@ export function buildPlanView(
     segments: Segment[];
     fixed: Fixed[];
     transfer: Extract<PlanEntry, { type: "transfer" }> | null;
+    /** When the transfer arrives, by the clock of the city of arrival. */
+    landsAt: number;
     slots: DraftSlot[];
     /** Slot id to the must-include that holds it. */
     held: Map<string, CommitmentDto>;
@@ -263,17 +275,20 @@ export function buildPlanView(
       (f) => f.commitment.kind === "TRANSPORT" && f.commitment.date === date,
     );
 
-    let from = DAY_START;
-    let until = DAY_END;
+    let from = DAY_START + shift;
+    let until = DAY_END + shift;
     // A ticket landing on the first day, or leaving on the last, bounds it.
     const landing = context.commitments.filter(
       (c) =>
         c.kind === "TRANSPORT" && c.endTime && (c.endDate ?? c.date) === date,
     );
-    if (index === 0 && landing.length > 0) {
+    // On the first day any ticket that lands bounds it. Later only one that
+    // left on an earlier day does: a night flight lands in the new city.
+    const landed = landing.filter((c) => index === 0 || c.date !== date);
+    if (landed.length > 0) {
       from = Math.max(
         from,
-        Math.max(...landing.map((c) => toMinutes(c.endTime!))) + 60,
+        Math.max(...landed.map((c) => toMinutes(c.endTime!))) + 60,
       );
     }
     if (index === totalNights && totalNights > 0 && tickets.length > 0) {
@@ -282,6 +297,7 @@ export function buildPlanView(
 
     let segments: Segment[];
     let transfer: Draft["transfer"] = null;
+    let landsAt = 0;
     if (cityKeyOf(morningCity) === cityKeyOf(eveningCity)) {
       segments = [{ city: morningCity, from, until }];
     } else {
@@ -293,16 +309,29 @@ export function buildPlanView(
         : toMinutes(
             state.transferTimes[String(day)] ?? toClock(ASSUMED_TRANSFER_START),
           );
+      const travel = ticket ? 0 : transferMinutes(morningCity, eveningCity);
+      // The clock of the city of arrival may differ from the one left
+      // behind (TB-ITN-16). Nothing shifts when either zone is unknown.
+      const ahead =
+        ticket || !morningCity.timeZone || !eveningCity.timeZone
+          ? 0
+          : offsetAt(eveningCity.timeZone, date, leave) -
+            offsetAt(morningCity.timeZone, date, leave);
       const arrive = ticket
         ? ticket.end
-        : leave + transferMinutes(morningCity, eveningCity);
+        : Math.max(leave, leave + travel + ahead);
+      landsAt = arrive;
       if (!ticket) {
         transfer = {
           type: "transfer",
           from: morningCity.name,
           to: eveningCity.name,
           start: toClock(leave),
-          minutes: arrive - leave,
+          minutes: travel,
+          arriveLocal:
+            ahead !== 0 && leave + travel + ahead >= leave && arrive < 24 * 60
+              ? toClock(arrive)
+              : null,
         };
       }
       segments = [
@@ -312,7 +341,8 @@ export function buildPlanView(
     }
 
     const slots: DraftSlot[] = [];
-    for (const [kind, usual] of templates[state.pace]) {
+    for (const [kind, standard] of templates[state.pace]) {
+      const usual = standard + shift;
       const segment = segments.find(
         (s) => s.from <= usual + LATE_START && usual + 60 <= s.until,
       );
@@ -341,6 +371,7 @@ export function buildPlanView(
       segments,
       fixed,
       transfer,
+      landsAt,
       slots,
       held: new Map(),
       notes: [],
@@ -440,7 +471,7 @@ export function buildPlanView(
       }
       if ("transfer" in step) {
         entries.push(step.transfer);
-        clock = Math.max(clock, step.at + step.transfer.minutes);
+        clock = Math.max(clock, draft.landsAt);
         lastPoint = null;
         return;
       }
@@ -541,25 +572,36 @@ export function buildPlanView(
         lastPoint = point;
         lastPlaceName = place.name;
       } else {
+        const start = Math.max(slot.earliest, clock);
         entries.push({
           type: "open",
           slotId: slot.id,
           kind: slot.kind,
-          start: toClock(Math.max(slot.earliest, clock)),
+          start: toClock(start),
           cityKey: cityKeyOf(slot.city),
         });
+        // A lunch not chosen yet still takes its time, so what follows is
+        // laid out as it will be once there is one.
+        if (slot.kind === "lunch") clock = start + MEAL_MINUTES;
       }
 
       // Time to wander or rest follows lunch, with the last place as its area.
+      // It ends where something decided, or a transfer, begins.
       if (slot.kind === "lunch" && wander > 0) {
         const start = Math.max(clock, slot.earliest + MEAL_MINUTES);
-        entries.push({
-          type: "wander",
-          start: toClock(start),
-          minutes: wander,
-          area: lastPlaceName,
-        });
-        clock = start + wander;
+        const next = steps
+          .slice(position + 1)
+          .find((later) => "fixed" in later || "transfer" in later);
+        const minutes = Math.min(wander, next ? next.at - start : wander);
+        if (minutes >= MIN_WANDER) {
+          entries.push({
+            type: "wander",
+            start: toClock(start),
+            minutes,
+            area: lastPlaceName,
+          });
+          clock = start + minutes;
+        }
       }
     });
 

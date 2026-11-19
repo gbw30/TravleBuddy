@@ -10,12 +10,14 @@ import {
   type SavedEntry,
 } from "@/features/memory";
 import {
+  dailyBudgetValue,
   fileUnder,
   kindOf,
   MULTI_TOPICS,
   PROFILE_TOPICS,
   TASTE_TOPICS,
   TOPIC_NAMES,
+  type DailyBudget,
   type ProfileTopicInfo,
   type TasteTopic,
 } from "@/features/memory/contracts";
@@ -138,6 +140,22 @@ export async function changeEntry(
     if (wanted !== entry.value) await deleteEntry(tx, userId, id, evidence);
     return shown(await saveStated(tx, userId, entry.topic, wanted), topics);
   });
+}
+
+/**
+ * Sets the traveller's usual daily budget: one amount in one currency,
+ * replacing an earlier one. It is something they stated.
+ */
+export function setDailyBudget(
+  userId: string,
+  budget: DailyBudget,
+): Promise<ShownEntry> {
+  return db.$transaction(async (tx) =>
+    shown(
+      await saveStated(tx, userId, "budget", dailyBudgetValue(budget)),
+      profileTopics(),
+    ),
+  );
 }
 
 export async function removeEntry(userId: string, id: string) {

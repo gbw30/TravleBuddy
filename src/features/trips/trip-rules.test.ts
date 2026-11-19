@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { inZone, SERVER_ZONES } from "@/lib/in-zone";
+
 import { findClashes } from "./clashes";
 import {
   commitmentInputSchema,
@@ -221,6 +223,73 @@ describe("tripState", () => {
     expect(todayIn("America/New_York", now)).toBe("2027-05-12");
     expect(todayIn(null, now)).toBe("2027-05-12");
     expect(todayIn("Not/AZone", now)).toBe("2027-05-12");
+  });
+
+  it("takes today across a clock change, wherever the server's clock is (TB-ITN-16)", () => {
+    for (const zone of SERVER_ZONES) {
+      inZone(zone, () => {
+        // London goes forward on Sunday 28 March 2027: 23:30 UTC is 23:30 the
+        // night before, and 00:30 the night after.
+        expect(
+          todayIn("Europe/London", new Date("2027-03-27T23:30:00Z")),
+          zone,
+        ).toBe("2027-03-27");
+        expect(
+          todayIn("Europe/London", new Date("2027-03-28T23:30:00Z")),
+          zone,
+        ).toBe("2027-03-29");
+        // New York goes back on Sunday 7 November 2027: 04:30 UTC is 00:30
+        // that Sunday, and 23:30 the same Sunday a day later.
+        expect(
+          todayIn("America/New_York", new Date("2027-11-07T04:30:00Z")),
+          zone,
+        ).toBe("2027-11-07");
+        expect(
+          todayIn("America/New_York", new Date("2027-11-08T04:30:00Z")),
+          zone,
+        ).toBe("2027-11-07");
+        // A trip in Honolulu is not over while it is still its last day there,
+        // though it is already the next day on the server and in Tokyo.
+        const lastEvening = new Date("2027-05-14T08:00:00Z");
+        expect(
+          tripState(
+            { planFinished: true, endDate: "2027-05-13" },
+            todayIn("Pacific/Honolulu", lastEvening),
+          ),
+          zone,
+        ).toBe("upcoming");
+        expect(
+          tripState(
+            { planFinished: true, endDate: "2027-05-13" },
+            todayIn("Asia/Tokyo", lastEvening),
+          ),
+          zone,
+        ).toBe("past");
+      });
+    }
+  });
+
+  it("takes a date as written, whatever the server's clock (TB-ITN-16)", () => {
+    for (const zone of SERVER_ZONES) {
+      inZone(zone, () => {
+        const ticket = (departDate: string) =>
+          ticketInputSchema.safeParse({
+            mode: "FLIGHT",
+            from: "London",
+            to: "Tokyo",
+            departDate,
+            departTime: "19:00",
+            arriveDate: "2027-03-29",
+            arriveTime: "15:00",
+          });
+        // The day the clocks change in London is a date like any other.
+        const read = ticket("2027-03-28");
+        expect(read.success, zone).toBe(true);
+        expect(read.success && read.data.departDate, zone).toBe("2027-03-28");
+        expect(read.success && read.data.arriveTime, zone).toBe("15:00");
+        expect(ticket("2027-02-30").success, zone).toBe(false);
+      });
+    }
   });
 });
 

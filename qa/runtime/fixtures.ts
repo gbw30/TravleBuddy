@@ -78,8 +78,13 @@ async function deleteUsersByExactIdentity(
     });
 
     if (!actual) continue;
-    if (actual.email !== expected.email || !actual.email?.startsWith(ephemeralPrefix)) {
-      throw new Error(`Refusing to delete non-ephemeral QA user ${expected.id}.`);
+    if (
+      actual.email !== expected.email ||
+      !actual.email?.startsWith(ephemeralPrefix)
+    ) {
+      throw new Error(
+        `Refusing to delete non-ephemeral QA user ${expected.id}.`,
+      );
     }
 
     await db.user.delete({ where: { id: actual.id } });
@@ -123,17 +128,6 @@ export async function seedQaFixtures(environment: QaEnvironment) {
     data: {
       name: "TravleBuddy QA Owner",
       email: ownerEmail,
-      travelPreference: {
-        create: {
-          budgetLevel: "MODERATE",
-          pace: "BALANCED",
-          interests: ["FOOD", "HISTORY"],
-          transportationModes: ["WALKING", "PUBLIC_TRANSIT"],
-          accommodationTypes: ["HOTEL"],
-          walkingToleranceKm: 5,
-          dietaryRestrictions: ["Vegetarian"],
-        },
-      },
       trips: {
         create: {
           title: `QA ${runId} Paris planning trip`,
@@ -152,20 +146,6 @@ export async function seedQaFixtures(environment: QaEnvironment) {
               country: "France",
               timeZone: "Europe/Paris",
               sortOrder: 0,
-            },
-          },
-          preference: {
-            create: {
-              budgetLevel: "MODERATE",
-              pace: "BALANCED",
-              interests: ["FOOD", "HISTORY"],
-              transportationModes: ["WALKING", "PUBLIC_TRANSIT"],
-              accommodationTypes: ["HOTEL"],
-              hotelPriority: 7,
-              walkingToleranceKm: 5,
-              dietaryRestrictions: ["Vegetarian"],
-              accessibilityNeeds: [],
-              mustAvoid: ["Overnight buses"],
             },
           },
         },
@@ -198,7 +178,14 @@ export async function seedQaFixtures(environment: QaEnvironment) {
     },
   });
 
-  if (!owner.email || !owner.name || !owner.trips[0] || !attacker.email || !attacker.name || !attacker.trips[0]) {
+  if (
+    !owner.email ||
+    !owner.name ||
+    !owner.trips[0] ||
+    !attacker.email ||
+    !attacker.name ||
+    !attacker.trips[0]
+  ) {
     throw new Error("QA fixture creation returned incomplete records.");
   }
 
@@ -290,7 +277,9 @@ export async function resetPreviewBaseline(environment: QaEnvironment) {
       email: `qa-baseline@${qaEmailDomain}`,
     },
   });
-  await db.trip.deleteMany({ where: { id: baselineTripId, userId: baselineOwnerId } });
+  await db.trip.deleteMany({
+    where: { id: baselineTripId, userId: baselineOwnerId },
+  });
   await db.trip.create({
     data: {
       id: baselineTripId,
@@ -307,14 +296,6 @@ export async function resetPreviewBaseline(environment: QaEnvironment) {
           country: "France",
           timeZone: "Europe/Paris",
           sortOrder: 0,
-        },
-      },
-      preference: {
-        create: {
-          budgetLevel: "MODERATE",
-          pace: "BALANCED",
-          interests: ["FOOD"],
-          transportationModes: ["WALKING"],
         },
       },
     },
