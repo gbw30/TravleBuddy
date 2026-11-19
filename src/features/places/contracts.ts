@@ -35,6 +35,14 @@ export type PlaceDto = {
    */
   serves: string[];
   servesNot: string[];
+  /** The provider's own reference, such as "node/123". Null for a traveller's own place. */
+  originRef: string | null;
+  /** The OpenStreetMap tags its facts were read from; empty when none. */
+  tags: Record<string, string>;
+  /** The element's last edit on the map, ISO. */
+  lastEditedAt: string | null;
+  /** When this row was last fetched, ISO. Null: fetched before provenance was kept. */
+  fetchedAt: string | null;
 };
 
 /** "unavailable" means the lookup could not be reached, not that nothing matched. */

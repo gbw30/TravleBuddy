@@ -121,3 +121,34 @@ export function dietsFromOsmTags(tags: Record<string, string | undefined>): {
     ),
   };
 }
+
+/** The OpenStreetMap tags kept as a place's provenance; every `diet:*` is kept too. */
+export const KEPT_TAGS = [
+  "name",
+  "name:en",
+  "opening_hours",
+  "check_date",
+  "check_date:opening_hours",
+  "website",
+  "contact:website",
+  "cuisine",
+  "wikidata",
+  "wikipedia",
+  "amenity",
+  "tourism",
+  "leisure",
+  "historic",
+  "shop",
+] as const;
+
+/** The tags worth keeping, as they arrived. */
+export function keptTags(tags: Tags): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(tags).filter(
+      (entry): entry is [string, string] =>
+        typeof entry[1] === "string" &&
+        ((KEPT_TAGS as readonly string[]).includes(entry[0]) ||
+          entry[0].startsWith("diet:")),
+    ),
+  );
+}

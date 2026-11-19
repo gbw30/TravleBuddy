@@ -253,6 +253,12 @@ model Place {
   serves        String[]    @default([])
   /// Dietary rules its listing says it does not serve. Neither list: unknown.
   servesNot     String[]    @default([]) @map("serves_not")
+  /// The OpenStreetMap tags its facts were read from, as they arrived (KEPT_TAGS only).
+  osmTags       Json?       @map("osm_tags")
+  /// The element's last edit on the map (Overpass `out meta`).
+  lastEditedAt  DateTime?   @map("last_edited_at")
+  /// When this row was last fetched. Null: fetched before provenance was kept.
+  fetchedAt     DateTime?   @map("fetched_at")
   /// The traveller who entered it. Set only when origin is USER.
   addedByUserId String?     @map("added_by_user_id")
   createdAt     DateTime    @default(now()) @map("created_at")

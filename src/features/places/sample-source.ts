@@ -102,6 +102,8 @@ const place = (
   openingHours,
   notable: kind !== "restaurant" && kind !== "cafe",
   ...(diets[name] ?? { serves: [], servesNot: [] }),
+  tags: null,
+  lastEditedAt: null,
 });
 
 const offset = (

@@ -23,6 +23,10 @@ const place = (id: string, over: Partial<PlaceDto> = {}): PlaceDto => ({
   notable: false,
   serves: [],
   servesNot: [],
+  originRef: null,
+  tags: {},
+  lastEditedAt: null,
+  fetchedAt: null,
   ...over,
 });
 const open = (slotId: string, kind: PlanEntry & { type: "open" }): PlanEntry =>

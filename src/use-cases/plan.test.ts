@@ -82,6 +82,10 @@ const place = (id: string, kind: PlaceDto["kind"], name = id): PlaceDto => ({
   notable: false,
   serves: [],
   servesNot: [],
+  originRef: null,
+  tags: {},
+  lastEditedAt: null,
+  fetchedAt: null,
 });
 const sights = [
   place("s1", "temple", "Senso-ji"),

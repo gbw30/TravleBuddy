@@ -56,6 +56,10 @@ const place = (
   notable: false,
   serves: [],
   servesNot: [],
+  originRef: null,
+  tags: {},
+  lastEditedAt: null,
+  fetchedAt: null,
   ...over,
 });
 const places = Object.fromEntries(

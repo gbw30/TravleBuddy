@@ -40,6 +40,10 @@ const place = (
   notable: true,
   serves: [],
   servesNot: [],
+  originRef: null,
+  tags: {},
+  lastEditedAt: null,
+  fetchedAt: null,
 });
 const commitment = (over: Partial<CommitmentDto>): CommitmentDto => ({
   id: over.title ?? "c",

@@ -28,6 +28,10 @@ const place = (id: string): PlaceDto => ({
   notable: true,
   serves: [],
   servesNot: [],
+  originRef: null,
+  tags: {},
+  lastEditedAt: null,
+  fetchedAt: null,
 });
 const dinner: CommitmentDto = {
   id: "c1",

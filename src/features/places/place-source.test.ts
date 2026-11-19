@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { placesFromNominatim } from "./nominatim";
 import { politeFetch, ProviderBusyError, resetPoliteFetch } from "./osm-http";
 import { foodQuery, placesFromOverpass, sightsQuery } from "./overpass";
+import { overpassFixture } from "./overpass-fixture";
 import { cityKey, foodScope } from "./place-source";
 import { sampleSource } from "./sample-source";
 
@@ -79,6 +80,14 @@ describe("placesFromOverpass", () => {
         notable: true,
         serves: [],
         servesNot: [],
+        tags: {
+          name: "浅草寺",
+          "name:en": "Senso-ji",
+          amenity: "place_of_worship",
+          wikidata: "Q1",
+          opening_hours: "Mo-Su 06:00-17:00",
+        },
+        lastEditedAt: null,
       },
       {
         originRef: "way/2",
@@ -91,8 +100,37 @@ describe("placesFromOverpass", () => {
         notable: false,
         serves: [],
         servesNot: [],
+        tags: { name: "Tokyo National Museum", tourism: "museum" },
+        lastEditedAt: null,
       },
     ]);
+  });
+
+  it("keeps only the kept tags and the last edit time from an Overpass reply", () => {
+    const [tower, market] = placesFromOverpass(overpassFixture);
+    expect(tower.lastEditedAt).toEqual(new Date("2026-03-14T10:22:41Z"));
+    expect(tower.tags).toEqual({
+      name: "Torre de Belém",
+      "name:en": "Belém Tower",
+      tourism: "attraction",
+      historic: "tower",
+      wikidata: "Q192683",
+      wikipedia: "pt:Torre de Belém",
+      website: "https://www.torrebelem.gov.pt",
+      opening_hours: "Tu-Su 10:00-18:30; Mo off",
+      check_date: "2025-09-02",
+      "check_date:opening_hours": "2025-09-02",
+    });
+    expect(market.tags).toEqual({
+      name: "Time Out Market",
+      amenity: "marketplace",
+      "contact:website": "https://www.timeoutmarket.com/lisboa",
+      cuisine: "portuguese",
+      "diet:vegetarian": "yes",
+      "diet:vegan": "limited",
+    });
+    // No user name, id or changeset is kept anywhere.
+    expect(JSON.stringify([tower, market])).not.toMatch(/mapper|changeset|uid/);
   });
 
   it("keeps what a listing says about dietary rules", () => {
@@ -125,6 +163,8 @@ describe("placesFromOverpass", () => {
   });
 
   it("asks for sights across the city and food within a walk", () => {
+    expect(sightsQuery(tokyo)).toContain("out center meta 500;");
+    expect(foodQuery(tokyo)).toContain("out center meta 200;");
     expect(sightsQuery(tokyo)).toContain("(around:9000,35.6769,139.7639)");
     expect(sightsQuery(tokyo)).toContain(
       '["amenity"="place_of_worship"]["name"]["wikidata"]',
@@ -165,6 +205,43 @@ describe("placesFromNominatim", () => {
       ["node/9", "restaurant", "24/7"],
       ["way/10", "sight", null],
     ]);
+  });
+});
+
+describe("provenance from Nominatim and samples", () => {
+  it("keeps Nominatim's extratags with no edit time", () => {
+    const [place] = placesFromNominatim([
+      {
+        osm_type: "node",
+        osm_id: 9,
+        name: "Ichiran",
+        lat: "35.66",
+        lon: "139.70",
+        category: "amenity",
+        type: "restaurant",
+        extratags: {
+          opening_hours: "24/7",
+          cuisine: "ramen",
+          "payment:cards": "yes",
+        },
+      },
+    ]);
+    expect(place.tags).toEqual({
+      amenity: "restaurant",
+      opening_hours: "24/7",
+      cuisine: "ramen",
+    });
+    expect(place.lastEditedAt).toBeNull();
+  });
+
+  it("sample places carry no tags and no edit time", async () => {
+    const places = [
+      ...(await sampleSource.sights(tokyo)),
+      ...(await sampleSource.foodNear(tokyo, tokyo)),
+    ];
+    expect(
+      places.every((p) => p.tags === null && p.lastEditedAt === null),
+    ).toBe(true);
   });
 });
 
