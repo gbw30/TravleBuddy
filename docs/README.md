@@ -62,6 +62,7 @@ Never infer implementation from a target requirement, permanent scope from a sta
 - [Architecture and ADRs](architecture/README.md)
 - [Conversational implementation pack](conversational-planning/README.md)
 - [Adaptive demonstration](demo/adaptive-planning-demo.md)
+- [The four sample travellers](quality/sample-travellers.md): the itineraries and checks of PRD 18, written by `npm run quality:samples`
 - [Developer finish guide](developer-finish-guide.md)
 - [Repository structure](folder-structure.md)
 - [Historical archive](history/README.md)

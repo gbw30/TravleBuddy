@@ -8,11 +8,7 @@ import {
   writePlanVersion,
   type Change,
 } from "@/features/itinerary";
-import {
-  PACES,
-  type BuildProgress,
-  type PlanView,
-} from "@/features/itinerary/contracts";
+import { PACES, type BuildProgress } from "@/features/itinerary/contracts";
 import {
   limitsInUse,
   readProfile,
@@ -25,6 +21,7 @@ import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
 import {
+  brokenRules,
   cardsFor,
   contextFor,
   historyFor,
@@ -49,13 +46,6 @@ export type BuildStep = {
   filled: number;
   done: boolean;
 };
-
-/** Rules a plan breaks. Unknown opening hours are an uncertainty, not a broken rule. */
-const brokenRules = (view: PlanView) =>
-  view.days
-    .flatMap((day) => day.entries)
-    .flatMap((entry) => (entry.type === "place" ? entry.flags : []))
-    .filter((flag) => flag.rule !== "hours-unknown").length;
 
 type Prepared = {
   day: number;
@@ -150,6 +140,7 @@ async function prepareDay(
       limits,
       true,
       history,
+      { state, context },
     );
     if (found?.gathered && found.gathered.status !== "ready") {
       progress.unreachable = true;

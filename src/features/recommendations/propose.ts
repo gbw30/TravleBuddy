@@ -91,6 +91,12 @@ export type ProposeInput = {
   kindsInDay: PlaceKind[];
   /** Names of the places already in the plan: another branch of one is not a new idea. */
   namesInPlan?: string[];
+  /**
+   * Whether putting the place in the slot leaves the plan with no newly
+   * broken rule. A place that would push another past its hours, or land
+   * on something decided, is not offered (PRD 9.3).
+   */
+  fits?: (place: PlaceDto) => boolean;
   history: CardHistory;
   taste: CardTaste;
 };
@@ -343,7 +349,12 @@ const CLOSE_SCORE = 0.1;
  * fewer fit. It is never padded (TB-CRD-01).
  */
 export function proposeCards(input: ProposeInput): CardSet {
-  const best = rank(input).slice(0, 3);
+  // The best three that fit. Only as many are tried as it takes to find them.
+  const best: Ranked[] = [];
+  for (const ranked of rank(input)) {
+    if (best.length === 3) break;
+    if (!input.fits || input.fits(ranked.place)) best.push(ranked);
+  }
   return {
     slotId: input.slot.id,
     cards: best.map((ranked) =>

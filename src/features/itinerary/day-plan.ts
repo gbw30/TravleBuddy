@@ -77,6 +77,8 @@ const paceRules: Record<Pace, { buffer: number; wander: number }> = {
 /** A slot may start this much later than usual before it is dropped for the day. */
 const LATE_START = 90;
 const MEAL_MINUTES = 75;
+/** Less time than this between lunch and something decided is not time to wander. */
+const MIN_WANDER = 30;
 const ASSUMED_TRANSFER_START = 12 * 60;
 
 const isMealSlot = (kind: SlotKind) => kind === "lunch" || kind === "dinner";
@@ -549,25 +551,36 @@ export function buildPlanView(
         lastPoint = point;
         lastPlaceName = place.name;
       } else {
+        const start = Math.max(slot.earliest, clock);
         entries.push({
           type: "open",
           slotId: slot.id,
           kind: slot.kind,
-          start: toClock(Math.max(slot.earliest, clock)),
+          start: toClock(start),
           cityKey: cityKeyOf(slot.city),
         });
+        // A lunch not chosen yet still takes its time, so what follows is
+        // laid out as it will be once there is one.
+        if (slot.kind === "lunch") clock = start + MEAL_MINUTES;
       }
 
       // Time to wander or rest follows lunch, with the last place as its area.
+      // It ends where something decided, or a transfer, begins.
       if (slot.kind === "lunch" && wander > 0) {
         const start = Math.max(clock, slot.earliest + MEAL_MINUTES);
-        entries.push({
-          type: "wander",
-          start: toClock(start),
-          minutes: wander,
-          area: lastPlaceName,
-        });
-        clock = start + wander;
+        const next = steps
+          .slice(position + 1)
+          .find((later) => "fixed" in later || "transfer" in later);
+        const minutes = Math.min(wander, next ? next.at - start : wander);
+        if (minutes >= MIN_WANDER) {
+          entries.push({
+            type: "wander",
+            start: toClock(start),
+            minutes,
+            area: lastPlaceName,
+          });
+          clock = start + minutes;
+        }
       }
     });
 

@@ -200,6 +200,49 @@ describe("proposeCards", () => {
   });
 });
 
+describe("a place that would break a rule of the plan", () => {
+  it("is not offered: the three best that fit are", () => {
+    const candidates = ["a", "b", "c", "d", "e"].map((id) => place(id));
+    const all = ids(proposeCards(input({ candidates })));
+    expect(all).toEqual(["a", "b", "c"]);
+    const tried: string[] = [];
+    const set = proposeCards(
+      input({
+        candidates,
+        fits: (item) => {
+          tried.push(item.id);
+          return item.id !== "a" && item.id !== "c";
+        },
+      }),
+    );
+    expect(ids(set)).toEqual(["b", "d", "e"]);
+    // Only as many are tried as it takes.
+    expect(tried).toEqual(["a", "b", "c", "d", "e"]);
+    expect(
+      proposeCards(input({ candidates, fits: () => false })),
+    ).toMatchObject({
+      cards: [],
+      short: true,
+      close: false,
+    });
+  });
+
+  it("stops trying once three fit", () => {
+    const candidates = ["a", "b", "c", "d", "e"].map((id) => place(id));
+    const tried: string[] = [];
+    proposeCards(
+      input({
+        candidates,
+        fits: (item) => {
+          tried.push(item.id);
+          return true;
+        },
+      }),
+    );
+    expect(tried).toEqual(["a", "b", "c"]);
+  });
+});
+
 describe("a name already in the plan", () => {
   it("ranks below a place the traveller has not been to, and is still offered", () => {
     const candidates = [place("a", { name: "Market Kitchen" }), place("b")];
