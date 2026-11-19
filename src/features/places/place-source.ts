@@ -1,9 +1,8 @@
-import { resolvePlaceProviderMode } from "@/lib/providers/places/server";
-
 import type { City } from "./contracts";
 import type { PlaceKind } from "./kinds";
 import { osmSource } from "./osm-source";
 import { sampleSource } from "./sample-source";
+import { usesSamplePlaces } from "./provider-mode";
 
 export type Point = { latitude: number; longitude: number };
 
@@ -46,9 +45,7 @@ export interface PlaceSource {
  * src/lib/providers/places until its terms allow saved plans (ADR-009).
  */
 export function activeSource(): PlaceSource {
-  return resolvePlaceProviderMode(process.env) === "mock"
-    ? sampleSource
-    : osmSource;
+  return usesSamplePlaces() ? sampleSource : osmSource;
 }
 
 export { cityKeyOf as cityKey } from "./contracts";

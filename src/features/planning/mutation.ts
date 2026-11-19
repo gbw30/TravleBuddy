@@ -5,7 +5,6 @@ import type {
   PlanningMutationControl,
   PlanningMutationKind,
   PlanningMutationReplay,
-  PlanningSnapshot,
   StalePlanningMutationResult,
 } from "./types";
 
@@ -217,14 +216,6 @@ async function loadReplayForOwner<T>(
   });
 }
 
-async function loadLatestSnapshot(userId: string, tripId: string) {
-  const { getPlanningWorkspace } =
-    await import("@/features/recommendations/service");
-  const workspace = await getPlanningWorkspace(userId, tripId);
-
-  return workspace.status === "ok" ? workspace.snapshot : null;
-}
-
 export async function executePlanningMutation<T>(input: {
   userId: string;
   tripId: string;
@@ -294,19 +285,6 @@ export async function executePlanningMutation<T>(input: {
         );
 
         if (replay) return replay;
-      }
-
-      const snapshot: PlanningSnapshot | null = await loadLatestSnapshot(
-        input.userId,
-        input.tripId,
-      );
-
-      if (snapshot) {
-        return {
-          status: "stale_revision",
-          revision: snapshot.revision,
-          snapshot,
-        };
       }
     }
 

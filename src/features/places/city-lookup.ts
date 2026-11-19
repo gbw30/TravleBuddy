@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import { db } from "@/lib/db";
-import { resolvePlaceProviderMode } from "@/lib/providers/places/server";
 
 import { citySchema, type City, type CityLookupOutcome } from "./contracts";
 import { searchMockCities } from "./mock-cities";
 import { searchNominatim } from "./nominatim";
+import { usesSamplePlaces } from "./provider-mode";
 
 const savedCities = z.array(citySchema);
 
@@ -31,7 +31,7 @@ export async function findCities(text: string): Promise<CityLookupOutcome> {
     return { status: "ok", cities: [] };
 
   // Sample data is never saved, so it cannot be mistaken for real results.
-  if (resolvePlaceProviderMode(process.env) === "mock") {
+  if (usesSamplePlaces()) {
     return { status: "ok", cities: searchMockCities(query) };
   }
 
