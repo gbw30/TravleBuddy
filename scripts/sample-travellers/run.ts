@@ -4,7 +4,11 @@ import { dirname } from "node:path";
 
 import { chromium } from "@playwright/test";
 
-import { SLOT_WORDS, type PlanEntry } from "@/features/itinerary/contracts";
+import {
+  placeWordFor,
+  SLOT_WORDS,
+  type PlanEntry,
+} from "@/features/itinerary/contracts";
 import type { City } from "@/features/places/contracts";
 import { sampleSource } from "@/features/places/sample-source";
 import type { BriefView } from "@/use-cases/brief-view";
@@ -362,7 +366,7 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
           : ""
       }`;
     case "allowance":
-      return `${entry.start}  Allowed ${minutes(entry.minutes)} ${entry.way} the ${entry.mode === "FLIGHT" ? "airport" : "station"} (${entry.mode.toLowerCase()})`;
+      return `${entry.start}  Allowed ${minutes(entry.minutes)} ${entry.way} ${placeWordFor(entry.mode) ? `the ${placeWordFor(entry.mode)}` : "the journey"} (${entry.mode?.toLowerCase() ?? "mode not known"})`;
     case "breakfast-at-stay":
       return `${entry.start}  Breakfast where you stay (${minutes(entry.minutes)})`;
     case "wander":

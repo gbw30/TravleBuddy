@@ -201,15 +201,17 @@ const withoutCode = (place: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-/** A ticket with no details is taken for a flight, as it always was. */
-const allowanceOf = (commitment: CommitmentDto) =>
-  ALLOWANCE[
-    commitment.transport && commitment.transport.mode !== "FLIGHT"
-      ? "GROUND"
-      : "FLIGHT"
-  ];
-const modeOf = (commitment: CommitmentDto) =>
-  commitment.transport?.mode ?? "FLIGHT";
+/**
+ * The mode a ticket records and the time allowed around it. A ticket with no
+ * details has no known mode but keeps the larger, flight allowance.
+ */
+function allowanceOf(commitment: CommitmentDto) {
+  const mode = commitment.transport?.mode ?? null;
+  return {
+    mode,
+    ...ALLOWANCE[mode && mode !== "FLIGHT" ? "GROUND" : "FLIGHT"],
+  };
+}
 
 /** When a commitment with a time starts and ends on one day. */
 function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
@@ -343,26 +345,29 @@ export function buildPlanView(
       const last = landed.reduce((a, b) =>
         toMinutes(b.endTime!) > toMinutes(a.endTime!) ? b : a,
       );
-      const { after } = allowanceOf(last);
+      const { mode, after } = allowanceOf(last);
       const at = toMinutes(last.endTime!);
       from = Math.max(from, at + after);
       allowances.push({
         type: "allowance",
         way: "from",
-        mode: modeOf(last),
+        mode,
         start: toClock(at),
         minutes: after,
       });
     }
     if (index === totalNights && totalNights > 0 && tickets.length > 0) {
       const first = tickets.reduce((a, b) => (b.start < a.start ? b : a));
-      const { before } = allowanceOf(first.commitment);
-      until = Math.min(until, first.start - before);
+      const { mode, before: wanted } = allowanceOf(first.commitment);
+      // A flight in the small hours leaves less than the full time before it.
+      const rowStart = Math.max(0, first.start - wanted);
+      const before = first.start - rowStart;
+      until = Math.min(until, rowStart);
       allowances.push({
         type: "allowance",
         way: "to",
-        mode: modeOf(first.commitment),
-        start: toClock(first.start - before),
+        mode,
+        start: toClock(rowStart),
         minutes: before,
       });
     }
@@ -412,11 +417,10 @@ export function buildPlanView(
         !ticket ||
         (ticket.commitment.endTime !== null &&
           (ticket.commitment.endDate ?? date) === date);
-      const { before, after } = ticket
+      const { mode, before, after } = ticket
         ? allowanceOf(ticket.commitment)
-        : { before: ASSUMED_BEFORE, after: ASSUMED_AFTER };
+        : { mode: null, before: ASSUMED_BEFORE, after: ASSUMED_AFTER };
       if (ticket) {
-        const mode = modeOf(ticket.commitment);
         allowances.push({
           type: "allowance",
           way: "to",
@@ -424,7 +428,8 @@ export function buildPlanView(
           start: toClock(leave - before),
           minutes: before,
         });
-        if (lands) {
+        // On the first day the landing above has already given this row.
+        if (lands && !allowances.some((a) => a.way === "from")) {
           allowances.push({
             type: "allowance",
             way: "from",

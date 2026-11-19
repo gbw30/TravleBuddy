@@ -238,7 +238,7 @@ describe("PlanItinerary", () => {
   it("shows the time allowed at an airport, station or port, with a quiet doubt line", () => {
     const allowed = (
       way: "to" | "from",
-      mode: string,
+      mode: string | null,
       start: string,
       minutes: number,
     ): PlanView => ({
@@ -250,6 +250,17 @@ describe("PlanItinerary", () => {
         },
       ],
     });
+    const none = [
+      render(false, allowed("from", null, "14:35", 60)),
+      render(false, allowed("to", null, "15:40", 120)),
+    ];
+    expect(none[0]).toContain("After you arrive, about 1 h allowed");
+    expect(none[1]).toContain("Before you leave, 2 h allowed, from 15:40");
+    for (const html of none) {
+      expect(html).toContain("Check the transfer time for this journey");
+      expect(html).toContain("font-sans text-[13px] leading-6 text-muted");
+      expect(html).not.toMatch(/airport|station|port\b/);
+    }
     const from = render(false, allowed("from", "FLIGHT", "14:35", 60));
     expect(from).toContain("From the airport, about 1 h allowed");
     expect(from).toContain("Check the transfer time for your airport");

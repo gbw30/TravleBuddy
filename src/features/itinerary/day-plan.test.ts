@@ -1219,4 +1219,101 @@ describe("the time allowed at an airport or station", () => {
     expect(kinds(landing("13:00"))).not.toContain("lunch");
     expect(kinds(landing("12:00"))).toContain("lunch");
   });
+
+  it("keeps the flight allowance for a ticket with no details, and never calls it a flight", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            transport: null,
+            date: "2027-05-09",
+            startTime: "11:30",
+            endDate: "2027-05-10",
+            endTime: "14:35",
+          }),
+          ticket({
+            id: "out",
+            transport: null,
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "21:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[0].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "from",
+        mode: null,
+        start: "14:35",
+        minutes: 60,
+      },
+    ]);
+    expect(found(view.days[2].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "to",
+        mode: null,
+        start: "16:00",
+        minutes: 120,
+      },
+    ]);
+  });
+
+  it("shows one row after a landing when the first day is also the day the city changes", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: {
+          cities: [
+            { city: tokyo, nights: 0 },
+            { city: kyoto, nights: 1 },
+          ],
+          startDate: "2027-05-10",
+          endDate: null,
+          lengthNights: null,
+          timeOfYear: null,
+        },
+        commitments: [
+          ticket({
+            date: "2027-05-10",
+            startTime: "08:00",
+            endDate: "2027-05-10",
+            endTime: "11:00",
+          }),
+        ],
+      }),
+    );
+    expect(
+      found(view.days[0].entries, "allowance").filter((a) => a.way === "from"),
+    ).toHaveLength(1);
+  });
+
+  it("shows a flight in the small hours with the time that is really before it", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-12",
+            startTime: "01:30",
+            endDate: "2027-05-12",
+            endTime: "05:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[2].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "to",
+        mode: "FLIGHT",
+        start: "00:00",
+        minutes: 90,
+      },
+    ]);
+  });
 });
