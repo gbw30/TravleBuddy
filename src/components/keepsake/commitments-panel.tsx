@@ -64,7 +64,7 @@ export function CommitmentsPanel({ initial }: { initial: Commitment[] }) {
         ))}
       </ul>
       <details className="mt-3 text-sm">
-        <summary className="cursor-pointer font-sans text-[13px] text-ink underline decoration-ink/25 underline-offset-4">
+        <summary className="cursor-pointer py-0.5 font-sans text-[13px] text-ink underline decoration-ink/25 underline-offset-4">
           Add something already decided
         </summary>
         <form onSubmit={add} className="mt-2 grid gap-2 sm:grid-cols-2">

@@ -26,7 +26,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped`  | TB-MEM-06, TB-MEM-11            | #61          |
 | 8. Defects found on the way                       | `feature/m8-defects`         | TB-MEM-02, TB-DSN-07            | #62          |
 | 9. The four sample travellers                     | `feature/m8-samples`         | TB-SYS-15                       | #63          |
-| 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 |              |
+| 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 | #65          |
 | 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       |              |
 | 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  |              |
 | 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    |              |
@@ -215,6 +215,21 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 ### Piece 10: Design checks on the real screens
 
 **Produces:** one walk of every real screen (Home, Create, trip page, brief, Profile) that checks: every action by keyboard alone; phone width without sideways scrolling; contrast and "not by colour alone" through axe and the contrast helper; motion off under reduced motion; text equivalents of cards, stamps and ticket stubs. Run in Chromium, Firefox and WebKit. Fixes for what it finds.
+
+**Built (2026-11-19):** `npm run quality:design -- <address of a local server>` opens Home, Create, a trip with cards, the brief and Profile in each browser, at desktop and phone width, with motion on and asked off, and writes [what it found](../../quality/design-checks.md). It checks 56 things per browser: axe at both widths, Tab reaching every control with focus showing, three actions done by keyboard alone (flip and pick a card, move a slider, walk the brief), no sideways scrolling at 390 and 320 px, touch targets of 24 px, a chosen control marked by more than colour, nothing moving under reduced motion, the card flip and the picked card's travel with motion on, and text for pictures, stamps, ticket stubs and cards. Its two judgements that need no browser are in `scripts/design-checks/rules.ts` with tests.
+
+**Result:** Chromium 56 of 56, Firefox 56 of 56. **WebKit was not run:** this machine lacks the system libraries it needs, and installing them needs `sudo npx playwright install-deps webkit` from the developer.
+
+**What the walk found, and what was done:**
+
+| Found                                                                                                                                                      | Done                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Cards, lifted panels and the arrow button still moved on hover when the device asked for less motion.                                                      | Fixed. Under reduced motion they do not lift or slide.              |
+| After an arrow key the Profile slider jumped back to its old value until the save answered, so a second key press started from the old value.              | Fixed. It stays where it was let go until the save has answered.    |
+| Touch targets under 24 px: the three "Add…" disclosures (20 px tall), the Profile sliders (22 px tall), and "Edit" text buttons in Firefox (23.6 px wide). | Fixed. Each is at least 24 px.                                      |
+| The kind word in a card's picture stamp breaks in the middle at phone width ("ACTIVI/TY").                                                                 | Recorded for the developer: a matter of look, not of a requirement. |
+
+**Still the developer's:** whether the screens look like a keepsake (TB-DSN-01 beyond paper and serif type), and whether a phone is pleasant to use. Two phone screenshots were sent for that.
 
 ### Piece 11: Time zones
 
