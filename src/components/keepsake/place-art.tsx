@@ -24,6 +24,9 @@ export function PlaceArt({
     );
   }
 
+  const kind = placeKind(place);
+  const longest = Math.max(...kind.split(" ").map((word) => word.length));
+
   return (
     <span
       data-qa="postcard-back"
@@ -32,8 +35,16 @@ export function PlaceArt({
       className={`relative block w-full overflow-hidden rounded-[2px] bg-stamp-paper ${className}`}
     >
       <span className="absolute inset-x-[12%] bottom-[16%] h-px bg-ink/15 shadow-[0_10px_0_rgb(29_26_22/0.15),0_-10px_0_rgb(29_26_22/0.15)]" />
-      <span className="absolute top-1/2 left-1/2 grid aspect-square h-[46%] max-h-24 min-h-9 -translate-x-1/2 -translate-y-[62%] -rotate-12 place-items-center rounded-full border-[1.5px] border-stamp/70 px-1 text-center font-mono text-[clamp(6px,0.6rem,10px)] leading-tight tracking-[0.1em] text-stamp/80 uppercase outline outline-1 outline-offset-2 outline-stamp/60">
-        {placeKind(place)}
+      <span className="absolute top-1/2 left-[44%] sm:left-1/2 aspect-square h-[46%] max-h-24 min-h-9 -translate-x-1/2 -translate-y-[62%] -rotate-12 rounded-full border-[1.5px] border-stamp/70 text-stamp/80 outline outline-1 outline-offset-2 outline-stamp/60 [container-type:size]">
+        {/* Sized from the longest word so it stays inside the ring (about 70% of the ring). */}
+        <span
+          className="grid h-full place-items-center px-[14%] text-center font-mono leading-tight tracking-[0.06em] uppercase"
+          style={{
+            fontSize: `min(10px, ${(70 / (longest * 0.66)).toFixed(1)}cqw)`,
+          }}
+        >
+          {kind}
+        </span>
       </span>
     </span>
   );

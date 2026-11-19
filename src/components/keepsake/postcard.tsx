@@ -59,7 +59,7 @@ export function Postcard({
             {/* The postage stamp names the kind of place. */}
             <span
               aria-hidden
-              className="absolute top-2.5 right-2.5 grid h-[3.2rem] min-w-11 max-w-[5.5rem] rotate-3 place-items-center border-[3px] border-dotted border-card bg-card bg-clip-padding px-1 text-center font-mono text-[8px] leading-tight tracking-[0.04em] text-terracotta uppercase shadow-[0_1px_3px_rgb(0_0_0/0.25)]"
+              className="absolute top-2 right-2 grid h-[2.8rem] min-w-10 max-w-[5rem] sm:top-2.5 sm:right-2.5 sm:h-[3.2rem] sm:min-w-11 sm:max-w-[5.5rem] rotate-3 place-items-center border-[3px] border-dotted border-card bg-card bg-clip-padding px-1 text-center font-mono text-[8px] leading-tight tracking-[0.04em] text-terracotta uppercase shadow-[0_1px_3px_rgb(0_0_0/0.25)]"
             >
               {placeKind(place)}
             </span>
