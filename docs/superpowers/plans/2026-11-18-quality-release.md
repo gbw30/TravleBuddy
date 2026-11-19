@@ -34,6 +34,7 @@ Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan
 | 15. Moving by drag checked                        | `feature/m8-drag-check`      | TB-ITN-09                       | #72          |
 | 16. An evaluation of the model's reading          | `feature/m8-model-eval`      | TB-SYS-11                       | #73          |
 | 17. The release recorded, and a $15 cap           | `feature/m8-release-records` | TB-SYS-11                       | #74          |
+| 18. The phone sheet chosen and fixed              | `feature/m8-phone-sheet`     | TB-DSN-04, TB-DSN-05            | #75          |
 
 ## Global Constraints
 
@@ -306,10 +307,13 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 
 **Produced (pull request 74, 2026-11-19):** Milestones 7 and 8 reached `main` at the developer's request (pull requests 54 and 69). Milestone 7's two migrations went to production and QA before its code; Milestone 8's drop went to both after its code was deployed, with the dropped tables copied out first. The AI cap's default is now 15 US dollars, the developer's monthly allowance.
 
+### Piece 18: The phone sheet chosen and fixed
+
+**Produced (pull request 75, 2026-11-19):** the developer watched both open design choices on the real trip page and kept the enlarged closer look and the phone sheet. The real page already had a simple sheet; it now closes when Choose is pressed in it and moves keyboard focus to the new slot's heading, or to the agent's message when that slot has no cards. The overlay and tab versions stay on their branches, unmerged.
+
 ## Waiting for the developer
 
 - Reading the eight sample itineraries of piece 9 and saying whether you would follow them (PRD 18's sixth point). They and the phone screenshots, with four layout faults at 320 px wide, were shown to the developer on 2026-11-19.
-- Choosing the closer look (enlarged or overlay) and the phone itinerary (sheet or tab). Each option is on a branch for review (`feature/m8-closer-look-overlay`, `feature/m8-phone-sheet`, `feature/m8-phone-tab`) and was shown as a video on 2026-11-19.
 - Running the QA gate, and recording the portfolio demonstration.
 - The Anthropic API key, for the model evaluation of piece 16 and then in Vercel for production and QA.
 - How the AI model words the agent's messages (PRD 17): on 2026-11-19 the developer chose to let the model reword facts the code has verified, provided every fact's source is traceable and reliable. Its design comes first.
