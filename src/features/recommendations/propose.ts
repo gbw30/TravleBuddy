@@ -8,6 +8,7 @@ import {
   visitMinutes,
   type PlaceDto,
   type PlaceKind,
+  type TravelMeans,
 } from "@/features/places/contracts";
 
 import type { CardDto, CardSet } from "./contracts";
@@ -49,6 +50,8 @@ export type CardTaste = {
   atmosphere: "lively" | "quiet" | null;
   /** The traveller likes to get around on foot. */
   onFoot: boolean;
+  /** The way of getting around the traveller named; travel is timed by it. */
+  means?: TravelMeans;
   /** The trips the atmosphere and the way of getting around are remembered from (TB-MEM-06). */
   rememberedFrom?: { atmosphere?: string; onFoot?: string };
   /**
@@ -179,7 +182,8 @@ function rank(input: ProposeInput): Ranked[] {
           place,
           score,
           open,
-          travel: from && point ? travelEstimate(from, point) : null,
+          travel:
+            from && point ? travelEstimate(from, point, taste.means) : null,
           fresh,
           dietConfirmed,
           interest,
@@ -187,6 +191,30 @@ function rank(input: ProposeInput): Ranked[] {
       ];
     })
     .sort((a, b) => b.score - a.score || (a.place.id < b.place.id ? -1 : 1));
+}
+
+/** Whether the place is a sample, whose data is not a real listing. */
+const isSample = (place: PlaceDto) => place.origin === "SAMPLE";
+
+/** What a real place's tags say about notability; nothing for a sample or own place. */
+const notability = (place: PlaceDto) =>
+  place.origin !== "OSM"
+    ? null
+    : place.notable
+      ? "it has a Wikipedia or Wikidata entry"
+      : "it has no Wikipedia or Wikidata entry";
+
+/** The tag's own word for each rule: a vegan tag is what implied vegetarian. */
+function listedWords(place: PlaceDto, rules: string[]): string[] {
+  const says = (diet: string) =>
+    ["yes", "only"].includes(
+      place.tags[`diet:${diet.replace("-", "_")}`] ?? "",
+    );
+  return rules.map((rule) =>
+    rule === "vegetarian" && !says("vegetarian") && says("vegan")
+      ? "vegan"
+      : rule,
+  );
 }
 
 const words = (items: string[]) =>
@@ -212,12 +240,20 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
   const allergy = `${words(allergies)} allergy`;
   if (rules.length > 0 && allergies.length > 0) {
     return ranked.dietConfirmed
-      ? `Its listing says it serves ${words(rules)} food, but place data cannot tell whether it is safe for your ${allergy}, so check with the venue.`
+      ? `${
+          isSample(place)
+            ? `The sample data says it serves ${words(rules)} food`
+            : `Its listing says it has ${words(listedWords(place, rules))} options`
+        }, but place data cannot tell whether it is safe for your ${allergy}, so check with the venue.`
       : `You eat ${words(rules)} food and have a ${allergy}, and the place data confirms neither, so check with the venue.`;
   }
   if (rules.length > 0) {
     return ranked.dietConfirmed
-      ? `You eat ${words(rules)} food, and its listing says it serves it.`
+      ? `You eat ${words(rules)} food, and ${
+          isSample(place)
+            ? "the sample data says it serves it"
+            : `its listing says it has ${words(listedWords(place, rules))} options`
+        }.`
       : `You eat ${words(rules)} food, and the place data does not say whether this place serves it, so check with the venue.`;
   }
   if (allergies.length > 0) {
@@ -235,16 +271,17 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
     )}.`;
   }
   if (history.tooFar > 0 && travel) {
-    return "You said the last places were too far, so I looked closer.";
+    return "You said the last places were too far.";
   }
-  if (history.lessTouristy > 0 && !place.notable) {
-    return "You asked for somewhere less touristy, and this is a quieter choice.";
+  const known = notability(place);
+  if (known && history.lessTouristy > 0 && !place.notable) {
+    return `You asked for somewhere less touristy, and ${known}.`;
   }
-  if (taste.atmosphere === "quiet" && !place.notable) {
-    return `${recalled(from.atmosphere, "You asked for quiet places", "like quiet places")}, and this is a quieter choice.`;
+  if (known && taste.atmosphere === "quiet" && !place.notable) {
+    return `${recalled(from.atmosphere, "You asked for quiet places", "like quiet places")}, and ${known}.`;
   }
-  if (taste.atmosphere === "lively" && place.notable) {
-    return `${recalled(from.atmosphere, "You like lively places", "like lively places")}, and this is one of ${input.cityName}'s well-known ones.`;
+  if (known && taste.atmosphere === "lively" && place.notable) {
+    return `${recalled(from.atmosphere, "You like lively places", "like lively places")}, and ${known}.`;
   }
   if (taste.onFoot && travel?.means === "walk") {
     return `${recalled(from.onFoot, "You like to get around on foot", "like to get around on foot")}, and this is a walk away.`;
@@ -254,7 +291,7 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
     ranked.fresh && input.kindsInDay.length > 0
       ? `you have no ${kindLabel(place.kind).toLowerCase()} in this day yet`
       : place.notable
-        ? `it is one of ${input.cityName}'s well-known places`
+        ? notability(place)
         : null;
   const [told, joiner] = meal
     ? taste.food === null
@@ -281,7 +318,9 @@ function reasonFor(ranked: Ranked, input: ProposeInput): string {
       : `It fits your ${slot} in ${input.cityName}.`,
     travellerSentence(ranked, input),
     ranked.open === "open"
-      ? "It is open for the whole visit."
+      ? ranked.place.hoursDoubt === null
+        ? "It is open for the whole visit."
+        : "Its hours may be out of date, so check before you go."
       : "Its opening hours are not known, so check before you go.",
   ].join(" ");
 }
@@ -310,7 +349,7 @@ export function toCard(
     // The mark is on the front of the card, where it is seen before picking.
     essentials: [
       travel
-        ? `${kind} · ${travel.minutes} min ${meansWord[travel.means]}`
+        ? `${kind} · about ${travel.minutes} min ${meansWord[travel.means]}`
         : kind,
       ...(unconfirmed.length > 0
         ? [`not confirmed: ${unconfirmed.join(", ")}`]

@@ -208,6 +208,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
   const rest = reason.slice(fits[0].length);
   const hours = [
     "It is open for the whole visit.",
+    "Its hours may be out of date, so check before you go.",
     "Its opening hours are not known, so check before you go.",
   ].find((sentence) => rest.endsWith(sentence));
   if (!hours)
@@ -230,7 +231,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
 
   if (
     (match =
-      /^You eat (.+?) food, and (its listing says it serves it|the place data does not say whether this place serves it, so check with the venue)\.$/.exec(
+      /^You eat (.+?) food, and (its listing says it has .+? options|the sample data says it serves it|the place data does not say whether this place serves it, so check with the venue)\.$/.exec(
         about,
       ))
   ) {
@@ -247,7 +248,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
   } else if ((match = /^You said you like (.+?)\.$/.exec(about))) {
     problems.push(...liked(match[1]));
   } else if (
-    /^(You asked for quiet places|I remember from your trip “.+?” that you like quiet places), and this is a quieter choice\.$/.test(
+    /^(You asked for quiet places|I remember from your trip “.+?” that you like quiet places), and it has no Wikipedia or Wikidata entry\.$/.test(
       about,
     )
   ) {
@@ -256,7 +257,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
         "says the traveller asked for quiet places, which they did not",
       );
   } else if (
-    /^(You like lively places|I remember from your trip “.+?” that you like lively places), and this is one of .+?'s well-known ones\.$/.test(
+    /^(You like lively places|I remember from your trip “.+?” that you like lively places), and it has a Wikipedia or Wikidata entry\.$/.test(
       about,
     )
   ) {

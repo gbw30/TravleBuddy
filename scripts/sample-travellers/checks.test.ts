@@ -272,12 +272,15 @@ describe("the check on a card's reason", () => {
   });
   const open = "It is open for the whole visit.";
   const unknown = "Its opening hours are not known, so check before you go.";
+  const stale = "Its hours may be out of date, so check before you go.";
 
   it("passes reasons that say only what is true", () => {
     for (const reason of [
       `It fits your morning in Lisbon. You said you like museums and exhibitions. ${open}`,
       `It is about a 12-minute walk from Castle, so it fits your afternoon. I remember from your trip “Porto, May 2027” that you like museums and exhibitions. ${unknown}`,
-      `It fits your lunch in Lisbon. You eat vegetarian food, and its listing says it serves it. ${open}`,
+      `It fits your lunch in Lisbon. You eat vegetarian food, and its listing says it has vegan options. ${open}`,
+      `It fits your lunch in Lisbon. You eat vegetarian food, and the sample data says it serves it. ${open}`,
+      `It fits your lunch in Lisbon. You said you like museums and exhibitions. ${stale}`,
       `It fits your dinner in Lisbon. You eat vegetarian food, and the place data does not say whether this place serves it, so check with the venue. ${unknown}`,
       `It fits your afternoon in Lisbon. It is not one of the interests you named, but you have no park or garden in this day yet. ${open}`,
     ]) {
@@ -303,10 +306,27 @@ describe("the check on a card's reason", () => {
     ).toEqual([]);
     expect(
       checkReason(
-        `It fits your morning in Lisbon. You asked for quiet places, and this is a quieter choice. ${open}`,
+        `It fits your morning in Lisbon. You asked for quiet places, and it has no Wikipedia or Wikidata entry. ${open}`,
         truth({ atmosphere: "quiet" }),
       ),
     ).toEqual([]);
+    expect(
+      checkReason(
+        `It fits your morning in Lisbon. You like lively places, and it has a Wikipedia or Wikidata entry. ${open}`,
+        truth({ atmosphere: "lively" }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("fails a sentence about a quieter choice, which no data backs", () => {
+    expect(
+      checkReason(
+        `It fits your morning in Lisbon. You asked for quiet places, and this is a quieter choice. ${open}`,
+        truth({ atmosphere: "quiet" }),
+      ),
+    ).toEqual([
+      "says something this check does not know: “You asked for quiet places, and this is a quieter choice.”",
+    ]);
   });
 
   it("catches a claim about the traveller that is not so", () => {
@@ -324,7 +344,7 @@ describe("the check on a card's reason", () => {
     ).toEqual(["names the trip “Rome, 2026”, which is not one of theirs"]);
     expect(
       checkReason(
-        `It fits your lunch in Lisbon. You eat vegan food, and its listing says it serves it. ${open}`,
+        `It fits your lunch in Lisbon. You eat vegan food, and its listing says it has vegan options. ${open}`,
         truth(),
       ),
     ).toEqual([
@@ -338,7 +358,7 @@ describe("the check on a card's reason", () => {
     ).toEqual(["says the traveller has no food rules, which is not so"]);
     expect(
       checkReason(
-        `It fits your morning in Lisbon. You asked for quiet places, and this is a quieter choice. ${open}`,
+        `It fits your morning in Lisbon. You asked for quiet places, and it has no Wikipedia or Wikidata entry. ${open}`,
         truth(),
       ),
     ).toEqual([

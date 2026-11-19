@@ -116,7 +116,7 @@ describe("proposeCards", () => {
     );
     expect(ids(set)).toEqual(["near", "mid", "far"]);
     expect(set.cards[0].travel).toMatchObject({ means: "walk" });
-    expect(set.cards[0].essentials).toMatch(/^Museum · \d+ min walk$/);
+    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min walk$/);
     expect(set.cards[0].reason).toMatch(
       /minute walk from Senso-ji, so it fits your morning/,
     );
@@ -157,7 +157,7 @@ describe("proposeCards", () => {
       }),
     );
     expect(ids(after)).toEqual(["near", "famous"]);
-    expect(after.cards[0].reason).toContain("too far, so I looked closer");
+    expect(after.cards[0].reason).toContain("too far");
     expect(
       before.cards.find((card) => card.placeId === "near")!.reason,
     ).not.toContain("too far");
@@ -362,7 +362,7 @@ describe("the traveller's taste in the ranking", () => {
       "I remember from your trip “Tokyo in May” that you like museums and exhibitions.",
     );
     expect(reasonOf(set, "famous")).toContain(
-      "I remember from your trip “Lisbon” that you like lively places, and this is one of Tokyo's well-known ones.",
+      "I remember from your trip “Lisbon” that you like lively places, and it has a Wikipedia or Wikidata entry.",
     );
     expect(reasonOf(set, "close")).toContain(
       "I remember from your trip “Lisbon” that you like to get around on foot, and this is a walk away.",
@@ -400,7 +400,7 @@ describe("the traveller's taste in the ranking", () => {
     );
     expect(ids(lively)[0]).toBe("famous");
     expect(reasonOf(lively, "famous")).toContain(
-      "You like lively places, and this is one of Tokyo's well-known ones.",
+      "You like lively places, and it has a Wikipedia or Wikidata entry.",
     );
     const quiet = proposeCards(
       input({
@@ -411,7 +411,7 @@ describe("the traveller's taste in the ranking", () => {
     );
     expect(ids(quiet)[0]).toBe("tucked-away");
     expect(reasonOf(quiet, "tucked-away")).toContain(
-      "You asked for quiet places, and this is a quieter choice.",
+      "You asked for quiet places, and it has no Wikipedia or Wikidata entry.",
     );
   });
 
@@ -505,7 +505,7 @@ describe("the traveller's taste in the ranking", () => {
       const set = propose({ food: ["vegetarian"] });
       const confirmed = set.cards[0];
       expect(confirmed.reason).toContain(
-        "You eat vegetarian food, and its listing says it serves it.",
+        "You eat vegetarian food, and its listing says it has vegetarian options.",
       );
       expect(confirmed.unconfirmed).toBeUndefined();
       expect(confirmed.essentials).toBe("Restaurant");
@@ -537,7 +537,7 @@ describe("the traveller's taste in the ranking", () => {
         ).not.toContain("safe");
       }
       expect(set.cards[0].reason).toContain(
-        "Its listing says it serves vegetarian food, but place data cannot tell whether it is safe for your shellfish allergy, so check with the venue.",
+        "Its listing says it has vegetarian options, but place data cannot tell whether it is safe for your shellfish allergy, so check with the venue.",
       );
       expect(set.cards[2].reason).toContain(
         "You eat vegetarian food and have a shellfish allergy, and the place data confirms neither, so check with the venue.",
@@ -599,13 +599,13 @@ describe("the traveller's taste in the ranking", () => {
   it("says plainly when nothing is known yet, or the choice was left open", () => {
     const candidates = [place("a", { notable: true })];
     expect(proposeCards(input({ candidates })).cards[0].reason).toContain(
-      "You have not told me what you like to see yet, and it is one of Tokyo's well-known places.",
+      "You have not told me what you like to see yet, and it has a Wikipedia or Wikidata entry.",
     );
     expect(
       proposeCards(input({ candidates, taste: taste({ interests: [] }) }))
         .cards[0].reason,
     ).toContain(
-      "You left what to see open, and it is one of Tokyo's well-known places.",
+      "You left what to see open, and it has a Wikipedia or Wikidata entry.",
     );
   });
 });
@@ -652,5 +652,154 @@ describe("discard reasons", () => {
     expect(discardReason("Too far")).toBe("too_far");
     expect(discardReason("too_touristy")).toBe("too_touristy");
     expect(discardReason("Because")).toBeNull();
+  });
+});
+
+describe("true sentences", () => {
+  const taste = (over: Partial<CardTaste>): CardTaste => ({
+    ...noTaste,
+    ...over,
+  });
+  const reasonOf = (set: ReturnType<typeof proposeCards>, id: string) =>
+    set.cards.find((card) => card.placeId === id)!.reason;
+  const lunch = {
+    id: "d2-lunch",
+    kind: "lunch" as const,
+    date: "2027-05-11",
+    start: "12:30",
+  };
+
+  it("uses the stated means for travel", () => {
+    const set = proposeCards(
+      input({
+        from: sensoji,
+        candidates: [place("a", near)],
+        taste: taste({ means: "drive" }),
+      }),
+    );
+    expect(set.cards[0].travel?.means).toBe("drive");
+    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min drive$/);
+    expect(set.cards[0].reason).toMatch(/minute drive from Senso-ji/);
+  });
+
+  it("says about N min on the front of the card", () => {
+    const set = proposeCards(
+      input({ from: sensoji, candidates: [place("a", far)] }),
+    );
+    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min ride$/);
+  });
+
+  it("never says it looked closer", () => {
+    const set = proposeCards(
+      input({
+        from: sensoji,
+        candidates: [place("near", near)],
+        history: { ...noHistory, tooFar: 2 },
+      }),
+    );
+    expect(set.cards[0].reason).toContain(
+      "You said the last places were too far.",
+    );
+    expect(set.cards[0].reason).not.toContain("looked closer");
+  });
+
+  it("says nothing of notability for a sample place", () => {
+    const candidates = [
+      place("a", { origin: "SAMPLE", notable: true }),
+      place("b", { origin: "SAMPLE", notable: false }),
+    ];
+    for (const given of [
+      taste({ atmosphere: "lively" }),
+      taste({ atmosphere: "quiet" }),
+      noTaste,
+    ]) {
+      for (const card of proposeCards(input({ candidates, taste: given }))
+        .cards) {
+        expect(card.reason).not.toMatch(
+          /Wikipedia|Wikidata|well-known|quieter|touristy/,
+        );
+      }
+    }
+    // For a real place it says what the tag supports, and no more.
+    const real = proposeCards(
+      input({
+        candidates: [place("a", { notable: true }), place("b")],
+        taste: taste({ atmosphere: "lively" }),
+      }),
+    );
+    expect(reasonOf(real, "a")).toContain(
+      "it has a Wikipedia or Wikidata entry",
+    );
+  });
+
+  it("says open only when hours are fresh", () => {
+    const set = proposeCards(
+      input({
+        candidates: [
+          place("fresh"),
+          place("old", {
+            hoursDoubt: "Last updated on the map in 2021. Worth a check.",
+          }),
+        ],
+      }),
+    );
+    expect(reasonOf(set, "fresh")).toContain("It is open for the whole visit.");
+    expect(reasonOf(set, "old")).not.toContain("open for the whole visit");
+    expect(reasonOf(set, "old")).toContain(
+      "Its hours may be out of date, so check before you go.",
+    );
+  });
+
+  it("names the tag's own diet word", () => {
+    const set = proposeCards(
+      input({
+        slot: lunch,
+        candidates: [
+          place("vegan-place", {
+            kind: "restaurant",
+            serves: ["vegetarian", "vegan"],
+            tags: { "diet:vegan": "yes" },
+          }),
+        ],
+        taste: taste({ food: ["vegetarian"] }),
+      }),
+    );
+    expect(set.cards[0].reason).toContain(
+      "You eat vegetarian food, and its listing says it has vegan options.",
+    );
+  });
+
+  it("says the sample data for a sample diet", () => {
+    const set = proposeCards(
+      input({
+        slot: lunch,
+        candidates: [
+          place("s", {
+            origin: "SAMPLE",
+            kind: "restaurant",
+            serves: ["vegetarian"],
+          }),
+        ],
+        taste: taste({ food: ["vegetarian"], allergies: ["peanut"] }),
+      }),
+    );
+    expect(set.cards[0].reason).not.toMatch(/listing/i);
+    expect(set.cards[0].reason).toContain("The sample data says it serves");
+    const plain = proposeCards(
+      input({
+        slot: lunch,
+        candidates: [
+          place("s", {
+            origin: "SAMPLE",
+            kind: "restaurant",
+            serves: ["vegetarian"],
+          }),
+        ],
+        taste: taste({ food: ["vegetarian"] }),
+      }),
+    );
+    expect(plain.cards[0].reason).toContain(
+      "You eat vegetarian food, and the sample data says it serves it.",
+    );
   });
 });
