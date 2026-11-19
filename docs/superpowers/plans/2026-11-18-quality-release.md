@@ -14,28 +14,29 @@
 
 Milestone branch `milestone/8-quality-release`, cut from `milestone/7-quick-plan`. Each piece is a feature branch merged by pull request with a merge commit.
 
-| Piece                                             | Feature branch               | Requirements                    | Pull request |
-| ------------------------------------------------- | ---------------------------- | ------------------------------- | ------------ |
-| 0. Plan                                           | `feature/m8-plan`            | none (process)                  | #55          |
-| 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`       | none (removal)                  | #56          |
-| 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner`  | none (removal)                  | #57          |
-| 3. Drop its tables                                | `feature/m8-drop-old-tables` | none (removal)                  | #64          |
-| 4. The day starts when the traveller likes        | `feature/m8-day-start`       | TB-ITN-08, TB-MEM-03            | #58          |
-| 5. Profile: habits as slider cards                | `feature/m8-profile-habits`  | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
-| 6. Profile: daily budget with currency            | `feature/m8-profile-budget`  | TB-MEM-03, TB-QPL-03            | #60          |
-| 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped`  | TB-MEM-06, TB-MEM-11            | #61          |
-| 8. Defects found on the way                       | `feature/m8-defects`         | TB-MEM-02, TB-DSN-07            | #62          |
-| 9. The four sample travellers                     | `feature/m8-samples`         | TB-SYS-15                       | #63          |
-| 10. Design checks on the real screens             | `feature/m8-design-checks`   | TB-DSN-01 to 07                 | #65          |
-| 11. Time zones                                    | `feature/m8-time-zones`      | TB-ITN-16                       | #66          |
-| 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`    | none (process)                  | #67          |
-| 13. Evidence                                      | `feature/m8-evidence`        | all of the above, re-checked    | #68          |
-| 14. WebKit in the design checks                   | `feature/m8-design-webkit`   | TB-DSN-02 to 07                 | #70          |
-| 15. Moving by drag checked                        | `feature/m8-drag-check`      | TB-ITN-09                       | #72          |
-| 16. An evaluation of the model's reading          | `feature/m8-model-eval`      | TB-SYS-11                       | #73          |
-| 17. The release recorded, and a $15 cap           | `feature/m8-release-records` | TB-SYS-11                       | #74          |
-| 18. The phone sheet chosen and fixed              | `feature/m8-phone-sheet`     | TB-DSN-04, TB-DSN-05            | #75          |
-| 19. Phone layouts at 390 and 320                  | `feature/m8-phone-layouts`   | TB-DSN-04                       | #77          |
+| Piece                                             | Feature branch                 | Requirements                    | Pull request |
+| ------------------------------------------------- | ------------------------------ | ------------------------------- | ------------ |
+| 0. Plan                                           | `feature/m8-plan`              | none (process)                  | #55          |
+| 1. Cut the two links to the earlier planner       | `feature/m8-cut-links`         | none (removal)                  | #56          |
+| 2. Remove its code, routes, worker and QA entries | `feature/m8-remove-planner`    | none (removal)                  | #57          |
+| 3. Drop its tables                                | `feature/m8-drop-old-tables`   | none (removal)                  | #64          |
+| 4. The day starts when the traveller likes        | `feature/m8-day-start`         | TB-ITN-08, TB-MEM-03            | #58          |
+| 5. Profile: habits as slider cards                | `feature/m8-profile-habits`    | TB-MEM-03, TB-MEM-11, TB-DSN-01 | #59          |
+| 6. Profile: daily budget with currency            | `feature/m8-profile-budget`    | TB-MEM-03, TB-QPL-03            | #60          |
+| 7. Profile: how it shaped the latest trip         | `feature/m8-profile-shaped`    | TB-MEM-06, TB-MEM-11            | #61          |
+| 8. Defects found on the way                       | `feature/m8-defects`           | TB-MEM-02, TB-DSN-07            | #62          |
+| 9. The four sample travellers                     | `feature/m8-samples`           | TB-SYS-15                       | #63          |
+| 10. Design checks on the real screens             | `feature/m8-design-checks`     | TB-DSN-01 to 07                 | #65          |
+| 11. Time zones                                    | `feature/m8-time-zones`        | TB-ITN-16                       | #66          |
+| 12. QA catalogue for the new product              | `feature/m8-qa-catalogue`      | none (process)                  | #67          |
+| 13. Evidence                                      | `feature/m8-evidence`          | all of the above, re-checked    | #68          |
+| 14. WebKit in the design checks                   | `feature/m8-design-webkit`     | TB-DSN-02 to 07                 | #70          |
+| 15. Moving by drag checked                        | `feature/m8-drag-check`        | TB-ITN-09                       | #72          |
+| 16. An evaluation of the model's reading          | `feature/m8-model-eval`        | TB-SYS-11                       | #73          |
+| 17. The release recorded, and a $15 cap           | `feature/m8-release-records`   | TB-SYS-11                       | #74          |
+| 18. The phone sheet chosen and fixed              | `feature/m8-phone-sheet`       | TB-DSN-04, TB-DSN-05            | #75          |
+| 19. Phone layouts at 390 and 320                  | `feature/m8-phone-layouts`     | TB-DSN-04                       | #77          |
+| 20. Two small phone faults                        | `feature/m8-small-phone-fixes` | TB-DSN-04                       | #79          |
 
 ## Global Constraints
 
@@ -323,6 +324,15 @@ Each piece gets its own task list in its pull request. What is fixed here is wha
 - Create's step bar fits at 320.
 
 The design checks pass 57 of 57 in Chromium, Firefox and WebKit.
+
+### Piece 20: Two small phone faults
+
+**Produced (pull request 79, 2026-11-19):** two faults that piece 19's screenshots showed and the developer asked to fix.
+
+- The top menu stays on one line at 320: no item wraps, and the gaps and letter-spacing are tighter below `sm`.
+- The kind word in a card picture's round postmark is sized from its longest word, so it stays inside the ring. On a phone the corner stamp no longer covers the ring.
+
+The design checks pass 57 of 57 in Chromium.
 
 ## Waiting for the developer
 
