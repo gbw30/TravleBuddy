@@ -66,6 +66,7 @@ const food: [string, PlaceKind, number, number, string | null][] = [
   ["Morning Cafe", "cafe", -0.001, -0.002, "Mo-Su 07:30-18:00"],
   ["Corner Bakery", "bakery", 0.003, -0.001, "Mo-Su 07:00-17:00"],
   ["Sunrise Cafe", "cafe", -0.002, 0.003, "Mo-Su 07:00-16:00"],
+  ["Riverside Cafe", "cafe", 0.001, 0.004, "Mo-Su 07:30-17:00"],
   ["Garden Table", "restaurant", 0.004, 0.003, null],
   [
     "Harbour Canteen",

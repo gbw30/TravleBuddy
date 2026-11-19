@@ -15,8 +15,8 @@ Two limits of the sample places show in the itineraries, and are not faults of t
 
 | Traveller | Way | Places | Checks |
 | --- | --- | --- | --- |
-| Maya | Guided planning | 23 | all pass |
-| Maya | Quick plan | 23 | all pass |
+| Maya | Guided planning | 29 | all pass |
+| Maya | Quick plan | 29 | all pass |
 | The Okafors | Guided planning | 18 | all pass |
 | The Okafors | Quick plan | 18 | all pass |
 | Dan and Priya | Guided planning | 31 | all pass |
@@ -32,27 +32,29 @@ Alone, six days in Tokyo, mid budget, vegetarian, slow pace, food-led. *Tests: A
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 23 places, each one the place source knows, none twice |
+| No place is invented | pass | 29 places, each one the place source knows, none twice |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
-| Every reason is true of the traveller and the trip | pass | 66 reasons read, sentence by sentence |
+| Every reason is true of the traveller and the trip | pass | 81 reasons read, sentence by sentence |
 
 Pace: relaxed. Shape of the day: I will start the days at about nine. Interests: markets and shopping. Atmosphere: I will mix lively and quiet places. Food: vegetarian.
 
 **Day 1, Mon 10 May, Tokyo**
 
-- 10:00  Morning: **Mori Art Museum** (120 min)
-- 12:42  Lunch: **Corner Noodles** (75 min), 12 min walk to get there
-- 13:57  Time to wander around Corner Noodles (120 min)
-- 17:11  Afternoon: **Yanaka Ginza** (60 min), 44 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Market Kitchen** (75 min), 18 min walk to get there
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:40  Morning: **Mori Art Museum** (120 min), 25 min transit to get there
+- 13:22  Lunch: **Corner Noodles** (75 min), 12 min walk to get there
+- 14:37  Time to wander around Corner Noodles (120 min)
+- 17:51  Afternoon: **Yanaka Ginza** (60 min), 44 min transit to get there [opening hours not known]
+- 19:39  Dinner: **Market Kitchen** (75 min), 18 min walk to get there
 
 **Day 2, Tue 11 May, Tokyo**
 
-- 10:00  Morning: **Shinjuku Gyoen** (60 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:49  Morning: **Shinjuku Gyoen** (60 min), 34 min transit to get there
 - 12:30  Lunch: **Harbour Canteen** (75 min), 5 min walk to get there
 - 13:45  Time to wander around Harbour Canteen (120 min)
 - 16:50  Afternoon: **Nezu Shrine** (45 min), 35 min transit to get there [opening hours not known]
@@ -60,7 +62,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 3, Wed 12 May, Tokyo**
 
-- 10:00  Morning: **Senso-ji** (45 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:45  Morning: **Senso-ji** (45 min), 30 min transit to get there
 - 12:30  Lunch: **Market Kitchen** (75 min), 15 min walk to get there
 - 13:45  Time to wander around Market Kitchen (75 min)
 - 15:00  Already decided: teamLab Planets
@@ -68,7 +71,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 4, Thu 13 May, Tokyo**
 
-- 10:00  Morning: **Shibuya Sky** (30 min)
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:48  Morning: **Shibuya Sky** (30 min), 33 min transit to get there
 - 12:30  Lunch: **Morning Cafe** (45 min), 6 min walk to get there
 - 13:45  Time to wander around Morning Cafe (120 min)
 - 17:14  Afternoon: **Tokyo Skytree** (30 min), 59 min transit to get there
@@ -76,36 +80,39 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 5, Fri 14 May, Tokyo**
 
-- 10:00  Morning: **Tokyo National Museum** (120 min)
-- 12:46  Lunch: **Market Kitchen** (75 min), 16 min walk to get there
-- 14:01  Time to wander around Market Kitchen (120 min)
-- 17:13  Afternoon: **Meiji Jingu** (45 min), 42 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Garden Table** (75 min), 15 min walk to get there [opening hours not known]
+- 09:00  Breakfast: **Morning Cafe** (45 min)
+- 10:43  Morning: **Tokyo National Museum** (120 min), 28 min transit to get there
+- 13:29  Lunch: **Market Kitchen** (75 min), 16 min walk to get there
+- 14:44  Time to wander around Market Kitchen (120 min)
+- 17:56  Afternoon: **Meiji Jingu** (45 min), 42 min transit to get there [opening hours not known]
+- 19:26  Dinner: **Garden Table** (75 min), 15 min walk to get there [opening hours not known]
 
 **Day 6, Sat 15 May, Tokyo**
 
-- 10:00  Morning: **Nezu Museum** (120 min)
-- 12:50  Lunch: **Corner Noodles** (75 min), 20 min walk to get there
-- 14:05  Time to wander around Corner Noodles (120 min)
-- 17:14  Afternoon: **Ueno Park** (60 min), 39 min transit to get there
-- 19:07  Dinner: **Corner Noodles** (75 min), 23 min walk to get there
+- 09:00  Breakfast: **Morning Cafe** (45 min)
+- 10:43  Morning: **Nezu Museum** (120 min), 28 min transit to get there
+- 13:33  Lunch: **Corner Noodles** (75 min), 20 min walk to get there
+- 14:48  Time to wander around Corner Noodles (120 min)
+- 17:57  Afternoon: **Ueno Park** (60 min), 39 min transit to get there
+- 19:50  Dinner: **Corner Noodles** (75 min), 23 min walk to get there
 
 ### Quick plan
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 23 places, each one the place source knows, none twice |
+| No place is invented | pass | 29 places, each one the place source knows, none twice |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 
 Pace: relaxed. Shape of the day: I will start the days at about nine. Interests: markets and shopping. Atmosphere: I will mix lively and quiet places. Food: vegetarian.
 
 **Day 1, Mon 10 May, Tokyo**
 
-- 10:00  Morning: **Tsukiji Outer Market** (60 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:30  Morning: **Tsukiji Outer Market** (60 min), 15 min transit to get there
 - 12:30  Lunch: **Corner Noodles** (75 min), 12 min walk to get there
 - 13:45  Time to wander around Corner Noodles (120 min)
 - 16:40  Afternoon: **Mori Art Museum** (120 min), 25 min transit to get there
@@ -113,7 +120,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 2, Tue 11 May, Tokyo**
 
-- 10:00  Morning: **Yanaka Ginza** (60 min) [opening hours not known]
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:45  Morning: **Yanaka Ginza** (60 min), 30 min transit to get there [opening hours not known]
 - 12:30  Lunch: **Corner Noodles** (75 min), 10 min walk to get there
 - 13:45  Time to wander around Corner Noodles (120 min)
 - 16:36  Afternoon: **Nezu Shrine** (45 min), 21 min walk to get there [opening hours not known]
@@ -121,7 +129,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 3, Wed 12 May, Tokyo**
 
-- 10:00  Morning: **Imperial Palace East Gardens** (60 min)
+- 09:00  Breakfast: **Morning Cafe** (45 min)
+- 10:33  Morning: **Imperial Palace East Gardens** (60 min), 18 min transit to get there
 - 12:30  Lunch: **Market Kitchen** (75 min), 9 min walk to get there
 - 13:45  Time to wander around Market Kitchen (75 min)
 - 15:00  Already decided: teamLab Planets
@@ -129,7 +138,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 4, Thu 13 May, Tokyo**
 
-- 10:00  Morning: **Shinjuku Gyoen** (60 min)
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:47  Morning: **Shinjuku Gyoen** (60 min), 32 min transit to get there
 - 12:30  Lunch: **Market Kitchen** (75 min), 12 min walk to get there
 - 13:45  Time to wander around Market Kitchen (120 min)
 - 16:31  Afternoon: **Meiji Jingu** (45 min), 16 min transit to get there [opening hours not known]
@@ -137,7 +147,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 5, Fri 14 May, Tokyo**
 
-- 10:00  Morning: **Senso-ji** (45 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:47  Morning: **Senso-ji** (45 min), 32 min transit to get there
 - 12:30  Lunch: **Market Kitchen** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Market Kitchen (120 min)
 - 16:37  Afternoon: **Tokyo Skytree** (30 min), 22 min walk to get there
@@ -145,7 +156,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 6, Sat 15 May, Tokyo**
 
-- 10:00  Morning: **Shibuya Sky** (30 min)
+- 09:00  Breakfast: **Morning Cafe** (45 min)
+- 10:47  Morning: **Shibuya Sky** (30 min), 32 min transit to get there
 - 12:30  Lunch: **Corner Noodles** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Corner Noodles (120 min)
 - 17:02  Afternoon: **Ueno Park** (60 min), 47 min transit to get there
@@ -153,10 +165,10 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **The agent's report**
 
-- Built: 6 days in Tokyo, planned around 1 thing already decided. I chose 23 places: 11 to see and 12 to eat at.
+- Built: 6 days in Tokyo, planned around 1 thing already decided. I chose 29 places: 17 to see and 12 to eat at.
 - Assumed: Shape of the day: I will start the days at about nine. Atmosphere: I will mix lively and quiet places. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: nothing was left over.
-- Unsure: Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 3. I chose Imperial Palace East Gardens. Two places were close for dinner on day 3. I chose Corner Noodles. 6 more choices were close too. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
+- Unsure: Two places were close for the breakfast on day 1. I chose Sunrise Cafe. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the breakfast on day 2. I chose Corner Bakery. 11 more choices were close too. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
 
 ## The Okafors
 
@@ -170,7 +182,7 @@ Two adults and children of 7 and 11, five days in Lisbon, flights booked, early 
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | balanced: no day has more than 3 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 49 reasons read, sentence by sentence |
 
@@ -187,6 +199,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 **Day 2, Sun 11 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
 - 11:30  Lunch: **Corner Noodles** (75 min), 6 min walk to get there
 - 12:45  Time to wander around Corner Noodles (60 min)
@@ -196,27 +209,30 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 **Day 3, Mon 12 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: **Lisbon Central Market** (60 min)
-- 11:30  Lunch: **Morning Cafe** (45 min), 6 min walk to get there
-- 12:45  Time to wander around Morning Cafe (60 min)
-- 14:24  Afternoon: **Lisbon Art Gallery** (120 min), 19 min walk to get there
-- 17:05  Late afternoon: **Lisbon Lookout** (30 min), 21 min transit to get there [opening hours not known]
-- 18:08  Dinner: **Garden Table** (75 min), 13 min walk to get there [opening hours not known]
+- 11:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
+- 12:45  Time to wander around Sunrise Cafe (60 min)
+- 14:22  Afternoon: **Lisbon Art Gallery** (120 min), 17 min walk to get there
+- 17:03  Late afternoon: **Lisbon Lookout** (30 min), 21 min transit to get there [opening hours not known]
+- 18:06  Dinner: **Garden Table** (75 min), 13 min walk to get there [opening hours not known]
 
 **Day 4, Tue 13 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: *open*
-- 11:30  Lunch: **Corner Noodles** (75 min)
-- 12:45  Time to wander around Corner Noodles (60 min)
-- 14:24  Afternoon: **Lisbon Castle** (60 min), 19 min transit to get there
-- 15:24  Late afternoon: *open*
+- 11:30  Lunch: **Morning Cafe** (45 min)
+- 12:45  Time to wander around Morning Cafe (60 min)
+- 14:26  Afternoon: **Lisbon Castle** (60 min), 21 min transit to get there
+- 15:26  Late afternoon: *open*
 - 18:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
 **Day 5, Wed 14 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: *open*
-- 11:30  Lunch: **Morning Cafe** (45 min)
-- 12:45  Time to wander around Morning Cafe (60 min)
+- 11:30  Lunch: **Corner Noodles** (75 min)
+- 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
 - 17:40  Already decided: Flight · Lisbon → London
 
@@ -228,7 +244,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | balanced: no day has more than 3 sights or activities |
 
 Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: parks and nature; activities. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
@@ -244,6 +260,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 **Day 2, Sun 11 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
 - 11:30  Lunch: **Corner Noodles** (75 min), 6 min walk to get there
 - 12:45  Time to wander around Corner Noodles (60 min)
@@ -253,27 +270,30 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 **Day 3, Mon 12 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: **Lisbon Central Market** (60 min)
-- 11:30  Lunch: **Morning Cafe** (45 min), 6 min walk to get there
-- 12:45  Time to wander around Morning Cafe (60 min)
-- 14:24  Afternoon: **Lisbon Art Gallery** (120 min), 19 min walk to get there
-- 17:05  Late afternoon: **Lisbon Lookout** (30 min), 21 min transit to get there [opening hours not known]
-- 18:08  Dinner: **Garden Table** (75 min), 13 min walk to get there [opening hours not known]
+- 11:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
+- 12:45  Time to wander around Sunrise Cafe (60 min)
+- 14:22  Afternoon: **Lisbon Art Gallery** (120 min), 17 min walk to get there
+- 17:03  Late afternoon: **Lisbon Lookout** (30 min), 21 min transit to get there [opening hours not known]
+- 18:06  Dinner: **Garden Table** (75 min), 13 min walk to get there [opening hours not known]
 
 **Day 4, Tue 13 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: *open*
-- 11:30  Lunch: **Corner Noodles** (75 min)
-- 12:45  Time to wander around Corner Noodles (60 min)
-- 14:24  Afternoon: **Lisbon Castle** (60 min), 19 min transit to get there
-- 15:24  Late afternoon: *open*
+- 11:30  Lunch: **Morning Cafe** (45 min)
+- 12:45  Time to wander around Morning Cafe (60 min)
+- 14:26  Afternoon: **Lisbon Castle** (60 min), 21 min transit to get there
+- 15:26  Late afternoon: *open*
 - 18:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
 **Day 5, Wed 14 Jul, Lisbon**
 
+- 08:00  Breakfast where you stay (45 min)
 - 08:30  Morning: *open*
-- 11:30  Lunch: **Morning Cafe** (45 min)
-- 12:45  Time to wander around Morning Cafe (60 min)
+- 11:30  Lunch: **Corner Noodles** (75 min)
+- 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
 - 17:40  Already decided: Flight · Lisbon → London
 
@@ -296,7 +316,7 @@ Honeymoon, nine days by train through Rome, Florence and Venice, high budget, un
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 90 reasons read, sentence by sentence |
 
@@ -313,24 +333,24 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 2, Sun 6 Jun, Rome**
 
 - 10:00  Morning: **Rome Old Town** (60 min) [opening hours not known]
-- 12:30  Lunch: **Corner Noodles** (75 min), 11 min walk to get there
-- 13:45  Time to wander around Corner Noodles (120 min)
-- 16:36  Afternoon: **Rome Art Gallery** (120 min), 21 min walk to get there
-- 19:12  Dinner: **Garden Table** (75 min), 6 min walk to get there [opening hours not known]
+- 12:30  Lunch: **Market Kitchen** (75 min), 7 min walk to get there
+- 13:45  Time to wander around Market Kitchen (120 min)
+- 16:30  Afternoon: **Rome Art Gallery** (120 min), 15 min walk to get there
+- 19:08  Dinner: **Corner Noodles** (75 min), 8 min walk to get there
 
 **Day 3, Mon 7 Jun, Rome**
 
 - 10:00  Morning: **Rome Botanical Garden** (60 min)
-- 12:30  Lunch: **Market Kitchen** (75 min), 8 min walk to get there
-- 13:45  Time to wander around Market Kitchen (120 min)
-- 16:40  Afternoon: **Rome Riverside Park** (60 min), 25 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Harbour Canteen** (75 min), 7 min walk to get there
+- 13:45  Time to wander around Harbour Canteen (120 min)
+- 16:38  Afternoon: **Rome Riverside Park** (60 min), 23 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Market Kitchen** (75 min), 3 min walk to get there
 
 **Day 4, Tue 8 Jun, Rome**
 
 - 10:00  Morning: **Rome Central Market** (60 min)
 - 12:00  Travel from Rome to Florence, assumed (255 min)
-- 19:00  Dinner: **Harbour Canteen** (75 min)
+- 19:00  Dinner: **Garden Table** (75 min) [opening hours not known]
 
 **Day 5, Wed 9 Jun, Florence**
 
@@ -343,9 +363,9 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 6, Thu 10 Jun, Florence**
 
 - 10:00  Morning: **Florence Old Town** (60 min) [opening hours not known]
-- 12:30  Lunch: **Market Kitchen** (75 min), 6 min walk to get there
-- 13:45  Time to wander around Market Kitchen (120 min)
-- 16:30  Afternoon: **Florence Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Sunrise Cafe** (45 min), 13 min walk to get there
+- 13:45  Time to wander around Sunrise Cafe (120 min)
+- 16:34  Afternoon: **Florence Lookout** (30 min), 19 min walk to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 5 min walk to get there
 
 **Day 7, Fri 11 Jun, Florence**
@@ -378,7 +398,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
 
 Pace: relaxed. Shape of the day: I will start the days at about nine. Interests: views; temples, shrines and history. Atmosphere: quiet. Food: I will assume no restrictions.
@@ -394,24 +414,24 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 2, Sun 6 Jun, Rome**
 
 - 10:00  Morning: **Rome Old Town** (60 min) [opening hours not known]
-- 12:30  Lunch: **Morning Cafe** (45 min), 4 min walk to get there
-- 13:45  Time to wander around Morning Cafe (120 min)
-- 16:33  Afternoon: **Rome Lookout** (30 min), 18 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Sunrise Cafe** (45 min), 4 min walk to get there
+- 13:45  Time to wander around Sunrise Cafe (120 min)
+- 16:31  Afternoon: **Rome Lookout** (30 min), 16 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Lantern Grill** (75 min), 10 min walk to get there
 
 **Day 3, Mon 7 Jun, Rome**
 
 - 10:00  Morning: **Rome Botanical Garden** (60 min)
-- 12:30  Lunch: **Market Kitchen** (75 min), 8 min walk to get there
-- 13:45  Time to wander around Market Kitchen (120 min)
-- 16:35  Afternoon: **Rome Art Gallery** (120 min), 20 min transit to get there
-- 19:11  Dinner: **Garden Table** (75 min), 6 min walk to get there [opening hours not known]
+- 12:30  Lunch: **Morning Cafe** (45 min), 4 min walk to get there
+- 13:45  Time to wander around Morning Cafe (120 min)
+- 16:34  Afternoon: **Rome Art Gallery** (120 min), 19 min transit to get there
+- 19:07  Dinner: **Market Kitchen** (75 min), 3 min walk to get there
 
 **Day 4, Tue 8 Jun, Rome**
 
 - 10:00  Morning: **Rome Central Market** (60 min)
 - 12:00  Travel from Rome to Florence, assumed (255 min)
-- 19:00  Dinner: **Harbour Canteen** (75 min)
+- 19:00  Dinner: **Garden Table** (75 min) [opening hours not known]
 
 **Day 5, Wed 9 Jun, Florence**
 
@@ -424,8 +444,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 6, Thu 10 Jun, Florence**
 
 - 10:00  Morning: **Florence Castle** (60 min)
-- 12:30  Lunch: **Morning Cafe** (45 min), 6 min walk to get there
-- 13:45  Time to wander around Morning Cafe (120 min)
+- 12:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
+- 13:45  Time to wander around Sunrise Cafe (120 min)
 - 16:30  Afternoon: **Florence Old Town** (60 min), 15 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Corner Noodles** (75 min), 4 min walk to get there
 
@@ -438,8 +458,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 8, Sat 12 Jun, Venice**
 
 - 10:00  Morning: **Venice Castle** (60 min)
-- 12:30  Lunch: **Morning Cafe** (45 min), 4 min walk to get there
-- 13:45  Time to wander around Morning Cafe (120 min)
+- 12:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
+- 13:45  Time to wander around Sunrise Cafe (120 min)
 - 16:31  Afternoon: **Venice Cathedral** (45 min), 16 min transit to get there
 - 19:00  Dinner: **Corner Noodles** (75 min), 2 min walk to get there
 
@@ -456,7 +476,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - Built: 9 days in Rome, Florence and Venice, planned around 1 thing already decided. I chose 31 places: 15 to see and 16 to eat at.
 - Assumed: Shape of the day: I will start the days at about nine. Food: I will assume no restrictions. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: nothing was left over.
-- Unsure: Two places were close for the morning on day 1. I chose Rome Castle. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 2. I chose Rome Old Town. 11 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Lookout, Garden Table, Florence Old Town, Florence Lookout, Venice Old Town and Venice Lookout. Check before you go.
+- Unsure: Two places were close for the morning on day 1. I chose Rome Castle. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the morning on day 2. I chose Rome Old Town. 10 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Lookout, Garden Table, Florence Old Town, Florence Lookout, Venice Old Town and Venice Lookout. Check before you go.
 
 ## Sam
 
@@ -470,7 +490,7 @@ Returning user, three-day city break, Quick plan with only step 1 filled. *Tests
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | packed: no day has more than 4 sights or activities |
 | Every reason is true of the traveller and the trip | pass | 42 reasons read, sentence by sentence |
 
@@ -480,9 +500,9 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 
 - 09:00  Morning: **Rome Botanical Garden** (60 min)
 - 10:45  Late morning: **Rome City Museum** (120 min), 20 min transit to get there
-- 13:05  Lunch: **Corner Noodles** (75 min), 10 min walk to get there
-- 14:48  Afternoon: **Rome Art Gallery** (120 min), 18 min transit to get there
-- 17:15  Late afternoon: **Rome Old Town** (60 min), 17 min walk to get there [opening hours not known]
+- 12:58  Lunch: **Sunrise Cafe** (45 min), 3 min walk to get there
+- 14:08  Afternoon: **Rome Art Gallery** (120 min), 15 min transit to get there
+- 16:35  Late afternoon: **Rome Old Town** (60 min), 17 min walk to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
 **Day 2, Sat 11 Sept, Rome**
@@ -498,10 +518,10 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 
 - 09:00  Morning: *open*
 - 10:45  Late morning: **Rome Castle** (60 min)
-- 12:30  Lunch: **Garden Table** (75 min), 7 min walk to get there [opening hours not known]
+- 12:30  Lunch: **Corner Noodles** (75 min), 3 min walk to get there
 - 14:00  Afternoon: *open*
 - 16:00  Late afternoon: *open*
-- 19:00  Dinner: **Lantern Grill** (75 min), 13 min walk to get there
+- 19:00  Dinner: **Lantern Grill** (75 min), 9 min walk to get there
 
 ### Quick plan
 
@@ -511,7 +531,7 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
-| Every day has its meals | pass | no lunch or dinner is left open |
+| Every day has its meals | pass | no meal asked for is left open |
 | The days match the pace | pass | packed: no day has more than 4 sights or activities |
 
 Pace: packed (you told me). Shape of the day: I will start the days at about nine. Interests: museums and exhibitions (you told me). Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
@@ -520,9 +540,9 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 
 - 09:00  Morning: **Rome Botanical Garden** (60 min)
 - 10:45  Late morning: **Rome City Museum** (120 min), 20 min transit to get there
-- 13:05  Lunch: **Corner Noodles** (75 min), 10 min walk to get there
-- 14:48  Afternoon: **Rome Art Gallery** (120 min), 18 min transit to get there
-- 17:15  Late afternoon: **Rome Old Town** (60 min), 17 min walk to get there [opening hours not known]
+- 12:58  Lunch: **Sunrise Cafe** (45 min), 3 min walk to get there
+- 14:08  Afternoon: **Rome Art Gallery** (120 min), 15 min transit to get there
+- 16:35  Late afternoon: **Rome Old Town** (60 min), 17 min walk to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
 **Day 2, Sat 11 Sept, Rome**
@@ -538,15 +558,15 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 
 - 09:00  Morning: *open*
 - 10:45  Late morning: **Rome Castle** (60 min)
-- 12:30  Lunch: **Garden Table** (75 min), 7 min walk to get there [opening hours not known]
+- 12:30  Lunch: **Corner Noodles** (75 min), 3 min walk to get there
 - 14:00  Afternoon: *open*
 - 16:00  Late afternoon: *open*
-- 19:00  Dinner: **Lantern Grill** (75 min), 13 min walk to get there
+- 19:00  Dinner: **Lantern Grill** (75 min), 9 min walk to get there
 
 **The agent's report**
 
 - Built: 3 days in Rome. I chose 15 places: 9 to see and 6 to eat at.
 - Assumed: Pace: packed (you told me). Shape of the day: I will start the days at about nine. Interests: museums and exhibitions (you told me). Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: Nothing I know fits the morning on day 3. Nothing I know fits the afternoon on day 3. Nothing I know fits the late afternoon on day 3.
-- Unsure: Two places were close for the morning on day 1. I chose Rome Botanical Garden. Two places were close for the morning on day 2. I chose Rome Central Market. Two places were close for the afternoon on day 2. I chose Rome Lookout. I do not know the opening hours of Rome Old Town, Rome Lookout, Rome Riverside Park and Garden Table. Check before you go.
+- Unsure: Two places were close for the morning on day 1. I chose Rome Botanical Garden. Two places were close for the morning on day 2. I chose Rome Central Market. Two places were close for the afternoon on day 2. I chose Rome Lookout. I do not know the opening hours of Rome Old Town, Rome Lookout and Rome Riverside Park. Check before you go.
 
