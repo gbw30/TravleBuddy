@@ -18,6 +18,7 @@ import {
   readProfile,
   readTripTaste,
   tasteInUse,
+  type TasteInUse,
 } from "@/features/memory";
 import { findEditable, getTrip } from "@/features/trips";
 import type { TripDetail } from "@/features/trips/contracts";
@@ -62,6 +63,8 @@ type Prepared = {
   /** The pace to set first, then the picks, in the order they were made. */
   changes: Change[];
   progress: BuildProgress;
+  /** The taste the day was worked out with, so it is saved from the same layout. */
+  taste: TasteInUse;
 };
 
 /**
@@ -87,7 +90,7 @@ async function prepareDay(
   );
 
   let state = withProvisionalStart(saved.state, trip);
-  let context = await contextFor(trip, state, userId);
+  let context = await contextFor(trip, state, userId, [], taste);
   let view = buildPlanView(state, context);
   const changes: Change[] = [];
 
@@ -162,7 +165,13 @@ async function prepareDay(
       };
       const applied = applyPlanAction(state, view, pick);
       if ("refused" in applied) continue;
-      const withPlace = await contextFor(trip, applied.state, userId);
+      const withPlace = await contextFor(
+        trip,
+        applied.state,
+        userId,
+        [],
+        taste,
+      );
       const next = buildPlanView(applied.state, withPlace);
       if (brokenRules(next) > brokenRules(view)) continue;
       state = applied.state;
@@ -178,7 +187,13 @@ async function prepareDay(
   }
 
   progress.nextDay = dayNumber + 1;
-  return { day: dayNumber, days: view.days.length, changes, progress };
+  return {
+    day: dayNumber,
+    days: view.days.length,
+    changes,
+    progress,
+    taste,
+  };
 }
 
 /**
@@ -222,6 +237,7 @@ export async function buildNextDay(input: {
         prepared.changes.flatMap((change) =>
           change.type === "pick" ? [change.placeId] : [],
         ),
+        prepared.taste,
       );
       const built = { ...prepared.progress.built };
       let filled = 0;

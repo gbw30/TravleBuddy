@@ -91,11 +91,31 @@ export function withProvisionalStart(
   return { ...state, provisionalStart: provisionalStart(trip.facts, today()) };
 }
 
+/** How far the "shape of the day" moves the whole day (PRD 9.4). */
+const DAY_SHIFT: Record<string, number> = { early: -60, late: 60 };
+
+/** The taste a trip goes by: the personal profile, with what was said for this trip on top. */
+export async function tasteOf(
+  userId: string,
+  tripId: string,
+): Promise<TasteInUse> {
+  const [profile, said] = await Promise.all([
+    readProfile(db, userId),
+    readTripTaste(db, tripId),
+  ]);
+  return tasteInUse(profile.entries, said);
+}
+
+/**
+ * What a plan is laid out from. `taste` is passed by a caller that has
+ * already read it; otherwise it is read here.
+ */
 export async function contextFor(
   trip: TripDetail,
   state: PlanState,
   userId: string,
   alsoPlaceIds: string[] = [],
+  taste?: TasteInUse,
 ): Promise<PlanContext> {
   const ids = [
     ...Object.values(state.picks).map((pick) => pick.placeId),
@@ -103,10 +123,12 @@ export async function contextFor(
     ...alsoPlaceIds,
   ];
   const places = await getPlaces([...new Set(ids)], userId);
+  const inUse = taste ?? (await tasteOf(userId, trip.id));
   return {
     facts: trip.facts,
     commitments: trip.commitments,
     places: Object.fromEntries(places.map((place) => [place.id, place])),
+    dayShift: DAY_SHIFT[inUse.day_shape?.values[0] ?? ""] ?? 0,
   };
 }
 
@@ -392,16 +414,18 @@ export async function loadPlan(
   if (!trip) return null;
   const saved = await readPlanState(db, tripId);
   const state = withProvisionalStart(saved.state, trip);
-  const context = await contextFor(trip, state, userId);
+  // The taste a trip goes by starts from the personal profile; what was
+  // said for this trip wins (TB-MEM-02). The layout needs it too: the
+  // shape of the day moves the day (TB-ITN-08).
+  const [personal, said] = await Promise.all([
+    readProfile(db, userId).then((profile) => profile.entries),
+    readTripTaste(db, tripId),
+  ]);
+  const taste: TasteInUse = tasteInUse(personal, said);
+  const context = await contextFor(trip, state, userId, [], taste);
   const view = buildPlanView(state, context);
   const focus = trip.archived ? null : focusSlot(view, wanted);
   const progress = view.days.length > 0 ? await readBuild(db, tripId) : null;
-  // The taste a trip goes by starts from the personal profile; what was
-  // said for this trip wins (TB-MEM-02).
-  const reads = focus !== null || progress !== null;
-  const personal = reads ? (await readProfile(db, userId)).entries : [];
-  const said = reads ? await readTripTaste(db, tripId) : {};
-  const taste: TasteInUse = tasteInUse(personal, said);
   const limits = limitsInUse(
     personal,
     said.food?.source === "told" ? said.food.values : [],

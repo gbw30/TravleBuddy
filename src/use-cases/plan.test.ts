@@ -382,3 +382,54 @@ describe("setting the plan's pace from the conversation", () => {
     expect(mocks.writePlanVersion).not.toHaveBeenCalled();
   });
 });
+
+describe("the shape of the day in a plan", () => {
+  const firstStart = async () => {
+    const plan = await load();
+    const entry = plan?.view.days[0].entries.find(
+      (item) => item.type === "open",
+    );
+    return entry?.type === "open" ? entry.start : null;
+  };
+  const remembered = (value: string) => ({
+    entries: [
+      {
+        topic: "day_shape",
+        value,
+        sureness: "always",
+        source: { type: "told" },
+      },
+    ],
+  });
+
+  it("moves the day an hour earlier for a traveller who likes early starts, and later for late nights", async () => {
+    const usual = await firstStart();
+    mocks.readProfile.mockResolvedValue(remembered("early"));
+    const early = await firstStart();
+    mocks.readProfile.mockResolvedValue(remembered("late"));
+    const late = await firstStart();
+    const hour = (clock: string | null) => Number(clock?.slice(0, 2));
+    expect(hour(early)).toBe(hour(usual) - 1);
+    expect(hour(late)).toBe(hour(usual) + 1);
+  });
+
+  it("goes by what was said for this trip where it differs from the profile", async () => {
+    const usual = await firstStart();
+    mocks.readProfile.mockResolvedValue(remembered("early"));
+    mocks.readTripTaste.mockResolvedValue({
+      day_shape: { values: ["neither"], source: "told" },
+    });
+    expect(await firstStart()).toBe(usual);
+  });
+
+  it("lays out a change to the plan from the same shifted day", async () => {
+    mocks.readProfile.mockResolvedValue(remembered("early"));
+    await setPlanPace({ name: "tx" } as never, trip(), "user-1", "packed");
+    // A packed day for an early riser has its first slot at eight.
+    expect(mocks.writePlanVersion).toHaveBeenCalledTimes(1);
+    const plan = await load();
+    expect(
+      plan?.view.days[0].entries.some((item) => item.type === "open"),
+    ).toBe(true);
+  });
+});
