@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-import { chromium, type APIRequestContext } from "@playwright/test";
+import { chromium } from "@playwright/test";
 
 import { SLOT_WORDS, type PlanEntry } from "@/features/itinerary/contracts";
 import type { City } from "@/features/places/contracts";
@@ -17,6 +17,7 @@ import {
   type KnownPlace,
   type Truth,
 } from "./checks";
+import { signedIn, type Call } from "../site";
 import { TRAVELLERS, type Traveller } from "./travellers";
 
 // Plans the four sample travellers of PRD 18 through the running site, by
@@ -34,32 +35,9 @@ const out = process.argv[3] ?? "docs/quality/sample-travellers.md";
 const WAYS = ["Guided planning", "Quick plan"] as const;
 type Way = (typeof WAYS)[number];
 
-type Answer = { status: number; json: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
-
 async function main() {
   const browser = await chromium.launch();
-  const page = await (await browser.newContext()).newPage();
-  await page.goto(`${base}/login`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /Sign in as dev user/i }).click();
-  await page.waitForURL("**/home", { timeout: 120_000 });
-  const http: APIRequestContext = page.request;
-
-  const call = async (
-    method: "get" | "post" | "put" | "patch" | "delete",
-    path: string,
-    data?: object,
-  ): Promise<Answer> => {
-    const answer = await http[method](
-      `${base}/api/v1${path}`,
-      data ? { data } : undefined,
-    );
-    const text = await answer.text();
-    try {
-      return { status: answer.status(), json: JSON.parse(text) };
-    } catch {
-      return { status: answer.status(), json: null };
-    }
-  };
+  const { call } = await signedIn(browser, base);
 
   const sections: string[] = [];
   const summary: string[] = [];
@@ -133,12 +111,6 @@ async function main() {
   console.log(`\n${failures} failed checks. Written to ${out}`);
   if (failures > 0) process.exitCode = 1;
 }
-
-type Call = (
-  method: "get" | "post" | "put" | "patch" | "delete",
-  path: string,
-  data?: object,
-) => Promise<Answer>;
 
 async function planOne(
   call: Call,

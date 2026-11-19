@@ -8,12 +8,12 @@ export const button = `${buttonBase} h-9 px-4 text-[13px]`;
 export const buttonLarge = `${buttonBase} h-[52px] px-6 text-[15px]`;
 /** The arrow inside a main button. It slides when the button is hovered. */
 export const buttonArrow =
-  "-mr-3.5 grid size-9 place-items-center rounded-full bg-paper text-ink transition-transform duration-300 ease-settle group-hover:translate-x-1";
+  "-mr-3.5 grid size-9 place-items-center rounded-full bg-paper text-ink transition-transform duration-300 ease-settle group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0";
 
 /** The second choice next to a main button. Fills with ink on hover. */
 export const buttonSecond = `inline-flex h-9 items-center justify-center rounded-full px-4 font-sans text-[13px] font-medium text-ink shadow-[inset_0_0_0_1.5px_rgb(29_26_22/0.25)] transition-[background-color,color,box-shadow,scale] ${settle} hover:bg-ink hover:text-paper hover:shadow-none active:scale-[0.96]`;
 
-const quietBase = `inline-flex items-center font-sans font-medium text-ink underline decoration-ink/25 decoration-[1.5px] underline-offset-4 transition-colors ${settle} hover:text-terracotta hover:decoration-terracotta disabled:opacity-40 disabled:no-underline disabled:hover:text-ink`;
+const quietBase = `min-w-6 inline-flex items-center font-sans font-medium text-ink underline decoration-ink/25 decoration-[1.5px] underline-offset-4 transition-colors ${settle} hover:text-terracotta hover:decoration-terracotta disabled:opacity-40 disabled:no-underline disabled:hover:text-ink`;
 export const quiet = `${quietBase} min-h-8 text-[13px]`;
 export const quietLarge = `${quietBase} min-h-11 text-[15px]`;
 
@@ -33,7 +33,7 @@ export const cardTitle = `${display} text-[24px] leading-[1.1] tracking-[-0.02em
 export const panel = "rounded-2xl bg-card shadow-sheet";
 /** A card that can be picked: it rises to meet the pointer. */
 export const lift =
-  "transition-[translate,box-shadow] duration-300 ease-settle hover:-translate-y-1 hover:shadow-lift";
+  "transition-[translate,box-shadow] duration-300 ease-settle hover:-translate-y-1 hover:shadow-lift motion-reduce:transition-[box-shadow] motion-reduce:hover:translate-y-0";
 
 /** An answer you can switch on and off. */
 export const chip = `inline-flex min-h-9 items-center rounded-full px-4 font-sans text-[13px] text-ink shadow-[inset_0_0_0_1px_rgb(29_26_22/0.25)] transition-[background-color,color,box-shadow,scale] ${settle} hover:shadow-[inset_0_0_0_1px_rgb(29_26_22/0.7)] active:scale-[0.96] aria-pressed:bg-ink aria-pressed:text-paper`;

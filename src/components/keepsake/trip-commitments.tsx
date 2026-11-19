@@ -314,7 +314,7 @@ export function TripCommitments({
       </ul>
       {!readOnly && (
         <details className="mt-4">
-          <summary className="cursor-pointer font-sans text-[13px] font-medium text-ink underline decoration-ink/25 decoration-[1.5px] underline-offset-4">
+          <summary className="cursor-pointer py-0.5 font-sans text-[13px] font-medium text-ink underline decoration-ink/25 decoration-[1.5px] underline-offset-4">
             Add something already decided
           </summary>
           <CommitmentForm

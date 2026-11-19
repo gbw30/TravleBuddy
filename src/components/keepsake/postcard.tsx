@@ -37,7 +37,7 @@ export function Postcard({
   return (
     <article
       data-qa="postcard"
-      className="relative flex h-full min-w-0 flex-col rounded-[4px] bg-card p-2.5 shadow-print transition-[translate,box-shadow] duration-300 ease-settle hover:-translate-y-1 hover:shadow-lift"
+      className="relative flex h-full min-w-0 flex-col rounded-[4px] bg-card p-2.5 shadow-print transition-[translate,box-shadow] duration-300 ease-settle hover:-translate-y-1 hover:shadow-lift motion-reduce:transition-[box-shadow] motion-reduce:hover:translate-y-0"
     >
       <button
         type="button"

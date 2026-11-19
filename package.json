@@ -15,6 +15,7 @@
     "db:deploy": "prisma migrate deploy",
     "qa:fingerprint": "tsx qa/cli/fingerprint.ts",
     "qa:doctor": "tsx qa/cli/doctor.ts",
+    "quality:design": "tsx scripts/design-checks/run.ts",
     "quality:samples": "tsx scripts/sample-travellers/run.ts",
     "qa:validate": "tsx qa/cli/validate.ts",
     "qa:context": "tsx qa/cli/context.ts",

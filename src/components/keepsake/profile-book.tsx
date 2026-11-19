@@ -478,12 +478,21 @@ export function ProfileBook({
               stop;
             const guess = entry?.sureness === "think";
             // Saved when the slider is let go, not at every step on the way.
+            // It stays where it was let go until the save has answered, so
+            // it does not jump back and a second arrow key starts from there.
             const settle = () => {
               const next = moved[habit.topic];
               if (next === undefined) return;
-              setMoved((current) => ({ ...current, [habit.topic]: undefined }));
-              if (next === entry?.value) return;
-              void (entry ? change(entry, next) : tell(label(next), false));
+              const done = () =>
+                setMoved((current) =>
+                  current[habit.topic] === next
+                    ? { ...current, [habit.topic]: undefined }
+                    : current,
+                );
+              if (next === entry?.value) return done();
+              void (
+                entry ? change(entry, next) : tell(label(next), false)
+              ).finally(done);
             };
             return (
               <li
