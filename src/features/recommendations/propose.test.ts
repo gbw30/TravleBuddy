@@ -59,48 +59,6 @@ const input = (over: Partial<ProposeInput> = {}): ProposeInput => ({
 const ids = (set: ReturnType<typeof proposeCards>) =>
   set.cards.map((card) => card.placeId);
 
-describe("breakfast", () => {
-  const breakfast = (over: Partial<ProposeInput> = {}) =>
-    input({
-      slot: {
-        id: "d3-breakfast",
-        kind: "breakfast",
-        date: "2027-05-11",
-        start: "09:00",
-      },
-      ...over,
-    });
-
-  it("may return to a cafe used on another day, but ranks it below a new one", () => {
-    const cafe = place("cafe", { kind: "cafe" });
-    const other = place("other", { kind: "cafe" });
-    expect(
-      ids(proposeCards(breakfast({ candidates: [cafe], taken: ["cafe"] }))),
-    ).toEqual(["cafe"]);
-    expect(
-      ids(
-        proposeCards(breakfast({ candidates: [cafe, other], taken: ["cafe"] })),
-      ),
-    ).toEqual(["other", "cafe"]);
-  });
-
-  it("never repeats a place already used the same day, and other slots keep the hard exclusion", () => {
-    const cafe = place("cafe", { kind: "cafe" });
-    expect(
-      proposeCards(
-        breakfast({
-          candidates: [cafe],
-          taken: ["cafe"],
-          takenToday: ["cafe"],
-        }),
-      ).cards,
-    ).toEqual([]);
-    expect(
-      proposeCards(input({ candidates: [place("a")], taken: ["a"] })).cards,
-    ).toEqual([]);
-  });
-});
-
 describe("proposeCards", () => {
   it("offers three cards, best first, and the same three every time", () => {
     const candidates = ["e", "c", "a", "d", "b"].map((id) =>

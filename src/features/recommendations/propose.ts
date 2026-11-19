@@ -91,8 +91,6 @@ export type ProposeInput = {
   candidates: PlaceDto[];
   /** Places already in the plan or on the shelf. */
   taken: string[];
-  /** The places already in today's plan; only these stay out of a breakfast. */
-  takenToday?: string[];
   /** Kinds of place already in this day. */
   kindsInDay: PlaceKind[];
   /** Names of the places already in the plan: another branch of one is not a new idea. */
@@ -126,14 +124,7 @@ type Ranked = {
 
 function rank(input: ProposeInput): Ranked[] {
   const { slot, from, history, taste } = input;
-  // Breakfast may return to a place used on another day, but not twice in
-  // one day: there it is only ranked lower.
-  const breakfast = slot.kind === "breakfast";
-  const out = new Set([
-    ...(breakfast ? (input.takenToday ?? []) : input.taken),
-    ...history.discarded,
-  ]);
-  const elsewhere = new Set(breakfast ? input.taken : []);
+  const out = new Set([...input.taken, ...history.discarded]);
   const sameNames = new Set(
     (input.namesInPlan ?? []).map((name) => name.toLowerCase()),
   );
@@ -183,7 +174,6 @@ function rank(input: ProposeInput): Ranked[] {
       // A listing that confirms the rules beats one that says nothing.
       if (dietConfirmed) score += 2;
       if (!fresh) score -= 1.5;
-      if (elsewhere.has(place.id)) score -= 1.5;
       if (history.dislikedKinds.includes(place.kind)) score -= 3;
       // Less than a confirmed dietary rule is worth: eating twice at a
       // place known to serve the rule beats a new place that says nothing.

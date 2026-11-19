@@ -165,10 +165,10 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **The agent's report**
 
-- Built: 6 days in Tokyo, planned around 1 thing already decided. I chose 29 places: 17 to see and 12 to eat at.
+- Built: 6 days in Tokyo, planned around 1 thing already decided. I chose 29 places: 11 to see and 18 to eat at.
 - Assumed: Shape of the day: I will start the days at about nine. Atmosphere: I will mix lively and quiet places. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: nothing was left over.
-- Unsure: Two places were close for the breakfast on day 1. I chose Sunrise Cafe. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for the breakfast on day 2. I chose Corner Bakery. 11 more choices were close too. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
+- Unsure: Two places were close for breakfast on day 1. I chose Sunrise Cafe. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for breakfast on day 2. I chose Corner Bakery. 11 more choices were close too. Sunrise Cafe, Corner Bakery and Morning Cafe do not say whether vegetarian food is served. Check before you go. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
 
 ## The Okafors
 
@@ -200,7 +200,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 2, Sun 11 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
+- 08:45  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
 - 11:30  Lunch: **Corner Noodles** (75 min), 6 min walk to get there
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 14:23  Afternoon: **Lisbon City Museum** (120 min), 18 min walk to get there
@@ -210,7 +210,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 3, Mon 12 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: **Lisbon Central Market** (60 min)
+- 08:45  Morning: **Lisbon Central Market** (60 min)
 - 11:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
 - 12:45  Time to wander around Sunrise Cafe (60 min)
 - 14:22  Afternoon: **Lisbon Art Gallery** (120 min), 17 min walk to get there
@@ -220,7 +220,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 4, Tue 13 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: *open*
+- 08:45  Morning: *open*
 - 11:30  Lunch: **Morning Cafe** (45 min)
 - 12:45  Time to wander around Morning Cafe (60 min)
 - 14:26  Afternoon: **Lisbon Castle** (60 min), 21 min transit to get there
@@ -230,7 +230,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 5, Wed 14 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: *open*
+- 08:45  Morning: *open*
 - 11:30  Lunch: **Corner Noodles** (75 min)
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
@@ -261,7 +261,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 2, Sun 11 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
+- 08:45  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
 - 11:30  Lunch: **Corner Noodles** (75 min), 6 min walk to get there
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 14:23  Afternoon: **Lisbon City Museum** (120 min), 18 min walk to get there
@@ -271,7 +271,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 3, Mon 12 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: **Lisbon Central Market** (60 min)
+- 08:45  Morning: **Lisbon Central Market** (60 min)
 - 11:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
 - 12:45  Time to wander around Sunrise Cafe (60 min)
 - 14:22  Afternoon: **Lisbon Art Gallery** (120 min), 17 min walk to get there
@@ -281,7 +281,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 4, Tue 13 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: *open*
+- 08:45  Morning: *open*
 - 11:30  Lunch: **Morning Cafe** (45 min)
 - 12:45  Time to wander around Morning Cafe (60 min)
 - 14:26  Afternoon: **Lisbon Castle** (60 min), 21 min transit to get there
@@ -291,7 +291,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 5, Wed 14 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:30  Morning: *open*
+- 08:45  Morning: *open*
 - 11:30  Lunch: **Corner Noodles** (75 min)
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
