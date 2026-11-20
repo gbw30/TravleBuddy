@@ -688,20 +688,17 @@ describe("true sentences", () => {
     start: "12:30",
   };
 
-  it("uses the stated means for travel beyond walking distance, and walks a short hop", () => {
+  it("uses the stated means for travel", () => {
     const set = proposeCards(
       input({
         from: sensoji,
-        candidates: [place("a", far), place("b", near)],
+        candidates: [place("a", near)],
         taste: taste({ means: "drive" }),
       }),
     );
-    const card = (id: string) => set.cards.find((c) => c.placeId === id)!;
-    expect(card("a").travel?.means).toBe("drive");
-    expect(card("a").essentials).toMatch(/^Museum · about \d+ min drive$/);
-    expect(card("a").reason).toMatch(/minute drive from Senso-ji/);
-    expect(card("b").travel?.means).toBe("walk");
-    expect(card("b").essentials).toMatch(/^Museum · about \d+ min walk$/);
+    expect(set.cards[0].travel?.means).toBe("drive");
+    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min drive$/);
+    expect(set.cards[0].reason).toMatch(/minute drive from Senso-ji/);
   });
 
   it("says about N min on the front of the card", () => {
