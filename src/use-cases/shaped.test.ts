@@ -105,6 +105,7 @@ const view = (
     city: "Lisbon",
     entries,
     stayNote: null,
+    returnNote: null,
   })),
   blockers: [],
   pace,

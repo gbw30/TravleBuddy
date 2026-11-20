@@ -1675,11 +1675,45 @@ describe("where you stay", () => {
     });
   });
 
-  it("adds no way back while an open slot still follows the last place, so the row is never out of time order", () => {
-    const view = placed(pick("d2-morning"));
+  it("shows the way back right after the last place when it ends before the open slot that follows", () => {
+    const view = placed({ "d2-morning": { placeId: "m", minutes: 60 } });
     const entries = view.days[1].entries;
-    expect(kinds(entries)).not.toContain("return");
+    const visit = placeOf(entries, "d2-morning");
+    const back = toMuseum();
+    expect(entries[entries.indexOf(visit) + 1]).toEqual({
+      type: "return",
+      stay: "Hotel Aurora",
+      start: toClock(toMinutes(visit.start) + visit.minutes),
+      travel: { means: back.means, minutes: back.minutes },
+    });
     expect(kinds(entries).at(-1)).toBe("dinner");
+    expect(view.days[1].returnNote).toBeNull();
+  });
+
+  it("says the way back is not counted when a booking follows the last place too soon", () => {
+    const view = placed(pick("d2-afternoon-2"), {
+      places: { m: place("m", { name: "Ueno Museum" }) },
+      commitments: [
+        stay(),
+        commitment({
+          id: "dinner",
+          date: "2027-05-11",
+          startTime: "18:05",
+          endTime: "19:30",
+        }),
+      ],
+    });
+    const day2 = view.days[1];
+    expect(kinds(day2.entries)).not.toContain("return");
+    expect(day2.entries.at(-1)).toMatchObject({ commitmentId: "dinner" });
+    expect(day2.returnNote).toBe("The way back from Ueno Museum is not counted.");
+  });
+
+  it("says it for an open slot that starts as the last place ends, and nothing when the last place ends the day", () => {
+    const open = placed(pick("d2-afternoon"));
+    expect(kinds(open.days[1].entries)).not.toContain("return");
+    expect(open.days[1].returnNote).toBe("The way back from m is not counted.");
+    expect(placed(pick("d2-dinner")).days[1].returnNote).toBeNull();
   });
 
   it("flags the last place when the way back ends after the day", () => {
@@ -1811,6 +1845,24 @@ describe("where you stay", () => {
       null,
       "Travel from where you stay is not counted.",
     ]);
+  });
+
+  it("gives the note for the stay that is not confirmed when the other one is", () => {
+    const view = placed(pick("d2-morning"), {
+      commitments: [
+        stay({ endDate: "2027-05-11" }),
+        stay({
+          id: "s2",
+          title: "Ryokan",
+          date: "2027-05-11",
+          endDate: "2027-05-12",
+          located: null,
+        }),
+      ],
+    });
+    expect(view.days[1].stayNote).toBe(
+      "Travel from where you stay is not counted. Add its address.",
+    );
   });
 
   it("keeps the stay's own title when it has no check-in time or no position", () => {

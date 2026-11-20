@@ -63,6 +63,7 @@ const days: PlanDay[] = [1, 2, 3].map((number) => ({
   date: `2027-05-1${number - 1}`,
   city: "Tokyo",
   stayNote: null,
+  returnNote: null,
   entries: [
     number === 1
       ? {

@@ -307,6 +307,7 @@ export async function cardsFor(
         e.type !== "open" &&
         e.type !== "wander" &&
         e.type !== "breakfast-at-stay" &&
+        e.type !== "return" &&
         !(e.type === "commitment" && e.slotId === null && e.start === null),
     );
   const last = earlier.at(-1);

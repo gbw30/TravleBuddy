@@ -723,6 +723,13 @@ export function buildPlanView(
       until: number;
     } | null;
     let lastPick = null as { flags: PlanFlag[]; segment: number } | null;
+    // The last place with a position, wherever it ends up: the way back is from it.
+    let finalPlace = null as {
+      index: number;
+      point: Point;
+      end: number;
+      name: string;
+    } | null;
     // A check-in that waits for a booking it would run into.
     let waiting = null as Extract<Step, { checkIn: Fixed }> | null;
 
@@ -945,6 +952,9 @@ export function buildPlanView(
         lastPlace = point ? { flags, point, until: segment.until } : null;
         lastPlaceName = place.name;
         lastPick = { flags, segment: step.segment };
+        finalPlace = point
+          ? { index: entries.length - 1, point, end, name: place.name }
+          : null;
       } else {
         const start = Math.max(slot.earliest, clock);
         // It needs an hour before its part of the day ends, or before
@@ -1034,20 +1044,59 @@ export function buildPlanView(
         });
       }
     }
+    // Only open slots, time to wander or bookings follow the last place: the
+    // way back from it is listed right after it when it is over before the
+    // next row starts. Otherwise the day says it is not counted.
+    let returnNote: string | null = null;
+    const after = finalPlace ? entries.slice(finalPlace.index + 1) : [];
+    if (
+      evening &&
+      !lastPlace &&
+      finalPlace &&
+      after.length > 0 &&
+      after.every(
+        (entry) =>
+          entry.type === "open" ||
+          entry.type === "wander" ||
+          (entry.type === "commitment" &&
+            entry.commitmentKind !== "TRANSPORT" &&
+            entry.commitmentKind !== "STAY"),
+      )
+    ) {
+      const back = travelEstimate(finalPlace.point, evening, context.means);
+      const next = after[0].start;
+      if (next !== null && finalPlace.end + back.minutes <= toMinutes(next)) {
+        entries.splice(finalPlace.index + 1, 0, {
+          type: "return",
+          stay: draft.eveningStay!.title,
+          start: toClock(finalPlace.end),
+          travel: { means: back.means, minutes: back.minutes },
+        });
+      } else {
+        returnNote = `The way back from ${finalPlace.name} is not counted.`;
+      }
+    }
 
     // What this day would say, so a run of days with the same missing stay
-    // says it once. Null: a stay is confirmed. Undefined: nothing is chosen.
-    const confirmed = draft.morningStay?.located || evening;
+    // says it once. Null: every stay of the day is confirmed. Undefined:
+    // nothing is chosen. A day with one confirmed stay and one not names the
+    // one that is not.
+    const stays = [draft.morningStay, draft.eveningStay].filter(
+      (stay) => stay !== null,
+    );
+    const unconfirmed = [
+      ...new Set(stays.filter((stay) => !stay.located).map((stay) => stay.id)),
+    ];
     const unsaid = entries.some((entry) => entry.type === "place")
       ? {
-          key: `${draft.morningStay?.id}|${draft.eveningStay?.id}|${draft.morningStay || draft.eveningStay ? "" : draft.city.name}`,
+          key: stays.length > 0 ? unconfirmed.join("|") : `|${draft.city.name}`,
           text:
-            draft.morningStay || draft.eveningStay
+            stays.length > 0
               ? "Travel from where you stay is not counted. Add its address."
               : "Travel from where you stay is not counted.",
         }
       : undefined;
-    notes.push(confirmed ? null : unsaid);
+    notes.push(stays.length > 0 && unconfirmed.length === 0 ? null : unsaid);
 
     return {
       day: draft.day,
@@ -1055,6 +1104,7 @@ export function buildPlanView(
       city: draft.city.name,
       entries,
       stayNote: null,
+      returnNote,
     };
   });
 

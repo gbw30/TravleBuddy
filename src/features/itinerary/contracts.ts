@@ -212,6 +212,8 @@ export type PlanDay = {
   entries: PlanEntry[];
   /** Why travel from where the traveller stays is not counted; null when it is, or when nothing is chosen. */
   stayNote: string | null;
+  /** Why the way back from the last place is not counted; null when it is shown or there is none. */
+  returnNote: string | null;
 };
 
 /** A fact the plan cannot be laid out without. */

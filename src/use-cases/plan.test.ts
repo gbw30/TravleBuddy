@@ -299,6 +299,48 @@ describe("proposals in guided planning", () => {
     expect(unknown.every((card) => card.travel === null)).toBe(true);
   });
 
+  it("measures a slot after the way back from the last place, as the plan will once it is filled", async () => {
+    mocks.getTrip.mockResolvedValue(
+      trip({
+        commitments: [
+          {
+            id: "stay",
+            kind: "STAY",
+            title: "Hotel Aurora",
+            date: "2027-05-10",
+            startTime: null,
+            endDate: "2027-05-12",
+            endTime: null,
+            reference: null,
+            note: null,
+            located: {
+              latitude: 35.69,
+              longitude: 139.7,
+              ref: "way/1",
+              address: "Hotel Aurora, Tokyo",
+            },
+            transport: null,
+          },
+        ] as never,
+      }),
+    );
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { "d2-morning": { placeId: "s1", minutes: 60 } } }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([sights[0]]);
+    const plan = (await load("d2-afternoon"))!;
+    // The way back follows the morning's place, before the open lunch.
+    expect(plan.view.days[1].entries.map((e) => e.type).slice(0, 3)).toEqual([
+      "place",
+      "return",
+      "open",
+    ]);
+    expect(plan.proposal!.cards.every((card) => card.travel !== null)).toBe(
+      true,
+    );
+  });
+
   it("treats a sample address as no position once the sample places are off", async () => {
     const stay = {
       id: "s1",

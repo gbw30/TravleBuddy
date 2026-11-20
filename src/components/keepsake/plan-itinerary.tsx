@@ -403,6 +403,11 @@ export function PlanItinerary({
               {day.stayNote}
             </p>
           )}
+          {day.returnNote && (
+            <p className="mt-3 font-sans text-[13px] leading-6 text-muted">
+              {day.returnNote}
+            </p>
+          )}
         </section>
       ))}
     </div>
