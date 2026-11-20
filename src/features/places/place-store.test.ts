@@ -460,14 +460,17 @@ describe("adding a place by name or by hand", () => {
     expect(outcome).toMatchObject({ status: "ok", places: [{ id: "p1" }] });
   });
 
-  it("a name search does not overwrite a place Overpass saved, but brings back one marked gone", async () => {
+  it("a name search neither overwrites a place Overpass saved nor brings back one marked gone", async () => {
     mocks.osm.byName.mockResolvedValue([found]);
 
     await findPlacesByName(tokyo, "senso");
 
     const [, , conflict] = mocks.db.$executeRaw.mock.calls[0];
-    expect(conflict.sql).toContain('DO UPDATE SET "gone_at" = NULL');
-    expect(conflict.sql).not.toContain("EXCLUDED");
+    expect(conflict.sql).toContain("DO NOTHING");
+    expect(conflict.sql).not.toContain("DO UPDATE");
+    expect(conflict.sql).not.toContain("gone_at");
+    // A gone place it matched is not offered either.
+    expect(mocks.db.place.findMany.mock.calls[0][0].where.goneAt).toBeNull();
   });
 
   it("does not search for text too short, and reports a failed or capped search", async () => {

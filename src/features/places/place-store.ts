@@ -95,8 +95,8 @@ export async function withinCap(
 
 // One insert for all places. A refetch updates in place, so the id stays and
 // plans that point at it stay valid. A name search only adds new places: its
-// thinner data must not overwrite what a full fetch saved. Either way a place
-// returned again is no longer gone.
+// thinner data must not overwrite what a full fetch saved, nor bring back a
+// place a refresh found gone. Only a refresh that returns it again does.
 async function save(
   source: PlaceSource,
   key: string,
@@ -111,7 +111,7 @@ async function save(
   );
   const conflict =
     onConflict === "keep"
-      ? Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO UPDATE SET "gone_at" = NULL WHERE "places"."gone_at" IS NOT NULL`
+      ? Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO NOTHING`
       : Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO UPDATE SET
   "name" = EXCLUDED."name", "kind" = EXCLUDED."kind", "latitude" = EXCLUDED."latitude", "longitude" = EXCLUDED."longitude",
   "address" = EXCLUDED."address", "opening_hours" = EXCLUDED."opening_hours", "notable" = EXCLUDED."notable",
@@ -337,6 +337,7 @@ export async function findPlacesByName(
       where: {
         origin: source.origin,
         originRef: { in: found.map((place) => place.originRef) },
+        goneAt: null,
       },
       orderBy: { id: "asc" },
     });
