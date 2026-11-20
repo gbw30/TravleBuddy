@@ -48,6 +48,24 @@ describe("hoursDoubt", () => {
     );
   });
 
+  it("reads the date at the start of a value that goes on, and nothing that only looks like one", () => {
+    for (const check_date of ["2021-03-15;2023-01-02", "2021-03-15 10:00"]) {
+      expect(hoursDoubt(osm({ tags: { check_date } }), today)).toBe(
+        "Last updated on the map in 2021. Worth a check.",
+      );
+    }
+    // Seven digits are not a year and month: the edit time is used instead.
+    expect(
+      hoursDoubt(
+        osm({
+          tags: { check_date: "2021-031" },
+          lastEditedAt: "2027-04-01T10:00:00.000Z",
+        }),
+        today,
+      ),
+    ).toBeNull();
+  });
+
   it("falls back to the edit time, and names its year when two years old", () => {
     expect(
       hoursDoubt(osm({ lastEditedAt: "2025-02-03T10:00:00.000Z" }), today),

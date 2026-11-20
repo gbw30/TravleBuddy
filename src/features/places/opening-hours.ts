@@ -121,8 +121,8 @@ export function isOpenFor(
 /** Hours last judged on the map more than this many months ago are in doubt. */
 export const STALE_MONTHS = 12;
 
-/** `YYYY-MM-DD`, or `YYYY-MM` for the first of that month; an edit time adds its clock. */
-const DATE = /^\d{4}-\d{2}(-\d{2})?(?=T|$)/;
+/** `YYYY-MM-DD`, or `YYYY-MM` for the first of that month, at the start of the value: an edit time, a time or a second date may follow. */
+const DATE = /^\d{4}-\d{2}(-\d{2})?(?!\d)/;
 
 /**
  * A quiet line for hours that may not be true, or null when there is no
