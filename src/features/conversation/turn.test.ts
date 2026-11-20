@@ -446,9 +446,26 @@ describe("a commitment told in conversation", () => {
           reference: null,
           note: null,
           located: null,
+          transportMode: null,
         },
       },
       says: "Added to what is already decided: teamLab Planets on Thu, 13 May 2027 at 15:00.",
+    });
+  });
+
+  it("adds a ticket only with its type, and asks for it otherwise", () => {
+    const ticket = {
+      type: "commitment" as const,
+      kind: "TRANSPORT" as const,
+      title: "Train to Kyoto",
+    };
+    expect(run({ ...ticket, transportMode: "TRAIN" }).change).toMatchObject({
+      type: "commitment",
+      commitment: { kind: "TRANSPORT", transportMode: "TRAIN" },
+    });
+    expect(run(ticket)).toEqual({
+      change: null,
+      says: "I could not add that: A ticket needs its type: flight, train, bus or ferry. You can add it under Already decided.",
     });
   });
 

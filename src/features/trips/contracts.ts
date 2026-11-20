@@ -104,10 +104,19 @@ export const commitmentInputSchema = z
     reference: optionalText(80),
     note: optionalText(500),
     located: locatedSchema.nullish().transform((value) => value ?? null),
+    /** What a ticket is. Every ticket has one (TB-FIX-08); the column stays nullable for old rows. */
+    transportMode: z
+      .enum(TICKET_MODES)
+      .nullish()
+      .transform((value) => value ?? null),
   })
   .refine((c) => c.kind === "STAY" || !c.located, {
     path: ["located"],
     message: "Only a stay has an address.",
+  })
+  .refine((c) => (c.kind === "TRANSPORT") === (c.transportMode !== null), {
+    path: ["transportMode"],
+    message: "A ticket needs its type: flight, train, bus or ferry.",
   })
   .refine((c) => !c.startTime || c.date, {
     path: ["date"],
@@ -249,6 +258,8 @@ export type CommitmentDto = {
   note: string | null;
   /** A stay's confirmed address. Null: none confirmed, and nothing is guessed. */
   located: Located | null;
+  /** A ticket's type. Null on a ticket saved before the type was required. */
+  transportMode?: string | null;
   transport: {
     mode: string;
     origin: string;

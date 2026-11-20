@@ -7,6 +7,7 @@ import type { City } from "@/features/places/contracts";
 import {
   COMMITMENT_KINDS,
   commitmentInputSchema,
+  TICKET_MODES,
   type Clash,
   type CommitmentDto,
   type CommitmentKind,
@@ -32,6 +33,13 @@ const kindWord: Record<CommitmentKind, string> = {
   RESERVATION: "Reservation",
   MUST_SEE: "Must-see",
   OTHER: "Other",
+};
+
+const modeWord: Record<(typeof TICKET_MODES)[number], string> = {
+  FLIGHT: "Flight",
+  TRAIN: "Train",
+  BUS: "Bus",
+  FERRY: "Ferry",
 };
 
 type Saved = { commitments: CommitmentDto[]; clashes: Clash[] };
@@ -109,6 +117,27 @@ function CommitmentForm({
           ))}
         </select>
       </label>
+      {kind === "TRANSPORT" && (
+        <fieldset className="flex flex-wrap gap-1 rounded-full bg-tint p-1 sm:col-span-2 sm:w-fit">
+          <legend className="sr-only">Kind of ticket</legend>
+          {TICKET_MODES.map((mode) => (
+            <label
+              key={mode}
+              className="cursor-pointer rounded-full px-3.5 py-1.5 text-[13.5px] text-ink/75 has-checked:bg-card has-checked:font-medium has-checked:text-ink has-checked:shadow-[0_1px_3px_rgb(29_26_22/0.14)] has-focus-visible:outline-2 has-focus-visible:outline-terracotta"
+            >
+              <input
+                type="radio"
+                name="transportMode"
+                value={mode}
+                required
+                defaultChecked={commitment?.transportMode === mode}
+                className="sr-only"
+              />
+              {modeWord[mode]}
+            </label>
+          ))}
+        </fieldset>
+      )}
       <label className={fieldLabel}>
         Date
         <input

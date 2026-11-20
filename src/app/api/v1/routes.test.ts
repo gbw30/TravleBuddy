@@ -389,6 +389,31 @@ describe("commitments", () => {
     expect((await addCommitment(request("POST", body), trip)).status).toBe(422);
   });
 
+  it("answers 422 for a ticket with no type, added or changed", async () => {
+    mocks.runTripAction.mockClear();
+    const ticket = { kind: "TRANSPORT", title: "Train to Kyoto" };
+    const untyped = { commitment: ticket, ...control };
+    expect((await addCommitment(request("POST", untyped), trip)).status).toBe(
+      422,
+    );
+    expect(
+      (await patchCommitment(request("PATCH", untyped), commitment)).status,
+    ).toBe(422);
+    expect(mocks.runTripAction).not.toHaveBeenCalled();
+    const typed = {
+      commitment: { ...ticket, transportMode: "TRAIN" },
+      ...control,
+    };
+    mocks.runTripAction.mockResolvedValue({
+      status: "ok",
+      data: { commitments: [], clashes: [] },
+      revision: 3,
+    });
+    expect((await addCommitment(request("POST", typed), trip)).status).toBe(
+      201,
+    );
+  });
+
   it("updates and removes by id, each as its own kind", async () => {
     await patchCommitment(request("PATCH", body), commitment);
     await deleteCommitment(request("DELETE", control), commitment);

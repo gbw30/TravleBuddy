@@ -61,6 +61,7 @@ const input = (kind: CommitmentInput["kind"]): CommitmentInput => ({
   reference: "AB123",
   note: null,
   located: null,
+  transportMode: kind === "TRANSPORT" ? "FLIGHT" : null,
 });
 const control = { operationId: "op-1", expectedRevision: 1 };
 

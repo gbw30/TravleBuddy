@@ -5,6 +5,7 @@ import { inZone, SERVER_ZONES } from "@/lib/in-zone";
 import { findClashes } from "./clashes";
 import {
   commitmentInputSchema,
+  TICKET_MODES,
   ticketInputSchema,
   type CommitmentDto,
   tripActionSchema,
@@ -143,6 +144,12 @@ describe("ticketInputSchema", () => {
     ).toBe(true);
   });
 
+  it("refuses a ticket with no type", () => {
+    expect(
+      ticketInputSchema.safeParse({ ...ticket({}), mode: undefined }).success,
+    ).toBe(false);
+  });
+
   it("refuses an arrival days before the departure, and a date that does not exist", () => {
     expect(
       ticketInputSchema.safeParse(
@@ -169,7 +176,30 @@ describe("commitmentInputSchema", () => {
       reference: null,
       note: null,
       located: null,
+      transportMode: null,
     });
+  });
+
+  it("needs a type for a ticket and refuses one on anything else", () => {
+    const ticket = { ...base, kind: "TRANSPORT" };
+    expect(commitmentInputSchema.safeParse(ticket).success).toBe(false);
+    expect(
+      commitmentInputSchema.safeParse({ ...ticket, transportMode: null })
+        .success,
+    ).toBe(false);
+    expect(
+      commitmentInputSchema.safeParse({ ...ticket, transportMode: "TAXI" })
+        .success,
+    ).toBe(false);
+    for (const transportMode of TICKET_MODES) {
+      expect(
+        commitmentInputSchema.parse({ ...ticket, transportMode }).transportMode,
+      ).toBe(transportMode);
+    }
+    expect(
+      commitmentInputSchema.safeParse({ ...base, transportMode: "TRAIN" })
+        .success,
+    ).toBe(false);
   });
 
   it("keeps a confirmed position on a stay and refuses one on anything else", () => {
