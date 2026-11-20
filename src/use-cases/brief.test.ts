@@ -66,6 +66,7 @@ const decided = (title: string): CommitmentDto => ({
   endTime: null,
   reference: null,
   note: null,
+  located: null,
   transport: null,
 });
 const problems = (facts: TripFacts) =>

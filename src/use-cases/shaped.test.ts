@@ -104,6 +104,7 @@ const view = (
     date: `2027-04-${12 + index}`,
     city: "Lisbon",
     entries,
+    stayNote: null,
   })),
   blockers: [],
   pace,

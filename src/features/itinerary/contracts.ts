@@ -169,6 +169,8 @@ export type PlanEntry =
       slotId: string | null;
       /** A ticket's ends and arrival clock, each by the clock of its place. */
       ticket: { from: string; to: string; arrives: string | null } | null;
+      /** Travel to a confirmed stay's check-in. Absent on every other commitment. */
+      travelIn?: TravelLeg | null;
     }
   | {
       /** Travel between cities with no ticket yet: assumed, not booked (TB-ITN-19). */
@@ -192,7 +194,9 @@ export type PlanEntry =
       minutes: number;
     }
   /** Breakfast that comes with the stay: a quiet row, with nothing to choose. */
-  | { type: "breakfast-at-stay"; start: string; minutes: number };
+  | { type: "breakfast-at-stay"; start: string; minutes: number }
+  /** The way back to the stay at the end of the day. */
+  | { type: "return"; stay: string; start: string; travel: TravelLeg };
 
 export type PlanDay = {
   day: number;
@@ -200,6 +204,8 @@ export type PlanDay = {
   /** Where the day starts. */
   city: string;
   entries: PlanEntry[];
+  /** Why travel from where the traveller stays is not counted; null when it is, or when nothing is chosen. */
+  stayNote: string | null;
 };
 
 /** A fact the plan cannot be laid out without. */

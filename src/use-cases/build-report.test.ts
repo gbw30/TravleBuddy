@@ -64,6 +64,7 @@ const view = (days: PlanEntry[][], over: Partial<PlanView> = {}): PlanView => ({
     date: `2027-04-${12 + index}`,
     city: "Lisbon",
     entries,
+    stayNote: null,
   })),
   blockers: [],
   pace: "relaxed",

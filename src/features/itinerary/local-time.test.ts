@@ -60,6 +60,7 @@ const ticket = (
   endTime: "13:00",
   reference: null,
   note: null,
+  located: null,
   transport: {
     mode: "FLIGHT",
     origin: "A",

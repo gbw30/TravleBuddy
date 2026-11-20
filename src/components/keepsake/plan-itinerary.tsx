@@ -3,6 +3,7 @@ import {
   SLOT_WORDS,
   type PlanEntry,
   type PlanView,
+  type TravelLeg,
 } from "@/features/itinerary/contracts";
 import type { CardDto } from "@/features/recommendations/contracts";
 
@@ -22,6 +23,15 @@ const kindWord = {
   MUST_SEE: "Must-see",
   OTHER: "Already decided",
 };
+
+/** The dotted line of travel between two rows. An estimate, and shown as one. */
+function TravelLine({ leg }: { leg: TravelLeg }) {
+  return (
+    <p className="relative py-2 pl-[5.6rem] font-sans text-xs text-muted before:absolute before:inset-y-0 before:left-[2.45rem] before:border-l-[1.5px] before:border-dotted before:border-ink/25">
+      {meansWord[leg.means]} · about {leg.minutes} min (estimate)
+    </p>
+  );
+}
 
 type SlotEntry = Extract<PlanEntry, { type: "open" | "place" }>;
 const isSlot = (entry: PlanEntry): entry is SlotEntry =>
@@ -120,8 +130,9 @@ export function PlanItinerary({
                 return (
                   <li
                     key={`c-${entry.commitmentId}`}
-                    className="mt-2.5 first:mt-0"
+                    className={entry.travelIn ? "" : "mt-2.5 first:mt-0"}
                   >
+                    {entry.travelIn && <TravelLine leg={entry.travelIn} />}
                     <TicketStub
                       time={entry.start ?? "—"}
                       title={entry.title}
@@ -227,6 +238,17 @@ export function PlanItinerary({
                   </li>
                 );
               }
+              if (entry.type === "return") {
+                return (
+                  <li key={`r-${index}`} className="mt-2.5 first:mt-0">
+                    <ItineraryRow
+                      time={entry.start}
+                      title={`Back to ${entry.stay} · ${meansWord[entry.travel.means]} · about ${entry.travel.minutes} min (estimate)`}
+                      variant="wander"
+                    />
+                  </li>
+                );
+              }
               if (entry.type === "wander") {
                 return (
                   <li key={`w-${index}`} className="mt-2.5 first:mt-0">
@@ -271,10 +293,7 @@ export function PlanItinerary({
                   }}
                 >
                   {entry.type === "place" && entry.travelIn && (
-                    <p className="relative py-2 pl-[5.6rem] font-sans text-xs text-muted before:absolute before:inset-y-0 before:left-[2.45rem] before:border-l-[1.5px] before:border-dotted before:border-ink/25">
-                      {meansWord[entry.travelIn.means]} · about{" "}
-                      {entry.travelIn.minutes} min (estimate)
-                    </p>
+                    <TravelLine leg={entry.travelIn} />
                   )}
                   {entry.type === "place" ? (
                     <ItineraryRow
@@ -379,6 +398,11 @@ export function PlanItinerary({
               );
             })}
           </ol>
+          {day.stayNote && (
+            <p className="mt-3 font-sans text-[13px] leading-6 text-muted">
+              {day.stayNote}
+            </p>
+          )}
         </section>
       ))}
     </div>

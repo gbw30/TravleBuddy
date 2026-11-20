@@ -213,6 +213,26 @@ function allowanceOf(commitment: CommitmentDto) {
   };
 }
 
+/**
+ * The stay that covers a night: from its check-in date up to, but not
+ * including, its end date. With no end date it covers only the check-in night.
+ * A stay with a confirmed position wins over one without.
+ */
+function stayForNight(
+  commitments: CommitmentDto[],
+  night: string,
+): CommitmentDto | null {
+  const covering = commitments.filter(
+    (c) =>
+      c.kind === "STAY" &&
+      c.date !== null &&
+      c.date <= night &&
+      night <
+        (c.endDate && c.endDate > c.date ? c.endDate : addDays(c.date, 1)),
+  );
+  return covering.find((c) => c.located) ?? covering[0] ?? null;
+}
+
 /** When a commitment with a time starts and ends on one day. */
 function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
   // A ticket that left on an earlier day shows where it lands.
@@ -313,6 +333,9 @@ export function buildPlanView(
     held: Map<string, CommitmentDto>;
     /** Commitments with a date but no time that take no slot: stays, tickets. */
     notes: CommitmentDto[];
+    /** The stay of the night before, where the day starts; and of tonight, where it ends. */
+    morningStay: CommitmentDto | null;
+    eveningStay: CommitmentDto | null;
   };
   const drafts: Draft[] = [];
 
@@ -510,6 +533,8 @@ export function buildPlanView(
       stayBreakfast,
       held: new Map(),
       notes: [],
+      morningStay: stayForNight(context.commitments, addDays(date, -1)),
+      eveningStay: stayForNight(context.commitments, date),
     });
   }
 
@@ -602,8 +627,17 @@ export function buildPlanView(
     let clock =
       draft.segments[0].from +
       (draft.stayBreakfast === null ? 0 : BREAKFAST.minutes);
-    let lastPoint: { latitude: number; longitude: number } | null = null;
+    type Point = { latitude: number; longitude: number };
+    // The day starts where the traveller slept, when that is confirmed.
+    let lastPoint = (draft.morningStay?.located ?? null) as Point | null;
     let lastPlaceName: string | null = null;
+    // The last place laid out, while nothing else has come after it: the way
+    // back to the stay starts there.
+    let lastPlace = null as {
+      flags: PlanFlag[];
+      point: Point;
+      until: number;
+    } | null;
 
     steps.forEach((step, position) => {
       if ("fixed" in step) {
@@ -611,11 +645,20 @@ export function buildPlanView(
         // A ticket seen on its departure day; one landing today is a point.
         const ticketBound =
           commitment.kind === "TRANSPORT" && commitment.date === draft.date;
+        // A stay with a check-in time and a confirmed position is a place to get to.
+        const checkIn =
+          commitment.kind === "STAY" && commitment.date === draft.date
+            ? commitment.located
+            : null;
+        const leg =
+          checkIn && lastPoint
+            ? travelEstimate(lastPoint, checkIn, context.means)
+            : null;
         entries.push({
           type: "commitment",
           commitmentId: commitment.id,
           commitmentKind: commitment.kind,
-          title: commitment.title,
+          title: checkIn ? `Check in at ${commitment.title}` : commitment.title,
           start: toClock(start),
           minutes: ticketBound ? ticketMinutes(commitment) : end - start,
           slotId: null,
@@ -627,9 +670,17 @@ export function buildPlanView(
                   arrives: commitment.endTime,
                 }
               : null,
+          ...(checkIn
+            ? {
+                travelIn: leg
+                  ? { means: leg.means, minutes: leg.minutes }
+                  : null,
+              }
+            : {}),
         });
         clock = Math.max(clock, end);
-        lastPoint = null;
+        lastPoint = checkIn;
+        lastPlace = null;
         return;
       }
       if ("allowance" in step) {
@@ -638,12 +689,14 @@ export function buildPlanView(
           clock = Math.max(clock, step.at + step.allowance.minutes);
         }
         lastPoint = null;
+        lastPlace = null;
         return;
       }
       if ("transfer" in step) {
         entries.push(step.transfer);
         clock = Math.max(clock, draft.landsAt);
         lastPoint = null;
+        lastPlace = null;
         return;
       }
 
@@ -666,6 +719,7 @@ export function buildPlanView(
         });
         clock = Math.max(clock, slot.earliest) + 60;
         lastPoint = null;
+        lastPlace = null;
       } else if (pick && place) {
         usedPicks.add(slot.id);
         const point =
@@ -734,7 +788,7 @@ export function buildPlanView(
           });
         }
 
-        entries.push({
+        const entry: Extract<PlanEntry, { type: "place" }> = {
           type: "place",
           slotId: slot.id,
           kind: slot.kind,
@@ -745,9 +799,11 @@ export function buildPlanView(
           minutesEstimated: pick.minutes === null,
           travelIn: leg ? { means: leg.means, minutes: leg.minutes } : null,
           flags,
-        });
+        };
+        entries.push(entry);
         clock = end;
         lastPoint = point;
+        lastPlace = point ? { flags, point, until: segment.until } : null;
         lastPlaceName = place.name;
       } else {
         const start = Math.max(slot.earliest, clock);
@@ -784,7 +840,43 @@ export function buildPlanView(
       }
     });
 
-    return { day: draft.day, date: draft.date, city: draft.city.name, entries };
+    // The way back to where the traveller sleeps tonight.
+    const evening = draft.eveningStay?.located;
+    if (evening && lastPlace) {
+      const back = travelEstimate(lastPlace.point, evening, context.means);
+      entries.push({
+        type: "return",
+        stay: draft.eveningStay!.title,
+        start: toClock(clock),
+        travel: { means: back.means, minutes: back.minutes },
+      });
+      if (
+        clock + back.minutes > lastPlace.until &&
+        !lastPlace.flags.some((flag) => flag.rule === "day")
+      ) {
+        lastPlace.flags.push({
+          rule: "day",
+          message: `The way back to ${draft.eveningStay!.title} ends at ${toClock(clock + back.minutes)}, after the day does.`,
+          fix: "Move it earlier or shorten the visit.",
+        });
+      }
+    }
+
+    const confirmed = draft.morningStay?.located || evening;
+    const stayNote =
+      !confirmed && entries.some((entry) => entry.type === "place")
+        ? draft.morningStay || draft.eveningStay
+          ? "Travel from where you stay is not counted. Add its address."
+          : "Travel from where you stay is not counted."
+        : null;
+
+    return {
+      day: draft.day,
+      date: draft.date,
+      city: draft.city.name,
+      entries,
+      stayNote,
+    };
   });
 
   // A pick whose slot no longer exists is never dropped: it waits on the shelf (PRD 9.6).

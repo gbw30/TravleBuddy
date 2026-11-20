@@ -39,6 +39,7 @@ const view: PlanView = {
       day: 1,
       date: "2027-05-10",
       city: "Tokyo",
+      stayNote: null,
       entries: [
         {
           type: "commitment",
@@ -91,6 +92,7 @@ const view: PlanView = {
       day: 2,
       date: "2027-05-11",
       city: "Tokyo",
+      stayNote: null,
       entries: [
         {
           type: "open",
@@ -283,6 +285,43 @@ describe("PlanItinerary", () => {
     for (const html of [from, to, train]) {
       expect(html).not.toMatch(/travel|min \(estimate\)/i);
     }
+  });
+
+  it("shows the way back to the stay, travel to a check-in, and the quiet note", () => {
+    const html = render(false, {
+      ...view,
+      days: [
+        {
+          ...view.days[0],
+          stayNote: "Travel from where you stay is not counted.",
+          entries: [
+            {
+              type: "commitment",
+              commitmentId: "s",
+              commitmentKind: "STAY",
+              title: "Check in at Hotel Aurora",
+              start: "15:00",
+              minutes: 30,
+              slotId: null,
+              ticket: null,
+              travelIn: { means: "transit", minutes: 21 },
+            },
+            {
+              type: "return",
+              stay: "Hotel Aurora",
+              start: "19:30",
+              travel: { means: "walk", minutes: 12 },
+            },
+          ],
+        },
+      ],
+    });
+    expect(html).toContain("Check in at Hotel Aurora");
+    expect(html).toContain("Transit · about 21 min (estimate)");
+    expect(html).toContain(
+      "Back to Hotel Aurora · Walk · about 12 min (estimate)",
+    );
+    expect(html).toContain("Travel from where you stay is not counted.");
   });
 
   it("offers no changes when the trip is archived", () => {

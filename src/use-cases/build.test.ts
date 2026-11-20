@@ -374,6 +374,7 @@ describe("what a build leaves alone", () => {
       endTime: "12:00",
       reference: null,
       note: null,
+      located: null,
       transport: null,
     };
     mocks.getTrip.mockResolvedValue(trip({ commitments: [booked] }));
