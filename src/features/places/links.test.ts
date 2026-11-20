@@ -35,7 +35,20 @@ describe("placeLinks", () => {
         place({ tags: { "contact:website": "http://b.example" } }),
         "Lisbon",
       )?.website,
-    ).toBe("http://b.example");
+    ).toBe("http://b.example/");
+  });
+
+  it("takes the first web address from a tag that lists several", () => {
+    expect(
+      placeLinks(
+        place({
+          tags: {
+            website: "mailto:a; https://a.example/pt ;https://a.example/en",
+          },
+        }),
+        "Lisbon",
+      )?.website,
+    ).toBe("https://a.example/pt");
   });
 
   it("gives no website for another scheme or none at all", () => {

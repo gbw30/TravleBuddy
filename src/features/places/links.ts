@@ -7,14 +7,20 @@ export type PlaceLinks = {
   osm: string | null;
 };
 
-/** The listed website, only when it is a web address. */
+/** The listed website: the first of the tag's ";"-separated values that is a web address. */
 function website(tags: PlaceDto["tags"]): string | null {
-  const value = (tags.website ?? tags["contact:website"] ?? "").trim();
-  try {
-    return ["http:", "https:"].includes(new URL(value).protocol) ? value : null;
-  } catch {
-    return null;
+  for (const value of (tags.website ?? tags["contact:website"] ?? "").split(
+    ";",
+  )) {
+    try {
+      const url = new URL(value.trim());
+      if (url.protocol === "http:" || url.protocol === "https:")
+        return url.href;
+    } catch {
+      // Not an address; try the next.
+    }
   }
+  return null;
 }
 
 /** Links for the closer look. Null for a sample place, which is not real. */
