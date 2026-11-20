@@ -70,6 +70,7 @@ export function TripWorkspace({
   initial: PlanSnapshot;
   readOnly: boolean;
 }) {
+  // Not a draft: every action answers with the server's plan, which replaces this copy.
   const [plan, setPlan] = useState(initial);
   // The slot the traveller is on. A read of the plan asks for this slot, so
   // a read started by a change elsewhere on the page keeps their place.

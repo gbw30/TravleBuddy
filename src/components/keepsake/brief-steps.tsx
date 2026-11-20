@@ -119,7 +119,9 @@ export function BriefSteps({
   if (initial.revision > brief.revision) setBrief(initial);
 
   const [step, setStep] = useState(startAt);
-  // What the traveller has entered and not yet saved.
+  // What the traveller has entered and not yet saved. A save sends only the
+  // facts that differ from `brief.facts`, and this page has no conversation
+  // that could change them meanwhile (see the shortcut above for two tabs).
   const [facts, setFacts] = useState(() =>
     // Opened straight at "This trip": the remembered budget is filled in.
     startAt === 2 &&
