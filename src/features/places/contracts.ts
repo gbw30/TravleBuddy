@@ -47,6 +47,15 @@ export type PlaceDto = {
   hoursDoubt: string | null;
 };
 
+/** An address search: what the traveller typed, near their city. Sent in a body, so it stays out of request logs. */
+export const addressSearchSchema = z.object({
+  query: z.string().max(500),
+  near: z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+  }),
+});
+
 /** An address the provider found, shown by its label until the traveller confirms it. */
 export type FoundAddress = {
   label: string;

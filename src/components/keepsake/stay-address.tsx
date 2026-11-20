@@ -59,8 +59,14 @@ export function StayAddress({
     setFound([]);
     setStatus("Looking up the address…");
     const result = await callApi<{ addresses: FoundAddress[] }>(
-      `/api/v1/places/addresses?q=${encodeURIComponent(query)}&near=${city.latitude},${city.longitude}`,
-      { method: "GET" },
+      "/api/v1/places/addresses",
+      {
+        method: "POST",
+        body: {
+          query,
+          near: { latitude: city.latitude, longitude: city.longitude },
+        },
+      },
     );
     setSearching(false);
     if (!result.ok) {

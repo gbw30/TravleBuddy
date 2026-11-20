@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { z } from "zod";
 
 import { db } from "@/lib/db";
@@ -65,7 +67,12 @@ export async function findAddresses(
     latitude: tenth(near.latitude),
     longitude: tenth(near.longitude),
   };
-  const key = `${query.toLowerCase()}|${centre.latitude.toFixed(1)},${centre.longitude.toFixed(1)}`;
+  const plain = `${query.toLowerCase()}|${centre.latitude.toFixed(1)},${centre.longitude.toFixed(1)}`;
+  // Lower-casing can lengthen rare characters past the column's 200.
+  const key =
+    plain.length > 200
+      ? `sha256:${createHash("sha256").update(plain).digest("hex")}`
+      : plain;
   try {
     const saved = savedAddresses.safeParse(
       (await db.addressLookup.findUnique({ where: { key } }))?.results,

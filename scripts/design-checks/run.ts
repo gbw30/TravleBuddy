@@ -1109,9 +1109,26 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
   await decided.getByLabel("Ends on another day").fill("2027-07-12");
   const lookup = decided.getByRole("button", { name: "Look up address" });
   await decided.getByLabel("Address").fill("1 Walk Street");
+  // The typed address goes in a POST body, never in a URL that logs keep.
+  const searches: string[] = [];
+  const watch = (request: { method(): string; url(): string }) => {
+    if (request.url().includes("/api/v1/places/addresses")) {
+      searches.push(`${request.method()} ${request.url()}`);
+    }
+  };
+  page.on("request", watch);
   await lookup.click();
   const confirm = decided.getByRole("button", { name: /Confirm this address/ });
   await confirm.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  page.off("request", watch);
+  if (
+    !searches.some((search) => search.startsWith("POST ")) ||
+    searches.some((search) => /walk/i.test(search))
+  ) {
+    problems.push(
+      `the address search is not a POST with the address in its body: ${searches.join(", ")}`,
+    );
+  }
   const label = "Sample address, city centre";
   if ((await decided.getByText(label).count()) < 1) {
     problems.push("the address found is not shown");
