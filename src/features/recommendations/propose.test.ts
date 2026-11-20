@@ -800,6 +800,28 @@ describe("true sentences", () => {
     );
   });
 
+  it("never says a traveller's own place has a listing, so its diet stays unconfirmed", () => {
+    const own = (allergies: string[]) =>
+      proposeCards(
+        input({
+          slot: lunch,
+          candidates: [
+            place("mine", {
+              origin: "USER",
+              kind: "restaurant",
+              serves: ["vegetarian"],
+            }),
+          ],
+          taste: taste({ food: ["vegetarian"], allergies }),
+        }),
+      ).cards[0].reason;
+    expect(own([])).not.toMatch(/listing/i);
+    expect(own([])).toContain(
+      "You eat vegetarian food, and the place data does not say whether this place serves it, so check with the venue.",
+    );
+    expect(own(["peanut"])).not.toMatch(/listing/i);
+  });
+
   it("says the sample data for a sample diet", () => {
     const set = proposeCards(
       input({
