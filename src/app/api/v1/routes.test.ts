@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     startTrip: vi.fn(),
     removeTrip: vi.fn(),
     findCities: vi.fn(),
+    findAddresses: vi.fn(),
     runPlanAction: vi.fn(),
     loadPlan: vi.fn(),
     findTripPlaces: vi.fn(),
@@ -47,7 +48,10 @@ vi.mock("@/features/trips", () => ({
   updateCommitment: vi.fn(),
   removeCommitment: vi.fn(),
 }));
-vi.mock("@/features/places", () => ({ findCities: mocks.findCities }));
+vi.mock("@/features/places", () => ({
+  findCities: mocks.findCities,
+  findAddresses: mocks.findAddresses,
+}));
 vi.mock("@/use-cases/plan", () => ({
   runPlanAction: mocks.runPlanAction,
   loadPlan: mocks.loadPlan,
@@ -77,6 +81,7 @@ vi.mock("@/use-cases/profile", () => ({
   forgetEverything: mocks.forgetEverything,
 }));
 
+import { GET as addresses } from "./places/addresses/route";
 import { GET as cities } from "./places/cities/route";
 import {
   DELETE as deleteProfileEntry,
@@ -161,12 +166,19 @@ describe("signed out", () => {
         new Request("http://localhost/api/v1/places/cities?q=tokyo"),
         undefined,
       ),
+      addresses(
+        new Request(
+          "http://localhost/api/v1/places/addresses?q=rua&near=38.7,-9.1",
+        ),
+        undefined,
+      ),
     ]);
-    expect(answers.map((answer) => answer.status)).toEqual(Array(7).fill(401));
+    expect(answers.map((answer) => answer.status)).toEqual(Array(8).fill(401));
     expect(mocks.startTrip).not.toHaveBeenCalled();
     expect(mocks.runTripAction).not.toHaveBeenCalled();
     expect(mocks.removeTrip).not.toHaveBeenCalled();
     expect(mocks.findCities).not.toHaveBeenCalled();
+    expect(mocks.findAddresses).not.toHaveBeenCalled();
   });
 });
 
@@ -419,6 +431,49 @@ describe("GET /api/v1/places/cities", () => {
     const answer = await search("tokyo");
     expect(answer.status).toBe(503);
     expect(await answer.json()).toEqual({ error: "lookup_unavailable" });
+  });
+});
+
+describe("GET /api/v1/places/addresses", () => {
+  const search = (query: string) =>
+    addresses(
+      new Request(`http://localhost/api/v1/places/addresses?${query}`),
+      undefined,
+    );
+
+  it("answers the addresses found near the city", async () => {
+    mocks.findAddresses.mockResolvedValue({
+      status: "ok",
+      addresses: [{ label: "Rua da Prata 12" }],
+    });
+    const answer = await search("q=Rua%20da%20Prata&near=38.7,-9.1");
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({
+      addresses: [{ label: "Rua da Prata 12" }],
+    });
+    expect(mocks.findAddresses).toHaveBeenCalledWith("Rua da Prata", {
+      latitude: 38.7,
+      longitude: -9.1,
+    });
+  });
+
+  it("refuses a request with no usable position, without asking the provider", async () => {
+    mocks.findAddresses.mockClear();
+    expect((await search("q=rua&near=x,y")).status).toBe(422);
+    expect((await search("q=rua")).status).toBe(422);
+    expect(mocks.findAddresses).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when the lookup cannot be reached or today's allowance is used up", async () => {
+    mocks.findAddresses.mockResolvedValue({ status: "unavailable" });
+    const down = await search("q=rua&near=38.7,-9.1");
+    expect(down.status).toBe(503);
+    expect(await down.json()).toEqual({ error: "lookup_unavailable" });
+
+    mocks.findAddresses.mockResolvedValue({ status: "capped" });
+    const capped = await search("q=rua&near=38.7,-9.1");
+    expect(capped.status).toBe(503);
+    expect(await capped.json()).toEqual({ error: "lookup_capped" });
   });
 });
 

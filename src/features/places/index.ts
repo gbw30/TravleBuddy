@@ -1,6 +1,12 @@
 // The Places service interface. Browser code imports ./contracts instead.
+export { findAddresses, type AddressLookupOutcome } from "./address-lookup";
 export { findCities } from "./city-lookup";
-export type { City, CityLookupOutcome, PlaceDto } from "./contracts";
+export type {
+  City,
+  CityLookupOutcome,
+  FoundAddress,
+  PlaceDto,
+} from "./contracts";
 export { kindFromOsmTags } from "./kinds";
 export {
   isOpenFor,

@@ -1,6 +1,6 @@
 import tzLookup from "@photostructure/tz-lookup";
 
-import { citySchema, type City } from "./contracts";
+import { citySchema, type City, type FoundAddress } from "./contracts";
 import { dietsFromOsmTags, keptTags, kindFromOsmTags } from "./kinds";
 import { politeFetch } from "./osm-http";
 import type { FoundPlace, Point } from "./place-source";
@@ -130,6 +130,48 @@ export async function searchPlacesByName(
         near.longitude + reach,
         near.latitude - reach,
       ].join(","),
+    }),
+  );
+}
+
+/** Nominatim's reply to an address search. A result with no position or reference is dropped. */
+export function addressesFromNominatim(reply: unknown): FoundAddress[] {
+  if (!Array.isArray(reply)) return [];
+  return reply.flatMap((item) => {
+    const label =
+      typeof item?.display_name === "string" ? item.display_name.trim() : "";
+    const latitude = Number(item?.lat);
+    const longitude = Number(item?.lon);
+    if (
+      !label ||
+      !item?.osm_type ||
+      !item?.osm_id ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude)
+    ) {
+      return [];
+    }
+    return [
+      {
+        label: label.slice(0, 240),
+        latitude,
+        longitude,
+        ref: `${item.osm_type}/${item.osm_id}`.slice(0, 80),
+      },
+    ];
+  });
+}
+
+/** Addresses in the square around a point. Throws when the service cannot answer. */
+export async function searchAddresses(
+  text: string,
+  square: { west: number; north: number; east: number; south: number },
+): Promise<FoundAddress[]> {
+  return addressesFromNominatim(
+    await search({
+      q: text,
+      bounded: "1",
+      viewbox: [square.west, square.north, square.east, square.south].join(","),
     }),
   );
 }

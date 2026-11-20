@@ -65,7 +65,7 @@ function located(city: City): (City & Point) | null {
 }
 
 /** Counts one request to the provider today. False once the cap is passed. */
-async function withinCap(service: string): Promise<boolean> {
+export async function withinCap(service: string): Promise<boolean> {
   const day = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
   const row = await db.providerCall.upsert({
     where: { day_service: { day, service } },
