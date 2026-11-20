@@ -299,6 +299,47 @@ describe("proposals in guided planning", () => {
     expect(unknown.every((card) => card.travel === null)).toBe(true);
   });
 
+  it("still measures the first slot from the stay when the day starts with a commitment with no time", async () => {
+    const stay = {
+      id: "stay",
+      kind: "STAY",
+      title: "Hotel Aurora",
+      date: "2027-05-10",
+      startTime: null,
+      endDate: "2027-05-12",
+      endTime: null,
+      reference: null,
+      note: null,
+      located: {
+        latitude: 35.69,
+        longitude: 139.7,
+        ref: "way/1",
+        address: "Hotel Aurora, Tokyo",
+      },
+      transport: null,
+    };
+    const ticketNoTime = {
+      ...stay,
+      id: "train",
+      kind: "TRANSPORT",
+      title: "Train ticket, time to come",
+      date: "2027-05-11",
+      endDate: null,
+      located: null,
+    };
+    mocks.getTrip.mockResolvedValue(
+      trip({ commitments: [stay, ticketNoTime] as never }),
+    );
+    const plan = (await load("d2-morning"))!;
+    expect(plan.view.days[1].entries[0]).toMatchObject({
+      commitmentId: "train",
+      start: null,
+    });
+    expect(plan.proposal!.cards.every((card) => card.travel !== null)).toBe(
+      true,
+    );
+  });
+
   it("measures a slot after the way back from the last place, as the plan will once it is filled", async () => {
     mocks.getTrip.mockResolvedValue(
       trip({

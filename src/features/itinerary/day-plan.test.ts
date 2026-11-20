@@ -1400,6 +1400,31 @@ describe("the time allowed at an airport or station", () => {
     expect(kinds(landing("12:00"))).toContain("lunch");
   });
 
+  it("keeps a meal whose part of the day starts an hour after it, and drops it a minute later", () => {
+    const landing = (endTime: string) =>
+      kinds(
+        buildPlanView(
+          state(),
+          context({
+            commitments: [
+              ticket({
+                date: "2027-05-10",
+                startTime: "06:00",
+                endDate: "2027-05-10",
+                endTime,
+              }),
+            ],
+          }),
+        ).days[0].entries,
+      );
+    // Lunch is at 12:30: a landing at 12:30 starts the day at 13:30.
+    expect(landing("12:30")).toContain("lunch");
+    expect(landing("12:31")).not.toContain("lunch");
+    // Dinner is at 19:00: a landing at 19:00 starts the evening at 20:00.
+    expect(landing("19:00")).toContain("dinner");
+    expect(landing("19:01")).not.toContain("dinner");
+  });
+
   it("keeps the flight allowance for a ticket with no details, and never calls it a flight", () => {
     const view = buildPlanView(
       state(),
@@ -1808,6 +1833,25 @@ describe("where you stay", () => {
     expect(
       placeOf(unknown.days[1].entries, "d2-dinner").flags.map((f) => f.rule),
     ).not.toContain("day");
+  });
+
+  it("counts the pace buffer in the way back", () => {
+    // Dinner from 19:00 and the way back end ten minutes before 21:30; the
+    // buffer of 20 takes them past it.
+    const minutes = 150 - toMuseum().minutes - 10;
+    const view = placed(
+      { "d2-dinner": { placeId: "r", minutes } },
+      {
+        places: { r: place("r", { kind: "restaurant", openingHours: null }) },
+      },
+    );
+    const dinner = placeOf(view.days[1].entries, "d2-dinner");
+    expect(dinner.start).toBe("19:00");
+    expect(dinner.flags).toContainEqual({
+      rule: "day",
+      message: "The way back to Hotel Aurora ends at 21:40, after the day does.",
+      fix: "Move it earlier or shorten the visit.",
+    });
   });
 
   it("does not flag a place before the check-in, and lays the check-in after the place, its leg and the time it takes", () => {
