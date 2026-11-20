@@ -1,3 +1,4 @@
+import { withinShare } from "@/features/fair-use";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
@@ -110,6 +111,14 @@ export async function withinCap(
   return row.count <= cap;
 }
 
+/**
+ * The traveller's own daily share first, then everyone's allowance, so a
+ * traveller who has used up their share does not use up everyone's (TB-SYS-17).
+ */
+async function withinAllowance(service: string): Promise<boolean> {
+  return (await withinShare("gather")) && (await withinCap(service));
+}
+
 // One insert for all places. A refetch updates in place, so the id stays and
 // plans that point at it stay valid. A name search only adds new places: its
 // thinner data must not overwrite what a full fetch saved, nor bring back a
@@ -215,7 +224,7 @@ async function gather(
 
   const where = located(city);
   if (!where) return { status: "unavailable" };
-  if (source.metered && !(await withinCap(source.origin))) {
+  if (source.metered && !(await withinAllowance(source.origin))) {
     return { status: "capped" };
   }
 
@@ -344,7 +353,7 @@ export async function findPlacesByName(
   if (!where) return { status: "unavailable" };
 
   const source = activeSource();
-  if (source.metered && !(await withinCap(source.origin))) {
+  if (source.metered && !(await withinAllowance(source.origin))) {
     return { status: "capped" };
   }
   try {

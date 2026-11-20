@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { z } from "zod";
 
+import { withinShare } from "@/features/fair-use";
 import { db } from "@/lib/db";
 
 import type { FoundAddress } from "./contracts";
@@ -79,7 +80,11 @@ export async function findAddresses(
     );
     if (saved.success) return { status: "ok", addresses: saved.data };
 
-    if (!(await withinCap(ADDRESS_SERVICE, ADDRESS_DAILY_CAP)))
+    // The traveller's own share first, so it cannot use up everyone's (TB-SYS-17).
+    if (
+      !(await withinShare("addresses")) ||
+      !(await withinCap(ADDRESS_SERVICE, ADDRESS_DAILY_CAP))
+    )
       return { status: "capped" };
     const addresses = await searchAddresses(query, {
       west: tenth(centre.longitude - REACH),
