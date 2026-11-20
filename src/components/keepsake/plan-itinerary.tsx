@@ -1,4 +1,5 @@
 import {
+  placeWordFor,
   SLOT_WORDS,
   type PlanEntry,
   type PlanView,
@@ -48,6 +49,9 @@ const hours = (minutes: number) =>
   minutes < 90
     ? `${minutes} min`
     : `${Math.round((minutes / 60) * 2) / 2} h`.replace(".5", "½");
+
+const allowed = (minutes: number) =>
+  minutes % 60 === 0 ? `${minutes / 60} h` : hours(minutes);
 
 /**
  * The live itinerary (PRD 9.1): one section per day, with scheduled places,
@@ -193,6 +197,33 @@ export function PlanItinerary({
                       title="Breakfast where you stay"
                       variant="wander"
                     />
+                  </li>
+                );
+              }
+              if (entry.type === "allowance") {
+                const place = placeWordFor(entry.mode);
+                const long = allowed(entry.minutes);
+                return (
+                  <li key={`a-${index}`} className="mt-2.5 first:mt-0">
+                    <ItineraryRow
+                      time={entry.start}
+                      title={
+                        place === null
+                          ? entry.way === "from"
+                            ? `After you arrive, about ${long} allowed`
+                            : `Before you leave, ${long} allowed, from ${entry.start}`
+                          : entry.way === "from"
+                            ? `From the ${place}, about ${long} allowed`
+                            : `To the ${place} and check-in, ${long} allowed, from ${entry.start}`
+                      }
+                      variant="wander"
+                    >
+                      <p className="basis-full font-sans text-[13px] leading-6 text-muted">
+                        {place === null
+                          ? "Check the transfer time for this journey"
+                          : `Check the transfer time for your ${place}`}
+                      </p>
+                    </ItineraryRow>
                   </li>
                 );
               }

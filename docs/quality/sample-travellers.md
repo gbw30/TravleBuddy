@@ -23,8 +23,8 @@ Two limits of the sample places show in the itineraries, and are not faults of t
 | Dan and Priya | Quick plan | 31 | all pass |
 | Sam | Guided planning | 15 | all pass |
 | Sam | Quick plan | 15 | all pass |
-| Lena | Guided planning | 22 | all pass |
-| Lena | Quick plan | 22 | all pass |
+| Lena | Guided planning | 21 | all pass |
+| Lena | Quick plan | 21 | all pass |
 
 ## Maya
 
@@ -196,6 +196,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 1, Sat 10 Jul, Lisbon**
 
 - 08:20  Already decided: Flight · London → Lisbon
+- 11:05  Allowed 60 min from the airport (flight)
 - 12:05  Lunch: **Harbour Canteen** (75 min)
 - 13:20  Time to wander around Harbour Canteen (60 min)
 - 14:56  Afternoon: **Lisbon Botanical Garden** (60 min), 16 min transit to get there
@@ -239,6 +240,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 - 11:30  Lunch: **Corner Noodles** (75 min)
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
+- 15:40  Allowed 120 min to the airport (flight)
 - 17:40  Already decided: Flight · Lisbon → London
 
 ### Quick plan
@@ -258,6 +260,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 **Day 1, Sat 10 Jul, Lisbon**
 
 - 08:20  Already decided: Flight · London → Lisbon
+- 11:05  Allowed 60 min from the airport (flight)
 - 12:05  Lunch: **Harbour Canteen** (75 min)
 - 13:20  Time to wander around Harbour Canteen (60 min)
 - 14:56  Afternoon: **Lisbon Botanical Garden** (60 min), 16 min transit to get there
@@ -301,6 +304,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 - 11:30  Lunch: **Corner Noodles** (75 min)
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
+- 15:40  Allowed 120 min to the airport (flight)
 - 17:40  Already decided: Flight · Lisbon → London
 
 **The agent's report**
@@ -588,50 +592,49 @@ Alone, four nights in Rome, a same-day flight there and back from London, public
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 22 places, each one the place source knows, none twice |
+| No place is invented | pass | 21 places, each one the place source knows, none twice |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
 | Each ticket lasts its real length | pass | 120 and 120 minutes, by the clock of each end |
 | The days match the pace | pass | balanced: no day has more than 3 sights or activities |
-| Every reason is true of the traveller and the trip | pass | 60 reasons read, sentence by sentence |
+| Every reason is true of the traveller and the trip | pass | 57 reasons read, sentence by sentence |
 
 Pace: I will keep a balanced pace. Shape of the day: I will start the days at about nine. Interests: I will mix a little of everything. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
 
 **Day 1, Fri 18 Jun, Rome**
 
-- 07:30  Already decided: Flight · London → Rome
-- 12:30  Lunch: **Sunrise Cafe** (45 min)
-- 13:45  Time to wander around Sunrise Cafe (60 min)
-- 15:24  Afternoon: **Rome Castle** (60 min), 19 min transit to get there
-- 16:57  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
-- 19:26  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+- 10:00  Already decided: Flight · London → Rome
+- 13:00  Allowed 60 min from the airport (flight)
+- 14:00  Afternoon: **Rome Castle** (60 min)
+- 16:00  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
+- 19:00  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
 
 **Day 2, Sat 19 Jun, Rome**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
-- 10:23  Morning: **Rome Botanical Garden** (60 min), 18 min transit to get there
-- 12:30  Lunch: **Morning Cafe** (45 min), 9 min transit to get there
-- 13:45  Time to wander around Morning Cafe (60 min)
-- 15:20  Afternoon: **Rome Cathedral** (45 min), 15 min transit to get there
-- 16:36  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:26  Morning: **Rome Botanical Garden** (60 min), 21 min transit to get there
+- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
+- 13:45  Time to wander around Corner Noodles (60 min)
+- 15:21  Afternoon: **Rome Cathedral** (45 min), 16 min transit to get there
+- 16:37  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 9 min transit to get there
 
 **Day 3, Sun 20 Jun, Rome**
 
-- 09:00  Breakfast: **Riverside Cafe** (45 min)
-- 10:19  Morning: **Rome Riverside Park** (60 min), 14 min transit to get there [opening hours not known]
-- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
-- 13:45  Time to wander around Corner Noodles (60 min)
-- 15:16  Afternoon: **Rome City Museum** (120 min), 11 min transit to get there
-- 17:51  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:20  Morning: **Rome Riverside Park** (60 min), 15 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Morning Cafe** (45 min), 8 min transit to get there
+- 13:45  Time to wander around Morning Cafe (60 min)
+- 15:17  Afternoon: **Rome City Museum** (120 min), 12 min transit to get there
+- 17:52  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Lantern Grill** (75 min), 11 min transit to get there
 
 **Day 4, Mon 21 Jun, Rome**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
-- 10:18  Morning: **Rome Central Market** (60 min), 13 min transit to get there
+- 09:00  Breakfast: **Riverside Cafe** (45 min)
+- 10:16  Morning: **Rome Central Market** (60 min), 11 min transit to get there
 - 12:30  Lunch: **Garden Table** (75 min), 11 min transit to get there [opening hours not known]
 - 13:45  Time to wander around Garden Table (60 min)
 - 14:45  Afternoon: *open*
@@ -645,13 +648,14 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
 - 13:45  Time to wander around Market Kitchen (60 min)
 - 14:45  Afternoon: *open*
+- 16:00  Allowed 120 min to the airport (flight)
 - 18:00  Already decided: Flight · Rome → London
 
 ### Quick plan
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 22 places, each one the place source knows, none twice |
+| No place is invented | pass | 21 places, each one the place source knows, none twice |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -663,37 +667,36 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 
 **Day 1, Fri 18 Jun, Rome**
 
-- 07:30  Already decided: Flight · London → Rome
-- 12:30  Lunch: **Sunrise Cafe** (45 min)
-- 13:45  Time to wander around Sunrise Cafe (60 min)
-- 15:24  Afternoon: **Rome Castle** (60 min), 19 min transit to get there
-- 16:57  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
-- 19:26  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+- 10:00  Already decided: Flight · London → Rome
+- 13:00  Allowed 60 min from the airport (flight)
+- 14:00  Afternoon: **Rome Castle** (60 min)
+- 16:00  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
+- 19:00  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
 
 **Day 2, Sat 19 Jun, Rome**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
-- 10:23  Morning: **Rome Botanical Garden** (60 min), 18 min transit to get there
-- 12:30  Lunch: **Morning Cafe** (45 min), 9 min transit to get there
-- 13:45  Time to wander around Morning Cafe (60 min)
-- 15:20  Afternoon: **Rome Cathedral** (45 min), 15 min transit to get there
-- 16:36  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:26  Morning: **Rome Botanical Garden** (60 min), 21 min transit to get there
+- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
+- 13:45  Time to wander around Corner Noodles (60 min)
+- 15:21  Afternoon: **Rome Cathedral** (45 min), 16 min transit to get there
+- 16:37  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 9 min transit to get there
 
 **Day 3, Sun 20 Jun, Rome**
 
-- 09:00  Breakfast: **Riverside Cafe** (45 min)
-- 10:19  Morning: **Rome Riverside Park** (60 min), 14 min transit to get there [opening hours not known]
-- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
-- 13:45  Time to wander around Corner Noodles (60 min)
-- 15:16  Afternoon: **Rome City Museum** (120 min), 11 min transit to get there
-- 17:51  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 10:20  Morning: **Rome Riverside Park** (60 min), 15 min transit to get there [opening hours not known]
+- 12:30  Lunch: **Morning Cafe** (45 min), 8 min transit to get there
+- 13:45  Time to wander around Morning Cafe (60 min)
+- 15:17  Afternoon: **Rome City Museum** (120 min), 12 min transit to get there
+- 17:52  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Lantern Grill** (75 min), 11 min transit to get there
 
 **Day 4, Mon 21 Jun, Rome**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
-- 10:18  Morning: **Rome Central Market** (60 min), 13 min transit to get there
+- 09:00  Breakfast: **Riverside Cafe** (45 min)
+- 10:16  Morning: **Rome Central Market** (60 min), 11 min transit to get there
 - 12:30  Lunch: **Garden Table** (75 min), 11 min transit to get there [opening hours not known]
 - 13:45  Time to wander around Garden Table (60 min)
 - 14:45  Afternoon: *open*
@@ -707,12 +710,13 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
 - 13:45  Time to wander around Market Kitchen (60 min)
 - 14:45  Afternoon: *open*
+- 16:00  Allowed 120 min to the airport (flight)
 - 18:00  Already decided: Flight · Rome → London
 
 **The agent's report**
 
-- Built: 5 days in Rome, planned around 2 things already decided. I chose 22 places: 9 to see and 13 to eat at.
+- Built: 5 days in Rome, planned around 2 things already decided. I chose 21 places: 9 to see and 12 to eat at.
 - Assumed: Pace: I will keep a balanced pace. Shape of the day: I will start the days at about nine. Interests: I will mix a little of everything. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
 - Could not fit: Nothing I know fits the afternoon on day 4. Nothing I know fits the late afternoon on day 4. Nothing I know fits the morning on day 5. 1 more slot is open for the same reason.
-- Unsure: Two places were close for lunch on day 1. I chose Sunrise Cafe. Two places were close for the afternoon on day 1. I chose Rome Castle. Two places were close for breakfast on day 2. I chose Corner Bakery. 5 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Riverside Park, Rome Lookout and Garden Table. Check before you go.
+- Unsure: Two places were close for the afternoon on day 1. I chose Rome Castle. Two places were close for breakfast on day 2. I chose Sunrise Cafe. Two places were close for the morning on day 2. I chose Rome Botanical Garden. 6 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Riverside Park, Rome Lookout and Garden Table. Check before you go.
 

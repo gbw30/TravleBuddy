@@ -204,6 +204,7 @@ describe("the days and their slots", () => {
     // Landing at 14:35 leaves room from 15:35: the afternoon slot is too early.
     expect(view.days[0].entries).toMatchObject([
       { type: "commitment", title: "Flight in", start: "14:35" },
+      { type: "allowance", way: "from", start: "14:35", minutes: 60 },
       { type: "open", kind: "afternoon-2", start: "16:00" },
       { type: "open", kind: "dinner" },
     ]);
@@ -213,6 +214,7 @@ describe("the days and their slots", () => {
       "lunch",
       "wander",
       "afternoon",
+      "allowance",
       "commitment",
     ]);
     expect(view.unplaced).toEqual([]);
@@ -580,15 +582,17 @@ describe("a trip across cities", () => {
     );
     const day3 = view.days[2].entries;
     expect(found(day3, "transfer")).toEqual([]);
-    expect(day3[0]).toMatchObject({
+    expect(day3[1]).toMatchObject({
       type: "commitment",
       title: "Shinkansen",
       start: "09:00",
       minutes: 135,
     });
-    // In Kyoto from 11:45: lunch and the afternoon are there.
+    // 30 minutes before, 20 after: in Kyoto from 11:35, lunch and the afternoon are there.
     expect(kinds(day3)).toEqual([
+      "allowance",
       "commitment",
+      "allowance",
       "lunch",
       "wander",
       "afternoon",
@@ -960,5 +964,356 @@ describe("breakfast", () => {
     expect(kindSuitsSlot("bakery", "morning")).toBe(false);
     expect(kindSuitsSlot("cafe", "lunch")).toBe(true);
     expect(kindSuitsSlot("restaurant", "lunch")).toBe(true);
+  });
+});
+
+describe("the time allowed at an airport or station", () => {
+  const ticket = (over: Partial<CommitmentDto>): CommitmentDto =>
+    commitment({
+      id: "t",
+      kind: "TRANSPORT",
+      title: "Ticket",
+      transport: {
+        mode: "FLIGHT",
+        origin: "London",
+        destination: "Tokyo",
+        originZone: "Europe/London",
+        destinationZone: "Asia/Tokyo",
+      },
+      ...over,
+    });
+  const train = (over: Partial<CommitmentDto> = {}) =>
+    ticket({
+      date: "2027-05-12",
+      startTime: "10:30",
+      endDate: "2027-05-12",
+      endTime: "12:45",
+      transport: {
+        mode: "TRAIN",
+        origin: "Tokyo",
+        destination: "Kyoto",
+        originZone: "Asia/Tokyo",
+        destinationZone: "Asia/Tokyo",
+      },
+      ...over,
+    });
+  const acrossCities = {
+    cities: [
+      { city: tokyo, nights: 2 },
+      { city: kyoto, nights: 1 },
+    ],
+    startDate: "2027-05-10",
+    endDate: null,
+    lengthNights: null,
+    timeOfYear: null,
+  };
+
+  it("shows 60 minutes after a landing on day 1, and starts the day after them", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-09",
+            startTime: "11:30",
+            endDate: "2027-05-10",
+            endTime: "14:35",
+          }),
+        ],
+      }),
+    );
+    expect(view.days[0].entries).toMatchObject([
+      { type: "commitment", start: "14:35" },
+      {
+        type: "allowance",
+        way: "from",
+        mode: "FLIGHT",
+        start: "14:35",
+        minutes: 60,
+      },
+      { type: "open", kind: "afternoon-2", start: "16:00" },
+      { type: "open", kind: "dinner" },
+    ]);
+  });
+
+  it("shows 120 minutes before a last-day flight, before the ticket, and ends the day there", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "21:00",
+          }),
+        ],
+      }),
+    );
+    expect(view.days[2].entries.slice(-2)).toMatchObject([
+      {
+        type: "allowance",
+        way: "to",
+        mode: "FLIGHT",
+        start: "16:00",
+        minutes: 120,
+      },
+      { type: "commitment", start: "18:00" },
+    ]);
+  });
+
+  it("still shows a last-day flight in the early morning, with nothing else that day", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-12",
+            startTime: "08:00",
+            endDate: "2027-05-12",
+            endTime: "11:00",
+          }),
+        ],
+      }),
+    );
+    expect(kinds(view.days[2].entries)).toEqual(["allowance", "commitment"]);
+    expect(found(view.days[2].entries, "allowance")[0].start).toBe("06:00");
+  });
+
+  it("gives a mid-trip train 30 minutes before and 20 after, and breakfast still follows", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: acrossCities,
+        commitments: [train()],
+        breakfast: "suggest",
+      }),
+    );
+    const day3 = view.days[2].entries;
+    expect(found(day3, "transfer")).toEqual([]);
+    expect(found(day3, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "to",
+        mode: "TRAIN",
+        start: "10:00",
+        minutes: 30,
+      },
+      {
+        type: "allowance",
+        way: "from",
+        mode: "TRAIN",
+        start: "12:45",
+        minutes: 20,
+      },
+    ]);
+    expect(kinds(day3)).toContain("breakfast");
+    // Kyoto starts at 13:05: lunch is still there.
+    const lunch = day3.find((e) => e.type === "open" && e.kind === "lunch");
+    expect(lunch).toMatchObject({ cityKey: "kyoto|japan", start: "13:05" });
+  });
+
+  it("uses the flight values for a mid-trip flight, and keeps 60 and 30 for an assumed transfer", () => {
+    const flight = buildPlanView(
+      state(),
+      context({
+        facts: acrossCities,
+        commitments: [
+          train({
+            transport: {
+              mode: "FLIGHT",
+              origin: "Tokyo",
+              destination: "Kyoto",
+              originZone: "Asia/Tokyo",
+              destinationZone: "Asia/Tokyo",
+            },
+          }),
+        ],
+      }),
+    );
+    expect(
+      found(flight.days[2].entries, "allowance").map((a) => a.minutes),
+    ).toEqual([120, 60]);
+    const assumed = buildPlanView(state(), context({ facts: acrossCities }));
+    expect(found(assumed.days[2].entries, "allowance")).toEqual([]);
+  });
+
+  it("shows 60 minutes after a night flight lands today", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-09",
+            startTime: "22:00",
+            endDate: "2027-05-10",
+            endTime: "06:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[0].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "from",
+        mode: "FLIGHT",
+        start: "06:00",
+        minutes: 60,
+      },
+    ]);
+  });
+
+  it("shows a landing late in the evening as it is, and leaves no slot after it", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-10",
+            startTime: "15:00",
+            endDate: "2027-05-10",
+            endTime: "22:30",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[0].entries, "allowance")[0]).toMatchObject({
+      way: "from",
+      start: "22:30",
+      minutes: 60,
+    });
+    expect(view.days[0].entries.at(-1)).toMatchObject({ type: "allowance" });
+  });
+
+  it("bounds the departure day by a city-changing ticket with no arrival time, with no row after it", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: acrossCities,
+        commitments: [train({ endDate: null, endTime: null })],
+      }),
+    );
+    const day3 = view.days[2].entries;
+    expect(found(day3, "allowance").map((a) => a.way)).toEqual(["to"]);
+    expect(
+      day3.filter((e) => "cityKey" in e && e.cityKey === "kyoto|japan"),
+    ).toEqual([]);
+    expect(view.days[3].city).toBe("Kyoto");
+  });
+
+  it("drops a lunch that would start after the lunch window, and keeps one that fits", () => {
+    const landing = (endTime: string) =>
+      buildPlanView(
+        state(),
+        context({
+          commitments: [
+            ticket({
+              date: "2027-05-10",
+              startTime: "10:00",
+              endDate: "2027-05-10",
+              endTime,
+            }),
+          ],
+        }),
+      ).days[0].entries;
+    expect(kinds(landing("13:00"))).not.toContain("lunch");
+    expect(kinds(landing("12:00"))).toContain("lunch");
+  });
+
+  it("keeps the flight allowance for a ticket with no details, and never calls it a flight", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            transport: null,
+            date: "2027-05-09",
+            startTime: "11:30",
+            endDate: "2027-05-10",
+            endTime: "14:35",
+          }),
+          ticket({
+            id: "out",
+            transport: null,
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "21:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[0].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "from",
+        mode: null,
+        start: "14:35",
+        minutes: 60,
+      },
+    ]);
+    expect(found(view.days[2].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "to",
+        mode: null,
+        start: "16:00",
+        minutes: 120,
+      },
+    ]);
+  });
+
+  it("shows one row after a landing when the first day is also the day the city changes", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: {
+          cities: [
+            { city: tokyo, nights: 0 },
+            { city: kyoto, nights: 1 },
+          ],
+          startDate: "2027-05-10",
+          endDate: null,
+          lengthNights: null,
+          timeOfYear: null,
+        },
+        commitments: [
+          ticket({
+            date: "2027-05-10",
+            startTime: "08:00",
+            endDate: "2027-05-10",
+            endTime: "11:00",
+          }),
+        ],
+      }),
+    );
+    expect(
+      found(view.days[0].entries, "allowance").filter((a) => a.way === "from"),
+    ).toHaveLength(1);
+  });
+
+  it("shows a flight in the small hours with the time that is really before it", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-12",
+            startTime: "01:30",
+            endDate: "2027-05-12",
+            endTime: "05:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[2].entries, "allowance")).toEqual([
+      {
+        type: "allowance",
+        way: "to",
+        mode: "FLIGHT",
+        start: "00:00",
+        minutes: 90,
+      },
+    ]);
   });
 });

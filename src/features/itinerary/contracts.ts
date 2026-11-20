@@ -182,6 +182,15 @@ export type PlanEntry =
       arriveLocal: string | null;
     }
   | { type: "wander"; start: string; minutes: number; area: string | null }
+  | {
+      /** Time the plan allows to get to a ticket, or away from one. Shown, never hidden. */
+      type: "allowance";
+      way: "to" | "from";
+      /** The ticket's mode, as the trip records it. Null when it has no details. */
+      mode: string | null;
+      start: string;
+      minutes: number;
+    }
   /** Breakfast that comes with the stay: a quiet row, with nothing to choose. */
   | { type: "breakfast-at-stay"; start: string; minutes: number };
 
@@ -207,3 +216,13 @@ export type PlanView = {
   /** Commitments with no time that no day had room for. Never dropped. */
   unplaced: { commitmentId: string; title: string; reason: string }[];
 };
+
+/** Where a ticket's journey starts and ends. Null when the mode is not known. */
+export const placeWordFor = (mode: string | null): string | null =>
+  mode === null
+    ? null
+    : mode === "FLIGHT"
+      ? "airport"
+      : mode === "FERRY"
+        ? "port"
+        : "station";
