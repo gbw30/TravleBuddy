@@ -334,6 +334,8 @@ export function buildPlanView(
     transfer: Extract<PlanEntry, { type: "transfer" }> | null;
     /** Time allowed to get to and from tickets today. */
     allowances: Extract<PlanEntry, { type: "allowance" }>[];
+    /** The row out of the ticket that changes city: the one allowance in the new city's part. */
+    arrival: Extract<PlanEntry, { type: "allowance" }> | null;
     /** When the transfer arrives, by the clock of the city of arrival. */
     landsAt: number;
     /** When the traveller leaves the morning's city, on a day with two segments. */
@@ -378,6 +380,10 @@ export function buildPlanView(
     // left on an earlier day does: a night flight lands in the new city.
     const landed = landing.filter((c) => index === 0 || c.date !== date);
     const allowances: Draft["allowances"] = [];
+    let landedFrom = null as {
+      ticket: CommitmentDto;
+      row: Draft["allowances"][number];
+    } | null;
     if (landed.length > 0) {
       const last = landed.reduce((a, b) =>
         toMinutes(b.endTime!) > toMinutes(a.endTime!) ? b : a,
@@ -385,13 +391,17 @@ export function buildPlanView(
       const { mode, after } = allowanceOf(last);
       const at = toMinutes(last.endTime!);
       from = Math.max(from, at + after);
-      allowances.push({
-        type: "allowance",
-        way: "from",
-        mode,
-        start: toClock(at),
-        minutes: after,
-      });
+      landedFrom = {
+        ticket: last,
+        row: {
+          type: "allowance",
+          way: "from",
+          mode,
+          start: toClock(at),
+          minutes: after,
+        },
+      };
+      allowances.push(landedFrom.row);
     }
     if (index === totalNights && totalNights > 0 && tickets.length > 0) {
       const first = tickets.reduce((a, b) => (b.start < a.start ? b : a));
@@ -413,6 +423,7 @@ export function buildPlanView(
     let transfer: Draft["transfer"] = null;
     let landsAt = 0;
     let leaves = 0;
+    let arrival: Draft["arrival"] = null;
     if (cityKeyOf(morningCity) === cityKeyOf(eveningCity)) {
       segments = [{ city: morningCity, from, until }];
     } else {
@@ -468,15 +479,18 @@ export function buildPlanView(
           // A ticket in the small hours leaves only the time since midnight.
           minutes: Math.min(before, leave),
         });
-        // On the first day the landing above has already given this row.
-        if (lands && !allowances.some((a) => a.way === "from")) {
-          allowances.push({
+        // On the first day the landing above may already be this ticket's row.
+        if (lands && landedFrom?.ticket === ticket.commitment) {
+          arrival = landedFrom.row;
+        } else if (lands) {
+          arrival = {
             type: "allowance",
             way: "from",
             mode,
             start: toClock(arrive),
             minutes: after,
-          });
+          };
+          allowances.push(arrival);
         }
       }
       segments = [{ city: morningCity, from, until: leave - before }];
@@ -558,6 +572,7 @@ export function buildPlanView(
       fixed,
       transfer,
       allowances,
+      arrival,
       landsAt,
       leaves,
       stayIn,
@@ -677,13 +692,12 @@ export function buildPlanView(
           segment: changes && fixed.start > draft.leaves ? 1 : 0,
           fixed,
         })),
-      ...draft.allowances.map((allowance) => {
-        const at = toMinutes(allowance.start);
-        // Only the way out of the ticket that changes city is in the new one.
-        const after =
-          changes && allowance.way === "from" && at >= draft.landsAt;
-        return { at, segment: after ? 1 : 0, allowance };
-      }),
+      // Only the way out of the ticket that changes city is in the new one.
+      ...draft.allowances.map((allowance) => ({
+        at: toMinutes(allowance.start),
+        segment: allowance === draft.arrival ? 1 : 0,
+        allowance,
+      })),
       ...(draft.transfer
         ? [
             {

@@ -244,6 +244,31 @@ const scenarios: Scenario[] = [
     ],
   },
   {
+    name: "a night flight in, and a train to another city the same day",
+    cities: [
+      [lisbon, 2],
+      [porto, 1],
+    ],
+    commitments: (stays) => [
+      ticket(
+        "FLIGHT",
+        london,
+        lisbon,
+        ["2027-05-11", "22:00"],
+        ["2027-05-12", "05:00"],
+      ),
+      ticket(
+        "TRAIN",
+        lisbon,
+        porto,
+        ["2027-05-12", "12:00"],
+        ["2027-05-12", "15:00"],
+      ),
+      ...stay(lisbon, ["2027-05-10", "2027-05-12"], "15:00", stays),
+      ...stay(porto, ["2027-05-12", "2027-05-13"], "15:00", stays),
+    ],
+  },
+  {
     name: "a booking soon after the check-in time",
     cities: [[lisbon, 2]],
     commitments: (stays) => [

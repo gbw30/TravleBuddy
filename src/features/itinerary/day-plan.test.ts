@@ -1472,6 +1472,75 @@ describe("the time allowed at an airport or station", () => {
     ).toHaveLength(1);
   });
 
+  it("shows a row after each landing on a later day: a night flight's and the city change's", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: acrossCities,
+        commitments: [
+          ticket({
+            id: "night",
+            date: "2027-05-11",
+            startTime: "22:00",
+            endDate: "2027-05-12",
+            endTime: "05:00",
+          }),
+          train(),
+        ],
+      }),
+    );
+    expect(
+      found(view.days[2].entries, "allowance")
+        .filter((a) => a.way === "from")
+        .map((a) => `${a.start} ${a.mode} ${a.minutes}`),
+    ).toEqual(["05:00 FLIGHT 60", "12:45 TRAIN 20"]);
+  });
+
+  it("keeps a night flight's row in the morning's city when the city change crosses the date line", () => {
+    const honolulu = {
+      ...kyoto,
+      name: "Honolulu",
+      country: "United States",
+      timeZone: "Pacific/Honolulu",
+    };
+    const entries = buildPlanView(
+      state(),
+      context({
+        facts: {
+          ...acrossCities,
+          cities: [
+            { city: tokyo, nights: 2 },
+            { city: honolulu, nights: 1 },
+          ],
+        },
+        commitments: [
+          ticket({
+            id: "night",
+            date: "2027-05-11",
+            startTime: "20:00",
+            endDate: "2027-05-12",
+            endTime: "07:00",
+          }),
+          ticket({
+            id: "east",
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "06:30",
+          }),
+        ],
+      }),
+    ).days[2].entries;
+    const nightRow = entries.findIndex(
+      (e) => e.type === "allowance" && e.start === "07:00",
+    );
+    const east = entries.findIndex(
+      (e) => e.type === "commitment" && e.commitmentId === "east",
+    );
+    expect(nightRow).toBeGreaterThanOrEqual(0);
+    expect(nightRow).toBeLessThan(east);
+  });
+
   it("shows a flight in the small hours with the time that is really before it", () => {
     const view = buildPlanView(
       state(),
