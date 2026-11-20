@@ -923,7 +923,7 @@ export function buildPlanView(
         if (
           start + 60 > segment.until &&
           lastPick?.segment === step.segment &&
-          bareStart !== undefined &&
+          bareStart != null &&
           toMinutes(bareStart) + 60 <= segment.until &&
           !lastPick.flags.some((flag) => flag.rule === "day")
         ) {
