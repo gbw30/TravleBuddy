@@ -490,6 +490,46 @@ describe("a picked place", () => {
     expect(dinner.flags.map((flag) => flag.rule)).toContain("day");
   });
 
+  describe("on a last day that ends at the way to a 18:00 flight", () => {
+    const flight = commitment({
+      id: "t",
+      kind: "TRANSPORT",
+      title: "Flight",
+      date: "2027-05-12",
+      startTime: "18:00",
+      endDate: "2027-05-12",
+      endTime: "21:00",
+    });
+    const lastDay = (pace: Pace, picks: PlanState["picks"]) =>
+      buildPlanView(
+        state({ pace, picks }),
+        context({ places, commitments: [flight] }),
+      ).days[2].entries;
+
+    it("flags the last pick that leaves an open slot no time before the day ends", () => {
+      // 10:45 to 15:05 leaves lunch to start at 15:05, with 16:00 the end.
+      const day3 = lastDay("packed", {
+        "d3-morning": pick("shrine"),
+        "d3-morning-2": pick("museum", 260),
+      });
+      const [first, last] = found(day3, "place");
+      expect(first.flags.filter((flag) => flag.rule === "day")).toEqual([]);
+      expect(last.flags.filter((flag) => flag.rule === "day")).toEqual([
+        {
+          rule: "day",
+          message: "Leaves no time for lunch before 16:00.",
+          fix: "Move it earlier or shorten the visit.",
+        },
+      ]);
+    });
+
+    it("does not flag a pick when the slot had no time without it", () => {
+      // At a relaxed pace, time to wander already runs up to the way to the flight.
+      const day3 = lastDay("relaxed", { "d3-morning": pick("museum") });
+      expect(found(day3, "place")[0].flags).toEqual([]);
+    });
+  });
+
   it("shows no travel time to or from a place with no known position", () => {
     const view = buildPlanView(
       state({

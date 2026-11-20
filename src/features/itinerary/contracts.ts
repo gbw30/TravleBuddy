@@ -31,6 +31,9 @@ export const SLOT_WORDS: Record<SlotKind, string> = {
   "afternoon-2": "Late afternoon",
   dinner: "Dinner",
 };
+/** A slot as a sentence names it: "lunch", "the late afternoon". */
+export const slotWords = (kind: SlotKind) =>
+  isMeal(kind) ? kind : `the ${SLOT_WORDS[kind].toLowerCase()}`;
 
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

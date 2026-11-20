@@ -366,6 +366,7 @@ describe("every day of a plan", () => {
             ["packed", false],
             ["relaxed", true],
             ["balanced", true],
+            ["packed", true],
           ] as const) {
             const view = planned(
               {
@@ -404,9 +405,4 @@ describe("every day of a plan", () => {
     }
     expect(days).toBeGreaterThan(1000);
   });
-
-  // shortcut: on a packed day a run of picks that each break no rule can push
-  // an open lunch past its window and the open afternoon past the way to a
-  // ticket; whether to flag or drop such a slot is the developer's to decide.
-  it.todo("stays in time order on a packed day full of picks");
 });

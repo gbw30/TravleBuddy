@@ -14,6 +14,7 @@ import type { CommitmentDto, TripFacts } from "@/features/trips/contracts";
 
 import {
   isMeal,
+  slotWords,
   type Pace,
   type PlanBlocker,
   type PlanDay,
@@ -617,6 +618,12 @@ export function buildPlanView(
   }
 
   // Pass 3: walk each day in time order, working out start times, travel and flags.
+  // The same days with nothing picked: an open slot that fits there, and no
+  // longer does, was pushed out by the picks before it.
+  const bare =
+    Object.keys(state.picks).length > 0
+      ? buildPlanView({ ...state, picks: {} }, context)
+      : null;
   const usedPicks = new Set<string>();
   const notes: ({ key: string; text: string } | null | undefined)[] = [];
   const days: PlanDay[] = drafts.map((draft) => {
@@ -710,6 +717,7 @@ export function buildPlanView(
       point: Point;
       until: number;
     } | null;
+    let lastPick = null as { flags: PlanFlag[]; segment: number } | null;
 
     steps.forEach((step, position) => {
       if ("breakfast" in step) {
@@ -906,8 +914,25 @@ export function buildPlanView(
         lastPoint = point;
         lastPlace = point ? { flags, point, until: segment.until } : null;
         lastPlaceName = place.name;
+        lastPick = { flags, segment: step.segment };
       } else {
         const start = Math.max(slot.earliest, clock);
+        const bareStart = bare?.days[draft.day - 1].entries.find(
+          (entry) => entry.type === "open" && entry.slotId === slot.id,
+        )?.start;
+        if (
+          start + 60 > segment.until &&
+          lastPick?.segment === step.segment &&
+          bareStart !== undefined &&
+          toMinutes(bareStart) + 60 <= segment.until &&
+          !lastPick.flags.some((flag) => flag.rule === "day")
+        ) {
+          lastPick.flags.push({
+            rule: "day",
+            message: `Leaves no time for ${slotWords(slot.kind)} before ${toClock(segment.until)}.`,
+            fix: "Move it earlier or shorten the visit.",
+          });
+        }
         // An open slot comes after the last place, so the way back follows it.
         lastPlace = null;
         entries.push({

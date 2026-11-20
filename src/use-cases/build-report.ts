@@ -1,10 +1,9 @@
 import {
   isMeal,
-  SLOT_WORDS,
+  slotWords,
   type BuildProgress,
   type PlanEntry,
   type PlanView,
-  type SlotKind,
 } from "@/features/itinerary/contracts";
 import type { PlaceDto } from "@/features/places/contracts";
 import type { TasteTopic } from "@/features/memory/contracts";
@@ -30,8 +29,6 @@ const USED: TasteTopic[] = [
 /** How many of one kind of note are spelled out before the rest are counted. */
 const SPELLED_OUT = 3;
 
-const slotWords = (kind: SlotKind) =>
-  isMeal(kind) ? kind : `the ${SLOT_WORDS[kind].toLowerCase()}`;
 type Slot = Extract<PlanEntry, { type: "open" | "place" }>;
 
 export function buildReportOf(input: {
