@@ -1012,4 +1012,30 @@ describe("removing a place the traveller added", () => {
     mocks.getPlaces.mockResolvedValue([place("own", "museum")]);
     expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([]);
   });
+
+  it("leaves an archived trip alone, and does not name it", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    mocks.getPlaces.mockResolvedValue([
+      { ...place("own", "museum"), origin: "USER" },
+    ]);
+    mocks.listTrips.mockResolvedValue([
+      { id: "trip-2", title: "Old trip", archived: true },
+    ]);
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { "d1-morning": picked("own") } }),
+      canUndo: false,
+    });
+    expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([]);
+    await remove();
+    expect(mocks.writePlanVersion.mock.calls.map(([, id]) => id)).toEqual([
+      "trip-1",
+    ]);
+    expect(mocks.advanceTripRevision).not.toHaveBeenCalled();
+  });
+
+  it("answers null for a trip that is not the traveller's", async () => {
+    mocks.getTrip.mockResolvedValue(null);
+    expect(await tripsAlsoHolding("user-1", "trip-9", "own")).toBeNull();
+    expect(mocks.listTrips).not.toHaveBeenCalled();
+  });
 });

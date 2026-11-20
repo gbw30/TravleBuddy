@@ -198,6 +198,17 @@ describe("the checks on a planned trip", () => {
         }),
       );
     expect(repeat("d1-breakfast", "d2-breakfast")).toEqual([]);
+    const found = checkItinerary({
+      plan: plan([
+        [at("d1-breakfast", "Castle")],
+        [at("d2-breakfast", "Castle")],
+      ]),
+      expected: expected(),
+      known,
+    });
+    expect(found[0].detail).toBe(
+      "2 places, each one the place source knows, none twice, except breakfast on another day (1 repeat)",
+    );
     expect(repeat("d1-breakfast", "d2-lunch")).toEqual([
       "No place is invented: Castle is in the plan twice",
     ]);

@@ -700,6 +700,11 @@ describe("a place of the traveller's own", () => {
       "trip-1",
       "own",
     );
+    // A trip that does not exist or is someone else's: 404, as for every trip route.
+    mocks.tripsAlsoHolding.mockResolvedValue(null);
+    const strange = await tripsHoldingPlace(request("GET"), place);
+    expect(strange.status).toBe(404);
+    expect(await strange.json()).toEqual({ error: "not_found" });
     mocks.removeTripPlace.mockClear();
     expect((await removePlace(request("DELETE"), place)).status).toBe(422);
     expect(mocks.removeTripPlace).not.toHaveBeenCalled();

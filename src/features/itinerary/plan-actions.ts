@@ -28,6 +28,33 @@ const NOT_FREE =
 const NO_SLOT = "That slot is not in the plan any more.";
 
 /**
+ * Keeps a place in one slot only, once it is put in `slotId`. The one
+ * exception is breakfast, which may be chosen again on another day
+ * (TB-ITN-21): into a breakfast slot, copies in other days' breakfast slots
+ * stay; into any other slot, every other copy goes.
+ */
+function oneCopy(
+  picks: PlanState["picks"],
+  view: PlanView,
+  slotId: string,
+  placeId: string,
+): PlanState["picks"] {
+  const kindOf = (id: string) => {
+    const held = slotIn(view, id)?.entry;
+    return held && held.type !== "commitment" ? held.kind : null;
+  };
+  const breakfast = kindOf(slotId) === "breakfast";
+  return Object.fromEntries(
+    Object.entries(picks).filter(
+      ([id, pick]) =>
+        id === slotId ||
+        pick.placeId !== placeId ||
+        (breakfast && kindOf(id) === "breakfast"),
+    ),
+  );
+}
+
+/**
  * Applies one action to the choices, given the plan as it is laid out now.
  * A move that breaks a rule is still applied: the traveller is in control,
  * and the new layout carries the flag. Only a move onto something already
@@ -44,22 +71,7 @@ export function applyPlanAction(
       if (!target) return { refused: NO_SLOT };
       if (target.entry.type === "commitment") return { refused: NOT_FREE };
 
-      const targetKind = target.entry.kind;
-      const kindOf = (id: string) => {
-        const held = slotIn(view, id)?.entry;
-        return held && held.type !== "commitment" ? held.kind : null;
-      };
-      // A place sits in one slot only: picking it elsewhere moves it. The one
-      // exception is breakfast, which may be chosen again on another day (TB-ITN-21).
-      const elsewhere = Object.entries(state.picks).find(
-        ([id, pick]) =>
-          pick.placeId === action.placeId &&
-          id !== action.slotId &&
-          !(targetKind === "breakfast" && kindOf(id) === "breakfast"),
-      );
-      const picks = elsewhere
-        ? without(state.picks, elsewhere[0])
-        : state.picks;
+      const picks = oneCopy(state.picks, view, action.slotId, action.placeId);
       const replaced = state.picks[action.slotId];
       const shelf = state.shelf.filter((s) => s.placeId !== action.placeId);
       // The place it replaces is kept on the shelf, never dropped.
@@ -120,9 +132,13 @@ export function applyPlanAction(
       }
       // Moving onto another pick trades places with it.
       const other = state.picks[action.toSlotId];
-      const picks = { ...without(state.picks, action.fromSlotId) };
+      let picks = { ...without(state.picks, action.fromSlotId) };
       picks[action.toSlotId] = moving;
-      if (other) picks[action.fromSlotId] = other;
+      picks = oneCopy(picks, view, action.toSlotId, moving.placeId);
+      if (other) {
+        picks[action.fromSlotId] = other;
+        picks = oneCopy(picks, view, action.fromSlotId, other.placeId);
+      }
       return {
         state: { ...state, picks },
         summary: `Moved a place to day ${target.day}`,

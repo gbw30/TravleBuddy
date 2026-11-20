@@ -262,12 +262,12 @@ export function TripWorkspace({
   }
 
   /** The titles of the traveller's other trips that hold a place, for the confirm step. */
-  async function tripsHolding(placeId: string): Promise<string[]> {
+  async function tripsHolding(placeId: string): Promise<string[] | null> {
     const result = await callApi<{ otherTrips: { title: string }[] }>(
       `/api/v1/trips/${tripId}/places/${placeId}`,
       { method: "GET" },
     );
-    return result.ok ? result.data.otherTrips.map((trip) => trip.title) : [];
+    return result.ok ? result.data.otherTrips.map((trip) => trip.title) : null;
   }
 
   async function searchByName(event: FormEvent<HTMLFormElement>) {

@@ -17,7 +17,10 @@ const look = {
 };
 
 /** What the confirm step says about the traveller's other trips that hold the place. */
-export function alsoInSentence(titles: string[]): string {
+export function alsoInSentence(titles: string[] | null): string {
+  if (titles === null) {
+    return "I could not check your other trips. Removing it also opens any slot it holds there.";
+  }
   if (titles.length === 0) return "";
   const quoted = titles.map((title) => `"${title}"`);
   const list =
@@ -42,16 +45,19 @@ export function CloserLook({
   showPhoto: boolean;
   onClose: () => void;
   /** Offered for a place the traveller added by hand, after a confirm step. */
-  onRemove?: (placeId: string) => void;
+  onRemove?: (placeId: string) => void | Promise<void>;
   /** The titles of the traveller's other trips that hold the place. */
-  othersHolding?: (placeId: string) => Promise<string[]>;
+  /** Null when the lookup failed. */
+  othersHolding?: (placeId: string) => Promise<string[] | null>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // The last place shown stays on the card while it closes.
   const [shown, setShown] = useState(place);
   if (place && place !== shown) setShown(place);
   const [confirming, setConfirming] = useState(false);
-  const [others, setOthers] = useState<string[]>([]);
+  const [others, setOthers] = useState<string[] | null>([]);
+  /** A request is under way: the buttons wait, so nothing is sent twice. */
+  const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -59,6 +65,7 @@ export function CloserLook({
     if (place && !dialog.open) dialog.showModal();
     if (!place && dialog.open) dialog.close();
     setConfirming(false);
+    setWaiting(false);
   }, [place]);
 
   // Let the card settle back down before it goes, in every browser.
@@ -176,13 +183,19 @@ export function CloserLook({
                     <button
                       type="button"
                       className={buttonSecond}
-                      onClick={() => onRemove(shown.id)}
+                      disabled={waiting}
+                      onClick={async () => {
+                        setWaiting(true);
+                        await onRemove(shown.id);
+                        setWaiting(false);
+                      }}
                     >
                       Remove {shown.name}
                     </button>
                     <button
                       type="button"
                       className={quiet}
+                      disabled={waiting}
                       onClick={() => setConfirming(false)}
                     >
                       Keep it
@@ -193,8 +206,13 @@ export function CloserLook({
                 <button
                   type="button"
                   className={quiet}
+                  disabled={waiting}
                   onClick={async () => {
-                    setOthers((await othersHolding?.(shown.id)) ?? []);
+                    setWaiting(true);
+                    setOthers(
+                      othersHolding ? await othersHolding(shown.id) : [],
+                    );
+                    setWaiting(false);
                     setConfirming(true);
                   }}
                 >

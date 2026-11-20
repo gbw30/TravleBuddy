@@ -346,6 +346,97 @@ describe("planActionSchema", () => {
   });
 });
 
+describe("a repeated breakfast place", () => {
+  const cafe: PlaceDto = { ...place("k"), kind: "cafe" };
+  const withBreakfast: PlanContext = {
+    ...context,
+    commitments: [],
+    places: { ...context.places, k: cafe },
+    breakfast: "suggest",
+  };
+  const run = (s: PlanState, action: Parameters<typeof applyPlanAction>[2]) =>
+    done(applyPlanAction(s, buildPlanView(s, withBreakfast), action));
+  const twice = state({
+    picks: { "d1-breakfast": pick("k"), "d2-breakfast": pick("k") },
+  });
+
+  it("is dropped from every other breakfast when it is picked into a lunch", () => {
+    const after = run(twice, {
+      type: "pick",
+      slotId: "d3-lunch",
+      placeId: "k",
+    });
+    expect(after.picks).toEqual({ "d3-lunch": pick("k") });
+  });
+
+  it("is dropped from the other breakfast when it is moved into a lunch", () => {
+    const after = run(twice, {
+      type: "move",
+      fromSlotId: "d1-breakfast",
+      toSlotId: "d2-lunch",
+    });
+    expect(after.picks).toEqual({ "d2-lunch": pick("k") });
+  });
+
+  it("may be moved to the breakfast of another day, and stays one per day", () => {
+    const after = run(twice, {
+      type: "move",
+      fromSlotId: "d1-breakfast",
+      toSlotId: "d3-breakfast",
+    });
+    expect(after.picks).toEqual({
+      "d2-breakfast": pick("k"),
+      "d3-breakfast": pick("k"),
+    });
+  });
+
+  it("is cleaned when a swap brings it back to a lunch", () => {
+    // The lunch holds the café; swapping it with a breakfast sends it to a breakfast.
+    const s = state({
+      picks: {
+        "d1-breakfast": pick("k"),
+        "d2-breakfast": pick("a"),
+        "d2-lunch": pick("k"),
+      },
+    });
+    // Moving d2-breakfast (a) onto d2-lunch (k) swaps: k goes to d2-breakfast.
+    const after = run(s, {
+      type: "move",
+      fromSlotId: "d2-breakfast",
+      toSlotId: "d2-lunch",
+    });
+    expect(after.picks).toEqual({
+      "d1-breakfast": pick("k"),
+      "d2-breakfast": pick("k"),
+      "d2-lunch": pick("a"),
+    });
+    // Moving d1-breakfast (k) onto d2-lunch (a) swaps: a goes to d1-breakfast, k stays once.
+    const lunch = run(
+      state({
+        picks: {
+          "d1-breakfast": pick("k"),
+          "d2-breakfast": pick("k"),
+          "d3-lunch": pick("a"),
+        },
+      }),
+      { type: "move", fromSlotId: "d2-breakfast", toSlotId: "d3-lunch" },
+    );
+    expect(lunch.picks).toEqual({
+      "d3-lunch": pick("k"),
+      "d2-breakfast": pick("a"),
+    });
+  });
+
+  it("never sits twice in one day", () => {
+    const after = run(state({ picks: { "d1-breakfast": pick("k") } }), {
+      type: "pick",
+      slotId: "d1-lunch",
+      placeId: "k",
+    });
+    expect(after.picks).toEqual({ "d1-lunch": pick("k") });
+  });
+});
+
 describe("forgetting a place", () => {
   it("reopens every slot that holds it and takes it off the shelf, keeping the rest", () => {
     const before = state({

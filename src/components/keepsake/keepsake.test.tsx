@@ -90,6 +90,9 @@ describe("keepsake components", () => {
 
     it("names the other trips that hold the place, and says nothing when there are none", () => {
       expect(alsoInSentence([])).toBe("");
+      expect(alsoInSentence(null)).toBe(
+        "I could not check your other trips. Removing it also opens any slot it holds there.",
+      );
       expect(alsoInSentence(["Lisbon and Porto"])).toBe(
         'It is also in your trip "Lisbon and Porto". Removing it opens that slot too.',
       );

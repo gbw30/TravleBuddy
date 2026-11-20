@@ -22,5 +22,8 @@ export const DELETE = withUser<Context>(async (userId, request, context) => {
 /** The traveller's other trips that hold this place, for the confirm step before removing it. */
 export const GET = withUser<Context>(async (userId, _request, context) => {
   const { tripId, placeId } = await context.params;
-  return json({ otherTrips: await tripsAlsoHolding(userId, tripId, placeId) });
+  const others = await tripsAlsoHolding(userId, tripId, placeId);
+  return others
+    ? json({ otherTrips: others })
+    : json({ error: "not_found" }, 404);
 });

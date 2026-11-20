@@ -821,6 +821,10 @@ export async function addTripPlace(
 
 type OtherTrip = { id: string; title: string };
 
+/** The traveller's other trips that can still change: an archived plan reads a missing place as open. */
+const otherTrips = async (userId: string, tripId: string) =>
+  (await listTrips(userId)).filter((t) => t.id !== tripId && !t.archived);
+
 /** The traveller's other trips whose plans hold the place, in a slot or on the shelf. */
 async function otherTripsHolding(
   client: Parameters<typeof readPlanState>[0],
@@ -843,10 +847,11 @@ export async function tripsAlsoHolding(
   userId: string,
   tripId: string,
   placeId: string,
-): Promise<OtherTrip[]> {
+): Promise<OtherTrip[] | null> {
+  if (!(await getTrip(userId, tripId))) return null;
   const [place] = await getPlaces([placeId], userId);
   if (place?.origin !== "USER") return [];
-  const others = (await listTrips(userId)).filter((t) => t.id !== tripId);
+  const others = await otherTrips(userId, tripId);
   return otherTripsHolding(db, others, placeId);
 }
 
@@ -865,7 +870,7 @@ export async function removeTripPlace(input: {
   const trip = await getTrip(userId, tripId);
   if (!trip) return { status: "not_found" };
   // The place belongs to the traveller and the city, not to one trip.
-  const others = (await listTrips(userId)).filter((t) => t.id !== tripId);
+  const others = await otherTrips(userId, tripId);
 
   return runTripAction({
     userId,

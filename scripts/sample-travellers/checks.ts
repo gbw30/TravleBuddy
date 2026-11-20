@@ -179,7 +179,7 @@ export function checkItinerary(input: {
         ...twice.map((name) => `${name} is in the plan twice`),
         ...decidedToo,
       ],
-      `${placed.length} places, each one the place source knows, none twice`,
+      `${placed.length} places, each one the place source knows, none twice, except breakfast on another day (${placed.length - new Set(placed.map(({ entry }) => entry.placeId)).size} repeat${placed.length - new Set(placed.map(({ entry }) => entry.placeId)).size === 1 ? "" : "s"})`,
     ),
     finding("No rule is broken", broken, "no place carries a broken-rule flag"),
     finding(
