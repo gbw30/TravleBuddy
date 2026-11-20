@@ -21,6 +21,13 @@ const savedAddresses = z.array(
   }),
 );
 
+/**
+ * Address lookups count against a daily allowance of their own, the size of
+ * the place provider's, so they cannot use up the place gathering of everyone.
+ */
+const ADDRESS_SERVICE = "ADDRESS";
+const ADDRESS_DAILY_CAP = Number(process.env.PLACE_DAILY_REQUEST_CAP ?? 100);
+
 /** The search is bounded to a tenth of a degree around the city, which is also part of its saved key. */
 const REACH = 0.3;
 const tenth = (value: number) => Math.round(value * 10) / 10;
@@ -65,7 +72,8 @@ export async function findAddresses(
     );
     if (saved.success) return { status: "ok", addresses: saved.data };
 
-    if (!(await withinCap("OSM"))) return { status: "capped" };
+    if (!(await withinCap(ADDRESS_SERVICE, ADDRESS_DAILY_CAP)))
+      return { status: "capped" };
     const addresses = await searchAddresses(query, {
       west: tenth(centre.longitude - REACH),
       north: tenth(centre.latitude + REACH),

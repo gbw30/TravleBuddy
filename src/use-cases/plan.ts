@@ -1,6 +1,7 @@
 import {
   applyPlanAction,
   buildPlanView,
+  morningStayOf,
   builtPlaceIds,
   kindSuitsSlot,
   provisionalStart,
@@ -66,7 +67,7 @@ import {
   type DiscardReason,
 } from "@/features/recommendations/contracts";
 import { findEditable, getTrip } from "@/features/trips";
-import type { TripDetail } from "@/features/trips/contracts";
+import type { CommitmentDto, TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
 import { briefOf } from "./brief";
@@ -286,13 +287,28 @@ export async function cardsFor(
   )?.city;
   if (!city) return null;
 
-  // The stop just before the slot, when it is a place with a known
-  // position. A booking or a transfer in between means there is no
-  // stop to measure from.
-  const last = day.entries
+  // The stop just before the slot, when it has a known position. A booking
+  // or a transfer in between means there is no stop to measure from. The
+  // first slot of a day starts from where the traveller slept, and the slot
+  // after a check-in from the stay, when its position is confirmed.
+  const earlier = day.entries
     .slice(0, day.entries.indexOf(entry))
-    .filter((e) => e.type !== "open" && e.type !== "wander")
-    .at(-1);
+    .filter(
+      (e) =>
+        e.type !== "open" &&
+        e.type !== "wander" &&
+        e.type !== "breakfast-at-stay" &&
+        !(e.type === "commitment" && e.slotId === null && e.start === null),
+    );
+  const last = earlier.at(-1);
+  const stayAt = (stay: CommitmentDto | null | undefined) =>
+    stay?.located
+      ? {
+          name: stay.title,
+          latitude: stay.located.latitude,
+          longitude: stay.located.longitude,
+        }
+      : null;
   const before = last?.type === "place" ? places[last.placeId] : undefined;
   const from =
     before && before.latitude !== null && before.longitude !== null
@@ -301,7 +317,11 @@ export async function cardsFor(
           latitude: before.latitude,
           longitude: before.longitude,
         }
-      : null;
+      : last === undefined
+        ? stayAt(morningStayOf(trip.commitments, day.date))
+        : last.type === "commitment" && last.travelIn !== undefined
+          ? stayAt(trip.commitments.find((c) => c.id === last.commitmentId))
+          : null;
   const centre =
     city.latitude === null || city.longitude === null
       ? null

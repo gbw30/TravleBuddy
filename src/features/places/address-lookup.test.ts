@@ -84,7 +84,7 @@ describe("findAddresses", () => {
     expect(saved.create.results).toHaveLength(1);
   });
 
-  it("sends the text as typed and keeps no user in the saved key", async () => {
+  it("keeps no user in the saved key, and collapses the spaces and case it saves under", async () => {
     fetchMock.mockResolvedValue(Response.json([]));
     await findAddresses("Hotel Aurora", lisbon);
     expect(mocks.db.addressLookup.upsert.mock.calls[0][0].where.key).toBe(
@@ -127,6 +127,11 @@ describe("findAddresses", () => {
       status: "capped",
     });
     expect(fetchMock).not.toHaveBeenCalled();
+    // Its own counter: the place provider's allowance is not touched.
+    expect(mocks.db.providerCall.upsert).toHaveBeenCalledOnce();
+    expect(
+      mocks.db.providerCall.upsert.mock.calls[0][0].where.day_service.service,
+    ).toBe("ADDRESS");
   });
 
   it("does not ask for text too short or too long to be an address", async () => {

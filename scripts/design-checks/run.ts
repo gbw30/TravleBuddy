@@ -1066,26 +1066,29 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
   const plan = async (): Promise<PlanSnapshot> =>
     (await call("get", `/trips/${data.kyoto}/plan`)).json.plan;
 
-  // A place on the second day, so there is a morning leg to count.
-  const second = (await plan()).view.days[1]?.entries.find(
-    (entry) => entry.type === "open" && entry.kind === "morning",
+  // Every slot of the second day is filled, so there is a leg from the stay
+  // in the morning and the way back comes last, after the final place.
+  const slots = (await plan()).view.days[1]?.entries.flatMap((entry) =>
+    entry.type === "open" ? [entry.slotId] : [],
   );
-  if (second?.type !== "open") {
-    return [
-      row(
-        "Trip",
-        "A stay's address",
-        "TB-FIX-07",
-        ["no open morning on day 2"],
-        "",
-      ),
-    ];
+  let picked = 0;
+  for (const slotId of slots ?? []) {
+    const offered: PlanSnapshot = (
+      await call("get", `/trips/${data.kyoto}/plan?slot=${slotId}`)
+    ).json.plan;
+    const card =
+      offered.proposal?.slotId === slotId && offered.proposal.cards[0];
+    if (!card) continue;
+    const revision: number = (await call("get", `/trips/${data.kyoto}/brief`))
+      .json.brief.revision;
+    await call("post", `/trips/${data.kyoto}/plan`, {
+      operationId: randomUUID(),
+      expectedRevision: revision,
+      action: { type: "pick", slotId, placeId: card.placeId },
+    });
+    picked += 1;
   }
-  const offered: PlanSnapshot = (
-    await call("get", `/trips/${data.kyoto}/plan?slot=${second.slotId}`)
-  ).json.plan;
-  const card = offered.proposal?.cards[0];
-  if (!card) {
+  if (picked === 0) {
     return [
       row(
         "Trip",
@@ -1096,13 +1099,6 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
       ),
     ];
   }
-  const revision: number = (await call("get", `/trips/${data.kyoto}/brief`))
-    .json.brief.revision;
-  await call("post", `/trips/${data.kyoto}/plan`, {
-    operationId: randomUUID(),
-    expectedRevision: revision,
-    action: { type: "pick", slotId: second.slotId, placeId: card.placeId },
-  });
 
   await open(page, `/trips/${data.kyoto}`);
   const decided = page.locator('[data-qa="commitments"]');
@@ -1155,14 +1151,19 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
     .catch(() => undefined);
 
   const after = await plan();
-  const entries = after.view.days.flatMap((day) => day.entries);
-  const returned = entries.find((entry) => entry.type === "return");
-  const leg = after.view.days[1].entries.find(
-    (entry) => entry.type === "place" && entry.slotId === second.slotId,
-  );
-  if (!returned) problems.push("no day ends with a way back to the stay");
-  if (leg?.type !== "place" || !leg.travelIn) {
+  const day2 = after.view.days[1].entries;
+  const firstPlace = day2.find((entry) => entry.type === "place");
+  const lastEntry = day2[day2.length - 1];
+  const lastPlace = day2.filter((entry) => entry.type === "place").at(-1);
+  if (firstPlace?.type !== "place" || !firstPlace.travelIn) {
     problems.push("the first place of day 2 has no leg from the stay");
+  }
+  if (
+    lastEntry?.type !== "return" ||
+    lastPlace?.type !== "place" ||
+    lastEntry.start < lastPlace.start
+  ) {
+    problems.push("day 2 does not end with the way back, after its last place");
   }
   if ((await page.getByText(/^Back to Walk Test Hotel/).count()) < 1) {
     problems.push("the plan on the page shows no way back");

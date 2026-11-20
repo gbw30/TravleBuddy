@@ -137,7 +137,7 @@ export const TRAVELLERS: Traveller[] = [
     adults: 2,
     children: 2,
     commitments: [
-      stay("Hotel Avenida", "2027-07-10", "2027-07-14", "16:00", {
+      stay("Hotel Avenida", "2027-07-10", "2027-07-14", "15:00", {
         latitude: 38.7078,
         longitude: -9.1366,
       }),

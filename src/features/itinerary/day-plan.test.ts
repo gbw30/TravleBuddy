@@ -1320,6 +1320,10 @@ describe("the time allowed at an airport or station", () => {
 });
 
 describe("where you stay", () => {
+  const toMinutes = (clock: string) =>
+    Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+  const toClock = (minutes: number) =>
+    `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   const home = { latitude: 35.69, longitude: 139.7 };
   const museum = place("m"); // 35.7188, 139.7765
   const stay = (over: Partial<CommitmentDto> = {}): CommitmentDto =>
@@ -1383,22 +1387,30 @@ describe("where you stay", () => {
     );
   });
 
-  it("ends the day with a row for the way back, from the last place", () => {
-    const view = placed(pick("d2-afternoon"));
+  it("ends the day with a row for the way back, from the last place, after everything else", () => {
+    const view = placed(pick("d2-dinner"), {
+      places: { m: place("m", { kind: "restaurant", openingHours: null }) },
+    });
     const entries = view.days[1].entries;
     const last = entries[entries.length - 1];
     const back = travelEstimate(
       { latitude: 35.7188, longitude: 139.7765 },
       home,
     );
-    const visit = placeOf(entries, "d2-afternoon");
+    const visit = placeOf(entries, "d2-dinner");
     expect(last).toEqual({
       type: "return",
       stay: "Hotel Aurora",
-      start: expect.any(String),
+      start: toClock(toMinutes(visit.start) + visit.minutes),
       travel: { means: back.means, minutes: back.minutes },
     });
-    expect(last.type === "return" && last.start >= visit.start).toBe(true);
+  });
+
+  it("adds no way back while an open slot still follows the last place, so the row is never out of time order", () => {
+    const view = placed(pick("d2-morning"));
+    const entries = view.days[1].entries;
+    expect(kinds(entries)).not.toContain("return");
+    expect(kinds(entries).at(-1)).toBe("dinner");
   });
 
   it("flags the last place when the way back ends after the day", () => {
@@ -1426,23 +1438,87 @@ describe("where you stay", () => {
     ).not.toContain("day");
   });
 
-  it("gives a check-in row with travel to it, and legs on from the stay", () => {
-    const view = placed(pick("d1-morning"), {
-      commitments: [stay({ startTime: "15:00" })],
-    });
+  it("does not flag a place before the check-in, and lays the check-in after the place, its leg and the time it takes", () => {
+    const view = placed(
+      { "d1-afternoon": { placeId: "m", minutes: 30 } },
+      { commitments: [stay({ startTime: "15:00" })] },
+    );
     const entries = view.days[0].entries;
-    const checkIn = entries.find((entry) => entry.type === "commitment");
+    const visit = placeOf(entries, "d1-afternoon");
+    const checkIn = entries.find(
+      (entry) => entry.type === "commitment",
+    ) as Extract<PlanEntry, { type: "commitment" }>;
     const back = travelEstimate(
       { latitude: 35.7188, longitude: 139.7765 },
       home,
     );
+    expect(visit.flags).toEqual([]);
+    expect(entries.indexOf(checkIn)).toBeGreaterThan(entries.indexOf(visit));
     expect(checkIn).toMatchObject({
       title: "Check in at Hotel Aurora",
-      start: "15:00",
       travelIn: { means: back.means, minutes: back.minutes },
     });
-    // Nothing follows the check-in but the day's end: no return row after it.
-    expect(kinds(entries).at(-1)).not.toBe("return");
+    // It cannot start before the visit ends and the leg and buffer are travelled.
+    expect(toMinutes(checkIn.start!)).toBeGreaterThanOrEqual(
+      Math.max(900, toMinutes(visit.start) + visit.minutes + back.minutes + 20),
+    );
+  });
+
+  it("says a missing stay once on the first day of a run, and again for another city", () => {
+    const none = buildPlanView(
+      state({
+        picks: {
+          "d1-morning": { placeId: "m", minutes: null },
+          "d2-morning": { placeId: "m2", minutes: null },
+          "d3-morning": { placeId: "m3", minutes: null },
+        },
+      }),
+      context({
+        places: { m: museum, m2: place("m2"), m3: place("m3") },
+      }),
+    );
+    expect(none.days.map((day) => day.stayNote)).toEqual([
+      "Travel from where you stay is not counted.",
+      null,
+      null,
+    ]);
+
+    const two = buildPlanView(
+      state({
+        picks: {
+          "d1-morning": { placeId: "m", minutes: null },
+          "d2-morning": { placeId: "m2", minutes: null },
+          "d4-morning": { placeId: "k", minutes: null },
+        },
+      }),
+      context({
+        facts: {
+          cities: [
+            { city: tokyo, nights: 2 },
+            { city: kyoto, nights: 1 },
+          ],
+          startDate: "2027-05-10",
+          endDate: null,
+          lengthNights: null,
+          timeOfYear: null,
+        },
+        places: {
+          m: museum,
+          m2: place("m2"),
+          k: place("k", {
+            cityKey: "kyoto|japan",
+            latitude: 35.0116,
+            longitude: 135.7681,
+          }),
+        },
+      }),
+    );
+    expect(two.days.map((day) => day.stayNote)).toEqual([
+      "Travel from where you stay is not counted.",
+      null,
+      null,
+      "Travel from where you stay is not counted.",
+    ]);
   });
 
   it("keeps the stay's own title when it has no check-in time or no position", () => {

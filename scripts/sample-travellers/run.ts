@@ -194,7 +194,13 @@ async function planOne(
   const decided = before.view.days.flatMap((day) =>
     day.entries.flatMap((entry) =>
       entry.type === "commitment"
-        ? [{ title: entry.title, start: entry.start }]
+        ? [
+            {
+              title: entry.title,
+              // A check-in is a window: it moves to the first gap after its time.
+              start: entry.commitmentKind === "STAY" ? null : entry.start,
+            },
+          ]
         : [],
     ),
   );
