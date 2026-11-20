@@ -5,6 +5,7 @@ import { dirname } from "node:path";
 import { chromium } from "@playwright/test";
 
 import {
+  isMeal,
   placeWordFor,
   SLOT_WORDS,
   type PlanEntry,
@@ -241,8 +242,6 @@ async function planOne(
           entry.type === "open" && !tried.has(entry.slotId) ? [entry] : [],
         ),
       );
-      const isMeal = (kind: string) =>
-        kind === "breakfast" || kind === "lunch" || kind === "dinner";
       const slot = open.find((entry) => !isMeal(entry.kind)) ?? open[0];
       if (!slot) break;
       tried.add(slot.slotId);

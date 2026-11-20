@@ -14,6 +14,7 @@ import {
 } from "@/features/itinerary";
 import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
 import {
+  isMeal,
   PACES,
   SLOT_WORDS,
   type Pace,
@@ -85,10 +86,6 @@ export type SlotEntry = Extract<PlanEntry, { type: "open" | "place" }>;
 const today = () => new Date().toISOString().slice(0, 10);
 export const isSlot = (entry: PlanEntry): entry is SlotEntry =>
   entry.type === "open" || entry.type === "place";
-export const isMeal = (entry: SlotEntry) =>
-  entry.kind === "breakfast" ||
-  entry.kind === "lunch" ||
-  entry.kind === "dinner";
 
 /** A trip with no dates is laid out from provisional ones (PRD 9.7). */
 export function withProvisionalStart(
@@ -192,7 +189,7 @@ function focusSlot(
   const asked = slots.find(({ entry }) => entry.slotId === wanted);
   if (asked) return asked;
   const open = slots.filter(({ entry }) => entry.type === "open");
-  return open.find(({ entry }) => !isMeal(entry)) ?? open[0] ?? null;
+  return open.find(({ entry }) => !isMeal(entry.kind)) ?? open[0] ?? null;
 }
 
 /** The trip's taste in the form the ranking understands (TB-RSN-02). */
@@ -342,11 +339,11 @@ export async function cardsFor(
 
   const gathered: GatherOutcome | null = !gather
     ? null
-    : isMeal(entry) && near
+    : isMeal(entry.kind) && near
       ? await gatherFoodNear(city, near)
       : await gatherSights(city);
   const saved =
-    isMeal(entry) && near
+    isMeal(entry.kind) && near
       ? await listFoodNear(city, near, userId)
       : await listSights(city, userId);
 
@@ -561,7 +558,7 @@ async function readPlan(
   // skipped (TB-AGT-07). Until then the agent says what it is waiting for.
   const holding =
     focus !== null &&
-    isMeal(focus.entry) &&
+    isMeal(focus.entry.kind) &&
     trip.planningMode === "GUIDED" &&
     taste.food === undefined;
   const proposing = focus !== null && !holding;

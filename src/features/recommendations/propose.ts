@@ -1,4 +1,8 @@
-import { SLOT_WORDS, type SlotKind } from "@/features/itinerary/contracts";
+import {
+  isMeal,
+  SLOT_WORDS,
+  type SlotKind,
+} from "@/features/itinerary/contracts";
 import {
   distanceKm,
   isOpenFor,
@@ -106,9 +110,6 @@ export type ProposeInput = {
 };
 
 const meansWord = { walk: "walk", transit: "ride", drive: "drive" } as const;
-
-const isMeal = (kind: SlotKind) =>
-  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 
 type Ranked = {
   place: PlaceDto;

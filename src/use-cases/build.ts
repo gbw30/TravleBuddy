@@ -8,7 +8,11 @@ import {
   writePlanVersion,
   type Change,
 } from "@/features/itinerary";
-import { PACES, type BuildProgress } from "@/features/itinerary/contracts";
+import {
+  isMeal,
+  PACES,
+  type BuildProgress,
+} from "@/features/itinerary/contracts";
 import {
   limitsInUse,
   readProfile,
@@ -25,7 +29,6 @@ import {
   cardsFor,
   contextFor,
   historyFor,
-  isMeal,
   isSlot,
   startingState,
 } from "./plan";
@@ -126,7 +129,7 @@ async function prepareDay(
       .filter(isSlot)
       .filter((entry) => entry.type === "open" && !tried.has(entry.slotId));
     // Sights and activities first, then the meals near them (PRD 7.5).
-    const entry = open.find((item) => !isMeal(item)) ?? open[0];
+    const entry = open.find((item) => !isMeal(item.kind)) ?? open[0];
     if (!entry) break;
     tried.add(entry.slotId);
 

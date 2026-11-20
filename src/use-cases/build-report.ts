@@ -1,4 +1,5 @@
 import {
+  isMeal,
   SLOT_WORDS,
   type BuildProgress,
   type PlanEntry,
@@ -30,9 +31,7 @@ const USED: TasteTopic[] = [
 const SPELLED_OUT = 3;
 
 const slotWords = (kind: SlotKind) =>
-  kind === "breakfast" || kind === "lunch" || kind === "dinner"
-    ? kind
-    : `the ${SLOT_WORDS[kind].toLowerCase()}`;
+  isMeal(kind) ? kind : `the ${SLOT_WORDS[kind].toLowerCase()}`;
 type Slot = Extract<PlanEntry, { type: "open" | "place" }>;
 
 export function buildReportOf(input: {
@@ -70,12 +69,7 @@ export function buildReportOf(input: {
       ? [{ slotId, entry, place }]
       : [];
   });
-  const meals = standing.filter(
-    ({ entry }) =>
-      entry.kind === "breakfast" ||
-      entry.kind === "lunch" ||
-      entry.kind === "dinner",
-  );
+  const meals = standing.filter(({ entry }) => isMeal(entry.kind));
   const own =
     [...slots.values()].filter(({ entry }) => entry.type === "place").length -
     standing.length;

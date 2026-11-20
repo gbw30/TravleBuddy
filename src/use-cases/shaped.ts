@@ -1,6 +1,10 @@
 import { QUESTIONS } from "@/features/conversation";
 import { buildPlanView, readPlanState } from "@/features/itinerary";
-import type { PlanEntry, PlanView } from "@/features/itinerary/contracts";
+import {
+  isMeal,
+  type PlanEntry,
+  type PlanView,
+} from "@/features/itinerary/contracts";
 import {
   limitsInUse,
   readProfile,
@@ -23,10 +27,6 @@ import type { ShapedView } from "./profile-view";
 // memory the trip went by with something its plan shows.
 
 type Placed = Extract<PlanEntry, { type: "place" }>;
-const isMeal = (entry: { kind: string }) =>
-  entry.kind === "breakfast" ||
-  entry.kind === "lunch" ||
-  entry.kind === "dinner";
 const PACE_WORDS: Record<string, string> = {
   relaxed: "A relaxed pace",
   balanced: "A balanced pace",
@@ -73,14 +73,14 @@ export function shapedBy(input: {
       (entry): entry is Placed =>
         entry.type === "place" && Boolean(places[entry.placeId]),
     );
-  const meals = placed.filter(isMeal);
-  const sights = placed.filter((entry) => !isMeal(entry));
+  const meals = placed.filter((entry) => isMeal(entry.kind));
+  const sights = placed.filter((entry) => !isMeal(entry.kind));
 
   const pace = taste.pace?.from === "profile" ? taste.pace.values[0] : null;
   if (pace && view.pace === pace && PACE_WORDS[pace]) {
     const most = Math.max(
       0,
-      ...slots.map((day) => day.filter((entry) => !isMeal(entry)).length),
+      ...slots.map((day) => day.filter((entry) => !isMeal(entry.kind)).length),
     );
     if (most > 0) {
       pairs.push({

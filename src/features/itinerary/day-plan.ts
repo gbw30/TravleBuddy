@@ -12,15 +12,16 @@ import {
 } from "@/features/places/contracts";
 import type { CommitmentDto, TripFacts } from "@/features/trips/contracts";
 
-import type {
-  Pace,
-  PlanBlocker,
-  PlanDay,
-  PlanEntry,
-  PlanFlag,
-  PlanState,
-  PlanView,
-  SlotKind,
+import {
+  isMeal,
+  type Pace,
+  type PlanBlocker,
+  type PlanDay,
+  type PlanEntry,
+  type PlanFlag,
+  type PlanState,
+  type PlanView,
+  type SlotKind,
 } from "./contracts";
 import { offsetAt, ticketMinutes } from "./local-time";
 
@@ -105,8 +106,6 @@ export const BREAKFAST = { from: 450, until: 600, minutes: 45 };
 const MIN_WANDER = 30;
 const ASSUMED_TRANSFER_START = 12 * 60;
 
-const isMealSlot = (kind: SlotKind) =>
-  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 const toMinutes = (clock: string) =>
   Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
 const toClock = (minutes: number) => {
@@ -524,7 +523,7 @@ export function buildPlanView(
         (s) => s.from <= usual + LATE_START && usual + 60 <= s.until,
       );
       if (!segment) continue;
-      if (isMealSlot(kind) && segment.from > usual + MEAL_LATE) continue;
+      if (isMeal(kind) && segment.from > usual + MEAL_LATE) continue;
       const earliest = Math.max(usual, segment.from);
       const taken = fixed.some(
         (f) =>
@@ -577,7 +576,7 @@ export function buildPlanView(
       (slot) =>
         !draft.held.has(slot.id) &&
         slot.kind !== "breakfast" &&
-        (wantMeal === null || isMealSlot(slot.kind) === wantMeal),
+        (wantMeal === null || isMeal(slot.kind) === wantMeal),
     );
   for (const commitment of context.commitments) {
     if (commitment.startTime) continue;
@@ -1022,7 +1021,7 @@ export function buildPlanView(
 export function kindSuitsSlot(kind: PlaceDto["kind"], slot: SlotKind): boolean {
   if (slot === "dinner") return kind === "restaurant";
   if (slot === "breakfast") return kind === "cafe" || kind === "bakery";
-  return isMealSlot(slot)
+  return isMeal(slot)
     ? kind === "restaurant" || kind === "cafe"
     : !isMealKind(kind) && kind !== "bar";
 }
