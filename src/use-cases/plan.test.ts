@@ -20,11 +20,14 @@ const mocks = vi.hoisted(() => ({
   readProfile: vi.fn(),
   appendMessages: vi.fn(),
   usesSamplePlaces: vi.fn(),
+  removeOwnPlace: vi.fn(),
+  runTripAction: vi.fn(),
+  findEditable: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
 vi.mock("@/features/trips", () => ({
   getTrip: mocks.getTrip,
-  findEditable: vi.fn(),
+  findEditable: mocks.findEditable,
 }));
 vi.mock("@/features/itinerary", async (actual) => ({
   ...(await actual<typeof import("@/features/itinerary")>()),
@@ -42,6 +45,7 @@ vi.mock("@/features/places", () => ({
   addOwnPlace: vi.fn(),
   findPlacesByName: vi.fn(),
   usesSamplePlaces: mocks.usesSamplePlaces,
+  removeOwnPlace: mocks.removeOwnPlace,
 }));
 vi.mock("@/features/recommendations", async (actual) => ({
   ...(await actual<typeof import("@/features/recommendations")>()),
@@ -59,9 +63,14 @@ vi.mock("@/features/conversation", async (actual) => ({
   ...(await actual<typeof import("@/features/conversation")>()),
   appendMessages: mocks.appendMessages,
 }));
-vi.mock("./trip-action", () => ({ runTripAction: vi.fn(), Refusal: class {} }));
+vi.mock("./trip-action", () => ({
+  runTripAction: mocks.runTripAction,
+  Refusal: class {
+    constructor(readonly message: string) {}
+  },
+}));
 
-import { loadPlan, setPlanPace } from "./plan";
+import { loadPlan, removeTripPlace, setPlanPace } from "./plan";
 
 const tokyo = {
   name: "Tokyo",
@@ -866,5 +875,57 @@ describe("what the plan says of its chosen places", () => {
     expect(plan?.proposal?.slotId).toBe(slot);
     expect(plan?.proposal?.cards[0].travel).toBeNull();
     expect(plan?.proposal?.cards[0].reason).toMatch(/^It fits your afternoon/);
+  });
+});
+
+describe("removing a place the traveller added", () => {
+  const picked = (id: string) => ({ placeId: id, minutes: null });
+  const control = { operationId: "op-1", expectedRevision: 1 };
+  const tx = { name: "tx" };
+  /** Runs the change the use-case hands to the ledger, as the ledger would. */
+  const remove = async () => {
+    mocks.runTripAction.mockImplementation(({ apply }) => apply(tx));
+    return removeTripPlace({
+      userId: "user-1",
+      tripId: "trip-1",
+      placeId: "own",
+      control,
+    });
+  };
+
+  it("reopens its slots, leaves the shelf, and says it was removed", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    mocks.readPlanState.mockResolvedValue({
+      state: state({
+        picks: { "d1-morning": picked("own"), "d2-morning": picked("s1") },
+        shelf: [{ placeId: "own", reason: null }],
+      }),
+      canUndo: false,
+    });
+    expect(await remove()).toEqual({ summary: "Aunt's flat was removed." });
+    expect(mocks.removeOwnPlace).toHaveBeenCalledWith(tx, "user-1", "own");
+    expect(mocks.writePlanVersion).toHaveBeenCalledWith(
+      tx,
+      "trip-1",
+      expect.objectContaining({
+        picks: { "d2-morning": picked("s1") },
+        shelf: [],
+      }),
+      "Aunt's flat was removed.",
+    );
+  });
+
+  it("refuses a place that is not the traveller's own, and changes no plan", async () => {
+    mocks.removeOwnPlace.mockResolvedValue(null);
+    expect(await remove()).toMatchObject({
+      message: "That place is not one you added.",
+    });
+    expect(mocks.writePlanVersion).not.toHaveBeenCalled();
+  });
+
+  it("saves no new plan when the plan never held it", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    expect(await remove()).toEqual({ summary: "Aunt's flat was removed." });
+    expect(mocks.writePlanVersion).not.toHaveBeenCalled();
   });
 });

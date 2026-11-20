@@ -18,6 +18,7 @@ import { foodReach, sightsReach } from "./overpass";
 import {
   addOwnPlace,
   findPlacesByName,
+  removeOwnPlace,
   gatherFoodNear,
   gatherSights,
   getPlaces,
@@ -553,5 +554,34 @@ describe("adding a place by name or by hand", () => {
         addedByUserId: "user-1",
       },
     });
+  });
+});
+
+describe("removeOwnPlace", () => {
+  const tx = (found: { name: string } | null) => ({
+    place: {
+      findFirst: vi.fn().mockResolvedValue(found),
+      deleteMany: vi.fn().mockResolvedValue({ count: found ? 1 : 0 }),
+    },
+  });
+  const asTx = (fake: ReturnType<typeof tx>) =>
+    fake as unknown as Parameters<typeof removeOwnPlace>[0];
+
+  it("deletes only a place this traveller added by hand, and answers its name", async () => {
+    const fake = tx({ name: "Aunt's flat" });
+    expect(await removeOwnPlace(asTx(fake), "user-1", "own")).toBe(
+      "Aunt's flat",
+    );
+    const where = { id: "own", origin: "USER", addedByUserId: "user-1" };
+    expect(fake.place.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where }),
+    );
+    expect(fake.place.deleteMany).toHaveBeenCalledWith({ where });
+  });
+
+  it("answers null for a provider place, another traveller's place, or one with no owner", async () => {
+    const fake = tx(null);
+    expect(await removeOwnPlace(asTx(fake), "user-1", "p1")).toBeNull();
+    expect(fake.place.deleteMany).not.toHaveBeenCalled();
   });
 });

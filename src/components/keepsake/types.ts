@@ -16,6 +16,8 @@ export type CardPlace = {
   /** Null for a sample place. */
   links: PlaceLinks | null;
   hoursDoubt: string | null;
+  /** A place the traveller added by hand: the one kind they may remove. */
+  own?: boolean;
 };
 
 /** "Temple · 25 min by train" gives "Temple". */

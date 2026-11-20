@@ -69,6 +69,25 @@ describe("keepsake components", () => {
       osm: "https://www.openstreetmap.org/node/1",
     };
 
+    it("offers removal only for a place the traveller added, and asks first", () => {
+      const render = (over: Partial<CardPlace>, onRemove?: () => void) =>
+        renderToStaticMarkup(
+          <CloserLook
+            place={{ ...place, ...over }}
+            variant="enlarged"
+            showPhoto
+            onClose={() => {}}
+            onRemove={onRemove}
+          />,
+        );
+      const remove = () => {};
+      expect(render({ own: true }, remove)).toContain("Remove this place");
+      // Nothing is removed by that button alone: the confirm step is not shown yet.
+      expect(render({ own: true }, remove)).not.toContain("Keep it");
+      expect(render({ own: false }, remove)).not.toContain("Remove this place");
+      expect(render({ own: true })).not.toContain("Remove this place");
+    });
+
     it("puts the doubt under the hours in the label style", () => {
       const html = look({
         hours: "Mo-Su 09:00-18:00",

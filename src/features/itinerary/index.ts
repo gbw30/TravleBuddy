@@ -8,7 +8,7 @@ export {
   slotId,
   type PlanContext,
 } from "./day-plan";
-export { applyPlanAction, settle, type Change } from "./plan-actions";
+export { applyPlanAction, forgetPlace, settle, type Change } from "./plan-actions";
 export {
   builtPlaceIds,
   copyPlan,

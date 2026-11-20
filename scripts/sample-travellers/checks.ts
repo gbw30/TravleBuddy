@@ -68,7 +68,7 @@ export function checkItinerary(input: {
   const twice = [
     ...new Set(
       placed
-        .filter(({ entry }) =>
+        .filter(({ day, entry }) =>
           placed.some(
             (other) =>
               other.entry !== entry &&
@@ -76,7 +76,7 @@ export function checkItinerary(input: {
               !(
                 other.entry.kind === "breakfast" &&
                 entry.kind === "breakfast" &&
-                other.day !== entry.day
+                other.day !== day
               ),
           ),
         )

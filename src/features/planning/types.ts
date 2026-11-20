@@ -29,6 +29,7 @@ export type PlanningMutationKind =
   | "plan_undo"
   | "plan_others"
   | "plan_build"
+  | "place_remove"
   | "conversation_turn"
   | "trip_mode_set"
   | "brief_save";

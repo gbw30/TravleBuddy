@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { PlaceArt } from "./place-art";
 import { priceLabel, ratingLabel } from "./postcard";
-import { eyebrow, button, quiet } from "./styles";
+import { eyebrow, button, buttonSecond, quiet } from "./styles";
 import type { CardPlace } from "./types";
 
 // Matches the closing transition in globals.css.
@@ -21,22 +21,27 @@ export function CloserLook({
   variant,
   showPhoto,
   onClose,
+  onRemove,
 }: {
   place: CardPlace | null;
   variant: "enlarged" | "overlay";
   showPhoto: boolean;
   onClose: () => void;
+  /** Offered for a place the traveller added by hand, after a confirm step. */
+  onRemove?: (placeId: string) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // The last place shown stays on the card while it closes.
   const [shown, setShown] = useState(place);
   if (place && place !== shown) setShown(place);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (place && !dialog.open) dialog.showModal();
     if (!place && dialog.open) dialog.close();
+    setConfirming(false);
   }, [place]);
 
   // Let the card settle back down before it goes, in every browser.
@@ -142,6 +147,41 @@ export function CloserLook({
               </>
             )}
           </dl>
+          {onRemove && shown.own && (
+            <div className="mt-5 border-t border-ink/12 pt-4">
+              {confirming ? (
+                <>
+                  <p role="alert" className="text-[15px]">
+                    Remove {shown.name}? Any slot that holds it reopens.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      className={buttonSecond}
+                      onClick={() => onRemove(shown.id)}
+                    >
+                      Remove {shown.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={quiet}
+                      onClick={() => setConfirming(false)}
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={quiet}
+                  onClick={() => setConfirming(true)}
+                >
+                  Remove this place
+                </button>
+              )}
+            </div>
+          )}
           <form
             method="dialog"
             className="mt-5"

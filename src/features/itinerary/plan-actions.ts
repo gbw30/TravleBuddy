@@ -44,16 +44,18 @@ export function applyPlanAction(
       if (!target) return { refused: NO_SLOT };
       if (target.entry.type === "commitment") return { refused: NOT_FREE };
 
+      const targetKind = target.entry.kind;
+      const kindOf = (id: string) => {
+        const held = slotIn(view, id)?.entry;
+        return held && held.type !== "commitment" ? held.kind : null;
+      };
       // A place sits in one slot only: picking it elsewhere moves it. The one
       // exception is breakfast, which may be chosen again on another day (TB-ITN-21).
       const elsewhere = Object.entries(state.picks).find(
         ([id, pick]) =>
           pick.placeId === action.placeId &&
           id !== action.slotId &&
-          !(
-            target.entry.kind === "breakfast" &&
-            slotIn(view, id)?.entry.kind === "breakfast"
-          ),
+          !(targetKind === "breakfast" && kindOf(id) === "breakfast"),
       );
       const picks = elsewhere
         ? without(state.picks, elsewhere[0])
@@ -190,5 +192,18 @@ export function settle(state: PlanState, view: PlanView): PlanState {
       Object.entries(state.picks).filter(([id]) => live.has(id)),
     ),
     shelf: view.shelf,
+  };
+}
+
+/** The choices without a place that no longer exists: its slots reopen, and it leaves the shelf. */
+export function forgetPlace(state: PlanState, placeId: string): PlanState {
+  return {
+    ...state,
+    picks: Object.fromEntries(
+      Object.entries(state.picks).filter(
+        ([, pick]) => pick.placeId !== placeId,
+      ),
+    ),
+    shelf: state.shelf.filter((item) => item.placeId !== placeId),
   };
 }

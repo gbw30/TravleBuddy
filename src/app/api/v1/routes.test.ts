@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => {
     loadPlan: vi.fn(),
     findTripPlaces: vi.fn(),
     addTripPlace: vi.fn(),
+    removeTripPlace: vi.fn(),
     takeTurn: vi.fn(),
     loadConversation: vi.fn(),
     loadBrief: vi.fn(),
@@ -57,6 +58,7 @@ vi.mock("@/use-cases/plan", () => ({
   loadPlan: mocks.loadPlan,
   findTripPlaces: mocks.findTripPlaces,
   addTripPlace: mocks.addTripPlace,
+  removeTripPlace: mocks.removeTripPlace,
 }));
 
 vi.mock("@/use-cases/conversation", () => ({
@@ -114,6 +116,7 @@ import {
   GET as findPlaces,
   POST as addPlace,
 } from "./trips/[tripId]/places/route";
+import { DELETE as removePlace } from "./trips/[tripId]/places/[placeId]/route";
 import { POST as createTrip } from "./trips/route";
 
 const control = {
@@ -659,6 +662,32 @@ describe("a place of the traveller's own", () => {
       expect((await addPlace(request("POST", body), trip)).status).toBe(422);
     }
     expect(mocks.addTripPlace).not.toHaveBeenCalled();
+  });
+
+  it("removes a place by id, and refuses a removal that does not say which revision it saw", async () => {
+    mocks.removeTripPlace.mockResolvedValue({
+      status: "ok",
+      data: { summary: "Aunt's flat was removed." },
+      revision: 4,
+    });
+    const place = {
+      params: Promise.resolve({ tripId: "trip-1", placeId: "own" }),
+    };
+    const answer = await removePlace(request("DELETE", control), place);
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({
+      data: { summary: "Aunt's flat was removed." },
+      revision: 4,
+    });
+    expect(mocks.removeTripPlace).toHaveBeenCalledWith({
+      userId: "user-1",
+      tripId: "trip-1",
+      placeId: "own",
+      control,
+    });
+    mocks.removeTripPlace.mockClear();
+    expect((await removePlace(request("DELETE"), place)).status).toBe(422);
+    expect(mocks.removeTripPlace).not.toHaveBeenCalled();
   });
 });
 

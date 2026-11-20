@@ -5,7 +5,7 @@ import type { CommitmentDto } from "@/features/trips/contracts";
 
 import { emptyPlanState, planActionSchema, type PlanState } from "./contracts";
 import { buildPlanView, type PlanContext } from "./day-plan";
-import { applyPlanAction, settle } from "./plan-actions";
+import { applyPlanAction, forgetPlace, settle } from "./plan-actions";
 
 const tokyo = {
   name: "Tokyo",
@@ -343,5 +343,26 @@ describe("planActionSchema", () => {
         planActionSchema.safeParse(action).success,
         JSON.stringify(action),
       ).toBe(false);
+  });
+});
+
+describe("forgetting a place", () => {
+  it("reopens every slot that holds it and takes it off the shelf, keeping the rest", () => {
+    const before = state({
+      picks: {
+        "d1-breakfast": pick("a"),
+        "d2-breakfast": pick("a"),
+        "d1-morning": pick("b", 90),
+      },
+      shelf: [
+        { placeId: "a", reason: null },
+        { placeId: "c", reason: null },
+      ],
+    });
+    expect(forgetPlace(before, "a")).toEqual({
+      ...before,
+      picks: { "d1-morning": pick("b", 90) },
+      shelf: [{ placeId: "c", reason: null }],
+    });
   });
 });

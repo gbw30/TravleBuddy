@@ -1,6 +1,7 @@
 import {
   applyPlanAction,
   buildPlanView,
+  forgetPlace,
   morningStayOf,
   builtPlaceIds,
   kindSuitsSlot,
@@ -41,6 +42,7 @@ import {
   getPlaces,
   listFoodNear,
   listSights,
+  removeOwnPlace,
   usesSamplePlaces,
   type GatherOutcome,
 } from "@/features/places";
@@ -809,4 +811,47 @@ export async function addTripPlace(
   if (!city) return null;
   const place = await addOwnPlace(userId, city, input);
   return toCard(place, city.name, "You added this place yourself.");
+}
+
+/**
+ * Removes a place the traveller added by hand. Any slot holding it reopens
+ * and it leaves the shelf, in the same change that deletes it, so the plan
+ * never holds a place that is gone (TB-CRD-13).
+ */
+export async function removeTripPlace(input: {
+  userId: string;
+  tripId: string;
+  placeId: string;
+  control: { operationId: string; expectedRevision: number };
+}): Promise<TripActionOutcome<{ summary: string }>> {
+  const { userId, tripId, placeId } = input;
+  const trip = await getTrip(userId, tripId);
+  if (!trip) return { status: "not_found" };
+
+  return runTripAction({
+    userId,
+    tripId,
+    kind: "place_remove",
+    control: input.control,
+    request: { placeId },
+    apply: async (tx) => {
+      const refused = await findEditable(tx, userId, tripId);
+      if (refused) return refused;
+      const name = await removeOwnPlace(tx, userId, placeId);
+      if (!name) return new Refusal("That place is not one you added.");
+
+      const [saved, taste] = await Promise.all([
+        readPlanState(tx, tripId),
+        tasteOf(userId, tripId),
+      ]);
+      const state = startingState(saved, trip, taste);
+      const next = forgetPlace(state, placeId);
+      const summary = `${name} was removed.`;
+      const held =
+        Object.keys(next.picks).length !== Object.keys(state.picks).length ||
+        next.shelf.length !== state.shelf.length;
+      if (held) await writePlanVersion(tx, tripId, next, summary);
+      return { summary };
+    },
+  });
 }
