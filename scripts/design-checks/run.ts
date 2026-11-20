@@ -1233,6 +1233,8 @@ async function removeOwnPlace(
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Remove this place" }).click();
   const sure = dialog.getByRole("button", { name: `Remove ${name}` });
+  // The confirm step first asks which other trips hold the place.
+  await sure.waitFor({ timeout: 10_000 }).catch(() => undefined);
   if ((await sure.count()) !== 1) {
     problems.push("removing asks for no confirmation");
   } else {
