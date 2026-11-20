@@ -124,17 +124,28 @@ export function TripWorkspace({
       ? { day: focusEntry.day.day, ...focusEntry.entry }
       : null;
 
-  async function refresh(slot?: string | null) {
+  /** `patient`: a build's read waits out a request limit instead of stopping. */
+  async function refresh(slot?: string | null, patient = false) {
     const mine = ++reading.current;
     wanted.current = slot ?? null;
-    const result = await callApi<{ plan: PlanSnapshot }>(
-      `/api/v1/trips/${tripId}/plan${slot ? `?slot=${slot}` : ""}`,
-      { method: "GET" },
-    );
-    // Only the newest read is shown: an older one may answer later.
-    if (mine !== reading.current) return;
-    if (result.ok) show(result.data.plan);
-    else setProblem(result.message);
+    for (;;) {
+      const result = await callApi<{ plan: PlanSnapshot }>(
+        `/api/v1/trips/${tripId}/plan${slot ? `?slot=${slot}` : ""}`,
+        { method: "GET" },
+      );
+      // Only the newest read is shown: an older one may answer later.
+      if (mine !== reading.current) return;
+      if (result.ok) return show(result.data.plan);
+      if (!patient || !result.retryAfter) return setProblem(result.message);
+      await waitOut(result.retryAfter, result.message);
+    }
+  }
+
+  /** Over a request limit a build says so and waits its turn (TB-SYS-16). */
+  async function waitOut(seconds: number, message: string) {
+    setBuildProblem(message);
+    await new Promise((go) => setTimeout(go, seconds * 1000));
+    setBuildProblem(null);
   }
 
   // The page loads without waiting for the place provider; ask for the
@@ -199,13 +210,9 @@ export function TripWorkspace({
         first ? { start: true } : {},
         "/build",
       );
-      // Over a request limit a long build says so, waits its turn and goes
-      // on with the same step (TB-SYS-16).
+      // Over a request limit the same step is asked for again.
       if (!result.ok && result.retryAfter) {
-        const wait = result.retryAfter * 1000;
-        setBuildProblem(result.message);
-        await new Promise((go) => setTimeout(go, wait));
-        setBuildProblem(null);
+        await waitOut(result.retryAfter, result.message);
         continue;
       }
       if (!result.ok) {
@@ -215,7 +222,7 @@ export function TripWorkspace({
         break;
       }
       first = false;
-      await refresh(wanted.current);
+      await refresh(wanted.current, true);
       setStarting(false);
       if (result.data.done) break;
     }
