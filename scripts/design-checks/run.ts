@@ -1105,18 +1105,19 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
   });
 
   await open(page, `/trips/${data.kyoto}`);
-  await page.getByText("Add something already decided").click();
-  await page.getByLabel("What", { exact: true }).fill("Walk Test Hotel");
-  await page.getByLabel("Kind").selectOption("STAY");
-  await page.getByLabel("Date", { exact: true }).fill("2027-07-10");
-  await page.getByLabel("Ends on another day").fill("2027-07-12");
-  const lookup = page.getByRole("button", { name: "Look up address" });
-  await page.getByLabel("Address").fill("1 Walk Street");
+  const decided = page.locator('[data-qa="commitments"]');
+  await decided.getByText("Add something already decided").click();
+  await decided.getByLabel("What", { exact: true }).fill("Walk Test Hotel");
+  await decided.getByLabel("Kind").selectOption("STAY");
+  await decided.getByLabel("Date", { exact: true }).fill("2027-07-10");
+  await decided.getByLabel("Ends on another day").fill("2027-07-12");
+  const lookup = decided.getByRole("button", { name: "Look up address" });
+  await decided.getByLabel("Address").fill("1 Walk Street");
   await lookup.click();
-  const confirm = page.getByRole("button", { name: /Confirm this address/ });
+  const confirm = decided.getByRole("button", { name: /Confirm this address/ });
   await confirm.waitFor({ timeout: 10_000 }).catch(() => undefined);
   const label = "Sample address, city centre";
-  if ((await page.getByText(label).count()) < 1) {
+  if ((await decided.getByText(label).count()) < 1) {
     problems.push("the address found is not shown");
   }
   if ((await confirm.count()) !== 1) {
@@ -1136,7 +1137,7 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
     await page.setViewportSize(DESKTOP);
     await confirm.focus();
     await page.keyboard.press("Enter");
-    const confirmed = page.getByText("Address confirmed: ");
+    const confirmed = decided.getByText("Address confirmed: ");
     if ((await confirmed.count()) !== 1) {
       problems.push("the address was not confirmed");
     } else if (
@@ -1145,11 +1146,12 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
       problems.push("focus is not on the confirmed address");
     }
   }
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await decided.getByRole("button", { name: "Add", exact: true }).click();
+  // The page refreshes itself after the change; the way back appears with it.
   await page
-    .getByText(label)
+    .getByText(/^Back to Walk Test Hotel/)
     .first()
-    .waitFor({ timeout: 10_000 })
+    .waitFor({ timeout: 15_000 })
     .catch(() => undefined);
 
   const after = await plan();
@@ -1162,7 +1164,6 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
   if (leg?.type !== "place" || !leg.travelIn) {
     problems.push("the first place of day 2 has no leg from the stay");
   }
-  await open(page, `/trips/${data.kyoto}`);
   if ((await page.getByText(/^Back to Walk Test Hotel/).count()) < 1) {
     problems.push("the plan on the page shows no way back");
   }
