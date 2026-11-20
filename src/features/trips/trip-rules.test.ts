@@ -6,12 +6,13 @@ import { findClashes } from "./clashes";
 import {
   commitmentInputSchema,
   ticketInputSchema,
+  type CommitmentDto,
   tripActionSchema,
   tripFactsSchema,
   type TicketInput,
   type TripFacts,
 } from "./contracts";
-import { factsFromTickets, ticketTitle } from "./tickets";
+import { factsFromTickets, ticketTitle, withCityZones } from "./tickets";
 import { missingFacts, todayIn, tripState } from "./trip-state";
 
 const ticket = (over: Partial<TicketInput>): TicketInput => ({
@@ -79,6 +80,46 @@ describe("factsFromTickets", () => {
     expect(ticketTitle(ticket({}))).toBe(
       "Flight · New York (JFK) → Tokyo (HND)",
     );
+  });
+});
+
+describe("withCityZones", () => {
+  const old = (origin: string, destination: string): CommitmentDto => ({
+    id: "t",
+    kind: "TRANSPORT",
+    title: "Flight",
+    date: "2027-06-18",
+    startTime: "10:00",
+    endDate: "2027-06-18",
+    endTime: "13:30",
+    reference: null,
+    note: null,
+    located: null,
+    transport: {
+      mode: "FLIGHT",
+      origin,
+      destination,
+      originZone: null,
+      destinationZone: null,
+    },
+  });
+
+  it("gives an old ticket end with no zone the zone of a trip city of the same name, and guesses nothing else", () => {
+    const [ticket] = withCityZones(
+      [old("London (LHR)", "Rome (FCO)")],
+      [{ name: "Rome", timeZone: "Europe/Rome" }],
+    );
+    expect(ticket.transport).toMatchObject({
+      originZone: null,
+      destinationZone: "Europe/Rome",
+    });
+  });
+
+  it("keeps a zone the ticket already has", () => {
+    const saved = old("Rome", "Paris");
+    saved.transport!.originZone = "Europe/Rome";
+    const [ticket] = withCityZones([saved], [{ name: "Rome", timeZone: null }]);
+    expect(ticket.transport?.originZone).toBe("Europe/Rome");
   });
 });
 
