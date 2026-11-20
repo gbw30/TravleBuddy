@@ -35,7 +35,7 @@ describe("hoursDoubt", () => {
     for (const tags of [
       { check_date: "2021-03" },
       { "check_date:opening_hours": "2021-03" },
-    ]) {
+    ] as Record<string, string>[]) {
       expect(
         hoursDoubt(
           osm({ tags, lastEditedAt: "2027-04-01T10:00:00.000Z" }),
