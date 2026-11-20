@@ -368,7 +368,17 @@ export async function cardsFor(
     ),
     taken: [
       ...view.days.flatMap((d) =>
-        d.entries.flatMap((e) => (e.type === "place" ? [e.placeId] : [])),
+        d.entries.flatMap((e) =>
+          // A breakfast place may be chosen again on another day (TB-ITN-21).
+          e.type === "place" &&
+          !(
+            entry.kind === "breakfast" &&
+            e.kind === "breakfast" &&
+            d.day !== day.day
+          )
+            ? [e.placeId]
+            : [],
+        ),
       ),
       ...view.shelf.map((item) => item.placeId),
     ],

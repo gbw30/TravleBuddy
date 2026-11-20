@@ -63,9 +63,25 @@ export function checkItinerary(input: {
       ? []
       : [`day ${day} ${entry.kind}: ${card?.name ?? "a place with no card"}`];
   });
-  const ids = placed.map(({ entry }) => entry.placeId);
+  // A place sits in one slot only, except that a breakfast place may come
+  // again at the breakfast of another day (TB-ITN-21).
   const twice = [
-    ...new Set(ids.filter((id, at) => ids.indexOf(id) !== at)),
+    ...new Set(
+      placed
+        .filter(({ entry }) =>
+          placed.some(
+            (other) =>
+              other.entry !== entry &&
+              other.entry.placeId === entry.placeId &&
+              !(
+                other.entry.kind === "breakfast" &&
+                entry.kind === "breakfast" &&
+                other.day !== entry.day
+              ),
+          ),
+        )
+        .map(({ entry }) => entry.placeId),
+    ),
   ].map((id) => nameOf(id) ?? id);
 
   // A place picked although the traveller had already decided it.

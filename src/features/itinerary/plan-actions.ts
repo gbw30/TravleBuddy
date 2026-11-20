@@ -44,9 +44,16 @@ export function applyPlanAction(
       if (!target) return { refused: NO_SLOT };
       if (target.entry.type === "commitment") return { refused: NOT_FREE };
 
-      // A place sits in one slot only: picking it elsewhere moves it.
+      // A place sits in one slot only: picking it elsewhere moves it. The one
+      // exception is breakfast, which may be chosen again on another day (TB-ITN-21).
       const elsewhere = Object.entries(state.picks).find(
-        ([id, pick]) => pick.placeId === action.placeId && id !== action.slotId,
+        ([id, pick]) =>
+          pick.placeId === action.placeId &&
+          id !== action.slotId &&
+          !(
+            target.entry.kind === "breakfast" &&
+            slotIn(view, id)?.entry.kind === "breakfast"
+          ),
       );
       const picks = elsewhere
         ? without(state.picks, elsewhere[0])

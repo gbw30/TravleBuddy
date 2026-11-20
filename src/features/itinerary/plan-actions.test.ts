@@ -124,6 +124,42 @@ describe("picking", () => {
     expect(after.picks).toEqual({ "d2-afternoon": pick("a") });
   });
 
+  it("lets a breakfast place sit in the breakfast of another day, and nowhere else twice", () => {
+    const cafe: PlaceDto = { ...place("k"), kind: "cafe" };
+    const withBreakfast: PlanContext = {
+      ...context,
+      commitments: [],
+      places: { ...context.places, k: cafe },
+      breakfast: "suggest",
+    };
+    const run = (s: PlanState, action: Parameters<typeof applyPlanAction>[2]) =>
+      done(applyPlanAction(s, buildPlanView(s, withBreakfast), action));
+
+    const again = run(state({ picks: { "d1-breakfast": pick("k") } }), {
+      type: "pick",
+      slotId: "d2-breakfast",
+      placeId: "k",
+    });
+    expect(again.picks).toEqual({
+      "d1-breakfast": pick("k"),
+      "d2-breakfast": pick("k"),
+    });
+
+    // From a lunch slot to a breakfast slot, or the other way, it still moves.
+    const toBreakfast = run(state({ picks: { "d1-lunch": pick("k") } }), {
+      type: "pick",
+      slotId: "d2-breakfast",
+      placeId: "k",
+    });
+    expect(toBreakfast.picks).toEqual({ "d2-breakfast": pick("k") });
+    const toLunch = run(state({ picks: { "d1-breakfast": pick("k") } }), {
+      type: "pick",
+      slotId: "d2-lunch",
+      placeId: "k",
+    });
+    expect(toLunch.picks).toEqual({ "d2-lunch": pick("k") });
+  });
+
   it("refuses a slot that holds something already decided, or that is not in the plan", () => {
     // The undated-time dinner booking holds day 2's dinner slot.
     expect(

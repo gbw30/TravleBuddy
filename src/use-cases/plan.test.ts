@@ -778,6 +778,35 @@ describe("a place the traveller has already decided", () => {
   });
 });
 
+describe("a breakfast place on another day", () => {
+  const picked = (id: string) => ({ placeId: id, minutes: null });
+  const names = async (slot: string) =>
+    (await load(slot))?.proposal?.cards.map((card) => card.name) ?? [];
+  const pickedAt = (slot: string) => {
+    mocks.readTripTaste.mockResolvedValue({
+      breakfast: { values: ["suggest"], source: "told" },
+      food: { values: [], source: "told" },
+    });
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { [slot]: picked("f2") } }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([food[1]]);
+  };
+
+  it("is offered again for another day's breakfast, never for the same day or another meal", async () => {
+    pickedAt("d1-breakfast");
+    expect(await names("d2-breakfast")).toContain("Kissa Ko");
+    expect(await names("d2-lunch")).not.toContain("Kissa Ko");
+    expect(await names("d1-lunch")).not.toContain("Kissa Ko");
+  });
+
+  it("is not offered for breakfast when it is a lunch place", async () => {
+    pickedAt("d1-lunch");
+    expect(await names("d2-breakfast")).not.toContain("Kissa Ko");
+  });
+});
+
 describe("what the plan says of its chosen places", () => {
   const picked = (id: string) => ({ placeId: id, minutes: null });
   const withPick = () => {
