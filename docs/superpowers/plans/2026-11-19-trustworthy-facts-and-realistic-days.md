@@ -32,12 +32,14 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 13. Proposal messages worded              | `feature/m9-word-proposals`    | TB-AGT-09, TB-TRU-03                                             |              |
 | 14. Quick plan report worded              | `feature/m9-word-report`       | TB-QPL-10, TB-TRU-03                                             |              |
 | 15. Evidence                              | `feature/m9-evidence`          | all of the above, re-checked                                     |              |
-| 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      |              |
-| 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-ITN-22, TB-FIX-08, TB-CRD-13                       |              |
+| 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      | #90          |
+| 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  |              |
 | 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             |              |
 | 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
+| 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       |              |
+| 21. Time windows                          | `feature/m9-time-windows`      | TB-ITN-22                                                        |              |
 
-The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89.
+The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89. Piece 20 is built straight after piece 16, because it stops the loss of a traveller's answers on the live site. It then reaches `main` with the milestone (developer, 2026-11-20).
 
 Order follows the design: Overpass first, then Part 1 (pieces 2 to 4), Part 4 (5 to 8), Part 2 (9 and 10), Part 3 (11 to 14). Piece 1 waits on the developer for its measurement. Pieces 2 to 4 do not wait for it: they are built and checked on sample places and stored real-tag fixtures.
 
@@ -521,15 +523,21 @@ Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, T
    - Any slot holding the place reopens, and the plan says "{place} was removed."
    - It crosses Places and Itinerary through a use-case and the contracts.
    - The design walk removes its Kyoto place at the end.
-4. **Check-in reads as a window.** The check-in row says "Check in from 15:00", and it is laid after the arrival and its leg.
+     Check-in as a window moved to piece 21.
 
 **Checks:** as piece 16.
 
 ### Piece 18: Fair use: rate limits and per-person shares
 
-Added on 2026-11-20. **Requirements:** TB-SYS-16, TB-SYS-17. **Build after the developer approves this design.**
+Added on 2026-11-20. **Requirements:** TB-SYS-16, TB-SYS-17. The developer approved this design on 2026-11-20, and asked for a combination of identifiers instead of the internet address, so that one person with several email accounts still counts once.
 
-- **Who is counted.** The signed-in person's id, through `withUser`. A hashed network address is used only where nobody is signed in: an HMAC with the existing `AUTH_SECRET`, with no fingerprinting. Many people can share one address, so the per-address limit is generous.
+- **Who is counted.** A person is a combination of three identifiers, and a request counts against every one of them it carries:
+  - the signed-in account, through `withUser`;
+  - a long-lived, signed, first-party device cookie, set on the first request;
+  - a hashed browser-and-network signature: user agent, language and a coarse network block. It is an HMAC keyed from `AUTH_SECRET`, with a key that rotates daily.
+
+  The internet address alone never identifies anyone, and nothing runs a fingerprinting script. A new account on the same device or browser shares that device's and that signature's counts. Many people can share a network block, so the signature's limits are generous.
+
 - **Where the counts are kept.** Postgres fixed-window counters, updated by upsert, in the pattern of `withinCap`. They live in a new table owned by one service, entered in `service-map.json`, the borders document and the ownership test. Old windows are deleted as new ones open.
   - Not in memory, because it does not hold across serverless instances.
   - Not Redis or another new resource.
@@ -548,18 +556,58 @@ Added on 2026-11-20. **Requirements:** TB-SYS-16, TB-SYS-17. **Build after the d
 
 ### Piece 19: Cities, going back a day, and both ways to get there
 
-Added on 2026-11-20. **Requirements:** TB-ITN-25, TB-ITN-26, TB-ITN-27. **It waits for the developer's pick of the mockups,** and R1 (piece 16) lands first.
+Added on 2026-11-20. **Requirements:** TB-ITN-25, TB-ITN-26, TB-ITN-27. The developer picked 1B, 2A and 3A on 2026-11-20 (mockup: https://claude.ai/artifact/QT4ydmHWBLdCbfbkoHHoUu). R1 landed in piece 16.
 
-- **Rows grouped by city.** A day's rows are grouped by city: every row carries its segment's city, and the tickets and allowance rows sit between the groups. A booking on a date-line day goes with the city whose local window holds its time.
-- **Going back a day.** A ticket that lands on an earlier date than it left gets the chosen cue. Trip validation compares instants using both zones, not local dates.
-- **Legs and cards show both ways.** They show the time by the traveller's preferred means. When the hop is within walking distance, they also show the walking distance and time, with a directions link (fixed host, encoded query). The plan still schedules by the preferred means (TB-ITN-06), and it never assumes a walk.
+- **Rows grouped by city (1B).** City groups with a tinted journey strip between them. A day's rows are grouped by city: every row carries its segment's city, and the tickets and allowance rows sit between the groups. A booking on a date-line day goes with the city whose local window holds its time.
+- **Going back a day (2A).** A ticket that lands on an earlier date than it left gets the calendar cue ("You get Friday twice"). A ticket that lands on the same date at an earlier clock time gets the small clock. Trip validation compares instants using both zones, not local dates.
+- **Legs and cards show both ways, on one line (3A).** They show the time by the traveller's preferred means. When the hop is within walking distance, the same line adds the walking distance and time, with a directions link (fixed host, encoded query): "about 10 min by public transport · or 650 m, about 9 min on foot · Directions". The developer asked for one line, not a separate walkable badge. The plan still schedules by the preferred means (TB-ITN-06), and it never assumes a walk.
+
+### Piece 20: Saving the facts keeps the conversation's answers
+
+Added on 2026-11-20 from the developer's report: "Saving the facts reset some of my conversation." **Requirements:** TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03.
+
+- **The cause.**
+  - The facts form (`src/components/keepsake/trip-facts-form.tsx`) copies the facts into its state once, when it first appears, and "Save the facts" sends that whole copy.
+  - The page keys it on the trip id and the archived flag, and `router.refresh()` keeps `useState`. So the copy is never refreshed after a conversation turn.
+  - `saveTripFacts` then writes back the stale values, usually null: who is travelling, how firm the dates and budget are, the budget, the purpose, the dates or length. When the form appeared with no cities, it deletes the cities.
+  - The conversation then asks those questions again. No messages are lost.
+- **The fix.**
+  - The form keeps only the traveller's own edits (`Partial<TripFacts>`).
+  - It shows `{...initial, ...edits}` and sends only the edits. When either date is edited, it sends both dates, so the "ends before it starts" check still runs.
+  - It clears the edits after a successful save.
+  - Don't compare the state with the `initial` prop: every fact the conversation set would look like an edit. Don't change the key on each revision: that throws away unsaved input after every turn.
+- **The same pattern elsewhere.** `src/components/keepsake/trip-workspace.tsx` (~71) and `brief-steps.tsx` (~115) also start state from props. Check each one: fix it the same way where a save can overwrite newer values, and leave it with a one-line why where it cannot.
+- **Tests.**
+  - A regression test: a facts save after the conversation has set the travellers, the firmness and the purpose leaves them as they are, and the waiting question does not go back.
+  - An `@critical` e2e test: answer "who is travelling" in the conversation, fill in the nights, save the facts, reload, and check the travellers and the waiting question.
+
+**Checks:** lint, type check, tests and build; the design checks in Chromium, Firefox and WebKit.
+
+### Piece 21: Time windows
+
+Added on 2026-11-20. **Requirement:** TB-ITN-22. It takes over check-in as a window from piece 17. The developer picked the bar (4B), and asked for a design decision on windows open at one end or both ends.
+
+- **Four shapes.** A timed step can be one of four shapes. Each row reads as follows and carries the 4B bar:
+
+  | Shape           | Row reads                 |
+  | --------------- | ------------------------- |
+  | any time after  | "Check in from 15:00"     |
+  | any time before | "Check out by 11:00"      |
+  | any time        | "Any time today"          |
+  | between X and Y | "between 10:00 and 12:00" |
+
+- **Data.** The shape and its one or two times, on whatever records the step today (development-only migration if a column is needed).
+- **Scheduling.** The step is laid inside its window, once the traveller has reached that city, after the arrival and its leg.
+- **Form.** A shape picker beside the time fields, with one or two times according to the shape.
+- **Display.** The row's words and the bar, as in the approved mockup.
+
+**Checks:** as piece 16.
 
 ## Waiting for the developer
 
-- **Piece 18:** approve the fair-use design (who is counted, the limits, the daily shares).
-- **Piece 19:** pick one option of each mockup.
+- **The trip page:** pick one option in each area of the workspace mockups (https://claude.ai/artifact/HgjhYdBmSuWhzYEaaFD2BP). The pick becomes its own piece.
 
-- **Piece 1:** set `PLACES_USER_AGENT` in Vercel production; open the slot on production; say afterwards whether production stays on real places.
+- **Piece 1:** the live test on 2026-11-20 failed ("I could not reach the place provider"), and the code logged nothing to say why. Production went back to sample places (`PLACE_PROVIDER_MODE=mock`) the same day, at the developer's word. Step 2 now logs the host and status of every refusal, and the QA preview moves to this milestone (developer, 2026-11-20) so the test can run again there, with real places on the QA preview only.
 - **If Overpass refuses Vercel too:** the known mirrors are IPv6-only, and Vercel functions may have no outbound IPv6 (not verified). If the mirrors cannot be reached, places need a self-hosted or paid Overpass or an extract, which the operating constraints allow only with your approval.
 - **The milestone's exit** needs real places checked once with the real service: on the QA preview at your request, or on production after the merge.
 - Read the replacement wording of piece 3 and the doubt line of decision 3 in their pull requests.
