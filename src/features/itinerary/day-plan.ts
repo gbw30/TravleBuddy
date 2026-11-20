@@ -10,7 +10,11 @@ import {
   type PlaceDto,
   type TravelMeans,
 } from "@/features/places/contracts";
-import type { CommitmentDto, TripFacts } from "@/features/trips/contracts";
+import {
+  placeName,
+  type CommitmentDto,
+  type TripFacts,
+} from "@/features/trips/contracts";
 
 import {
   isMeal,
@@ -195,13 +199,6 @@ function transferMinutes(from: City, to: City): number {
   );
   return Math.max(60, Math.round(((km / 70) * 60 + 60) / 15) * 15);
 }
-
-/** "London (LHR)" is London: an airport or station code is not a place's name. */
-const withoutCode = (place: string) =>
-  place
-    .replace(/\([^)]*\)/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 
 /**
  * The mode a ticket records and the time allowed around it. A ticket with no
@@ -824,8 +821,8 @@ export function buildPlanView(
           ticket:
             ticketBound && commitment.transport
               ? {
-                  from: withoutCode(commitment.transport.origin),
-                  to: withoutCode(commitment.transport.destination),
+                  from: placeName(commitment.transport.origin),
+                  to: placeName(commitment.transport.destination),
                   arrives: commitment.endTime,
                   arrivesOn:
                     commitment.endDate && commitment.endDate !== draft.date

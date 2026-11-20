@@ -1,4 +1,4 @@
-import type { TicketInput } from "./contracts";
+import { placeName, type TicketInput } from "./contracts";
 
 export type TicketFacts = {
   startDate: string | null;
@@ -10,14 +10,6 @@ export type TicketFacts = {
 /** "Tokyo (HND)" and " tokyo " are the same place. */
 export function placeKey(place: string): string {
   return placeName(place).toLowerCase();
-}
-
-/** The place without an airport or station code in brackets. */
-export function placeName(place: string): string {
-  return place
-    .replace(/\([^)]*\)/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 const nightsBetween = (from: string, to: string) =>

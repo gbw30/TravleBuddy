@@ -32,6 +32,14 @@ const optionalText = (max: number) =>
     .nullish()
     .transform((value) => value || null);
 
+/** The place without an airport or station code in brackets: "London (LHR)" is London. */
+export function placeName(place: string): string {
+  return place
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export const TICKET_MODES = ["FLIGHT", "TRAIN", "BUS", "FERRY"] as const;
 export type TicketMode = (typeof TICKET_MODES)[number];
 
