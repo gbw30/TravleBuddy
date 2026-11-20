@@ -814,6 +814,7 @@ describe("a typed message with the model on", () => {
       endTime: null,
       reference: null,
       note: null,
+      located: null,
     });
     expect(saved().at(-1)?.[2]).toBe(
       "Added to what is already decided: teamLab Planets on Thu, 13 May 2027 at 15:00. It overlaps with something else you have decided. Have a look under Already decided.",

@@ -260,6 +260,43 @@ describe("proposals in guided planning", () => {
     expect(cards[0].essentials).toContain("not confirmed: shellfish allergy");
   });
 
+  it("measures the first slot of a day, and the slot after a check-in, from the stay once its address is confirmed", async () => {
+    const stay = {
+      id: "s1",
+      kind: "STAY",
+      title: "Hotel Aurora",
+      date: "2027-05-10",
+      startTime: "15:00",
+      endDate: "2027-05-12",
+      endTime: null,
+      reference: null,
+      note: null,
+      located: {
+        latitude: 35.69,
+        longitude: 139.7,
+        ref: "way/1",
+        address: "Hotel Aurora, Tokyo",
+      },
+      transport: null,
+    };
+    mocks.getTrip.mockResolvedValue(trip({ commitments: [stay] as never }));
+
+    // Day 2 starts where the traveller slept.
+    const morning = (await load("d2-morning"))!.proposal!.cards;
+    expect(morning.every((card) => card.travel !== null)).toBe(true);
+
+    // The late afternoon of day 1 follows the check-in.
+    const after = (await load("d1-afternoon-2"))!.proposal!.cards;
+    expect(after.every((card) => card.travel !== null)).toBe(true);
+
+    // With no confirmed address there is nothing to measure from.
+    mocks.getTrip.mockResolvedValue(
+      trip({ commitments: [{ ...stay, located: null }] as never }),
+    );
+    const unknown = (await load("d2-morning"))!.proposal!.cards;
+    expect(unknown.every((card) => card.travel === null)).toBe(true);
+  });
+
   it("does not save the same proposal twice", async () => {
     mocks.recordPresented.mockResolvedValue([]);
     expect((await load())?.proposal?.cards).toHaveLength(3);
@@ -550,6 +587,7 @@ describe("cards that would break a rule of the plan", () => {
             endTime: "15:00",
             reference: null,
             note: null,
+            located: null,
             transport: null,
           },
         ],
@@ -589,6 +627,7 @@ describe("a place the traveller has already decided", () => {
             endTime: "16:00",
             reference: null,
             note: null,
+            located: null,
             transport: null,
           },
         ],
@@ -649,6 +688,7 @@ describe("what the plan says of its chosen places", () => {
             endTime: "14:00",
             reference: null,
             note: null,
+            located: null,
             transport: null,
           },
         ],

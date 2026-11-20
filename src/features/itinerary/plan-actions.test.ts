@@ -44,6 +44,7 @@ const dinner: CommitmentDto = {
   endTime: null,
   reference: null,
   note: null,
+  located: null,
   transport: null,
 };
 const context: PlanContext = {

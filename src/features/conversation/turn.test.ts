@@ -55,12 +55,14 @@ const stay = (date: string | null, endDate: string | null): CommitmentDto => ({
   endTime: null,
   reference: null,
   note: null,
+  located: null,
   transport: null,
 });
 const days: PlanDay[] = [1, 2, 3].map((number) => ({
   day: number,
   date: `2027-05-1${number - 1}`,
   city: "Tokyo",
+  stayNote: null,
   entries: [
     number === 1
       ? {
@@ -442,6 +444,7 @@ describe("a commitment told in conversation", () => {
           endTime: null,
           reference: null,
           note: null,
+          located: null,
         },
       },
       says: "Added to what is already decided: teamLab Planets on Thu, 13 May 2027 at 15:00.",

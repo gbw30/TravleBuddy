@@ -47,6 +47,15 @@ export type PlaceDto = {
   hoursDoubt: string | null;
 };
 
+/** An address the provider found, shown by its label until the traveller confirms it. */
+export type FoundAddress = {
+  label: string;
+  latitude: number;
+  longitude: number;
+  /** The provider's own reference, such as "way/123". */
+  ref: string;
+};
+
 /** "unavailable" means the lookup could not be reached, not that nothing matched. */
 export type CityLookupOutcome =
   | { status: "ok"; cities: City[] }
@@ -77,6 +86,13 @@ export {
   type TravelEstimate,
   type TravelMeans,
 } from "./travel";
+
+/** The cities whose position is known: a place or an address is looked up near one. */
+export function positionedCities(entries: { city: City }[]): City[] {
+  return entries
+    .map((entry) => entry.city)
+    .filter((city) => city.latitude !== null && city.longitude !== null);
+}
 
 /** The key places are saved under for a city. */
 export function cityKeyOf(city: Pick<City, "name" | "country">): string {

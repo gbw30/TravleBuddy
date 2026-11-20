@@ -65,14 +65,17 @@ function located(city: City): (City & Point) | null {
 }
 
 /** Counts one request to the provider today. False once the cap is passed. */
-async function withinCap(service: string): Promise<boolean> {
+export async function withinCap(
+  service: string,
+  cap = DAILY_CAP,
+): Promise<boolean> {
   const day = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
   const row = await db.providerCall.upsert({
     where: { day_service: { day, service } },
     create: { day, service, count: 1 },
     update: { count: { increment: 1 } },
   });
-  return row.count <= DAILY_CAP;
+  return row.count <= cap;
 }
 
 // One insert for all places. A refetch updates in place, so the id stays and

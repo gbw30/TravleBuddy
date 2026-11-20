@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import type { TasteTopic } from "@/features/memory/contracts";
+import { positionedCities } from "@/features/places/contracts";
 import type { TripFacts } from "@/features/trips/contracts";
 import { changeTrip } from "@/lib/trip-api";
 import {
@@ -351,6 +352,7 @@ export function BriefSteps({
                 commitments: brief.commitments,
                 clashes: brief.clashes,
               }}
+              cities={positionedCities(brief.facts.cities)}
               readOnly={false}
             />
           </>

@@ -1057,6 +1057,128 @@ async function checkItYourself(
   ];
 }
 
+/**
+ * A stay is added, its address looked up, the one found confirmed, and the
+ * plan then shows the leg from the stay and the way back to it.
+ */
+async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
+  const problems: string[] = [];
+  const plan = async (): Promise<PlanSnapshot> =>
+    (await call("get", `/trips/${data.kyoto}/plan`)).json.plan;
+
+  // Every slot of the second day is filled, so there is a leg from the stay
+  // in the morning and the way back comes last, after the final place.
+  const slots = (await plan()).view.days[1]?.entries.flatMap((entry) =>
+    entry.type === "open" ? [entry.slotId] : [],
+  );
+  let picked = 0;
+  for (const slotId of slots ?? []) {
+    const offered: PlanSnapshot = (
+      await call("get", `/trips/${data.kyoto}/plan?slot=${slotId}`)
+    ).json.plan;
+    const card =
+      offered.proposal?.slotId === slotId && offered.proposal.cards[0];
+    if (!card) continue;
+    const revision: number = (await call("get", `/trips/${data.kyoto}/brief`))
+      .json.brief.revision;
+    await call("post", `/trips/${data.kyoto}/plan`, {
+      operationId: randomUUID(),
+      expectedRevision: revision,
+      action: { type: "pick", slotId, placeId: card.placeId },
+    });
+    picked += 1;
+  }
+  if (picked === 0) {
+    return [
+      row(
+        "Trip",
+        "A stay's address",
+        "TB-FIX-07",
+        ["day 2 offers no card"],
+        "",
+      ),
+    ];
+  }
+
+  await open(page, `/trips/${data.kyoto}`);
+  const decided = page.locator('[data-qa="commitments"]');
+  await decided.getByText("Add something already decided").click();
+  await decided.getByLabel("What", { exact: true }).fill("Walk Test Hotel");
+  await decided.getByLabel("Kind").selectOption("STAY");
+  await decided.getByLabel("Date", { exact: true }).fill("2027-07-10");
+  await decided.getByLabel("Ends on another day").fill("2027-07-12");
+  const lookup = decided.getByRole("button", { name: "Look up address" });
+  await decided.getByLabel("Address").fill("1 Walk Street");
+  await lookup.click();
+  const confirm = decided.getByRole("button", { name: /Confirm this address/ });
+  await confirm.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  const label = "Sample address, city centre";
+  if ((await decided.getByText(label).count()) < 1) {
+    problems.push("the address found is not shown");
+  }
+  if ((await confirm.count()) !== 1) {
+    problems.push("the found address has no Confirm button");
+  } else {
+    // The lookup form fits the phone and the narrowest screen.
+    for (const size of [PHONE, NARROW]) {
+      await page.setViewportSize(size);
+      await page.waitForTimeout(250);
+      const width = await page.evaluate(scanWidth);
+      if (width.scroll > width.width + 1) {
+        problems.push(
+          `at ${size.width} px the page is ${width.scroll} px wide: ${width.wide.join(", ")}`,
+        );
+      }
+    }
+    await page.setViewportSize(DESKTOP);
+    await confirm.focus();
+    await page.keyboard.press("Enter");
+    const confirmed = decided.getByText("Address confirmed: ");
+    if ((await confirmed.count()) !== 1) {
+      problems.push("the address was not confirmed");
+    } else if (
+      !(await confirmed.evaluate((el) => el === document.activeElement))
+    ) {
+      problems.push("focus is not on the confirmed address");
+    }
+  }
+  await decided.getByRole("button", { name: "Add", exact: true }).click();
+  // The page refreshes itself after the change; the way back appears with it.
+  await page
+    .getByText(/^Back to Walk Test Hotel/)
+    .first()
+    .waitFor({ timeout: 15_000 })
+    .catch(() => undefined);
+
+  const after = await plan();
+  const day2 = after.view.days[1].entries;
+  const firstPlace = day2.find((entry) => entry.type === "place");
+  const lastEntry = day2[day2.length - 1];
+  const lastPlace = day2.filter((entry) => entry.type === "place").at(-1);
+  if (firstPlace?.type !== "place" || !firstPlace.travelIn) {
+    problems.push("the first place of day 2 has no leg from the stay");
+  }
+  if (
+    lastEntry?.type !== "return" ||
+    lastPlace?.type !== "place" ||
+    lastEntry.start < lastPlace.start
+  ) {
+    problems.push("day 2 does not end with the way back, after its last place");
+  }
+  if ((await page.getByText(/^Back to Walk Test Hotel/).count()) < 1) {
+    problems.push("the plan on the page shows no way back");
+  }
+  return [
+    row(
+      "Trip",
+      "A stay is added, its address looked up and confirmed, and the plan shows the leg from it and the way back; the form fits 390 and 320 px",
+      "TB-FIX-07",
+      problems,
+      "the found address is shown and confirmed with focus on the result; day 2 starts with a leg from the stay and a day ends with the way back",
+    ),
+  ];
+}
+
 /** A place is dragged onto an open slot; a fixed commitment cannot be dragged. */
 async function dragMove(page: Page, call: Call, data: Data): Promise<Row[]> {
   const problems: string[] = [];
@@ -1136,6 +1258,7 @@ async function walk(browser: Browser, admin: Call, data: Data): Promise<Row[]> {
   rows.push(...(await keyboardActions(desktop.page, admin, data)));
   rows.push(...(await dragMove(desktop.page, admin, data)));
   rows.push(...(await checkItYourself(desktop.page, admin, data)));
+  rows.push(...(await stayAddress(desktop.page, admin, data)));
 
   const phone = await (await context({ viewport: PHONE })).newPage();
   for (const screen of screens) {

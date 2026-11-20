@@ -24,7 +24,7 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 | Trips           | `src/features/trips`                                 | Trip, TripDestination, FixedCommitment                                             |
 | Conversation    | `src/features/conversation`, `src/features/planning` | PlanningMutation, Conversation, ConversationMessage, AiUsage                       |
 | Memory          | `src/features/memory`                                | TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
-| Places          | `src/features/places`                                | CityLookup, Place, PlaceFetch, ProviderCall                                        |
+| Places          | `src/features/places`                                | AddressLookup, CityLookup, Place, PlaceFetch, ProviderCall                         |
 | Recommendations | `src/features/recommendations`                       | CardEvent                                                                          |
 | Itinerary       | `src/features/itinerary`                             | Plan, PlanVersion                                                                  |
 

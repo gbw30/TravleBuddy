@@ -3,6 +3,7 @@
 export {
   buildPlanView,
   kindSuitsSlot,
+  morningStayOf,
   provisionalStart,
   slotId,
   type PlanContext,

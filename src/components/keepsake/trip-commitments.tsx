@@ -3,16 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import type { City } from "@/features/places/contracts";
 import {
   COMMITMENT_KINDS,
   commitmentInputSchema,
   type Clash,
   type CommitmentDto,
   type CommitmentKind,
+  type Located,
 } from "@/features/trips/contracts";
 import { changeTrip } from "@/lib/trip-api";
 
 import { dayLabel } from "./format";
+import { StayAddress } from "./stay-address";
 import { button, buttonSecond, eyebrow, field, quiet } from "./styles";
 import { TicketStub } from "./ticket-stub";
 
@@ -30,25 +33,35 @@ type Saved = { commitments: CommitmentDto[]; clashes: Clash[] };
 
 function CommitmentForm({
   commitment,
+  cities,
   submitWord,
   busy,
   onSubmit,
   onCancel,
 }: {
   commitment?: CommitmentDto;
+  cities: City[];
   submitWord: string;
   busy: boolean;
   onSubmit: (input: object, form: HTMLFormElement) => void;
   onCancel?: () => void;
 }) {
   const [problem, setProblem] = useState<string | null>(null);
+  const initialKind = commitment?.kind ?? "RESERVATION";
+  const [kind, setKind] = useState<CommitmentKind>(initialKind);
+  const [located, setLocated] = useState<Located | null>(
+    commitment?.located ?? null,
+  );
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const entries = [...new FormData(event.currentTarget)].map(
       ([name, value]) => [name, value === "" ? null : value],
     );
-    const parsed = commitmentInputSchema.safeParse(Object.fromEntries(entries));
+    const parsed = commitmentInputSchema.safeParse({
+      ...Object.fromEntries(entries),
+      located: kind === "STAY" ? located : null,
+    });
     if (!parsed.success) {
       setProblem(parsed.error.issues[0]?.message ?? "Check the details.");
       return;
@@ -58,7 +71,14 @@ function CommitmentForm({
   }
 
   return (
-    <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-2">
+    <form
+      onSubmit={submit}
+      onReset={() => {
+        setKind(initialKind);
+        setLocated(commitment?.located ?? null);
+      }}
+      className="mt-3 grid gap-3 sm:grid-cols-2"
+    >
       <label className={`${label} sm:col-span-2`}>
         What
         <input
@@ -73,7 +93,8 @@ function CommitmentForm({
         Kind
         <select
           name="kind"
-          defaultValue={commitment?.kind ?? "RESERVATION"}
+          defaultValue={initialKind}
+          onChange={(event) => setKind(event.target.value as CommitmentKind)}
           className={control}
         >
           {COMMITMENT_KINDS.map((kind) => (
@@ -137,6 +158,11 @@ function CommitmentForm({
           className={control}
         />
       </label>
+      {kind === "STAY" && (
+        <div className="sm:col-span-2">
+          <StayAddress cities={cities} value={located} onChange={setLocated} />
+        </div>
+      )}
       <p role="alert" className="text-[13px] text-stamp sm:col-span-2">
         {problem}
       </p>
@@ -163,11 +189,14 @@ export function TripCommitments({
   tripId,
   revision,
   initial,
+  cities,
   readOnly,
 }: {
   tripId: string;
   revision: number;
   initial: Saved;
+  /** The trip's cities: an address is looked up near one of them. */
+  cities: City[];
   readOnly: boolean;
 }) {
   const router = useRouter();
@@ -251,6 +280,7 @@ export function TripCommitments({
                 </p>
                 <CommitmentForm
                   commitment={c}
+                  cities={cities}
                   submitWord="Save changes"
                   busy={busy}
                   onCancel={() => setEditing(null)}
@@ -280,6 +310,11 @@ export function TripCommitments({
               {c.note && (
                 <p className="mt-1 font-sans text-[13px] text-muted [overflow-wrap:anywhere]">
                   {c.note}
+                </p>
+              )}
+              {c.located && (
+                <p className="mt-1 font-sans text-[13px] text-muted [overflow-wrap:anywhere]">
+                  {c.located.address}
                 </p>
               )}
               {against.length > 0 && (
@@ -318,6 +353,7 @@ export function TripCommitments({
             Add something already decided
           </summary>
           <CommitmentForm
+            cities={cities}
             submitWord="Add"
             busy={busy}
             onSubmit={async (commitment, form) => {

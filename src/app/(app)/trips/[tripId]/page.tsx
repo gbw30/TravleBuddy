@@ -14,6 +14,7 @@ import { TripCommitments } from "@/components/keepsake/trip-commitments";
 import { TripConversation } from "@/components/keepsake/trip-conversation";
 import { TripFactsForm } from "@/components/keepsake/trip-facts-form";
 import { TripWorkspace } from "@/components/keepsake/trip-workspace";
+import { positionedCities } from "@/features/places/contracts";
 import { getTrip } from "@/features/trips";
 import { requireUser } from "@/lib/authorization";
 import { loadConversation } from "@/use-cases/conversation";
@@ -130,6 +131,7 @@ export default async function TripPage({
             tripId={trip.id}
             revision={trip.revision}
             initial={{ commitments, clashes }}
+            cities={positionedCities(facts.cities)}
             readOnly={trip.archived}
           />
         </aside>

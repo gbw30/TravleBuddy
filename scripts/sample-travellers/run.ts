@@ -194,7 +194,13 @@ async function planOne(
   const decided = before.view.days.flatMap((day) =>
     day.entries.flatMap((entry) =>
       entry.type === "commitment"
-        ? [{ title: entry.title, start: entry.start }]
+        ? [
+            {
+              title: entry.title,
+              // A check-in is a window: it moves to the first gap after its time.
+              start: entry.commitmentKind === "STAY" ? null : entry.start,
+            },
+          ]
         : [],
     ),
   );
@@ -369,6 +375,8 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
       return `${entry.start}  Allowed ${minutes(entry.minutes)} ${entry.way} ${placeWordFor(entry.mode) ? `the ${placeWordFor(entry.mode)}` : "the journey"} (${entry.mode?.toLowerCase() ?? "mode not known"})`;
     case "breakfast-at-stay":
       return `${entry.start}  Breakfast where you stay (${minutes(entry.minutes)})`;
+    case "return":
+      return `${entry.start}  Back to ${entry.stay} (${minutes(entry.travel.minutes)} ${entry.travel.means})`;
     case "wander":
       return `${entry.start}  Time to wander${entry.area ? ` around ${entry.area}` : ""} (${minutes(entry.minutes)})`;
   }
