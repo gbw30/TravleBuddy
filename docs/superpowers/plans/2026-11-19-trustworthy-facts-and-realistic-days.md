@@ -33,6 +33,8 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 14. Quick plan report worded              | `feature/m9-word-report`       | TB-QPL-10, TB-TRU-03                                             |              |
 | 15. Evidence                              | `feature/m9-evidence`          | all of the above, re-checked                                     |              |
 
+The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89.
+
 Order follows the design: Overpass first, then Part 1 (pieces 2 to 4), Part 4 (5 to 8), Part 2 (9 and 10), Part 3 (11 to 14). Piece 1 waits on the developer for its measurement. Pieces 2 to 4 do not wait for it: they are built and checked on sample places and stored real-tag fixtures.
 
 ## Global Constraints

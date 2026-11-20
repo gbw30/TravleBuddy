@@ -80,6 +80,17 @@ describe("keepsake components", () => {
       expect(look({})).not.toContain("Worth a check");
     });
 
+    it("says the hours are not listed, and leaves the doubt to say the rest", () => {
+      const html = look({
+        hours: null,
+        hoursDoubt: "Hours not known. Check before you go.",
+      });
+      expect(html).toContain(
+        '<dd>Not listed<p class="font-sans text-[13px] leading-6 text-muted">Hours not known. Check before you go.</p></dd>',
+      );
+      expect(html).not.toContain("Hours unknown");
+    });
+
     it("lists the three links, each opening in a new tab and named", () => {
       const html = look({ links });
       expect(html).toContain("Check it yourself");

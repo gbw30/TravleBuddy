@@ -8,6 +8,7 @@ export type {
   PlaceDto,
 } from "./contracts";
 export { kindFromOsmTags } from "./kinds";
+export { usesSamplePlaces } from "./provider-mode";
 export {
   isOpenFor,
   parseOpeningHours,

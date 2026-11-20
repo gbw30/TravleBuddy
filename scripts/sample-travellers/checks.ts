@@ -1,4 +1,8 @@
-import type { Pace, PlanEntry } from "@/features/itinerary/contracts";
+import {
+  isMeal,
+  type Pace,
+  type PlanEntry,
+} from "@/features/itinerary/contracts";
 import type { PlanSnapshot } from "@/use-cases/plan-snapshot";
 
 // The checks of PRD 18 that a machine can make on a planned trip, and one
@@ -31,10 +35,6 @@ const SIGHTS_A_DAY: Record<Pace, number> = {
 type Slot = Extract<PlanEntry, { type: "open" | "place" }>;
 const isSlot = (entry: PlanEntry): entry is Slot =>
   entry.type === "open" || entry.type === "place";
-const isMeal = (entry: Slot) =>
-  entry.kind === "breakfast" ||
-  entry.kind === "lunch" ||
-  entry.kind === "dinner";
 const finding = (check: string, problems: string[], fine: string): Finding => ({
   check,
   ok: problems.length === 0,
@@ -101,7 +101,7 @@ export function checkItinerary(input: {
   });
 
   const against = placed.flatMap(({ day, entry }) => {
-    if (!isMeal(entry)) return [];
+    if (!isMeal(entry.kind)) return [];
     const name = nameOf(entry.placeId);
     const says = name ? known.get(name) : undefined;
     const rules = expected.dietaryRules.filter((rule) =>
@@ -120,7 +120,7 @@ export function checkItinerary(input: {
       .filter(
         (entry) =>
           entry.type === "open" &&
-          isMeal(entry) &&
+          isMeal(entry.kind) &&
           (entry.kind !== "breakfast" || expected.breakfast === "suggest"),
       )
       .map((entry) => `day ${day.day} has no ${entry.kind}`),
@@ -146,7 +146,7 @@ export function checkItinerary(input: {
     ...days.flatMap((day) => {
       const sights = day.entries
         .filter(isSlot)
-        .filter((e) => !isMeal(e)).length;
+        .filter((e) => !isMeal(e.kind)).length;
       return sights > most
         ? [
             `day ${day.day} has ${sights} sights or activities, more than ${most}`,
@@ -239,6 +239,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
   const hours = [
     "It is open for the whole visit.",
     "Its listed hours cover the whole visit.",
+    "Its sample hours cover the whole visit.",
     "Its opening hours are not known, so check before you go.",
   ].find((sentence) => rest.endsWith(sentence));
   if (!hours)

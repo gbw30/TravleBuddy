@@ -55,6 +55,7 @@ vi.mock("@/features/places", () => ({
   gatherFoodNear: mocks.gatherFoodNear,
   addOwnPlace: vi.fn(),
   findPlacesByName: vi.fn(),
+  usesSamplePlaces: vi.fn(),
 }));
 vi.mock("@/features/recommendations", async (actual) => ({
   ...(await actual<typeof import("@/features/recommendations")>()),

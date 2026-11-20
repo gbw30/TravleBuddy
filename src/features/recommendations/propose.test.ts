@@ -770,8 +770,12 @@ describe("true sentences", () => {
       "Its listed hours cover the whole visit.",
     );
     expect(reasonOf(set, "sample")).toContain(
-      "It is open for the whole visit.",
+      "Its sample hours cover the whole visit.",
     );
+    const own = proposeCards(
+      input({ candidates: [place("own", { origin: "USER" })] }),
+    );
+    expect(reasonOf(own, "own")).toContain("It is open for the whole visit.");
     for (const card of set.cards) {
       expect(card.reason).not.toContain("out of date");
     }

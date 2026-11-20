@@ -97,7 +97,7 @@ export function CloserLook({
               Hours
             </dt>
             <dd>
-              {shown.hours ?? "Hours unknown"}
+              {shown.hours ?? "Not listed"}
               {shown.hoursDoubt && (
                 <p className="font-sans text-[13px] leading-6 text-muted">
                   {shown.hoursDoubt}

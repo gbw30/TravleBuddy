@@ -36,12 +36,15 @@ export function StayAddress({
   const [status, setStatus] = useState("");
   const [searching, setSearching] = useState(false);
   const confirmed = useRef<HTMLParagraphElement>(null);
-  const [justConfirmed, setJustConfirmed] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const [moved, setMoved] = useState<"confirmed" | "removed" | null>(null);
 
-  // The button that was pressed is gone once confirmed; keep the focus on the result.
+  // The button that was pressed is gone once it has worked: keep the focus
+  // on the confirmed address, or on the address field once it is removed.
   useEffect(() => {
-    if (justConfirmed && value) confirmed.current?.focus();
-  }, [justConfirmed, value]);
+    if (moved === "confirmed" && value) confirmed.current?.focus();
+    if (moved === "removed" && !value) input.current?.focus();
+  }, [moved, value]);
 
   const city = cities[cityIndex] ?? cities[0];
 
@@ -90,7 +93,7 @@ export function StayAddress({
           type="button"
           className={quiet}
           onClick={() => {
-            setJustConfirmed(false);
+            setMoved("removed");
             onChange(null);
           }}
         >
@@ -130,6 +133,7 @@ export function StayAddress({
         <label className={`${label} min-w-0 flex-1`}>
           Address · optional
           <input
+            ref={input}
             value={text}
             maxLength={120}
             onChange={(event) => setText(event.target.value)}
@@ -163,7 +167,7 @@ export function StayAddress({
                 type="button"
                 className={quiet}
                 onClick={() => {
-                  setJustConfirmed(true);
+                  setMoved("confirmed");
                   setFound([]);
                   setStatus("");
                   onChange({

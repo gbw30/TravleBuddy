@@ -12,15 +12,16 @@ import {
 } from "@/features/places/contracts";
 import type { CommitmentDto, TripFacts } from "@/features/trips/contracts";
 
-import type {
-  Pace,
-  PlanBlocker,
-  PlanDay,
-  PlanEntry,
-  PlanFlag,
-  PlanState,
-  PlanView,
-  SlotKind,
+import {
+  isMeal,
+  type Pace,
+  type PlanBlocker,
+  type PlanDay,
+  type PlanEntry,
+  type PlanFlag,
+  type PlanState,
+  type PlanView,
+  type SlotKind,
 } from "./contracts";
 import { offsetAt, ticketMinutes } from "./local-time";
 
@@ -105,8 +106,6 @@ export const BREAKFAST = { from: 450, until: 600, minutes: 45 };
 const MIN_WANDER = 30;
 const ASSUMED_TRANSFER_START = 12 * 60;
 
-const isMealSlot = (kind: SlotKind) =>
-  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 const toMinutes = (clock: string) =>
   Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
 const toClock = (minutes: number) => {
@@ -334,6 +333,10 @@ export function buildPlanView(
     allowances: Extract<PlanEntry, { type: "allowance" }>[];
     /** When the transfer arrives, by the clock of the city of arrival. */
     landsAt: number;
+    /** When the traveller leaves the morning's city, on a day with two segments. */
+    leaves: number;
+    /** The segment in tonight's city, where a check-in today waits; -1 when it is not reached today. */
+    stayIn: number;
     slots: DraftSlot[];
     /** When breakfast where the traveller stays is shown, if it is. */
     stayBreakfast: number | null;
@@ -406,6 +409,7 @@ export function buildPlanView(
     let segments: Segment[];
     let transfer: Draft["transfer"] = null;
     let landsAt = 0;
+    let leaves = 0;
     if (cityKeyOf(morningCity) === cityKeyOf(eveningCity)) {
       segments = [{ city: morningCity, from, until }];
     } else {
@@ -429,6 +433,7 @@ export function buildPlanView(
         ? ticket.end
         : Math.max(leave, leave + travel + ahead);
       landsAt = arrive;
+      leaves = leave;
       if (!ticket) {
         transfer = {
           type: "transfer",
@@ -457,7 +462,8 @@ export function buildPlanView(
           way: "to",
           mode,
           start: toClock(leave - before),
-          minutes: before,
+          // A ticket in the small hours leaves only the time since midnight.
+          minutes: Math.min(before, leave),
         });
         // On the first day the landing above has already given this row.
         if (lands && !allowances.some((a) => a.way === "from")) {
@@ -477,7 +483,9 @@ export function buildPlanView(
 
     const slots: DraftSlot[] = [];
     // Breakfast starts with the day, and only a day that starts in the
-    // morning has one. Day 1 has no night behind it, so none is "at the stay".
+    // morning has one. Day 1 has no night behind it, so none is "at the
+    // stay"; nor has a morning after a night on a ticket that lands today.
+    const overnight = landed.some((c) => c.date !== date);
     const dayStart = segments[0].from;
     let stayBreakfast: number | null = null;
     if (
@@ -500,7 +508,12 @@ export function buildPlanView(
             city: segments[0].city,
           });
         }
-      } else if (context.breakfast === "included" && index > 0 && !taken) {
+      } else if (
+        context.breakfast === "included" &&
+        index > 0 &&
+        !overnight &&
+        !taken
+      ) {
         stayBreakfast = dayStart;
       }
     }
@@ -510,7 +523,7 @@ export function buildPlanView(
         (s) => s.from <= usual + LATE_START && usual + 60 <= s.until,
       );
       if (!segment) continue;
-      if (isMealSlot(kind) && segment.from > usual + MEAL_LATE) continue;
+      if (isMeal(kind) && segment.from > usual + MEAL_LATE) continue;
       const earliest = Math.max(usual, segment.from);
       const taken = fixed.some(
         (f) =>
@@ -528,6 +541,9 @@ export function buildPlanView(
       }
     }
 
+    const stayIn = segments.findIndex(
+      (s) => cityKeyOf(s.city) === cityKeyOf(eveningCity),
+    );
     drafts.push({
       day,
       date,
@@ -537,10 +553,16 @@ export function buildPlanView(
       transfer,
       allowances,
       landsAt,
+      leaves,
+      stayIn,
       slots,
       stayBreakfast,
       held: new Map(),
-      notes: [],
+      // A check-in in a city the traveller does not reach today has no time today.
+      notes:
+        stayIn === -1
+          ? fixed.filter((f) => isCheckIn(f, date)).map((f) => f.commitment)
+          : [],
       morningStay: stayForNight(context.commitments, addDays(date, -1)),
       eveningStay: stayForNight(context.commitments, date),
     });
@@ -554,7 +576,7 @@ export function buildPlanView(
       (slot) =>
         !draft.held.has(slot.id) &&
         slot.kind !== "breakfast" &&
-        (wantMeal === null || isMealSlot(slot.kind) === wantMeal),
+        (wantMeal === null || isMeal(slot.kind) === wantMeal),
     );
   for (const commitment of context.commitments) {
     if (commitment.startTime) continue;
@@ -598,24 +620,63 @@ export function buildPlanView(
   const usedPicks = new Set<string>();
   const notes: ({ key: string; text: string } | null | undefined)[] = [];
   const days: PlanDay[] = drafts.map((draft) => {
-    type Step =
-      | { at: number; fixed: Fixed }
-      | { at: number; transfer: NonNullable<Draft["transfer"]> }
-      | { at: number; allowance: Draft["allowances"][number] }
-      | { at: number; slot: DraftSlot };
+    // A step's segment: 0 for where the day starts, 1 after the city
+    // changes. Steps go by segment, then time: across the date line the
+    // clock of the city of arrival can read earlier than the one left.
+    type Step = { at: number; segment: number } & (
+      | { fixed: Fixed }
+      | { transfer: NonNullable<Draft["transfer"]> }
+      | { allowance: Draft["allowances"][number] }
+      | { slot: DraftSlot }
+      | { checkIn: Fixed }
+      | { breakfast: true }
+    );
+    const changes = draft.segments.length > 1;
     const steps: Step[] = [
+      ...(draft.stayBreakfast === null
+        ? []
+        : [{ at: draft.stayBreakfast, segment: 0, breakfast: true as const }]),
+      // A check-in is a window, not an appointment: it waits until the
+      // traveller is in its city and out of any station or airport, and is
+      // laid at the first gap after that.
+      ...(draft.stayIn === -1
+        ? []
+        : draft.fixed
+            .filter((fixed) => isCheckIn(fixed, draft.date))
+            .map((checkIn) => ({
+              at: Math.max(checkIn.start, draft.segments[draft.stayIn].from),
+              segment: draft.stayIn,
+              checkIn,
+            }))),
       ...draft.fixed
         .filter((fixed) => !isCheckIn(fixed, draft.date))
-        .map((fixed) => ({ at: fixed.start, fixed })),
-      ...draft.allowances.map((allowance) => ({
-        at: toMinutes(allowance.start),
-        allowance,
-      })),
+        .map((fixed) => ({
+          at: fixed.start,
+          segment: changes && fixed.start > draft.leaves ? 1 : 0,
+          fixed,
+        })),
+      ...draft.allowances.map((allowance) => {
+        const at = toMinutes(allowance.start);
+        // Only the way out of the ticket that changes city is in the new one.
+        const after =
+          changes && allowance.way === "from" && at >= draft.landsAt;
+        return { at, segment: after ? 1 : 0, allowance };
+      }),
       ...(draft.transfer
-        ? [{ at: toMinutes(draft.transfer.start), transfer: draft.transfer }]
+        ? [
+            {
+              at: toMinutes(draft.transfer.start),
+              segment: 0,
+              transfer: draft.transfer,
+            },
+          ]
         : []),
-      ...draft.slots.map((slot) => ({ at: slot.earliest, slot })),
-    ].sort((a, b) => a.at - b.at);
+      ...draft.slots.map((slot) => ({
+        at: slot.earliest,
+        segment: draft.segments.findIndex((s) => s.city === slot.city),
+        slot,
+      })),
+    ].sort((a, b) => a.segment - b.segment || a.at - b.at);
 
     const entries: PlanEntry[] = draft.notes.map((commitment) => ({
       type: "commitment",
@@ -627,17 +688,7 @@ export function buildPlanView(
       slotId: null,
       ticket: null,
     }));
-    if (draft.stayBreakfast !== null) {
-      entries.push({
-        type: "breakfast-at-stay",
-        start: toClock(draft.stayBreakfast),
-        minutes: BREAKFAST.minutes,
-      });
-    }
-    // Breakfast where the traveller stays takes its time, as a slot does.
-    let clock =
-      draft.segments[0].from +
-      (draft.stayBreakfast === null ? 0 : BREAKFAST.minutes);
+    let clock = draft.segments[0].from;
     type Point = { latitude: number; longitude: number };
     // The day starts where the traveller slept, when that is confirmed.
     let lastPoint = (draft.morningStay?.located ?? null) as Point | null;
@@ -650,19 +701,27 @@ export function buildPlanView(
       until: number;
     } | null;
 
-    // Check-ins wait until the first gap at or after their time.
-    const waiting = draft.fixed
-      .filter((fixed) => isCheckIn(fixed, draft.date))
-      .sort((a, b) => a.start - b.start);
-    const layCheckIns = (before: number) => {
-      while (waiting.length > 0 && waiting[0].start <= before) {
-        const { commitment, start, end } = waiting.shift()!;
+    steps.forEach((step, position) => {
+      if ("breakfast" in step) {
+        // Breakfast where the traveller stays takes its time, as a slot does.
+        entries.push({
+          type: "breakfast-at-stay",
+          start: toClock(step.at),
+          minutes: BREAKFAST.minutes,
+        });
+        clock = Math.max(clock, step.at + BREAKFAST.minutes);
+        lastPoint = draft.morningStay?.located ?? null;
+        return;
+      }
+      if ("checkIn" in step) {
+        const { commitment, start, end } = step.checkIn;
         const spot = commitment.located;
+        // From the last point in this city; a station has no position.
         const leg =
           spot && lastPoint
             ? travelEstimate(lastPoint, spot, context.means)
             : null;
-        const at = Math.max(start, clock + (leg ? leg.minutes + buffer : 0));
+        const at = Math.max(step.at, clock + (leg ? leg.minutes + buffer : 0));
         entries.push({
           type: "commitment",
           commitmentId: commitment.id,
@@ -683,11 +742,8 @@ export function buildPlanView(
         clock = at + (end - start);
         lastPoint = spot;
         lastPlace = null;
+        return;
       }
-    };
-
-    steps.forEach((step, position) => {
-      layCheckIns(step.at);
       if ("fixed" in step) {
         const { commitment, start, end } = step.fixed;
         // A ticket seen on its departure day; one landing today is a point.
@@ -710,7 +766,9 @@ export function buildPlanView(
                 }
               : null,
         });
-        clock = Math.max(clock, end);
+        // A ticket that lands earlier by the clock than it left crossed the
+        // date line: the day goes on by the clock it lands in.
+        clock = end < start ? end : Math.max(clock, end);
         lastPoint = null;
         lastPlace = null;
         return;
@@ -855,12 +913,18 @@ export function buildPlanView(
       }
 
       // Time to wander or rest follows lunch, with the last place as its area.
-      // It ends where something decided, or a transfer, begins.
+      // It ends where something decided, a transfer, or the way to a
+      // ticket begins.
       if (slot.kind === "lunch" && wander > 0) {
         const start = Math.max(clock, slot.earliest + MEAL_MINUTES);
         const next = steps
           .slice(position + 1)
-          .find((later) => "fixed" in later || "transfer" in later);
+          .find(
+            (later) =>
+              "fixed" in later ||
+              "transfer" in later ||
+              ("allowance" in later && later.allowance.way === "to"),
+          );
         const minutes = Math.min(wander, next ? next.at - start : wander);
         if (minutes >= MIN_WANDER) {
           entries.push({
@@ -874,7 +938,6 @@ export function buildPlanView(
       }
     });
 
-    layCheckIns(Infinity);
     // The way back to where the traveller sleeps tonight.
     const evening = draft.eveningStay?.located;
     if (evening && lastPlace) {
@@ -958,7 +1021,7 @@ export function buildPlanView(
 export function kindSuitsSlot(kind: PlaceDto["kind"], slot: SlotKind): boolean {
   if (slot === "dinner") return kind === "restaurant";
   if (slot === "breakfast") return kind === "cafe" || kind === "bakery";
-  return isMealSlot(slot)
+  return isMeal(slot)
     ? kind === "restaurant" || kind === "cafe"
     : !isMealKind(kind) && kind !== "bar";
 }

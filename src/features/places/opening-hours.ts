@@ -121,7 +121,8 @@ export function isOpenFor(
 /** Hours last judged on the map more than this many months ago are in doubt. */
 export const STALE_MONTHS = 12;
 
-const DATE = /^\d{4}-\d{2}-\d{2}/;
+/** `YYYY-MM-DD`, or `YYYY-MM` for the first of that month; an edit time adds its clock. */
+const DATE = /^\d{4}-\d{2}(-\d{2})?(?=T|$)/;
 
 /**
  * A quiet line for hours that may not be true, or null when there is no
@@ -149,7 +150,7 @@ export function hoursDoubt(
   if (!dated) {
     return "Not known when these hours were last checked. Worth a check.";
   }
-  const checked = dated.slice(0, 10);
+  const checked = dated.match(DATE)![0].padEnd(10, "-01");
   const cutoff = monthsAgo(today);
   return checked < cutoff
     ? `Last updated on the map in ${checked.slice(0, 4)}. Worth a check.`

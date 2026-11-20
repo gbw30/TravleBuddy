@@ -14,6 +14,7 @@ import {
 } from "@/features/itinerary";
 import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
 import {
+  isMeal,
   PACES,
   SLOT_WORDS,
   type Pace,
@@ -40,6 +41,7 @@ import {
   getPlaces,
   listFoodNear,
   listSights,
+  usesSamplePlaces,
   type GatherOutcome,
 } from "@/features/places";
 import {
@@ -84,10 +86,6 @@ export type SlotEntry = Extract<PlanEntry, { type: "open" | "place" }>;
 const today = () => new Date().toISOString().slice(0, 10);
 export const isSlot = (entry: PlanEntry): entry is SlotEntry =>
   entry.type === "open" || entry.type === "place";
-export const isMeal = (entry: SlotEntry) =>
-  entry.kind === "breakfast" ||
-  entry.kind === "lunch" ||
-  entry.kind === "dinner";
 
 /** A trip with no dates is laid out from provisional ones (PRD 9.7). */
 export function withProvisionalStart(
@@ -132,6 +130,17 @@ export async function tasteOf(
   return tasteInUse(profile.entries, said);
 }
 
+/**
+ * The commitments as the plan may place them: a sample address is no
+ * position once the sample places are off, so it gives no legs.
+ */
+const positioned = (commitments: CommitmentDto[]): CommitmentDto[] =>
+  usesSamplePlaces()
+    ? commitments
+    : commitments.map((c) =>
+        c.located?.ref.startsWith("sample/") ? { ...c, located: null } : c,
+      );
+
 /** The way of getting around the traveller named, if they named one. */
 const meansOf = (taste: TasteInUse): TravelMeans | undefined =>
   TRAVEL_MEANS.find((means) => means === taste.getting_around?.values[0]);
@@ -156,7 +165,7 @@ export async function contextFor(
   const inUse = taste ?? (await tasteOf(userId, trip.id));
   return {
     facts: trip.facts,
-    commitments: trip.commitments,
+    commitments: positioned(trip.commitments),
     places: Object.fromEntries(places.map((place) => [place.id, place])),
     dayShift: DAY_SHIFT[inUse.day_shape?.values[0] ?? ""] ?? 0,
     means: meansOf(inUse),
@@ -180,7 +189,7 @@ function focusSlot(
   const asked = slots.find(({ entry }) => entry.slotId === wanted);
   if (asked) return asked;
   const open = slots.filter(({ entry }) => entry.type === "open");
-  return open.find(({ entry }) => !isMeal(entry)) ?? open[0] ?? null;
+  return open.find(({ entry }) => !isMeal(entry.kind)) ?? open[0] ?? null;
 }
 
 /** The trip's taste in the form the ranking understands (TB-RSN-02). */
@@ -318,7 +327,7 @@ export async function cardsFor(
           longitude: before.longitude,
         }
       : last === undefined
-        ? stayAt(morningStayOf(trip.commitments, day.date))
+        ? stayAt(morningStayOf(positioned(trip.commitments), day.date))
         : last.type === "commitment" && last.travelIn !== undefined
           ? stayAt(trip.commitments.find((c) => c.id === last.commitmentId))
           : null;
@@ -330,11 +339,11 @@ export async function cardsFor(
 
   const gathered: GatherOutcome | null = !gather
     ? null
-    : isMeal(entry) && near
+    : isMeal(entry.kind) && near
       ? await gatherFoodNear(city, near)
       : await gatherSights(city);
   const saved =
-    isMeal(entry) && near
+    isMeal(entry.kind) && near
       ? await listFoodNear(city, near, userId)
       : await listSights(city, userId);
 
@@ -549,7 +558,7 @@ async function readPlan(
   // skipped (TB-AGT-07). Until then the agent says what it is waiting for.
   const holding =
     focus !== null &&
-    isMeal(focus.entry) &&
+    isMeal(focus.entry.kind) &&
     trip.planningMode === "GUIDED" &&
     taste.food === undefined;
   const proposing = focus !== null && !holding;

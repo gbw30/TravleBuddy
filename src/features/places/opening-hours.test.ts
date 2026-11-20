@@ -31,6 +31,23 @@ describe("hoursDoubt", () => {
     );
   });
 
+  it("reads a year and month as the first of that month, so a stale check is not hidden by a newer edit", () => {
+    for (const tags of [
+      { check_date: "2021-03" },
+      { "check_date:opening_hours": "2021-03" },
+    ] as Record<string, string>[]) {
+      expect(
+        hoursDoubt(
+          osm({ tags, lastEditedAt: "2027-04-01T10:00:00.000Z" }),
+          today,
+        ),
+      ).toBe("Last updated on the map in 2021. Worth a check.");
+    }
+    expect(hoursDoubt(osm({ tags: { check_date: "2027-01" } }), today)).toBe(
+      null,
+    );
+  });
+
   it("falls back to the edit time, and names its year when two years old", () => {
     expect(
       hoursDoubt(osm({ lastEditedAt: "2025-02-03T10:00:00.000Z" }), today),

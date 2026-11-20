@@ -18,6 +18,9 @@ export const SLOT_KINDS = [
   "dinner",
 ] as const;
 export type SlotKind = (typeof SLOT_KINDS)[number];
+/** Whether a slot is a meal: breakfast, lunch or dinner. */
+export const isMeal = (kind: string) =>
+  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 /** What a traveller calls each slot. */
 export const SLOT_WORDS: Record<SlotKind, string> = {
   breakfast: "Breakfast",

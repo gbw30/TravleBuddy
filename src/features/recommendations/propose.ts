@@ -1,4 +1,8 @@
-import { SLOT_WORDS, type SlotKind } from "@/features/itinerary/contracts";
+import {
+  isMeal,
+  SLOT_WORDS,
+  type SlotKind,
+} from "@/features/itinerary/contracts";
 import {
   distanceKm,
   isOpenFor,
@@ -106,9 +110,6 @@ export type ProposeInput = {
 };
 
 const meansWord = { walk: "walk", transit: "ride", drive: "drive" } as const;
-
-const isMeal = (kind: SlotKind) =>
-  kind === "breakfast" || kind === "lunch" || kind === "dinner";
 
 type Ranked = {
   place: PlaceDto;
@@ -322,7 +323,9 @@ function reasonFor(ranked: Ranked, input: ProposeInput): string {
     ranked.open === "open"
       ? ranked.place.origin === "OSM"
         ? "Its listed hours cover the whole visit."
-        : "It is open for the whole visit."
+        : ranked.place.origin === "SAMPLE"
+          ? "Its sample hours cover the whole visit."
+          : "It is open for the whole visit."
       : "Its opening hours are not known, so check before you go.",
   ].join(" ");
 }
