@@ -336,6 +336,8 @@ export function buildPlanView(
     landsAt: number;
     /** When the traveller leaves the morning's city, on a day with two segments. */
     leaves: number;
+    /** The segment in tonight's city, where a check-in today waits; -1 when it is not reached today. */
+    stayIn: number;
     slots: DraftSlot[];
     /** When breakfast where the traveller stays is shown, if it is. */
     stayBreakfast: number | null;
@@ -532,6 +534,9 @@ export function buildPlanView(
       }
     }
 
+    const stayIn = segments.findIndex(
+      (s) => cityKeyOf(s.city) === cityKeyOf(eveningCity),
+    );
     drafts.push({
       day,
       date,
@@ -542,10 +547,15 @@ export function buildPlanView(
       allowances,
       landsAt,
       leaves,
+      stayIn,
       slots,
       stayBreakfast,
       held: new Map(),
-      notes: [],
+      // A check-in in a city the traveller does not reach today has no time today.
+      notes:
+        stayIn === -1
+          ? fixed.filter((f) => isCheckIn(f, date)).map((f) => f.commitment)
+          : [],
       morningStay: stayForNight(context.commitments, addDays(date, -1)),
       eveningStay: stayForNight(context.commitments, date),
     });
@@ -611,9 +621,22 @@ export function buildPlanView(
       | { transfer: NonNullable<Draft["transfer"]> }
       | { allowance: Draft["allowances"][number] }
       | { slot: DraftSlot }
+      | { checkIn: Fixed }
     );
     const changes = draft.segments.length > 1;
     const steps: Step[] = [
+      // A check-in is a window, not an appointment: it waits until the
+      // traveller is in its city and out of any station or airport, and is
+      // laid at the first gap after that.
+      ...(draft.stayIn === -1
+        ? []
+        : draft.fixed
+            .filter((fixed) => isCheckIn(fixed, draft.date))
+            .map((checkIn) => ({
+              at: Math.max(checkIn.start, draft.segments[draft.stayIn].from),
+              segment: draft.stayIn,
+              checkIn,
+            }))),
       ...draft.fixed
         .filter((fixed) => !isCheckIn(fixed, draft.date))
         .map((fixed) => ({
@@ -677,19 +700,16 @@ export function buildPlanView(
       until: number;
     } | null;
 
-    // Check-ins wait until the first gap at or after their time.
-    const waiting = draft.fixed
-      .filter((fixed) => isCheckIn(fixed, draft.date))
-      .sort((a, b) => a.start - b.start);
-    const layCheckIns = (before: number) => {
-      while (waiting.length > 0 && waiting[0].start <= before) {
-        const { commitment, start, end } = waiting.shift()!;
+    steps.forEach((step, position) => {
+      if ("checkIn" in step) {
+        const { commitment, start, end } = step.checkIn;
         const spot = commitment.located;
+        // From the last point in this city; a station has no position.
         const leg =
           spot && lastPoint
             ? travelEstimate(lastPoint, spot, context.means)
             : null;
-        const at = Math.max(start, clock + (leg ? leg.minutes + buffer : 0));
+        const at = Math.max(step.at, clock + (leg ? leg.minutes + buffer : 0));
         entries.push({
           type: "commitment",
           commitmentId: commitment.id,
@@ -710,11 +730,8 @@ export function buildPlanView(
         clock = at + (end - start);
         lastPoint = spot;
         lastPlace = null;
+        return;
       }
-    };
-
-    steps.forEach((step, position) => {
-      layCheckIns(step.at);
       if ("fixed" in step) {
         const { commitment, start, end } = step.fixed;
         // A ticket seen on its departure day; one landing today is a point.
@@ -903,7 +920,6 @@ export function buildPlanView(
       }
     });
 
-    layCheckIns(Infinity);
     // The way back to where the traveller sleeps tonight.
     const evening = draft.eveningStay?.located;
     if (evening && lastPlace) {

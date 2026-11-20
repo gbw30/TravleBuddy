@@ -1606,4 +1606,131 @@ describe("where you stay", () => {
     expect(kinds(day3)).not.toContain("return");
     expect(view.days[2].stayNote).toBeNull();
   });
+
+  describe("a check-in on the day the traveller arrives", () => {
+    const rows = (entries: PlanEntry[]) =>
+      entries.map((e) =>
+        e.type === "open"
+          ? `${e.kind} ${e.start}`
+          : e.type === "allowance"
+            ? `${e.way} ${e.start}`
+            : e.type === "commitment"
+              ? `${e.title} ${e.start}`
+              : `${e.type} ${e.start}`,
+      );
+    const kyotoInn = stay({
+      id: "s2",
+      title: "Kyoto Inn",
+      date: "2027-05-12",
+      startTime: "15:00",
+      endDate: "2027-05-13",
+      located: {
+        latitude: 35.0116,
+        longitude: 135.7681,
+        ref: "way/2",
+        address: "Kyoto Inn, Kyoto, Japan",
+      },
+    });
+    const train = (over: Partial<CommitmentDto> = {}) =>
+      commitment({
+        id: "t",
+        kind: "TRANSPORT",
+        title: "Train",
+        date: "2027-05-12",
+        startTime: "16:00",
+        endDate: "2027-05-12",
+        endTime: "19:00",
+        transport: {
+          mode: "TRAIN",
+          origin: "Tokyo",
+          destination: "Kyoto",
+          originZone: "Asia/Tokyo",
+          destinationZone: "Asia/Tokyo",
+        },
+        ...over,
+      });
+    const toKyoto = (ticket: CommitmentDto) =>
+      buildPlanView(
+        state(),
+        context({
+          facts: {
+            cities: [
+              { city: tokyo, nights: 2 },
+              { city: kyoto, nights: 1 },
+            ],
+            startDate: "2027-05-10",
+            endDate: null,
+            lengthNights: null,
+            timeOfYear: null,
+          },
+          commitments: [stay({ endDate: "2027-05-12" }), kyotoInn, ticket],
+        }),
+      );
+
+    it("waits until the traveller is in the stay's city, with no leg across cities, and keeps the evening", () => {
+      const view = toKyoto(train());
+      const day3 = view.days[2].entries;
+      expect(rows(day3)).toEqual([
+        "morning 09:30",
+        "lunch 12:30",
+        "wander 13:45",
+        "afternoon 14:45",
+        "to 15:30",
+        "Train 16:00",
+        "from 19:00",
+        "Check in at Kyoto Inn 19:20",
+        "dinner 19:50",
+      ]);
+      expect(
+        day3.find((e) => e.type === "commitment" && e.commitmentId === "s2"),
+      ).toMatchObject({ travelIn: null, minutes: 30 });
+      expect(day3.at(-1)).toMatchObject({ cityKey: "kyoto|japan" });
+    });
+
+    it("has no time on a day the traveller does not reach the stay's city", () => {
+      const view = toKyoto(train({ endDate: "2027-05-13", endTime: "06:00" }));
+      expect(
+        view.days[2].entries.find(
+          (e) => e.type === "commitment" && e.commitmentId === "s2",
+        ),
+      ).toMatchObject({ title: "Kyoto Inn", start: null });
+    });
+
+    it("waits on day 1 until the traveller is out of the airport, whether or not the stay is located", () => {
+      const flight = commitment({
+        id: "f",
+        kind: "TRANSPORT",
+        title: "Flight",
+        date: "2027-05-10",
+        startTime: "13:00",
+        endDate: "2027-05-10",
+        endTime: "16:00",
+        transport: {
+          mode: "FLIGHT",
+          origin: "Osaka",
+          destination: "Tokyo",
+          originZone: "Asia/Tokyo",
+          destinationZone: "Asia/Tokyo",
+        },
+      });
+      for (const [located, title] of [
+        [stay().located, "Check in at Hotel Aurora"],
+        [null, "Hotel Aurora"],
+      ] as const) {
+        const view = buildPlanView(
+          state(),
+          context({
+            commitments: [stay({ startTime: "15:00", located }), flight],
+          }),
+        );
+        expect(rows(view.days[0].entries)).toEqual([
+          "Flight 13:00",
+          "from 16:00",
+          `${title} 17:00`,
+          "afternoon-2 17:30",
+          "dinner 19:00",
+        ]);
+      }
+    });
+  });
 });
