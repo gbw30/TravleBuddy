@@ -60,6 +60,7 @@ const hours = (minutes: number) =>
     ? `${minutes} min`
     : `${Math.round((minutes / 60) * 2) / 2} h`.replace(".5", "½");
 
+// An allowance is a planner's round figure, so a whole hour reads "1 h", not "60 min".
 const allowed = (minutes: number) =>
   minutes % 60 === 0 ? `${minutes / 60} h` : hours(minutes);
 

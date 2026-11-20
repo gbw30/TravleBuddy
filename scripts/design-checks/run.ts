@@ -12,6 +12,7 @@ import {
   type Page,
 } from "@playwright/test";
 
+import { isMeal } from "@/features/itinerary/contracts";
 import type { City } from "@/features/places/contracts";
 import type { PlanSnapshot } from "@/use-cases/plan-snapshot";
 
@@ -91,11 +92,11 @@ async function open(page: Page, path: string) {
 async function showCards(page: Page, call: Call, tripId: string) {
   const plan: PlanSnapshot = (await call("get", `/trips/${tripId}/plan`)).json
     .plan;
+  // A meal slot, breakfast too, shows no cards until the food question is
+  // answered (the plan says `holding: "food"`), so only other slots are tried.
   const slots = plan.view.days.flatMap((day) =>
     day.entries.flatMap((entry) =>
-      entry.type === "open" && entry.kind !== "lunch" && entry.kind !== "dinner"
-        ? [entry.slotId]
-        : [],
+      entry.type === "open" && !isMeal(entry.kind) ? [entry.slotId] : [],
     ),
   );
   for (const slotId of slots) {
@@ -1002,6 +1003,7 @@ async function checkItYourself(
       problems.push("the Maps link does not open in a new tab");
     }
     // The links sit just before Close, which has focus when the dialog opens.
+    // Walked backwards from Close: a forward Tab walk failed in Firefox.
     await dialog.getByRole("button", { name: "Close" }).focus();
     let reached = false;
     for (let press = 0; press < 6 && !reached; press += 1) {
