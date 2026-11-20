@@ -44,6 +44,23 @@ function savedTags(json: Prisma.JsonValue): Record<string, string> {
 
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * One server log line for a request that ends as "unavailable": the error's
+ * Prisma and Postgres codes and its message, never what the traveller typed.
+ */
+function logFailure(error: unknown): void {
+  const { message, code, meta } = (error ?? {}) as {
+    message?: unknown;
+    code?: unknown;
+    meta?: { code?: unknown };
+  };
+  const codes = [code, meta?.code].filter(Boolean).join(" ");
+  const text = String(message ?? error)
+    .replace(/\s+/g, " ")
+    .slice(0, 300);
+  console.error(`[places] ${codes ? `${codes} ` : ""}${text}`);
+}
+
 /** `today` is read once by the caller, so every row of one answer is judged on the same day. */
 function toDto(row: PlaceRow, today: string): PlaceDto {
   const dto = {
@@ -213,7 +230,8 @@ async function gather(
       update: { placeCount: found.length, fetchedAt: new Date() },
     });
     return { status: "ready" };
-  } catch {
+  } catch (error) {
+    logFailure(error);
     return { status: "unavailable" };
   }
 }
@@ -343,7 +361,8 @@ export async function findPlacesByName(
     });
     const today = todayUtc();
     return { status: "ok", places: rows.map((row) => toDto(row, today)) };
-  } catch {
+  } catch (error) {
+    logFailure(error);
     return { status: "unavailable" };
   }
 }

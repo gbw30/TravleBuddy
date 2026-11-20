@@ -186,6 +186,36 @@ describe("gathering places", () => {
     expect(mocks.db.placeFetch.upsert).not.toHaveBeenCalled();
   });
 
+  it("logs a database error on the server, with its code and no text the traveller typed, before saying unavailable", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = Object.assign(
+      new Error("Raw query failed. Code: `42601`. Message: `syntax error`"),
+      { code: "P2010", meta: { code: "42601" } },
+    );
+    mocks.db.$executeRaw
+      .mockRejectedValueOnce(failure)
+      .mockRejectedValueOnce(failure);
+    mocks.osm.sights.mockResolvedValue({ places: [found], reach: null });
+    mocks.osm.byName.mockResolvedValue([found]);
+
+    expect(await gatherSights(tokyo)).toEqual({ status: "unavailable" });
+    expect(await findPlacesByName(tokyo, "Hotel Quietname")).toEqual({
+      status: "unavailable",
+    });
+
+    expect(log).toHaveBeenCalledTimes(2);
+    for (const [line, ...rest] of log.mock.calls) {
+      expect(rest).toEqual([]);
+      expect(line).toMatch(/^\[places\] /);
+      expect(line).toContain("P2010");
+      expect(line).toContain("42601");
+      expect(line).toContain("syntax error");
+      expect(line).not.toContain("Quietname");
+      expect(line).not.toContain("\n");
+    }
+    log.mockRestore();
+  });
+
   it("stops at the daily cap without calling the provider", async () => {
     mocks.db.providerCall.upsert.mockResolvedValue({ count: 101 });
 
