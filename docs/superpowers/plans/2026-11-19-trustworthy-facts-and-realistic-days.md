@@ -546,7 +546,7 @@ Added on 2026-11-20. **Requirements:** TB-SYS-16, TB-SYS-17. The developer appro
   - 20 for place gathering and cards;
   - 10 for city and address lookups;
   - 10 for conversation turns and plan builds;
-  - 30 per address without sign-in.
+  - 30 per device without sign-in (the device cookie and the signature, never the internet address alone).
 - **Daily shares per person:**
   - place gathering, 30;
   - address lookups, 20;
