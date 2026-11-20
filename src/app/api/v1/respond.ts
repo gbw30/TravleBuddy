@@ -4,6 +4,7 @@ import {
   assertAuthenticatedApiUser,
   UnauthorizedError,
 } from "@/lib/authorization";
+import { admit, asPerson, identify, type Scope } from "@/features/fair-use";
 import { DATES_ORDER_MESSAGE } from "@/features/trips/contracts";
 import type { TripActionOutcome } from "@/use-cases/trip-action";
 
@@ -28,18 +29,54 @@ export async function readBody<T>(
   };
 }
 
-/** Runs a handler for the signed-in traveller and turns known failures into answers. */
+/**
+ * Counts a request against the limits of the person it comes from
+ * (TB-SYS-16), then does the work as that person, so their daily shares are
+ * counted too. Over a limit it answers 429 with the seconds to wait. A device
+ * seen for the first time gets its cookie on either answer.
+ */
+export async function fairly(
+  request: Request,
+  account: string | null,
+  scopes: Scope[],
+  work: () => Promise<Response>,
+): Promise<Response> {
+  const { person, cookie } = identify(request, account);
+  const wait = await admit(person, scopes);
+  const answer =
+    wait === null
+      ? await asPerson(person, work)
+      : Response.json(
+          { error: "rate_limited" },
+          { status: 429, headers: { "Retry-After": String(wait) } },
+        );
+  if (!cookie) return answer;
+  // Copied, because the headers of some answers cannot be changed.
+  const sent = new Response(answer.body, answer);
+  sent.headers.append("Set-Cookie", cookie);
+  return sent;
+}
+
+/**
+ * Runs a handler for the signed-in traveller and turns known failures into
+ * answers. Every request counts under `api`; `scope` adds the route's own
+ * limit, or works it out from the request.
+ */
 export function withUser<Context>(
   handler: (
     userId: string,
     request: Request,
     context: Context,
   ) => Promise<Response>,
+  scope?: Scope | ((request: Request) => Promise<Scope | null>),
 ) {
   return async (request: Request, context: Context) => {
     try {
       const userId = await assertAuthenticatedApiUser();
-      return await handler(userId, request, context);
+      const own = typeof scope === "function" ? await scope(request) : scope;
+      return await fairly(request, userId, own ? ["api", own] : ["api"], () =>
+        handler(userId, request, context),
+      );
     } catch (error) {
       if (error instanceof UnauthorizedError) {
         return json({ error: "unauthorized" }, 401);

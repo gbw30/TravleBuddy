@@ -19,6 +19,8 @@ const messages: Record<string, string> = {
   lookup_capped:
     "Today's place lookups are used up. Try again tomorrow, or add the place by hand.",
   unauthorized: "You are signed out. Sign in again to continue.",
+  rate_limited:
+    "You have made a lot of requests in a short time. Try again in a minute.",
 };
 const fallback = "That did not work. Please try again.";
 

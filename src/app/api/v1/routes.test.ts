@@ -29,8 +29,16 @@ const mocks = vi.hoisted(() => {
     removeNote: vi.fn(),
     forgetEverything: vi.fn(),
     learnQuietly: vi.fn(),
+    admit: vi.fn(),
+    identify: vi.fn(),
+    asPerson: vi.fn(),
   };
 });
+vi.mock("@/features/fair-use", () => ({
+  admit: mocks.admit,
+  identify: mocks.identify,
+  asPerson: mocks.asPerson,
+}));
 vi.mock("@/lib/authorization", () => ({
   UnauthorizedError: mocks.UnauthorizedError,
   assertAuthenticatedApiUser: mocks.user,
@@ -147,9 +155,14 @@ const ticket = {
   arriveTime: "14:35",
 };
 
+const person = { account: "user-1", device: "device-1", signature: "sig-1" };
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.user.mockResolvedValue("user-1");
+  mocks.identify.mockReturnValue({ person, cookie: null });
+  mocks.admit.mockResolvedValue(null);
+  mocks.asPerson.mockImplementation((_person, work: () => unknown) => work());
   mocks.runTripAction.mockResolvedValue({
     status: "ok",
     data: {},
@@ -188,6 +201,93 @@ describe("signed out", () => {
     expect(mocks.removeTrip).not.toHaveBeenCalled();
     expect(mocks.findCities).not.toHaveBeenCalled();
     expect(mocks.findAddresses).not.toHaveBeenCalled();
+    expect(mocks.admit).not.toHaveBeenCalled();
+  });
+});
+
+describe("fair use", () => {
+  it("answers 429 with the seconds to wait and does nothing over a limit", async () => {
+    mocks.admit.mockResolvedValue(45);
+    const answer = await createTrip(
+      request("POST", { tickets: [], planningMode: "GUIDED" }),
+      undefined,
+    );
+    expect(answer.status).toBe(429);
+    expect(answer.headers.get("Retry-After")).toBe("45");
+    expect(await answer.json()).toEqual({ error: "rate_limited" });
+    expect(mocks.startTrip).not.toHaveBeenCalled();
+  });
+
+  it("counts every route under api, and some under their own scope too", async () => {
+    const scopes = async (answer: Promise<Response>) => {
+      mocks.admit.mockClear();
+      await answer;
+      return mocks.admit.mock.calls[0][1];
+    };
+    const url = (path: string) => new Request(`http://localhost/api/v1${path}`);
+    mocks.loadPlan.mockResolvedValue(null);
+    mocks.findTripPlaces.mockResolvedValue({ status: "not_found" });
+
+    expect(await scopes(createTrip(request("POST", {}), undefined))).toEqual([
+      "api",
+    ]);
+    expect(
+      await scopes(cities(url("/places/cities?q=tokyo"), undefined)),
+    ).toEqual(["api", "lookups"]);
+    expect(
+      await scopes(addressRoute.POST(request("POST", {}), undefined)),
+    ).toEqual(["api", "lookups"]);
+    expect(await scopes(getPlan(url("/trips/trip-1/plan"), trip))).toEqual([
+      "api",
+      "places",
+    ]);
+    expect(await scopes(changePlan(request("POST", {}), trip))).toEqual([
+      "api",
+      "places",
+    ]);
+    expect(
+      await scopes(findPlaces(url("/trips/trip-1/places?q=tea"), trip)),
+    ).toEqual(["api", "places"]);
+    expect(await scopes(addPlace(request("POST", {}), trip))).toEqual([
+      "api",
+      "places",
+    ]);
+    expect(await scopes(takeTurn(request("POST", {}), trip))).toEqual([
+      "api",
+      "turns",
+    ]);
+    expect(await scopes(getConversation(url("/x"), trip))).toEqual(["api"]);
+    // A plan build is the request that starts one; each next day is only an API call.
+    expect(
+      await scopes(
+        buildDay(request("POST", { start: true, ...control }), trip),
+      ),
+    ).toEqual(["api", "turns"]);
+    expect(
+      await scopes(buildDay(request("POST", { ...control }), trip)),
+    ).toEqual(["api"]);
+  });
+
+  it("counts the signed-in account, and runs the route as that person", async () => {
+    mocks.loadProfile.mockResolvedValue({});
+    const answer = await getProfile(request("GET"), undefined);
+    expect(answer.status).toBe(200);
+    expect(mocks.identify).toHaveBeenCalledWith(expect.any(Request), "user-1");
+    expect(mocks.admit).toHaveBeenCalledWith(person, ["api"]);
+    expect(mocks.asPerson).toHaveBeenCalledWith(person, expect.any(Function));
+  });
+
+  it("gives a device seen for the first time its cookie, also on a refusal", async () => {
+    mocks.identify.mockReturnValue({ person, cookie: "tb_device=new; Path=/" });
+    mocks.loadProfile.mockResolvedValue({});
+    const answer = await getProfile(request("GET"), undefined);
+    expect(answer.headers.get("Set-Cookie")).toBe("tb_device=new; Path=/");
+    expect(await answer.json()).toEqual({ profile: {} });
+
+    mocks.admit.mockResolvedValue(12);
+    const refused = await getProfile(request("GET"), undefined);
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("Set-Cookie")).toBe("tb_device=new; Path=/");
   });
 });
 
