@@ -66,6 +66,23 @@ describe("hoursDoubt", () => {
     ).toBeNull();
   });
 
+  it("doubts hours checked more than 12 months ago, and not those checked exactly 12 months ago", () => {
+    const line = "Last updated on the map in 2026. Worth a check.";
+    const checked = (check_date: string) =>
+      hoursDoubt(osm({ tags: { check_date } }), today);
+    expect(checked("2026-05-11")).toBeNull();
+    expect(checked("2026-05-10")).toBe(line);
+  });
+
+  it("counts 12 months back from 29 February as 28 February", () => {
+    const checked = (check_date: string) =>
+      hoursDoubt(osm({ tags: { check_date } }), "2028-02-29");
+    expect(checked("2027-02-28")).toBeNull();
+    expect(checked("2027-02-27")).toBe(
+      "Last updated on the map in 2027. Worth a check.",
+    );
+  });
+
   it("falls back to the edit time, and names its year when two years old", () => {
     expect(
       hoursDoubt(osm({ lastEditedAt: "2025-02-03T10:00:00.000Z" }), today),

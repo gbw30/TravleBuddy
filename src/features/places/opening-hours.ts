@@ -157,9 +157,13 @@ export function hoursDoubt(
     : null;
 }
 
-/** `today` moved back STALE_MONTHS months, as `YYYY-MM-DD`. */
+/** `today` moved back STALE_MONTHS months, as `YYYY-MM-DD`. A day the month lacks, such as 29 February, becomes its last day. */
 function monthsAgo(today: string): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCMonth(date.getUTCMonth() - STALE_MONTHS);
-  return date.toISOString().slice(0, 10);
+  const [year, month, day] = today.split("-").map(Number);
+  const back = new Date(Date.UTC(year, month - 1 - STALE_MONTHS, 1));
+  const last = new Date(
+    Date.UTC(back.getUTCFullYear(), back.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  back.setUTCDate(Math.min(day, last));
+  return back.toISOString().slice(0, 10);
 }
