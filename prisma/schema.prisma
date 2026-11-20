@@ -225,6 +225,11 @@ model FixedCommitment {
   /// The time zone of each end of a ticket, so its length is measured with both clocks.
   originTimeZone      String?            @map("origin_time_zone") @db.VarChar(64)
   destinationTimeZone String?            @map("destination_time_zone") @db.VarChar(64)
+  /// Set only on a STAY whose found address the traveller confirmed.
+  latitude            Decimal?           @db.Decimal(10, 7)
+  longitude           Decimal?           @db.Decimal(10, 7)
+  locatedRef          String?            @map("located_ref") @db.VarChar(80)
+  locatedAddress      String?            @map("located_address") @db.VarChar(240)
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
 
@@ -293,6 +298,17 @@ model ProviderCall {
 
   @@id([day, service])
   @@map("provider_calls")
+}
+
+/// A saved address search, so the provider is asked once per distinct search
+/// (Nominatim's policy). No user id: the key is the search and its square.
+model AddressLookup {
+  /// The normalised search and the square it was bounded to.
+  key       String   @id @db.VarChar(200)
+  results   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("address_lookups")
 }
 
 /// The plan of a trip: a pointer to the version now in force.

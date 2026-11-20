@@ -36,7 +36,13 @@
     },
     "places": {
       "code": ["src/features/places/**"],
-      "tables": ["CityLookup", "Place", "PlaceFetch", "ProviderCall"]
+      "tables": [
+        "AddressLookup",
+        "CityLookup",
+        "Place",
+        "PlaceFetch",
+        "ProviderCall"
+      ]
     },
     "recommendations": {
       "code": ["src/features/recommendations/**"],
