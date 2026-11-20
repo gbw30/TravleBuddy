@@ -463,7 +463,8 @@ export function buildPlanView(
           way: "to",
           mode,
           start: toClock(leave - before),
-          minutes: before,
+          // A ticket in the small hours leaves only the time since midnight.
+          minutes: Math.min(before, leave),
         });
         // On the first day the landing above has already given this row.
         if (lands && !allowances.some((a) => a.way === "from")) {

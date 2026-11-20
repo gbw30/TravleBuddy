@@ -1373,6 +1373,35 @@ describe("the time allowed at an airport or station", () => {
       },
     ]);
   });
+
+  it("does the same for a flight in the small hours on the day the city changes", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: acrossCities,
+        commitments: [
+          train({
+            startTime: "01:00",
+            endTime: "03:00",
+            transport: {
+              mode: "FLIGHT",
+              origin: "Tokyo",
+              destination: "Kyoto",
+              originZone: "Asia/Tokyo",
+              destinationZone: "Asia/Tokyo",
+            },
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[2].entries, "allowance")[0]).toEqual({
+      type: "allowance",
+      way: "to",
+      mode: "FLIGHT",
+      start: "00:00",
+      minutes: 60,
+    });
+  });
 });
 
 describe("where you stay", () => {
