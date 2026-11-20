@@ -52,6 +52,27 @@ const reservation = (
 ): CommitmentInput =>
   ({ kind: "RESERVATION", title, date, startTime, endTime }) as CommitmentInput;
 
+/** A stay whose address was looked up and confirmed. The sample lookup answers with the city centre. */
+const stay = (
+  title: string,
+  date: string,
+  endDate: string,
+  startTime: string,
+  centre: { latitude: number; longitude: number },
+): CommitmentInput =>
+  ({
+    kind: "STAY",
+    title,
+    date,
+    endDate,
+    startTime,
+    located: {
+      ...centre,
+      ref: "sample/centre",
+      address: "Sample address, city centre",
+    },
+  }) as CommitmentInput;
+
 export const TRAVELLERS: Traveller[] = [
   {
     key: "maya",
@@ -115,7 +136,12 @@ export const TRAVELLERS: Traveller[] = [
     endDate: "2027-07-14",
     adults: 2,
     children: 2,
-    commitments: [],
+    commitments: [
+      stay("Hotel Avenida", "2027-07-10", "2027-07-14", "16:00", {
+        latitude: 38.7078,
+        longitude: -9.1366,
+      }),
+    ],
     answers: {
       day_shape: ["early"],
       breakfast: ["included"],

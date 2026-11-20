@@ -184,7 +184,7 @@ Two adults and children of 7 and 11, five days in Lisbon, flights booked, early 
 | --- | --- | --- |
 | No place is invented | pass | 18 places, each one the place source knows, none twice |
 | No rule is broken | pass | no place carries a broken-rule flag |
-| Nothing already decided was moved | pass | 2 decided, each where it was |
+| Nothing already decided was moved | pass | 3 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
 | Each ticket lasts its real length | pass | 165 and 165 minutes, by the clock of each end |
@@ -200,44 +200,49 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 - 12:05  Lunch: **Harbour Canteen** (75 min)
 - 13:20  Time to wander around Harbour Canteen (60 min)
 - 14:56  Afternoon: **Lisbon Botanical Garden** (60 min), 16 min transit to get there
-- 16:31  Late afternoon: **Lisbon Cathedral** (45 min), 15 min transit to get there
-- 18:00  Dinner: **Market Kitchen** (75 min), 4 min walk to get there
+- 15:56  Late afternoon: *open*
+- 16:00  Already decided: Check in at Hotel Avenida
+- 18:00  Dinner: **Lantern Grill** (75 min), 23 min walk to get there
+- 19:15  Back to Hotel Avenida (23 min walk)
 
 **Day 2, Sun 11 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:45  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
-- 11:30  Lunch: **Corner Noodles** (75 min), 6 min walk to get there
-- 12:45  Time to wander around Corner Noodles (60 min)
-- 14:23  Afternoon: **Lisbon City Museum** (120 min), 18 min walk to get there
-- 17:02  Late afternoon: **Lisbon Old Town** (60 min), 19 min walk to get there [opening hours not known]
-- 18:33  Dinner: **Lantern Grill** (75 min), 11 min walk to get there
+- 09:20  Morning: **Lisbon Riverside Park** (60 min), 15 min transit to get there [opening hours not known]
+- 11:30  Lunch: **Market Kitchen** (75 min), 5 min walk to get there
+- 12:45  Time to wander around Market Kitchen (60 min)
+- 14:26  Afternoon: **Lisbon City Museum** (120 min), 21 min walk to get there
+- 17:09  Late afternoon: **Lisbon Cathedral** (45 min), 23 min walk to get there
+- 18:19  Dinner: **Corner Noodles** (75 min), 5 min walk to get there
+- 19:34  Back to Hotel Avenida (8 min walk)
 
 **Day 3, Mon 12 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:45  Morning: **Lisbon Central Market** (60 min)
+- 09:18  Morning: **Lisbon Central Market** (60 min), 13 min walk to get there
 - 11:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
 - 12:45  Time to wander around Sunrise Cafe (60 min)
 - 14:22  Afternoon: **Lisbon Art Gallery** (120 min), 17 min walk to get there
-- 17:03  Late afternoon: **Lisbon Lookout** (30 min), 21 min transit to get there [opening hours not known]
-- 18:06  Dinner: **Garden Table** (75 min), 13 min walk to get there [opening hours not known]
+- 17:00  Late afternoon: **Lisbon Old Town** (60 min), 18 min walk to get there [opening hours not known]
+- 18:26  Dinner: **Garden Table** (75 min), 6 min walk to get there [opening hours not known]
+- 19:41  Back to Hotel Avenida (11 min walk)
 
 **Day 4, Tue 13 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:45  Morning: *open*
-- 11:30  Lunch: **Morning Cafe** (45 min)
+- 09:29  Morning: **Lisbon Lookout** (30 min), 24 min walk to get there [opening hours not known]
+- 11:30  Lunch: **Morning Cafe** (45 min), 10 min walk to get there
 - 12:45  Time to wander around Morning Cafe (60 min)
-- 14:26  Afternoon: **Lisbon Castle** (60 min), 21 min transit to get there
-- 15:26  Late afternoon: *open*
+- 14:28  Afternoon: **Lisbon Castle** (60 min), 23 min transit to get there
+- 15:28  Late afternoon: *open*
 - 18:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
+- 19:15  Back to Hotel Avenida (17 min transit)
 
 **Day 5, Wed 14 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
 - 08:45  Morning: *open*
-- 11:30  Lunch: **Corner Noodles** (75 min)
+- 11:30  Lunch: **Corner Noodles** (75 min), 15 min walk to get there
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
 - 15:40  Allowed 120 min to the airport (flight)
@@ -249,7 +254,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 | --- | --- | --- |
 | No place is invented | pass | 18 places, each one the place source knows, none twice |
 | No rule is broken | pass | no place carries a broken-rule flag |
-| Nothing already decided was moved | pass | 2 decided, each where it was |
+| Nothing already decided was moved | pass | 3 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
 | Every day has its meals | pass | no meal asked for is left open |
 | Each ticket lasts its real length | pass | 165 and 165 minutes, by the clock of each end |
@@ -264,44 +269,49 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 - 12:05  Lunch: **Harbour Canteen** (75 min)
 - 13:20  Time to wander around Harbour Canteen (60 min)
 - 14:56  Afternoon: **Lisbon Botanical Garden** (60 min), 16 min transit to get there
-- 16:31  Late afternoon: **Lisbon Cathedral** (45 min), 15 min transit to get there
-- 18:00  Dinner: **Market Kitchen** (75 min), 4 min walk to get there
+- 15:56  Late afternoon: *open*
+- 16:00  Already decided: Check in at Hotel Avenida
+- 18:00  Dinner: **Lantern Grill** (75 min), 23 min walk to get there
+- 19:15  Back to Hotel Avenida (23 min walk)
 
 **Day 2, Sun 11 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:45  Morning: **Lisbon Riverside Park** (60 min) [opening hours not known]
-- 11:30  Lunch: **Corner Noodles** (75 min), 6 min walk to get there
-- 12:45  Time to wander around Corner Noodles (60 min)
-- 14:23  Afternoon: **Lisbon City Museum** (120 min), 18 min walk to get there
-- 17:02  Late afternoon: **Lisbon Old Town** (60 min), 19 min walk to get there [opening hours not known]
-- 18:33  Dinner: **Lantern Grill** (75 min), 11 min walk to get there
+- 09:20  Morning: **Lisbon Riverside Park** (60 min), 15 min transit to get there [opening hours not known]
+- 11:30  Lunch: **Market Kitchen** (75 min), 5 min walk to get there
+- 12:45  Time to wander around Market Kitchen (60 min)
+- 14:26  Afternoon: **Lisbon City Museum** (120 min), 21 min walk to get there
+- 17:09  Late afternoon: **Lisbon Cathedral** (45 min), 23 min walk to get there
+- 18:19  Dinner: **Corner Noodles** (75 min), 5 min walk to get there
+- 19:34  Back to Hotel Avenida (8 min walk)
 
 **Day 3, Mon 12 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:45  Morning: **Lisbon Central Market** (60 min)
+- 09:18  Morning: **Lisbon Central Market** (60 min), 13 min walk to get there
 - 11:30  Lunch: **Sunrise Cafe** (45 min), 2 min walk to get there
 - 12:45  Time to wander around Sunrise Cafe (60 min)
 - 14:22  Afternoon: **Lisbon Art Gallery** (120 min), 17 min walk to get there
-- 17:03  Late afternoon: **Lisbon Lookout** (30 min), 21 min transit to get there [opening hours not known]
-- 18:06  Dinner: **Garden Table** (75 min), 13 min walk to get there [opening hours not known]
+- 17:00  Late afternoon: **Lisbon Old Town** (60 min), 18 min walk to get there [opening hours not known]
+- 18:26  Dinner: **Garden Table** (75 min), 6 min walk to get there [opening hours not known]
+- 19:41  Back to Hotel Avenida (11 min walk)
 
 **Day 4, Tue 13 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
-- 08:45  Morning: *open*
-- 11:30  Lunch: **Morning Cafe** (45 min)
+- 09:29  Morning: **Lisbon Lookout** (30 min), 24 min walk to get there [opening hours not known]
+- 11:30  Lunch: **Morning Cafe** (45 min), 10 min walk to get there
 - 12:45  Time to wander around Morning Cafe (60 min)
-- 14:26  Afternoon: **Lisbon Castle** (60 min), 21 min transit to get there
-- 15:26  Late afternoon: *open*
+- 14:28  Afternoon: **Lisbon Castle** (60 min), 23 min transit to get there
+- 15:28  Late afternoon: *open*
 - 18:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
+- 19:15  Back to Hotel Avenida (17 min transit)
 
 **Day 5, Wed 14 Jul, Lisbon**
 
 - 08:00  Breakfast where you stay (45 min)
 - 08:45  Morning: *open*
-- 11:30  Lunch: **Corner Noodles** (75 min)
+- 11:30  Lunch: **Corner Noodles** (75 min), 15 min walk to get there
 - 12:45  Time to wander around Corner Noodles (60 min)
 - 13:45  Afternoon: *open*
 - 15:40  Allowed 120 min to the airport (flight)
@@ -309,10 +319,10 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 **The agent's report**
 
-- Built: 5 days in Lisbon, planned around 2 things already decided. I chose 18 places: 9 to see and 9 to eat at.
+- Built: 5 days in Lisbon, planned around 3 things already decided. I chose 18 places: 9 to see and 9 to eat at.
 - Assumed: Pace: I will keep a balanced pace. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions. Getting around: I will walk short hops and use public transport for the rest.
-- Could not fit: Nothing I know fits the morning on day 4. Nothing I know fits the late afternoon on day 4. Nothing I know fits the morning on day 5. 1 more slot is open for the same reason.
-- Unsure: Two places were close for lunch on day 1. I chose Harbour Canteen. Two places were close for the late afternoon on day 1. I chose Lisbon Cathedral. Two places were close for dinner on day 1. I chose Market Kitchen. 4 more choices were close too. I do not know the opening hours of Lisbon Riverside Park, Lisbon Old Town, Lisbon Lookout and Garden Table. Check before you go.
+- Could not fit: Nothing I know fits the late afternoon on day 1. Nothing I know fits the late afternoon on day 4. Nothing I know fits the morning on day 5. 1 more slot is open for the same reason.
+- Unsure: Two places were close for lunch on day 1. I chose Harbour Canteen. Two places were close for dinner on day 1. I chose Lantern Grill. Two places were close for lunch on day 2. I chose Market Kitchen. 2 more choices were close too. I do not know the opening hours of Lisbon Riverside Park, Lisbon Old Town, Garden Table and Lisbon Lookout. Check before you go.
 
 ## Dan and Priya
 
