@@ -82,7 +82,7 @@ add(
 add(
   "national-museum",
   "Tokyo National Museum",
-  "Museum · 15 min walk",
+  "Museum · about 15 min walk",
   "Japan's largest collection of art and antiquities, in Ueno Park.",
   "You chose museums over shopping, and it is a short walk from your hotel on a morning with no rush.",
   {
@@ -98,7 +98,7 @@ add(
 add(
   "nezu-shrine",
   "Nezu Shrine",
-  "Shrine · 8 min walk",
+  "Shrine · about 8 min walk",
   "A wooded shrine with a tunnel of red torii gates.",
   "You asked for quiet places, and this one is eight minutes from your hotel before the day gets busy.",
   {
@@ -112,7 +112,7 @@ add(
 add(
   "yanaka-cemetery",
   "Yanaka Cemetery avenue",
-  "Walk · 12 min walk",
+  "Walk · about 12 min walk",
   "A broad avenue of cherry trees through an old cemetery.",
   "You like wandering without a plan, and it fits a slow morning before teamLab.",
   { address: "7-5-24 Yanaka, Taito", visitMinutes: 60 },
@@ -134,7 +134,7 @@ add(
 add(
   "shinobazu",
   "Ueno Park and Shinobazu Pond",
-  "Park · 10 min walk",
+  "Park · about 10 min walk",
   "A lotus pond with a small temple on an island.",
   "You asked for green space near the hotel, and the morning is free until lunch.",
   { address: "Uenokoen, Taito", visitMinutes: 75 },
@@ -214,7 +214,7 @@ add(
 add(
   "nezu-no-ya",
   "Nezu no Ya",
-  "Macrobiotic · 6 min walk",
+  "Macrobiotic · about 6 min walk",
   "Brown rice and vegetable dishes above a natural food shop.",
   "You are vegetarian, and after a long flight it is six minutes from your hotel.",
   {
@@ -227,7 +227,7 @@ add(
 add(
   "kamachiku",
   "Kamachiku",
-  "Udon · 7 min walk",
+  "Udon · about 7 min walk",
   "Hand-cut udon in a converted brick storehouse with a garden.",
   "You asked for somewhere calm on arrival day, and it is a short walk from the hotel. Ask for the dashi-free dipping sauce.",
   {
@@ -451,7 +451,7 @@ add(
 add(
   "brown-rice",
   "Brown Rice by Neal's Yard Remedies",
-  "Vegan set lunch · 10 min walk",
+  "Vegan set lunch · about 10 min walk",
   "Seasonal vegetable set meals in a bright courtyard room.",
   "You are vegetarian, and it is ten minutes on foot from your Day 3 morning.",
   {

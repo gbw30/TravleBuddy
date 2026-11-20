@@ -62,6 +62,18 @@ const t: SampleTrip = {
   agentLines: {},
 };
 
+describe("the prototype's sample places", () => {
+  it("call a walking time an estimate, as the real cards do", () => {
+    const essentials = Object.values(sampleTrip.places).map(
+      (place) => place.essentials,
+    );
+    expect(essentials.filter((line) => / \d+ min walk/.test(line))).toEqual(
+      essentials.filter((line) => / about \d+ min walk/.test(line)),
+    );
+    expect(essentials.join(" ")).not.toMatch(/well-known/i);
+  });
+});
+
 describe("prototype planning state", () => {
   it("starts on the first open slot in fill order with three cards", () => {
     const s = initialState(t);
