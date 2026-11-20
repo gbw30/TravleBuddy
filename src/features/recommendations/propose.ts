@@ -322,7 +322,9 @@ function reasonFor(ranked: Ranked, input: ProposeInput): string {
     ranked.open === "open"
       ? ranked.place.origin === "OSM"
         ? "Its listed hours cover the whole visit."
-        : "It is open for the whole visit."
+        : ranked.place.origin === "SAMPLE"
+          ? "Its sample hours cover the whole visit."
+          : "It is open for the whole visit."
       : "Its opening hours are not known, so check before you go.",
   ].join(" ");
 }

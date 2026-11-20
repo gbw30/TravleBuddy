@@ -239,6 +239,7 @@ export function checkReason(reason: string, truth: Truth): string[] {
   const hours = [
     "It is open for the whole visit.",
     "Its listed hours cover the whole visit.",
+    "Its sample hours cover the whole visit.",
     "Its opening hours are not known, so check before you go.",
   ].find((sentence) => rest.endsWith(sentence));
   if (!hours)
