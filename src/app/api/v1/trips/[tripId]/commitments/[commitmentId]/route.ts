@@ -1,9 +1,10 @@
-import { removeCommitment, updateCommitment } from "@/features/trips";
+import { removeCommitment } from "@/features/trips";
 import {
   commitmentActionSchema,
   controlSchema,
 } from "@/features/trips/contracts";
 import { runTripAction } from "@/use-cases/trip-action";
+import { updateTripCommitment } from "@/use-cases/update-commitment";
 
 import { outcomeResponse, readBody, withUser } from "../../../../respond";
 
@@ -17,15 +18,13 @@ export const PATCH = withUser<Context>(async (userId, request, context) => {
 
   const { commitment, ...control } = body.data;
   return outcomeResponse(
-    await runTripAction({
+    await updateTripCommitment(
       userId,
       tripId,
-      kind: "commitment_update",
+      commitmentId,
+      commitment,
       control,
-      request: { commitmentId, commitment },
-      apply: (tx) =>
-        updateCommitment(tx, userId, tripId, commitmentId, commitment),
-    }),
+    ),
   );
 });
 

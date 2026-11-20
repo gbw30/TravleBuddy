@@ -141,6 +141,8 @@ export async function updateCommitment(
   tripId: string,
   commitmentId: string,
   input: CommitmentInput,
+  /** Zones found for a ticket's ends that had none. */
+  zones: { originTimeZone?: string; destinationTimeZone?: string } = {},
 ): Promise<Refused | CommitmentsResult> {
   const refused = await findEditable(tx, userId, tripId);
   if (refused) return refused;
@@ -150,7 +152,7 @@ export async function updateCommitment(
       ...rowData(input),
       // A ticket turned into something else no longer has a route.
       ...(input.kind === "TRANSPORT"
-        ? {}
+        ? zones
         : {
             transportMode: null,
             origin: null,
