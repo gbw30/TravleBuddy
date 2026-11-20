@@ -63,14 +63,14 @@ const t: SampleTrip = {
 };
 
 describe("the prototype's sample places", () => {
-  it("call a walking time an estimate, as the real cards do", () => {
+  it("never assume a walk, and give a leg in the real cards' form", () => {
     const essentials = Object.values(sampleTrip.places).map(
       (place) => place.essentials,
     );
-    expect(essentials.filter((line) => / \d+ min walk/.test(line))).toEqual(
-      essentials.filter((line) => / about \d+ min walk/.test(line)),
+    expect(essentials.join(" ")).not.toMatch(/min walk|well-known/i);
+    expect(sampleTrip.places["national-museum"].essentials).toBe(
+      "Museum · about 15 min ride",
     );
-    expect(essentials.join(" ")).not.toMatch(/well-known/i);
   });
 });
 
