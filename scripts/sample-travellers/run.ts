@@ -363,7 +363,11 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
     case "open":
       return `${entry.start}  ${SLOT_WORDS[entry.kind]}: *open*`;
     case "commitment":
-      return `${entry.start ?? "--:--"}  Already decided: ${entry.title}`;
+      return `${entry.start ?? "--:--"}  Already decided: ${entry.title}${
+        entry.travelIn
+          ? `, ${minutes(entry.travelIn.minutes)} ${entry.travelIn.means} to get there`
+          : ""
+      }`;
     case "transfer":
       return `${entry.start}  Travel from ${entry.from} to ${entry.to}, assumed (${minutes(entry.minutes)})${
         entry.arriveLocal
@@ -412,6 +416,10 @@ function render(
       "",
       ...item.entries.map((entry) => `- ${line(entry, plan)}`),
       "",
+      // The day's quiet lines, as the itinerary shows them under its rows.
+      ...[item.stayNote, item.returnNote].flatMap((note) =>
+        note ? [`*${note}*`, ""] : [],
+      ),
     ]),
     ...(report
       ? [
