@@ -8,7 +8,7 @@ import {
 import type { CardDto } from "@/features/recommendations/contracts";
 
 import { DayStamp } from "./day-stamp";
-import { dayLabel } from "./format";
+import { dayLabel, shortDayLabel } from "./format";
 import { ItineraryRow } from "./itinerary-row";
 import { MoveMenu } from "./move-menu";
 import { eyebrow, field, quiet } from "./styles";
@@ -141,7 +141,7 @@ export function PlanItinerary({
                           ? [
                               `Leaves ${entry.start} ${entry.ticket.from} time`,
                               entry.ticket.arrives &&
-                                `arrives ${entry.ticket.arrives} ${entry.ticket.to} time`,
+                                `arrives ${entry.ticket.arrivesOn ? `${shortDayLabel(entry.ticket.arrivesOn)} ` : ""}${entry.ticket.arrives} ${entry.ticket.to} time`,
                               entry.minutes
                                 ? hours(entry.minutes)
                                 : "length unknown",

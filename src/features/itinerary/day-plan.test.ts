@@ -1318,6 +1318,37 @@ describe("the time allowed at an airport or station", () => {
     expect(found(assumed.days[2].entries, "allowance")).toEqual([]);
   });
 
+  it("names the date a ticket lands on when it is not the date it leaves", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-10",
+            startTime: "22:00",
+            endDate: "2027-05-11",
+            endTime: "06:00",
+          }),
+          ticket({
+            id: "home",
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "21:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[0].entries, "commitment")[0].ticket).toMatchObject({
+      arrives: "06:00",
+      arrivesOn: "2027-05-11",
+    });
+    expect(found(view.days[2].entries, "commitment")[0].ticket).toMatchObject({
+      arrives: "21:00",
+      arrivesOn: null,
+    });
+  });
+
   it("shows 60 minutes after a night flight lands today", () => {
     const view = buildPlanView(
       state(),

@@ -827,6 +827,10 @@ export function buildPlanView(
                   from: withoutCode(commitment.transport.origin),
                   to: withoutCode(commitment.transport.destination),
                   arrives: commitment.endTime,
+                  arrivesOn:
+                    commitment.endDate && commitment.endDate !== draft.date
+                      ? commitment.endDate
+                      : null,
                 }
               : null,
         });

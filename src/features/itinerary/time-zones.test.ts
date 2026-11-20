@@ -393,7 +393,12 @@ describe("a ticket across the date line", () => {
     expect(day.entries.find((e) => e.type === "commitment")).toMatchObject({
       start: "18:00",
       minutes: 450,
-      ticket: { from: "Tokyo", to: "Honolulu", arrives: "06:30" },
+      ticket: {
+        from: "Tokyo",
+        to: "Honolulu",
+        arrives: "06:30",
+        arrivesOn: null,
+      },
     });
   });
 

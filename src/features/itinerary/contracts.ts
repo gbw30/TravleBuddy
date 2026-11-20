@@ -173,8 +173,16 @@ export type PlanEntry =
       minutes: number | null;
       /** The slot a must-include with no time has been given. */
       slotId: string | null;
-      /** A ticket's ends and arrival clock, each by the clock of its place. */
-      ticket: { from: string; to: string; arrives: string | null } | null;
+      /**
+       * A ticket's ends and arrival clock, each by the clock of its place, and
+       * the arrival date when it is not the date the ticket leaves.
+       */
+      ticket: {
+        from: string;
+        to: string;
+        arrives: string | null;
+        arrivesOn: string | null;
+      } | null;
       /** Travel to a confirmed stay's check-in. Absent on every other commitment. */
       travelIn?: TravelLeg | null;
     }
