@@ -15,7 +15,7 @@ const pace: Record<TravelMeans, { speed: number; overhead: number }> = {
   transit: { speed: 18, overhead: 8 },
   drive: { speed: 25, overhead: 5 },
 };
-/** Up to this straight-line distance, walking is assumed. */
+/** Up to this straight-line distance a leg is walked, whatever means was named. */
 const WALKABLE_KM = 1.5;
 
 const radians = (degrees: number) => (degrees * Math.PI) / 180;
@@ -40,8 +40,8 @@ export type TravelEstimate = {
 };
 
 /**
- * The estimated time to get from one point to another. Without a preferred
- * means, a short hop is walked and anything longer goes by transit.
+ * The estimated time to get from one point to another. A short hop is walked;
+ * anything longer goes by the preferred means, or by transit without one.
  */
 export function travelEstimate(
   from: Point,
@@ -49,7 +49,7 @@ export function travelEstimate(
   preferred?: TravelMeans,
 ): TravelEstimate {
   const line = distanceKm(from, to);
-  const means = preferred ?? (line <= WALKABLE_KM ? "walk" : "transit");
+  const means = line <= WALKABLE_KM ? "walk" : (preferred ?? "transit");
   const { speed, overhead } = pace[means];
   const moving = ((line * DETOUR) / speed) * 60;
   return {

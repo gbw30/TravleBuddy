@@ -411,23 +411,34 @@ describe("a picked place", () => {
     );
   });
 
-  it("times a leg by the stated means", () => {
-    const picks = {
-      "d2-morning": pick("museum"),
-      "d2-morning-2": pick("shrine"),
-    };
-    const leg = (means?: "walk" | "transit" | "drive") =>
+  it("times a leg by the stated means, and walks a short hop whatever it is", () => {
+    const far = place("far", {
+      kind: "temple",
+      latitude: 35.68,
+      longitude: 139.7,
+    });
+    const leg = (second: string, means?: "walk" | "transit" | "drive") =>
       found(
         buildPlanView(
-          state({ pace: "packed", picks }),
-          context({ places, means }),
+          state({
+            pace: "packed",
+            picks: {
+              "d2-morning": pick("museum"),
+              "d2-morning-2": pick(second),
+            },
+          }),
+          context({ places: { ...places, far }, means }),
         ).days[1].entries,
         "place",
       )[1].travelIn;
-    // About a kilometre apart: walked unless the traveller said otherwise.
-    expect(leg()?.means).toBe("walk");
-    expect(leg("drive")?.means).toBe("drive");
-    expect(leg("transit")?.means).toBe("transit");
+    // About a kilometre apart: walked, whatever the traveller said.
+    for (const means of [undefined, "walk", "transit", "drive"] as const) {
+      expect(leg("shrine", means)?.means).toBe("walk");
+    }
+    // Further: by the means they named, or transit when they named none.
+    expect(leg("far")?.means).toBe("transit");
+    expect(leg("far", "drive")?.means).toBe("drive");
+    expect(leg("far", "walk")?.means).toBe("walk");
   });
 
   it("flags a place that is closed, and one whose hours are unknown", () => {

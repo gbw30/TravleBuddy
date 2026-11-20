@@ -205,6 +205,20 @@ describe("travelEstimate", () => {
     expect(travelEstimate(sensoji, sensoji, "walk").minutes).toBe(1);
   });
 
+  it("walks a hop within walking distance, whatever means was stated, and uses the stated means beyond it", () => {
+    // About 250 m north of Senso-ji: four minutes on foot.
+    const near = { latitude: 35.71705, longitude: 139.7967 };
+    for (const means of ["walk", "transit", "drive"] as const) {
+      expect(travelEstimate(sensoji, near, means)).toEqual({
+        means: "walk",
+        minutes: 4,
+        estimated: true,
+      });
+      expect(travelEstimate(sensoji, skytree, means).means).toBe("walk");
+      expect(travelEstimate(sensoji, shibuya, means).means).toBe(means);
+    }
+  });
+
   it("gives the same answer every time", () => {
     expect(travelEstimate(sensoji, shibuya)).toEqual(
       travelEstimate(sensoji, shibuya),
