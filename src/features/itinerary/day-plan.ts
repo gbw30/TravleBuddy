@@ -103,6 +103,8 @@ const ASSUMED_BEFORE = 60;
 const ASSUMED_AFTER = 30;
 /** Breakfast starts with the day, if the day starts in this window, and takes this long. */
 export const BREAKFAST = { from: 450, until: 600, minutes: 45 };
+/** A ticket from an earlier date that lands by this time still leaves a night at the stay. */
+export const NIGHT_AT_STAY_UNTIL = 3 * 60;
 /** Less time than this between lunch and something decided is not time to wander. */
 const MIN_WANDER = 30;
 const ASSUMED_TRANSFER_START = 12 * 60;
@@ -485,8 +487,11 @@ export function buildPlanView(
     const slots: DraftSlot[] = [];
     // Breakfast starts with the day, and only a day that starts in the
     // morning has one. Day 1 has no night behind it, so none is "at the
-    // stay"; nor has a morning after a night on a ticket that lands today.
-    const overnight = landed.some((c) => c.date !== date);
+    // stay"; nor has a morning after a night on a ticket that lands today,
+    // unless it lands early enough to sleep there.
+    const overnight = landed.some(
+      (c) => c.date !== date && toMinutes(c.endTime!) > NIGHT_AT_STAY_UNTIL,
+    );
     const dayStart = segments[0].from;
     let stayBreakfast: number | null = null;
     if (

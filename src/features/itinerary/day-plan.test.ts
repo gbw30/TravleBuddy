@@ -1076,6 +1076,28 @@ describe("breakfast", () => {
     );
   });
 
+  it("still gives the included row after a ticket that lands by three in the morning", () => {
+    const landing = (endTime: string) =>
+      kinds(
+        withBreakfast("included", {
+          commitments: [
+            commitment({
+              id: "t",
+              kind: "TRANSPORT",
+              title: "Late flight",
+              date: "2027-05-10",
+              startTime: "21:00",
+              endDate: "2027-05-11",
+              endTime,
+            }),
+          ],
+        }).days[1].entries,
+      );
+    expect(landing("00:30")).toContain("breakfast-at-stay");
+    expect(landing("03:00")).toContain("breakfast-at-stay");
+    expect(landing("03:01")).not.toContain("breakfast-at-stay");
+  });
+
   it("gives neither when there is none or it is not said", () => {
     for (const breakfast of ["none", undefined] as const) {
       const view = withBreakfast(breakfast);
