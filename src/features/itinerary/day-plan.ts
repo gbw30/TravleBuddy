@@ -718,6 +718,53 @@ export function buildPlanView(
       until: number;
     } | null;
     let lastPick = null as { flags: PlanFlag[]; segment: number } | null;
+    // A check-in that waits for a booking it would run into.
+    let waiting = null as Extract<Step, { checkIn: Fixed }> | null;
+
+    const layCheckIn = (
+      step: Extract<Step, { checkIn: Fixed }>,
+      position: number,
+    ) => {
+      const { commitment, start, end } = step.checkIn;
+      const spot = commitment.located;
+      // From the last point in this city; a station has no position.
+      const leg =
+        spot && lastPoint
+          ? travelEstimate(lastPoint, spot, context.means)
+          : null;
+      const at = Math.max(step.at, clock + (leg ? leg.minutes + buffer : 0));
+      // It and its leg never run into a booking listed after it: it goes after.
+      const booking = steps
+        .slice(position + 1)
+        .find(
+          (later) =>
+            "fixed" in later &&
+            later.segment === step.segment &&
+            later.fixed.commitment.kind !== "TRANSPORT",
+        );
+      if (booking && booking.at < at + (end - start)) {
+        waiting = step;
+        return;
+      }
+      entries.push({
+        type: "commitment",
+        commitmentId: commitment.id,
+        commitmentKind: commitment.kind,
+        title: spot ? `Check in at ${commitment.title}` : commitment.title,
+        start: toClock(at),
+        minutes: end - start,
+        slotId: null,
+        ticket: null,
+        ...(spot
+          ? {
+              travelIn: leg ? { means: leg.means, minutes: leg.minutes } : null,
+            }
+          : {}),
+      });
+      clock = at + (end - start);
+      lastPoint = spot;
+      lastPlace = null;
+    };
 
     steps.forEach((step, position) => {
       if ("breakfast" in step) {
@@ -732,34 +779,7 @@ export function buildPlanView(
         return;
       }
       if ("checkIn" in step) {
-        const { commitment, start, end } = step.checkIn;
-        const spot = commitment.located;
-        // From the last point in this city; a station has no position.
-        const leg =
-          spot && lastPoint
-            ? travelEstimate(lastPoint, spot, context.means)
-            : null;
-        const at = Math.max(step.at, clock + (leg ? leg.minutes + buffer : 0));
-        entries.push({
-          type: "commitment",
-          commitmentId: commitment.id,
-          commitmentKind: commitment.kind,
-          title: spot ? `Check in at ${commitment.title}` : commitment.title,
-          start: toClock(at),
-          minutes: end - start,
-          slotId: null,
-          ticket: null,
-          ...(spot
-            ? {
-                travelIn: leg
-                  ? { means: leg.means, minutes: leg.minutes }
-                  : null,
-              }
-            : {}),
-        });
-        clock = at + (end - start);
-        lastPoint = spot;
-        lastPlace = null;
+        layCheckIn(step, position);
         return;
       }
       if ("fixed" in step) {
@@ -790,6 +810,11 @@ export function buildPlanView(
         clock = end < start && step.at >= 0 ? end : Math.max(clock, end);
         lastPoint = null;
         lastPlace = null;
+        if (waiting) {
+          const checkIn = waiting;
+          waiting = null;
+          layCheckIn(checkIn, position);
+        }
         return;
       }
       if ("allowance" in step) {

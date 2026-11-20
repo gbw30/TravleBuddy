@@ -1684,6 +1684,29 @@ describe("where you stay", () => {
     );
   });
 
+  it("lays the check-in after a booking it would run into", () => {
+    const view = placed(
+      {},
+      {
+        commitments: [
+          stay({ startTime: "15:00" }),
+          commitment({
+            id: "tea",
+            title: "Tea ceremony",
+            date: "2027-05-10",
+            startTime: "15:15",
+            endTime: "16:00",
+          }),
+        ],
+      },
+    );
+    expect(
+      found(view.days[0].entries, "commitment").map(
+        (entry) => `${entry.start} ${entry.title}`,
+      ),
+    ).toEqual(["15:15 Tea ceremony", "16:00 Check in at Hotel Aurora"]);
+  });
+
   it("says a missing stay once on the first day of a run, and again for another city", () => {
     const none = buildPlanView(
       state({
