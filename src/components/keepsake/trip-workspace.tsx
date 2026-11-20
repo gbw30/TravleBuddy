@@ -40,6 +40,7 @@ function toCardPlace(card: CardDto): CardPlace {
     photoCredit: null,
     links: card.links,
     hoursDoubt: card.hoursDoubt,
+    own: card.origin === "USER",
   };
 }
 
@@ -88,6 +89,8 @@ export function TripWorkspace({
   const [discarding, setDiscarding] = useState<string[] | null>(null);
   const [heard, setHeard] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  /** What the plan says after a place the traveller added was removed. */
+  const [removed, setRemoved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [found, setFound] = useState<CardDto[] | null>(null);
@@ -161,6 +164,7 @@ export function TripWorkspace({
   ): Promise<PlanSnapshot | null> {
     setBusy(true);
     setProblem(null);
+    setRemoved(null);
     const result = await changeTrip<{ plan: PlanSnapshot }>(
       tripId,
       revision,
@@ -236,6 +240,34 @@ export function TripWorkspace({
       .startViewTransition(() => flushSync(() => show(next)))
       .finished.catch(() => undefined)
       .finally(() => setTransit(null));
+  }
+
+  /** Removes a place the traveller added; the slots holding it reopen. */
+  async function removePlace(placeId: string) {
+    const result = await changeTrip<{ summary: string }>(
+      tripId,
+      revision,
+      "DELETE",
+      {},
+      `/places/${placeId}`,
+    );
+    setLooking(null);
+    if (!result.ok) {
+      setProblem(result.message);
+      if (result.error === "stale_revision") void refresh(focus);
+      return;
+    }
+    setRemoved(result.data.summary);
+    await refresh(wanted.current);
+  }
+
+  /** The titles of the traveller's other trips that hold a place, for the confirm step. */
+  async function tripsHolding(placeId: string): Promise<string[] | null> {
+    const result = await callApi<{ otherTrips: { title: string }[] }>(
+      `/api/v1/trips/${tripId}/places/${placeId}`,
+      { method: "GET" },
+    );
+    return result.ok ? result.data.otherTrips.map((trip) => trip.title) : null;
   }
 
   async function searchByName(event: FormEvent<HTMLFormElement>) {
@@ -421,6 +453,7 @@ export function TripWorkspace({
               className="max-w-[620px] space-y-3 text-ink/80 focus:outline-none"
               aria-live="polite"
             >
+              {removed && <AgentMessage>{removed}</AgentMessage>}
               {plan.holding === "food" && (
                 <AgentMessage>
                   I can suggest places to eat once you have told me about food.
@@ -755,6 +788,8 @@ export function TripWorkspace({
         variant="enlarged"
         showPhoto
         onClose={() => setLooking(null)}
+        onRemove={readOnly ? undefined : removePlace}
+        othersHolding={tripsHolding}
       />
     </section>
   );

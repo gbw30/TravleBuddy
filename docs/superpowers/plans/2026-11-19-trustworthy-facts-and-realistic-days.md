@@ -36,7 +36,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  |              |
 | 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             |              |
 | 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
-| 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       |              |
+| 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       | #91          |
 | 21. Time windows                          | `feature/m9-time-windows`      | TB-ITN-22                                                        |              |
 
 The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89. Piece 20 is built straight after piece 16, because it stops the loss of a traveller's answers on the live site. It then reaches `main` with the milestone (developer, 2026-11-20).
@@ -506,7 +506,7 @@ Not in this piece:
 
 ### Piece 17: Traveller choices
 
-Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, TB-ITN-22, TB-FIX-08, TB-CRD-13.
+Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, TB-FIX-08, TB-CRD-13. Check-in as a window moved to piece 21.
 
 1. **Breakfast may repeat.** A place picked for a breakfast slot is not moved out of breakfast slots on other days. This is the one exception to "a place sits in one slot only" (`plan-actions.ts` ~46-52). The same-day exclusion stays, and lunch and dinner still do not repeat. The ranking may prefer a new café, but it never hides a repeat. Update the samples' "nothing decided moved" and no-repeat checks.
 2. **The ticket type is required.** Every path that creates or changes a ticket needs one of `TICKET_MODES`:
@@ -523,7 +523,6 @@ Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, T
    - Any slot holding the place reopens, and the plan says "{place} was removed."
    - It crosses Places and Itinerary through a use-case and the contracts.
    - The design walk removes its Kyoto place at the end.
-     Check-in as a window moved to piece 21.
 
 **Checks:** as piece 16.
 

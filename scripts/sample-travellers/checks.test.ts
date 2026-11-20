@@ -188,6 +188,35 @@ describe("the checks on a planned trip", () => {
     ]);
   });
 
+  it("let a breakfast place come again on another day, and nothing else", () => {
+    const repeat = (a: string, b: string) =>
+      failed(
+        checkItinerary({
+          plan: plan([[at(a, "Castle")], [at(b, "Castle")]]),
+          expected: expected(),
+          known,
+        }),
+      );
+    expect(repeat("d1-breakfast", "d2-breakfast")).toEqual([]);
+    const found = checkItinerary({
+      plan: plan([
+        [at("d1-breakfast", "Castle")],
+        [at("d2-breakfast", "Castle")],
+      ]),
+      expected: expected(),
+      known,
+    });
+    expect(found[0].detail).toBe(
+      "2 places, each one the place source knows, none twice, except breakfast on another day (1 repeat)",
+    );
+    expect(repeat("d1-breakfast", "d2-lunch")).toEqual([
+      "No place is invented: Castle is in the plan twice",
+    ]);
+    expect(repeat("d1-lunch", "d2-lunch")).toEqual([
+      "No place is invented: Castle is in the plan twice",
+    ]);
+  });
+
   it("let a place the traveller added by hand pass: it exists because they say so", () => {
     const own = plan([[at("d1-afternoon", "Aunt Keiko's flat")]]);
     own.chosen["Aunt Keiko's flat"] = {

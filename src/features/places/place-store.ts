@@ -387,3 +387,20 @@ export async function addOwnPlace(
   });
   return toDto(row, todayUtc());
 }
+
+/**
+ * Removes a place the traveller added by hand. A provider's place, another
+ * traveller's, and a row that records no owner are never removed. Answers the
+ * name of the place removed, or null when nothing was.
+ */
+export async function removeOwnPlace(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  placeId: string,
+): Promise<string | null> {
+  const where = { id: placeId, origin: "USER", addedByUserId: userId } as const;
+  const found = await tx.place.findFirst({ where, select: { name: true } });
+  if (!found) return null;
+  const { count } = await tx.place.deleteMany({ where });
+  return count === 1 ? found.name : null;
+}

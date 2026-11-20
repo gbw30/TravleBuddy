@@ -1220,6 +1220,49 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
   ];
 }
 
+/** The place added by hand is removed from its closer look, after a confirm step. */
+async function removeOwnPlace(
+  page: Page,
+  call: Call,
+  data: Data,
+): Promise<Row[]> {
+  const problems: string[] = [];
+  const name = "Walk Test Gallery";
+  await open(page, `/trips/${data.kyoto}`);
+  await page.getByRole("button", { name: `Details for ${name}` }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Remove this place" }).click();
+  const sure = dialog.getByRole("button", { name: `Remove ${name}` });
+  // The confirm step first asks which other trips hold the place.
+  await sure.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  if ((await sure.count()) !== 1) {
+    problems.push("removing asks for no confirmation");
+  } else {
+    await sure.click();
+    await page
+      .getByText(`${name} was removed.`)
+      .waitFor({ timeout: 10_000 })
+      .catch(() => undefined);
+  }
+  if ((await page.getByText(`${name} was removed.`).count()) < 1) {
+    problems.push("the plan does not say the place was removed");
+  }
+  const plan: PlanSnapshot = (await call("get", `/trips/${data.kyoto}/plan`))
+    .json.plan;
+  if (Object.values(plan.chosen).some((card) => card.name === name)) {
+    problems.push("the place is still in the plan");
+  }
+  return [
+    row(
+      "Trip",
+      "A place of my own is removed from its closer look, after a confirm step, and the plan says so",
+      "TB-CRD-13",
+      problems,
+      "the confirm step names the place, and the plan says it was removed",
+    ),
+  ];
+}
+
 /** A place is dragged onto an open slot; a fixed commitment cannot be dragged. */
 async function dragMove(page: Page, call: Call, data: Data): Promise<Row[]> {
   const problems: string[] = [];
@@ -1322,6 +1365,8 @@ async function walk(browser: Browser, admin: Call, data: Data): Promise<Row[]> {
       data,
     )),
   );
+  // Last: the screens above may show the place.
+  rows.push(...(await removeOwnPlace(desktop.page, admin, data)));
   return rows;
 }
 

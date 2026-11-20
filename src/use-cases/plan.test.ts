@@ -20,11 +20,18 @@ const mocks = vi.hoisted(() => ({
   readProfile: vi.fn(),
   appendMessages: vi.fn(),
   usesSamplePlaces: vi.fn(),
+  removeOwnPlace: vi.fn(),
+  listTrips: vi.fn(),
+  advanceTripRevision: vi.fn(),
+  runTripAction: vi.fn(),
+  findEditable: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
 vi.mock("@/features/trips", () => ({
   getTrip: mocks.getTrip,
-  findEditable: vi.fn(),
+  findEditable: mocks.findEditable,
+  listTrips: mocks.listTrips,
+  advanceTripRevision: mocks.advanceTripRevision,
 }));
 vi.mock("@/features/itinerary", async (actual) => ({
   ...(await actual<typeof import("@/features/itinerary")>()),
@@ -42,6 +49,7 @@ vi.mock("@/features/places", () => ({
   addOwnPlace: vi.fn(),
   findPlacesByName: vi.fn(),
   usesSamplePlaces: mocks.usesSamplePlaces,
+  removeOwnPlace: mocks.removeOwnPlace,
 }));
 vi.mock("@/features/recommendations", async (actual) => ({
   ...(await actual<typeof import("@/features/recommendations")>()),
@@ -59,9 +67,19 @@ vi.mock("@/features/conversation", async (actual) => ({
   ...(await actual<typeof import("@/features/conversation")>()),
   appendMessages: mocks.appendMessages,
 }));
-vi.mock("./trip-action", () => ({ runTripAction: vi.fn(), Refusal: class {} }));
+vi.mock("./trip-action", () => ({
+  runTripAction: mocks.runTripAction,
+  Refusal: class {
+    constructor(readonly message: string) {}
+  },
+}));
 
-import { loadPlan, setPlanPace } from "./plan";
+import {
+  loadPlan,
+  removeTripPlace,
+  setPlanPace,
+  tripsAlsoHolding,
+} from "./plan";
 
 const tokyo = {
   name: "Tokyo",
@@ -142,6 +160,7 @@ beforeEach(() => {
   mocks.listSights.mockResolvedValue(sights);
   mocks.listFoodNear.mockResolvedValue(food);
   mocks.readDiscards.mockResolvedValue([]);
+  mocks.listTrips.mockResolvedValue([]);
   mocks.readTripTaste.mockResolvedValue({});
   mocks.readProfile.mockResolvedValue({ entries: [] });
   // Every card is shown for the first time.
@@ -778,6 +797,35 @@ describe("a place the traveller has already decided", () => {
   });
 });
 
+describe("a breakfast place on another day", () => {
+  const picked = (id: string) => ({ placeId: id, minutes: null });
+  const names = async (slot: string) =>
+    (await load(slot))?.proposal?.cards.map((card) => card.name) ?? [];
+  const pickedAt = (slot: string) => {
+    mocks.readTripTaste.mockResolvedValue({
+      breakfast: { values: ["suggest"], source: "told" },
+      food: { values: [], source: "told" },
+    });
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { [slot]: picked("f2") } }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([food[1]]);
+  };
+
+  it("is offered again for another day's breakfast, never for the same day or another meal", async () => {
+    pickedAt("d1-breakfast");
+    expect(await names("d2-breakfast")).toContain("Kissa Ko");
+    expect(await names("d2-lunch")).not.toContain("Kissa Ko");
+    expect(await names("d1-lunch")).not.toContain("Kissa Ko");
+  });
+
+  it("is not offered for breakfast when it is a lunch place", async () => {
+    pickedAt("d1-lunch");
+    expect(await names("d2-breakfast")).not.toContain("Kissa Ko");
+  });
+});
+
 describe("what the plan says of its chosen places", () => {
   const picked = (id: string) => ({ placeId: id, minutes: null });
   const withPick = () => {
@@ -837,5 +885,157 @@ describe("what the plan says of its chosen places", () => {
     expect(plan?.proposal?.slotId).toBe(slot);
     expect(plan?.proposal?.cards[0].travel).toBeNull();
     expect(plan?.proposal?.cards[0].reason).toMatch(/^It fits your afternoon/);
+  });
+});
+
+describe("removing a place the traveller added", () => {
+  const picked = (id: string) => ({ placeId: id, minutes: null });
+  const control = { operationId: "op-1", expectedRevision: 1 };
+  const tx = { name: "tx" };
+  /** Runs the change the use-case hands to the ledger, as the ledger would. */
+  const remove = async () => {
+    mocks.runTripAction.mockImplementation(({ apply }) => apply(tx));
+    return removeTripPlace({
+      userId: "user-1",
+      tripId: "trip-1",
+      placeId: "own",
+      control,
+    });
+  };
+
+  it("reopens its slots, leaves the shelf, and says it was removed", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    mocks.readPlanState.mockResolvedValue({
+      state: state({
+        picks: { "d1-morning": picked("own"), "d2-morning": picked("s1") },
+        shelf: [{ placeId: "own", reason: null }],
+      }),
+      canUndo: false,
+    });
+    expect(await remove()).toEqual({ summary: "Aunt's flat was removed." });
+    expect(mocks.removeOwnPlace).toHaveBeenCalledWith(tx, "user-1", "own");
+    expect(mocks.writePlanVersion).toHaveBeenCalledWith(
+      tx,
+      "trip-1",
+      expect.objectContaining({
+        picks: { "d2-morning": picked("s1") },
+        shelf: [],
+      }),
+      "Aunt's flat was removed.",
+    );
+  });
+
+  it("refuses a place that is not the traveller's own, and changes no plan", async () => {
+    mocks.removeOwnPlace.mockResolvedValue(null);
+    expect(await remove()).toMatchObject({
+      message: "That place is not one you added.",
+    });
+    expect(mocks.writePlanVersion).not.toHaveBeenCalled();
+  });
+
+  it("saves no new plan when the plan never held it", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    expect(await remove()).toEqual({ summary: "Aunt's flat was removed." });
+    expect(mocks.writePlanVersion).not.toHaveBeenCalled();
+  });
+
+  it("reopens the slot in every other trip that holds it, and says so there", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    mocks.listTrips.mockResolvedValue([
+      { id: "trip-1", title: "Tokyo" },
+      { id: "trip-2", title: "Lisbon and Porto" },
+      { id: "trip-3", title: "Never used it" },
+    ]);
+    const plans: Record<string, PlanState> = {
+      "trip-1": state({ picks: { "d1-morning": picked("own") } }),
+      "trip-2": state({
+        picks: { "d2-lunch": picked("own"), "d1-morning": picked("s1") },
+      }),
+      "trip-3": state({ picks: { "d1-morning": picked("s1") } }),
+    };
+    mocks.readPlanState.mockImplementation(async (_db, id: string) => ({
+      state: plans[id],
+      canUndo: false,
+    }));
+    await remove();
+    const written = mocks.writePlanVersion.mock.calls.map(([, id, next]) => [
+      id,
+      Object.keys(next.picks),
+    ]);
+    expect(written).toEqual([
+      ["trip-2", ["d1-morning"]],
+      ["trip-1", []],
+    ]);
+    expect(mocks.writePlanVersion.mock.calls[0][3]).toBe(
+      "Aunt's flat was removed.",
+    );
+    expect(mocks.appendMessages).toHaveBeenCalledWith(tx, "trip-2", [
+      {
+        from: "agent",
+        body: { kind: "text", text: "Aunt's flat was removed." },
+      },
+    ]);
+    expect(mocks.advanceTripRevision).toHaveBeenCalledWith(
+      tx,
+      "user-1",
+      "trip-2",
+      undefined,
+    );
+    expect(mocks.advanceTripRevision).not.toHaveBeenCalledWith(
+      tx,
+      "user-1",
+      "trip-3",
+      undefined,
+    );
+  });
+
+  it("names the other trips that hold a place of the traveller's own, for the confirm step", async () => {
+    mocks.getPlaces.mockResolvedValue([
+      { ...place("own", "museum"), origin: "USER" },
+    ]);
+    mocks.listTrips.mockResolvedValue([
+      { id: "trip-1", title: "Tokyo" },
+      { id: "trip-2", title: "Lisbon and Porto" },
+      { id: "trip-3", title: "Never used it" },
+    ]);
+    mocks.readPlanState.mockImplementation(async (_db, id: string) => ({
+      state:
+        id === "trip-3"
+          ? state()
+          : state({ shelf: [{ placeId: "own", reason: null }] }),
+      canUndo: false,
+    }));
+    expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([
+      { id: "trip-2", title: "Lisbon and Porto" },
+    ]);
+    // Not a place of their own: nothing to say.
+    mocks.getPlaces.mockResolvedValue([place("own", "museum")]);
+    expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([]);
+  });
+
+  it("leaves an archived trip alone, and does not name it", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    mocks.getPlaces.mockResolvedValue([
+      { ...place("own", "museum"), origin: "USER" },
+    ]);
+    mocks.listTrips.mockResolvedValue([
+      { id: "trip-2", title: "Old trip", archived: true },
+    ]);
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { "d1-morning": picked("own") } }),
+      canUndo: false,
+    });
+    expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([]);
+    await remove();
+    expect(mocks.writePlanVersion.mock.calls.map(([, id]) => id)).toEqual([
+      "trip-1",
+    ]);
+    expect(mocks.advanceTripRevision).not.toHaveBeenCalled();
+  });
+
+  it("answers null for a trip that is not the traveller's", async () => {
+    mocks.getTrip.mockResolvedValue(null);
+    expect(await tripsAlsoHolding("user-1", "trip-9", "own")).toBeNull();
+    expect(mocks.listTrips).not.toHaveBeenCalled();
   });
 });

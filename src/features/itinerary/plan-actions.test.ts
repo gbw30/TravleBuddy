@@ -5,7 +5,7 @@ import type { CommitmentDto } from "@/features/trips/contracts";
 
 import { emptyPlanState, planActionSchema, type PlanState } from "./contracts";
 import { buildPlanView, type PlanContext } from "./day-plan";
-import { applyPlanAction, settle } from "./plan-actions";
+import { applyPlanAction, forgetPlace, settle } from "./plan-actions";
 
 const tokyo = {
   name: "Tokyo",
@@ -122,6 +122,42 @@ describe("picking", () => {
       }),
     );
     expect(after.picks).toEqual({ "d2-afternoon": pick("a") });
+  });
+
+  it("lets a breakfast place sit in the breakfast of another day, and nowhere else twice", () => {
+    const cafe: PlaceDto = { ...place("k"), kind: "cafe" };
+    const withBreakfast: PlanContext = {
+      ...context,
+      commitments: [],
+      places: { ...context.places, k: cafe },
+      breakfast: "suggest",
+    };
+    const run = (s: PlanState, action: Parameters<typeof applyPlanAction>[2]) =>
+      done(applyPlanAction(s, buildPlanView(s, withBreakfast), action));
+
+    const again = run(state({ picks: { "d1-breakfast": pick("k") } }), {
+      type: "pick",
+      slotId: "d2-breakfast",
+      placeId: "k",
+    });
+    expect(again.picks).toEqual({
+      "d1-breakfast": pick("k"),
+      "d2-breakfast": pick("k"),
+    });
+
+    // From a lunch slot to a breakfast slot, or the other way, it still moves.
+    const toBreakfast = run(state({ picks: { "d1-lunch": pick("k") } }), {
+      type: "pick",
+      slotId: "d2-breakfast",
+      placeId: "k",
+    });
+    expect(toBreakfast.picks).toEqual({ "d2-breakfast": pick("k") });
+    const toLunch = run(state({ picks: { "d1-breakfast": pick("k") } }), {
+      type: "pick",
+      slotId: "d2-lunch",
+      placeId: "k",
+    });
+    expect(toLunch.picks).toEqual({ "d2-lunch": pick("k") });
   });
 
   it("refuses a slot that holds something already decided, or that is not in the plan", () => {
@@ -307,5 +343,138 @@ describe("planActionSchema", () => {
         planActionSchema.safeParse(action).success,
         JSON.stringify(action),
       ).toBe(false);
+  });
+});
+
+describe("a repeated breakfast place", () => {
+  const cafe: PlaceDto = { ...place("k"), kind: "cafe" };
+  const withBreakfast: PlanContext = {
+    ...context,
+    commitments: [],
+    places: { ...context.places, k: cafe },
+    breakfast: "suggest",
+  };
+  const run = (s: PlanState, action: Parameters<typeof applyPlanAction>[2]) =>
+    done(applyPlanAction(s, buildPlanView(s, withBreakfast), action));
+  const twice = state({
+    picks: { "d1-breakfast": pick("k"), "d2-breakfast": pick("k") },
+  });
+
+  it("is dropped from every other breakfast when it is picked into a lunch", () => {
+    const after = run(twice, {
+      type: "pick",
+      slotId: "d3-lunch",
+      placeId: "k",
+    });
+    expect(after.picks).toEqual({ "d3-lunch": pick("k") });
+  });
+
+  it("is dropped from the other breakfast when it is moved into a lunch", () => {
+    const after = run(twice, {
+      type: "move",
+      fromSlotId: "d1-breakfast",
+      toSlotId: "d2-lunch",
+    });
+    expect(after.picks).toEqual({ "d2-lunch": pick("k") });
+  });
+
+  it("may be moved to the breakfast of another day, and stays one per day", () => {
+    const after = run(twice, {
+      type: "move",
+      fromSlotId: "d1-breakfast",
+      toSlotId: "d3-breakfast",
+    });
+    expect(after.picks).toEqual({
+      "d2-breakfast": pick("k"),
+      "d3-breakfast": pick("k"),
+    });
+  });
+
+  it("is cleaned when a swap brings it back to a lunch", () => {
+    // The lunch holds the café; swapping it with a breakfast sends it to a breakfast.
+    const s = state({
+      picks: {
+        "d1-breakfast": pick("k"),
+        "d2-breakfast": pick("a"),
+        "d2-lunch": pick("k"),
+      },
+    });
+    // Moving d2-breakfast (a) onto d2-lunch (k) swaps: k goes to d2-breakfast.
+    const after = run(s, {
+      type: "move",
+      fromSlotId: "d2-breakfast",
+      toSlotId: "d2-lunch",
+    });
+    expect(after.picks).toEqual({
+      "d1-breakfast": pick("k"),
+      "d2-breakfast": pick("k"),
+      "d2-lunch": pick("a"),
+    });
+    // Moving d1-breakfast (k) onto d2-lunch (a) swaps: a goes to d1-breakfast, k stays once.
+    const lunch = run(
+      state({
+        picks: {
+          "d1-breakfast": pick("k"),
+          "d2-breakfast": pick("k"),
+          "d3-lunch": pick("a"),
+        },
+      }),
+      { type: "move", fromSlotId: "d2-breakfast", toSlotId: "d3-lunch" },
+    );
+    expect(lunch.picks).toEqual({
+      "d3-lunch": pick("k"),
+      "d2-breakfast": pick("a"),
+    });
+  });
+
+  it("never sits twice in one day", () => {
+    const after = run(state({ picks: { "d1-breakfast": pick("k") } }), {
+      type: "pick",
+      slotId: "d1-lunch",
+      placeId: "k",
+    });
+    expect(after.picks).toEqual({ "d1-lunch": pick("k") });
+  });
+});
+
+describe("forgetting a place", () => {
+  it("reopens every slot that holds it and takes it off the shelf, keeping the rest", () => {
+    const before = state({
+      picks: {
+        "d1-breakfast": pick("a"),
+        "d2-breakfast": pick("a"),
+        "d1-morning": pick("b", 90),
+      },
+      shelf: [
+        { placeId: "a", reason: null },
+        { placeId: "c", reason: null },
+      ],
+    });
+    expect(forgetPlace(before, "a")).toEqual({
+      ...before,
+      picks: { "d1-morning": pick("b", 90) },
+      shelf: [{ placeId: "c", reason: null }],
+    });
+  });
+});
+
+describe("a plan that still points at a place that was removed", () => {
+  it("shows the slot open, as after Undo restores a step from before the removal", () => {
+    const restored = state({
+      picks: { "d1-morning": pick("gone"), "d1-afternoon": pick("a") },
+      shelf: [{ placeId: "gone", reason: null }],
+    });
+    const view = buildPlanView(restored, context);
+    const entries = view.days.flatMap((day) => day.entries);
+    expect(
+      entries.find((e) => "slotId" in e && e.slotId === "d1-morning")?.type,
+    ).toBe("open");
+    expect(
+      entries.some((e) => e.type === "place" && e.placeId === "gone"),
+    ).toBe(false);
+    // The place that still exists is untouched.
+    expect(entries.some((e) => e.type === "place" && e.placeId === "a")).toBe(
+      true,
+    );
   });
 });

@@ -24,6 +24,7 @@ export {
   getPlaces,
   listFoodNear,
   listSights,
+  removeOwnPlace,
   type GatherOutcome,
   type PlaceSearchOutcome,
 } from "./place-store";

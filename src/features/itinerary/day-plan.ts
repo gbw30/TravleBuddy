@@ -205,7 +205,7 @@ function transferMinutes(from: City, to: City): number {
  * details has no known mode but keeps the larger, flight allowance.
  */
 function allowanceOf(commitment: CommitmentDto) {
-  const mode = commitment.transport?.mode ?? null;
+  const mode = commitment.transportMode ?? commitment.transport?.mode ?? null;
   return {
     mode,
     ...ALLOWANCE[mode && mode !== "FLIGHT" ? "GROUND" : "FLIGHT"],

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { PlaceArt } from "./place-art";
 import { priceLabel, ratingLabel } from "./postcard";
-import { eyebrow, button, quiet } from "./styles";
+import { eyebrow, button, buttonSecond, quiet } from "./styles";
 import type { CardPlace } from "./types";
 
 // Matches the closing transition in globals.css.
@@ -16,27 +16,56 @@ const look = {
   overlay: "max-w-2xl rounded-[14px] bg-card p-6 md:p-8",
 };
 
+/** What the confirm step says about the traveller's other trips that hold the place. */
+export function alsoInSentence(titles: string[] | null): string {
+  if (titles === null) {
+    return "I could not check your other trips. Removing it also opens any slot it holds there.";
+  }
+  if (titles.length === 0) return "";
+  const quoted = titles.map((title) => `"${title}"`);
+  const list =
+    quoted.length === 1
+      ? quoted[0]
+      : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1)}`;
+  return titles.length === 1
+    ? `It is also in your trip ${list}. Removing it opens that slot too.`
+    : `It is also in your trips ${list}. Removing it opens those slots too.`;
+}
+
 export function CloserLook({
   place,
   variant,
   showPhoto,
   onClose,
+  onRemove,
+  othersHolding,
 }: {
   place: CardPlace | null;
   variant: "enlarged" | "overlay";
   showPhoto: boolean;
   onClose: () => void;
+  /** Offered for a place the traveller added by hand, after a confirm step. */
+  onRemove?: (placeId: string) => void | Promise<void>;
+  /** The titles of the traveller's other trips that hold the place. */
+  /** Null when the lookup failed. */
+  othersHolding?: (placeId: string) => Promise<string[] | null>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // The last place shown stays on the card while it closes.
   const [shown, setShown] = useState(place);
   if (place && place !== shown) setShown(place);
+  const [confirming, setConfirming] = useState(false);
+  const [others, setOthers] = useState<string[] | null>([]);
+  /** A request is under way: the buttons wait, so nothing is sent twice. */
+  const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (place && !dialog.open) dialog.showModal();
     if (!place && dialog.open) dialog.close();
+    setConfirming(false);
+    setWaiting(false);
   }, [place]);
 
   // Let the card settle back down before it goes, in every browser.
@@ -142,6 +171,56 @@ export function CloserLook({
               </>
             )}
           </dl>
+          {onRemove && shown.own && (
+            <div className="mt-5 border-t border-ink/12 pt-4">
+              {confirming ? (
+                <>
+                  <p role="alert" className="text-[15px]">
+                    Remove {shown.name}? Any slot that holds it reopens.{" "}
+                    {alsoInSentence(others)}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      className={buttonSecond}
+                      disabled={waiting}
+                      onClick={async () => {
+                        setWaiting(true);
+                        await onRemove(shown.id);
+                        setWaiting(false);
+                      }}
+                    >
+                      Remove {shown.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={quiet}
+                      disabled={waiting}
+                      onClick={() => setConfirming(false)}
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={quiet}
+                  disabled={waiting}
+                  onClick={async () => {
+                    setWaiting(true);
+                    setOthers(
+                      othersHolding ? await othersHolding(shown.id) : [],
+                    );
+                    setWaiting(false);
+                    setConfirming(true);
+                  }}
+                >
+                  Remove this place
+                </button>
+              )}
+            </div>
+          )}
           <form
             method="dialog"
             className="mt-5"

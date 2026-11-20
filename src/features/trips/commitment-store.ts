@@ -69,6 +69,7 @@ export function toCommitmentDto(row: CommitmentRow): CommitmentDto {
             address: row.locatedAddress,
           }
         : null,
+    transportMode: row.transportMode,
     transport:
       row.transportMode && row.origin && row.destination
         ? {
@@ -123,6 +124,7 @@ function rowData(input: CommitmentInput) {
     longitude: input.located?.longitude ?? null,
     locatedRef: input.located?.ref ?? null,
     locatedAddress: input.located?.address ?? null,
+    transportMode: input.transportMode,
   };
 }
 
@@ -162,7 +164,6 @@ export async function updateCommitment(
       ...(input.kind === "TRANSPORT"
         ? zones
         : {
-            transportMode: null,
             origin: null,
             destination: null,
             originTimeZone: null,

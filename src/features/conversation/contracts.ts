@@ -9,7 +9,7 @@ import {
   type TripAnswer,
   type TripTaste,
 } from "@/features/memory/contracts";
-import { COMMITMENT_KINDS } from "@/features/trips/contracts";
+import { COMMITMENT_KINDS, TICKET_MODES } from "@/features/trips/contracts";
 import { CURRENCIES } from "@/lib/currency";
 
 /** The facts the agent needs first (PRD 7.2). */
@@ -101,6 +101,8 @@ export const intentSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("commitment"),
     kind: z.enum(COMMITMENT_KINDS),
+    /** Only for a ticket, and only when the message says which. */
+    transportMode: z.enum(TICKET_MODES).optional(),
     title: text(160),
     date: isoDate.optional(),
     startTime: clock.optional(),

@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => {
     loadPlan: vi.fn(),
     findTripPlaces: vi.fn(),
     addTripPlace: vi.fn(),
+    removeTripPlace: vi.fn(),
+    tripsAlsoHolding: vi.fn(),
     takeTurn: vi.fn(),
     loadConversation: vi.fn(),
     loadBrief: vi.fn(),
@@ -57,6 +59,8 @@ vi.mock("@/use-cases/plan", () => ({
   loadPlan: mocks.loadPlan,
   findTripPlaces: mocks.findTripPlaces,
   addTripPlace: mocks.addTripPlace,
+  removeTripPlace: mocks.removeTripPlace,
+  tripsAlsoHolding: mocks.tripsAlsoHolding,
 }));
 
 vi.mock("@/use-cases/conversation", () => ({
@@ -114,6 +118,10 @@ import {
   GET as findPlaces,
   POST as addPlace,
 } from "./trips/[tripId]/places/route";
+import {
+  DELETE as removePlace,
+  GET as tripsHoldingPlace,
+} from "./trips/[tripId]/places/[placeId]/route";
 import { POST as createTrip } from "./trips/route";
 
 const control = {
@@ -389,6 +397,31 @@ describe("commitments", () => {
     expect((await addCommitment(request("POST", body), trip)).status).toBe(422);
   });
 
+  it("answers 422 for a ticket with no type, added or changed", async () => {
+    mocks.runTripAction.mockClear();
+    const ticket = { kind: "TRANSPORT", title: "Train to Kyoto" };
+    const untyped = { commitment: ticket, ...control };
+    expect((await addCommitment(request("POST", untyped), trip)).status).toBe(
+      422,
+    );
+    expect(
+      (await patchCommitment(request("PATCH", untyped), commitment)).status,
+    ).toBe(422);
+    expect(mocks.runTripAction).not.toHaveBeenCalled();
+    const typed = {
+      commitment: { ...ticket, transportMode: "TRAIN" },
+      ...control,
+    };
+    mocks.runTripAction.mockResolvedValue({
+      status: "ok",
+      data: { commitments: [], clashes: [] },
+      revision: 3,
+    });
+    expect((await addCommitment(request("POST", typed), trip)).status).toBe(
+      201,
+    );
+  });
+
   it("updates and removes by id, each as its own kind", async () => {
     await patchCommitment(request("PATCH", body), commitment);
     await deleteCommitment(request("DELETE", control), commitment);
@@ -634,6 +667,47 @@ describe("a place of the traveller's own", () => {
       expect((await addPlace(request("POST", body), trip)).status).toBe(422);
     }
     expect(mocks.addTripPlace).not.toHaveBeenCalled();
+  });
+
+  it("removes a place by id, and refuses a removal that does not say which revision it saw", async () => {
+    mocks.removeTripPlace.mockResolvedValue({
+      status: "ok",
+      data: { summary: "Aunt's flat was removed." },
+      revision: 4,
+    });
+    const place = {
+      params: Promise.resolve({ tripId: "trip-1", placeId: "own" }),
+    };
+    const answer = await removePlace(request("DELETE", control), place);
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({
+      data: { summary: "Aunt's flat was removed." },
+      revision: 4,
+    });
+    expect(mocks.removeTripPlace).toHaveBeenCalledWith({
+      userId: "user-1",
+      tripId: "trip-1",
+      placeId: "own",
+      control,
+    });
+    mocks.tripsAlsoHolding.mockResolvedValue([{ id: "t2", title: "Lisbon" }]);
+    const asked = await tripsHoldingPlace(request("GET"), place);
+    expect(await asked.json()).toEqual({
+      otherTrips: [{ id: "t2", title: "Lisbon" }],
+    });
+    expect(mocks.tripsAlsoHolding).toHaveBeenCalledWith(
+      "user-1",
+      "trip-1",
+      "own",
+    );
+    // A trip that does not exist or is someone else's: 404, as for every trip route.
+    mocks.tripsAlsoHolding.mockResolvedValue(null);
+    const strange = await tripsHoldingPlace(request("GET"), place);
+    expect(strange.status).toBe(404);
+    expect(await strange.json()).toEqual({ error: "not_found" });
+    mocks.removeTripPlace.mockClear();
+    expect((await removePlace(request("DELETE"), place)).status).toBe(422);
+    expect(mocks.removeTripPlace).not.toHaveBeenCalled();
   });
 });
 

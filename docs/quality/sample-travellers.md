@@ -34,14 +34,14 @@ Alone, six days in Tokyo, mid budget, vegetarian, slow pace, food-led. *Tests: A
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 29 places, each one the place source knows, none twice |
+| No place is invented | pass | 29 places, each one the place source knows, none twice, except breakfast on another day (3 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
 | Every day has its meals | pass | no meal asked for is left open |
 | Each ticket lasts its real length | pass | no ticket to measure |
 | The days match the pace | pass | relaxed: no day has more than 2 sights or activities |
-| Every reason is true of the traveller and the trip | pass | 81 reasons read, sentence by sentence |
+| Every reason is true of the traveller and the trip | pass | 84 reasons read, sentence by sentence |
 
 Pace: relaxed. Shape of the day: I will start the days at about nine. Interests: markets and shopping. Atmosphere: I will mix lively and quiet places. Food: vegetarian.
 
@@ -76,16 +76,16 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 4, Thu 13 May, Tokyo**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
-- 10:48  Morning: **Shibuya Sky** (30 min), 33 min transit to get there
-- 12:30  Lunch: **Morning Cafe** (45 min), 6 min walk to get there
-- 13:45  Time to wander around Morning Cafe (120 min)
-- 17:14  Afternoon: **Tokyo Skytree** (30 min), 59 min transit to get there
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:49  Morning: **Shibuya Sky** (30 min), 34 min transit to get there
+- 12:30  Lunch: **Market Kitchen** (75 min), 21 min walk to get there
+- 13:45  Time to wander around Market Kitchen (120 min)
+- 17:07  Afternoon: **Tokyo Skytree** (30 min), 52 min transit to get there
 - 19:00  Dinner: **Market Kitchen** (75 min), 22 min walk to get there
 
 **Day 5, Fri 14 May, Tokyo**
 
-- 09:00  Breakfast: **Morning Cafe** (45 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
 - 10:43  Morning: **Tokyo National Museum** (120 min), 28 min transit to get there
 - 13:29  Lunch: **Market Kitchen** (75 min), 16 min walk to get there
 - 14:44  Time to wander around Market Kitchen (120 min)
@@ -94,18 +94,18 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 6, Sat 15 May, Tokyo**
 
-- 09:00  Breakfast: **Morning Cafe** (45 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
 - 10:43  Morning: **Nezu Museum** (120 min), 28 min transit to get there
-- 13:33  Lunch: **Corner Noodles** (75 min), 20 min walk to get there
-- 14:48  Time to wander around Corner Noodles (120 min)
-- 17:57  Afternoon: **Ueno Park** (60 min), 39 min transit to get there
-- 19:50  Dinner: **Corner Noodles** (75 min), 23 min walk to get there
+- 13:37  Lunch: **Corner Noodles** (75 min), 24 min walk to get there
+- 14:52  Time to wander around Corner Noodles (120 min)
+- 18:09  Afternoon: **Ueno Park** (60 min), 47 min transit to get there
+- 20:02  Dinner: **Corner Noodles** (75 min), 23 min walk to get there
 
 ### Quick plan
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 29 places, each one the place source knows, none twice |
+| No place is invented | pass | 29 places, each one the place source knows, none twice, except breakfast on another day (3 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
@@ -146,8 +146,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 4, Thu 13 May, Tokyo**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
-- 10:47  Morning: **Shinjuku Gyoen** (60 min), 32 min transit to get there
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:44  Morning: **Shinjuku Gyoen** (60 min), 29 min transit to get there
 - 12:30  Lunch: **Market Kitchen** (75 min), 12 min walk to get there
 - 13:45  Time to wander around Market Kitchen (120 min)
 - 16:31  Afternoon: **Meiji Jingu** (45 min), 16 min transit to get there [opening hours not known]
@@ -156,7 +156,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 **Day 5, Fri 14 May, Tokyo**
 
 - 09:00  Breakfast: **Sunrise Cafe** (45 min)
-- 10:47  Morning: **Senso-ji** (45 min), 32 min transit to get there
+- 10:45  Morning: **Senso-ji** (45 min), 30 min transit to get there
 - 12:30  Lunch: **Market Kitchen** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Market Kitchen (120 min)
 - 16:37  Afternoon: **Tokyo Skytree** (30 min), 22 min walk to get there
@@ -164,8 +164,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 **Day 6, Sat 15 May, Tokyo**
 
-- 09:00  Breakfast: **Morning Cafe** (45 min)
-- 10:47  Morning: **Shibuya Sky** (30 min), 32 min transit to get there
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
+- 10:49  Morning: **Shibuya Sky** (30 min), 34 min transit to get there
 - 12:30  Lunch: **Corner Noodles** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Corner Noodles (120 min)
 - 17:02  Afternoon: **Ueno Park** (60 min), 47 min transit to get there
@@ -176,7 +176,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - Built: 6 days in Tokyo, planned around 1 thing already decided. I chose 29 places: 11 to see and 18 to eat at.
 - Assumed: Shape of the day: I will start the days at about nine. Atmosphere: I will mix lively and quiet places. Getting around: I will walk short hops and use public transport for the rest.
 - Could not fit: nothing was left over.
-- Unsure: Two places were close for breakfast on day 1. I chose Sunrise Cafe. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for breakfast on day 2. I chose Corner Bakery. 11 more choices were close too. Sunrise Cafe, Corner Bakery and Morning Cafe do not say whether vegetarian food is served. Check before you go. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
+- Unsure: Two places were close for breakfast on day 1. I chose Sunrise Cafe. Two places were close for lunch on day 1. I chose Corner Noodles. Two places were close for breakfast on day 2. I chose Corner Bakery. 12 more choices were close too. Sunrise Cafe, Corner Bakery and Morning Cafe do not say whether vegetarian food is served. Check before you go. I do not know the opening hours of Yanaka Ginza, Nezu Shrine and Meiji Jingu. Check before you go.
 
 ## The Okafors
 
@@ -186,7 +186,7 @@ Two adults and children of 7 and 11, five days in Lisbon, flights booked, early 
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 18 places, each one the place source knows, none twice |
+| No place is invented | pass | 18 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 3 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -256,7 +256,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 18 places, each one the place source knows, none twice |
+| No place is invented | pass | 18 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 3 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -336,7 +336,7 @@ Honeymoon, nine days by train through Rome, Florence and Venice, high budget, un
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 31 places, each one the place source knows, none twice |
+| No place is invented | pass | 31 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -425,7 +425,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 31 places, each one the place source knows, none twice |
+| No place is invented | pass | 31 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -524,7 +524,7 @@ Returning user, three-day city break, Quick plan with only step 1 filled. *Tests
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 15 places, each one the place source knows, none twice |
+| No place is invented | pass | 15 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -568,7 +568,7 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 15 places, each one the place source knows, none twice |
+| No place is invented | pass | 15 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -622,7 +622,7 @@ Alone, four nights in Rome, a same-day flight there and back from London, public
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 21 places, each one the place source knows, none twice |
+| No place is invented | pass | 21 places, each one the place source knows, none twice, except breakfast on another day (1 repeat) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -675,10 +675,10 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 
 **Day 5, Tue 22 Jun, Rome**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
 - 09:45  Morning: *open*
-- 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
-- 13:45  Time to wander around Market Kitchen (60 min)
+- 12:30  Lunch: **Corner Noodles** (75 min), 11 min transit to get there
+- 13:45  Time to wander around Corner Noodles (60 min)
 - 14:45  Afternoon: *open*
 - 16:00  Allowed 120 min to the airport (flight)
 - 18:00  Already decided: Flight · Rome → London
@@ -687,7 +687,7 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 21 places, each one the place source knows, none twice |
+| No place is invented | pass | 21 places, each one the place source knows, none twice, except breakfast on another day (1 repeat) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -739,10 +739,10 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 
 **Day 5, Tue 22 Jun, Rome**
 
-- 09:00  Breakfast: **Corner Bakery** (45 min)
+- 09:00  Breakfast: **Sunrise Cafe** (45 min)
 - 09:45  Morning: *open*
-- 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
-- 13:45  Time to wander around Market Kitchen (60 min)
+- 12:30  Lunch: **Corner Noodles** (75 min), 11 min transit to get there
+- 13:45  Time to wander around Corner Noodles (60 min)
 - 14:45  Afternoon: *open*
 - 16:00  Allowed 120 min to the airport (flight)
 - 18:00  Already decided: Flight · Rome → London
@@ -752,5 +752,5 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - Built: 5 days in Rome, planned around 2 things already decided. I chose 21 places: 9 to see and 12 to eat at.
 - Assumed: Pace: I will keep a balanced pace. Shape of the day: I will start the days at about nine. Interests: I will mix a little of everything. Atmosphere: I will mix lively and quiet places. Food: I will assume no restrictions.
 - Could not fit: Nothing I know fits the afternoon on day 4. Nothing I know fits the late afternoon on day 4. Nothing I know fits the morning on day 5. 1 more slot is open for the same reason.
-- Unsure: Two places were close for the afternoon on day 1. I chose Rome Castle. Two places were close for breakfast on day 2. I chose Sunrise Cafe. Two places were close for the morning on day 2. I chose Rome Botanical Garden. 6 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Riverside Park, Rome Lookout and Garden Table. Check before you go.
+- Unsure: Two places were close for the afternoon on day 1. I chose Rome Castle. Two places were close for breakfast on day 2. I chose Sunrise Cafe. Two places were close for the morning on day 2. I chose Rome Botanical Garden. 5 more choices were close too. I do not know the opening hours of Rome Old Town, Rome Riverside Park, Rome Lookout and Garden Table. Check before you go.
 
