@@ -2,7 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { buildTripOwnerWhere } from "@/lib/authorization-rules";
 
 /** A change the caller asked for that the trip's state does not allow. */
-export type Refused = "not_found" | "archived";
+export type Refused = "not_found" | "archived" | "bad_dates";
 
 /**
  * Null when the traveller owns the trip and may still change it. A trip that

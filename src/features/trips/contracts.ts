@@ -138,6 +138,8 @@ export type BudgetBasis = (typeof BUDGET_BASES)[number];
 
 const count = (min: number, max: number) => z.number().int().min(min).max(max);
 
+export const DATES_ORDER_MESSAGE = "The trip ends before it starts.";
+
 /** Every fact is optional: a save changes only the facts it names. */
 export const tripFactsSchema = z
   .object({
@@ -161,7 +163,7 @@ export const tripFactsSchema = z
   .refine(
     (facts) =>
       !facts.startDate || !facts.endDate || facts.endDate >= facts.startDate,
-    { path: ["endDate"], message: "The trip ends before it starts." },
+    { path: ["endDate"], message: DATES_ORDER_MESSAGE },
   );
 export type TripFactsInput = z.infer<typeof tripFactsSchema>;
 

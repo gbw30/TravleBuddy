@@ -919,6 +919,16 @@ describe("a typed message with the model on", () => {
 });
 
 describe("a turn on a trip that cannot change", () => {
+  it("passes on a refused lone date, and saves nothing else", async () => {
+    mocks.getTrip.mockResolvedValue(
+      trip({ facts: { ...noFacts, cities: allFacts.cities }, commitments: [] }),
+    );
+    mocks.saveTripFacts.mockResolvedValue("bad_dates");
+    expect(await say("10 May 2027 to 14 May 2027")).toEqual({
+      status: "bad_dates",
+    });
+  });
+
   it("answers not found, archived, and whatever the trip's own check refuses", async () => {
     mocks.getTrip
       .mockResolvedValueOnce(null)
