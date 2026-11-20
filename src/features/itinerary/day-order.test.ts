@@ -279,6 +279,21 @@ const scenarios: Scenario[] = [
       ...stay(honolulu, ["2027-05-11", "2027-05-13"], "15:00", stays),
     ],
   },
+  {
+    name: "a first day that starts with a flight across the date line",
+    cities: [[honolulu, 2]],
+    perSegment: true,
+    commitments: (stays) => [
+      ticket(
+        "FLIGHT",
+        tokyo,
+        honolulu,
+        ["2027-05-10", "18:00"],
+        ["2027-05-10", "06:30"],
+      ),
+      ...stay(honolulu, ["2027-05-10", "2027-05-12"], "15:00", stays),
+    ],
+  },
 ];
 
 const broken = (view: PlanView) =>

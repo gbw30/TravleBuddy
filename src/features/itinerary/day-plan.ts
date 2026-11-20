@@ -651,7 +651,17 @@ export function buildPlanView(
       ...draft.fixed
         .filter((fixed) => !isCheckIn(fixed, draft.date))
         .map((fixed) => ({
-          at: fixed.start,
+          // On day 1, a ticket into the first city that lands earlier by the
+          // clock than it left is over before the day starts: it goes first.
+          at:
+            draft.day === 1 &&
+            fixed.end < fixed.start &&
+            fixed.commitment.kind === "TRANSPORT" &&
+            fixed.commitment.date === draft.date &&
+            fixed.commitment.endDate === draft.date &&
+            !(changes && fixed.start >= draft.leaves)
+              ? -1
+              : fixed.start,
           segment: changes && fixed.start > draft.leaves ? 1 : 0,
           fixed,
         })),
@@ -767,8 +777,9 @@ export function buildPlanView(
               : null,
         });
         // A ticket that lands earlier by the clock than it left crossed the
-        // date line: the day goes on by the clock it lands in.
-        clock = end < start ? end : Math.max(clock, end);
+        // date line: the day goes on by the clock it lands in. One listed
+        // first (at -1) is already behind the day's start.
+        clock = end < start && step.at >= 0 ? end : Math.max(clock, end);
         lastPoint = null;
         lastPlace = null;
         return;

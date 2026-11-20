@@ -1438,6 +1438,67 @@ describe("the time allowed at an airport or station", () => {
   });
 });
 
+describe("a first day that starts with a flight across the date line", () => {
+  const honolulu = {
+    name: "Honolulu",
+    region: null,
+    country: "United States",
+    latitude: 21.3069,
+    longitude: -157.8583,
+    timeZone: "Pacific/Honolulu",
+  };
+  // It leaves Tokyo at 18:00 on 10 May and lands in Honolulu at 06:30 the same date.
+  const flight = commitment({
+    id: "t",
+    kind: "TRANSPORT",
+    title: "Flight to Honolulu",
+    date: "2027-05-10",
+    startTime: "18:00",
+    endDate: "2027-05-10",
+    endTime: "06:30",
+    transport: {
+      mode: "FLIGHT",
+      origin: "Tokyo",
+      destination: "Honolulu",
+      originZone: "Asia/Tokyo",
+      destinationZone: "Pacific/Honolulu",
+    },
+  });
+  const beach = place("beach", {
+    cityKey: "honolulu|united states",
+    latitude: 21.27,
+    longitude: -157.82,
+    openingHours: "Mo-Su 06:00-23:00",
+  });
+
+  it("lists the ticket first, before the time out of the airport, and never as a later step", () => {
+    const day1 = buildPlanView(
+      state({ picks: { "d1-afternoon-2": { placeId: "beach", minutes: 150 } } }),
+      context({
+        facts: {
+          cities: [{ city: honolulu, nights: 2 }],
+          startDate: "2027-05-10",
+          endDate: null,
+          lengthNights: null,
+          timeOfYear: null,
+        },
+        commitments: [flight],
+        places: { beach },
+      }),
+    ).days[0].entries;
+    expect(day1.slice(0, 2)).toMatchObject([
+      { type: "commitment", commitmentId: "t", start: "18:00" },
+      { type: "allowance", way: "from", start: "06:30" },
+    ]);
+    // 16:00 to 18:30 runs past 18:00 by the clock, but the flight is long over.
+    expect(found(day1, "place")[0]).toMatchObject({
+      start: "16:00",
+      flags: [],
+    });
+    expect(day1.at(-1)).toMatchObject({ type: "open", kind: "dinner" });
+  });
+});
+
 describe("where you stay", () => {
   const toMinutes = (clock: string) =>
     Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
