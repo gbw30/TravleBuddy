@@ -48,6 +48,41 @@ describe("hoursDoubt", () => {
     );
   });
 
+  it("reads the date at the start of a value that goes on, and nothing that only looks like one", () => {
+    for (const check_date of ["2021-03-15;2023-01-02", "2021-03-15 10:00"]) {
+      expect(hoursDoubt(osm({ tags: { check_date } }), today)).toBe(
+        "Last updated on the map in 2021. Worth a check.",
+      );
+    }
+    // Seven digits are not a year and month: the edit time is used instead.
+    expect(
+      hoursDoubt(
+        osm({
+          tags: { check_date: "2021-031" },
+          lastEditedAt: "2027-04-01T10:00:00.000Z",
+        }),
+        today,
+      ),
+    ).toBeNull();
+  });
+
+  it("doubts hours checked more than 12 months ago, and not those checked exactly 12 months ago", () => {
+    const line = "Last updated on the map in 2026. Worth a check.";
+    const checked = (check_date: string) =>
+      hoursDoubt(osm({ tags: { check_date } }), today);
+    expect(checked("2026-05-11")).toBeNull();
+    expect(checked("2026-05-10")).toBe(line);
+  });
+
+  it("counts 12 months back from 29 February as 28 February", () => {
+    const checked = (check_date: string) =>
+      hoursDoubt(osm({ tags: { check_date } }), "2028-02-29");
+    expect(checked("2027-02-28")).toBeNull();
+    expect(checked("2027-02-27")).toBe(
+      "Last updated on the map in 2027. Worth a check.",
+    );
+  });
+
   it("falls back to the edit time, and names its year when two years old", () => {
     expect(
       hoursDoubt(osm({ lastEditedAt: "2025-02-03T10:00:00.000Z" }), today),

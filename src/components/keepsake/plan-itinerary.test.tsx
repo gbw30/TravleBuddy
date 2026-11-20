@@ -40,6 +40,7 @@ const view: PlanView = {
       date: "2027-05-10",
       city: "Tokyo",
       stayNote: null,
+      returnNote: null,
       entries: [
         {
           type: "commitment",
@@ -93,6 +94,7 @@ const view: PlanView = {
       date: "2027-05-11",
       city: "Tokyo",
       stayNote: null,
+      returnNote: null,
       entries: [
         {
           type: "open",
@@ -156,7 +158,10 @@ describe("PlanItinerary", () => {
   });
 
   it("reads a ticket by the clock of each end, or says its length is unknown", () => {
-    const flight = (minutes: number | null): PlanView => ({
+    const flight = (
+      minutes: number | null,
+      arrivesOn: string | null = null,
+    ): PlanView => ({
       ...view,
       days: [
         {
@@ -170,7 +175,12 @@ describe("PlanItinerary", () => {
               start: "10:00",
               minutes,
               slotId: null,
-              ticket: { from: "London", to: "Rome", arrives: "13:00" },
+              ticket: {
+                from: "London",
+                to: "Rome",
+                arrives: "13:00",
+                arrivesOn,
+              },
             },
           ],
         },
@@ -181,6 +191,10 @@ describe("PlanItinerary", () => {
     );
     expect(render(false, flight(null))).toContain(
       "arrives 13:00 Rome time · length unknown",
+    );
+    // A ticket that lands on another date names it.
+    expect(render(false, flight(1620, "2026-07-11"))).toContain(
+      "arrives Sat 11 Jul 13:00 Rome time · 27 h",
     );
   });
 
@@ -287,13 +301,14 @@ describe("PlanItinerary", () => {
     }
   });
 
-  it("shows the way back to the stay, travel to a check-in, and the quiet note", () => {
+  it("shows the way back to the stay, travel to a check-in, and the quiet notes", () => {
     const html = render(false, {
       ...view,
       days: [
         {
           ...view.days[0],
           stayNote: "Travel from where you stay is not counted.",
+          returnNote: "The way back from Senso-ji is not counted.",
           entries: [
             {
               type: "commitment",
@@ -322,6 +337,7 @@ describe("PlanItinerary", () => {
       "Back to Hotel Aurora · Walk · about 12 min (estimate)",
     );
     expect(html).toContain("Travel from where you stay is not counted.");
+    expect(html).toContain("The way back from Senso-ji is not counted.");
   });
 
   it("offers no changes when the trip is archived", () => {

@@ -1,15 +1,12 @@
 import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
-import {
-  createTrip,
-  factsFromTickets,
-  placeKey,
-  placeName,
-} from "@/features/trips";
+import { createTrip, factsFromTickets } from "@/features/trips";
 import {
   NEW_TRIP_TITLE,
   type StartTripInput,
 } from "@/features/trips/contracts";
+
+import { ticketZones } from "./ticket-zones";
 
 // Starting a trip spans two services: Places turns the ticket destinations
 // into cities, and Trips saves the trip.
@@ -35,21 +32,7 @@ export async function startTrip(
     if (city) cities.push({ city, nights: stop.nights });
   }
 
-  // The zone of each ticket end: a trip city of that name, else one lookup.
-  const zones = new Map(
-    cities.map(({ city }) => [city.name.toLowerCase(), city.timeZone]),
-  );
-  const zoneOf = async (end: string) => {
-    const key = placeKey(end);
-    if (!zones.has(key)) {
-      const found = await findCities(placeName(end));
-      zones.set(
-        key,
-        (found.status === "ok" ? found.cities[0]?.timeZone : null) ?? null,
-      );
-    }
-    return zones.get(key) ?? null;
-  };
+  const zoneOf = ticketZones(cities.map(({ city }) => city));
   const tickets = [];
   for (const ticket of input.tickets) {
     tickets.push({

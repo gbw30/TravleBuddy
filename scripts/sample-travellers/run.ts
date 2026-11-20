@@ -26,7 +26,7 @@ import { signedIn, type Call } from "../site";
 import { TRAVELLERS, type Traveller } from "./travellers";
 
 // Plans the sample travellers of PRD 18 through the running site, by
-// Guided planning and by Quick plan, checks each plan, and writes the eight
+// Guided planning and by Quick plan, checks each plan, and writes the ten
 // itineraries out for the developer to read (TB-SYS-15).
 //
 //   npm run quality:samples -- http://localhost:3100
@@ -278,8 +278,8 @@ async function planOne(
       longitude: city.longitude ?? 0,
     };
     const places = [
-      ...(await sampleSource.sights({ ...city, ...point })),
-      ...(await sampleSource.foodNear({ ...city, ...point }, point)),
+      ...(await sampleSource.sights({ ...city, ...point })).places,
+      ...(await sampleSource.foodNear({ ...city, ...point }, point)).places,
     ];
     for (const place of places) {
       known.set(place.name, {
@@ -363,7 +363,11 @@ function line(entry: PlanEntry, plan: PlanSnapshot): string {
     case "open":
       return `${entry.start}  ${SLOT_WORDS[entry.kind]}: *open*`;
     case "commitment":
-      return `${entry.start ?? "--:--"}  Already decided: ${entry.title}`;
+      return `${entry.start ?? "--:--"}  Already decided: ${entry.title}${
+        entry.travelIn
+          ? `, ${minutes(entry.travelIn.minutes)} ${entry.travelIn.means} to get there`
+          : ""
+      }`;
     case "transfer":
       return `${entry.start}  Travel from ${entry.from} to ${entry.to}, assumed (${minutes(entry.minutes)})${
         entry.arriveLocal
@@ -412,6 +416,10 @@ function render(
       "",
       ...item.entries.map((entry) => `- ${line(entry, plan)}`),
       "",
+      // The day's quiet lines, as the itinerary shows them under its rows.
+      ...[item.stayNote, item.returnNote].flatMap((note) =>
+        note ? [`*${note}*`, ""] : [],
+      ),
     ]),
     ...(report
       ? [

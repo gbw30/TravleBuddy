@@ -129,7 +129,12 @@ describe("the checks on a planned trip", () => {
         start: "10:00",
         minutes,
         slotId: null,
-        ticket: { from: "London", to: "Rome", arrives: "13:00" },
+        ticket: {
+          from: "London",
+          to: "Rome",
+          arrives: "13:00",
+          arrivesOn: null,
+        },
       }) as PlanEntry;
     const check = (minutes: number | null) =>
       failed(

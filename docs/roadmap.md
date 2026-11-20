@@ -132,7 +132,7 @@ Exit evidence: TB-QPL and TB-STA-04 pass; a build interrupted by closing the pag
 
 ## Milestone 8: Quality and release
 
-Judge both ways of planning against the four sample travellers of PRD 18. Complete accessibility, phone layouts, time zones, performance and cost-cap checks. Record a portfolio demonstration.
+Judge both ways of planning against the five sample travellers of PRD 18. Complete accessibility, phone layouts, time zones, performance and cost-cap checks. Record a portfolio demonstration.
 
 Exit evidence: TB-SYS-15 and TB-DSN-01 to TB-DSN-07 pass; every requirement in sections 2 to 13 of the catalogue has passing evidence; full QA on the existing topology; the demonstration is recorded.
 

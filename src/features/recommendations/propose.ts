@@ -146,8 +146,11 @@ function rank(input: ProposeInput): Ranked[] {
       // the traveller's dietary rules (TB-MEM-05).
       const rules = isMeal(slot.kind) ? (taste.food ?? []) : [];
       if (rules.some((rule) => place.servesNot.includes(rule))) return [];
+      // A traveller's own place has no listing to confirm a diet.
       const dietConfirmed =
-        rules.length > 0 && rules.every((rule) => place.serves.includes(rule));
+        place.origin !== "USER" &&
+        rules.length > 0 &&
+        rules.every((rule) => place.serves.includes(rule));
 
       const point =
         place.latitude === null || place.longitude === null

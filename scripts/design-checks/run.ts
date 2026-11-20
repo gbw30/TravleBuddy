@@ -12,6 +12,7 @@ import {
   type Page,
 } from "@playwright/test";
 
+import { isMeal } from "@/features/itinerary/contracts";
 import type { City } from "@/features/places/contracts";
 import type { PlanSnapshot } from "@/use-cases/plan-snapshot";
 
@@ -91,11 +92,11 @@ async function open(page: Page, path: string) {
 async function showCards(page: Page, call: Call, tripId: string) {
   const plan: PlanSnapshot = (await call("get", `/trips/${tripId}/plan`)).json
     .plan;
+  // A meal slot, breakfast too, shows no cards until the food question is
+  // answered (the plan says `holding: "food"`), so only other slots are tried.
   const slots = plan.view.days.flatMap((day) =>
     day.entries.flatMap((entry) =>
-      entry.type === "open" && entry.kind !== "lunch" && entry.kind !== "dinner"
-        ? [entry.slotId]
-        : [],
+      entry.type === "open" && !isMeal(entry.kind) ? [entry.slotId] : [],
     ),
   );
   for (const slotId of slots) {
@@ -1002,6 +1003,7 @@ async function checkItYourself(
       problems.push("the Maps link does not open in a new tab");
     }
     // The links sit just before Close, which has focus when the dialog opens.
+    // Walked backwards from Close: a forward Tab walk failed in Firefox.
     await dialog.getByRole("button", { name: "Close" }).focus();
     let reached = false;
     for (let press = 0; press < 6 && !reached; press += 1) {
@@ -1109,9 +1111,26 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
   await decided.getByLabel("Ends on another day").fill("2027-07-12");
   const lookup = decided.getByRole("button", { name: "Look up address" });
   await decided.getByLabel("Address").fill("1 Walk Street");
+  // The typed address goes in a POST body, never in a URL that logs keep.
+  const searches: string[] = [];
+  const watch = (request: { method(): string; url(): string }) => {
+    if (request.url().includes("/api/v1/places/addresses")) {
+      searches.push(`${request.method()} ${request.url()}`);
+    }
+  };
+  page.on("request", watch);
   await lookup.click();
   const confirm = decided.getByRole("button", { name: /Confirm this address/ });
   await confirm.waitFor({ timeout: 10_000 }).catch(() => undefined);
+  page.off("request", watch);
+  if (
+    !searches.some((search) => search.startsWith("POST ")) ||
+    searches.some((search) => /walk/i.test(search))
+  ) {
+    problems.push(
+      `the address search is not a POST with the address in its body: ${searches.join(", ")}`,
+    );
+  }
   const label = "Sample address, city centre";
   if ((await decided.getByText(label).count()) < 1) {
     problems.push("the address found is not shown");

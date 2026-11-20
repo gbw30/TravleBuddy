@@ -17,7 +17,7 @@ import type {
   TripFactsInput,
   TripSummary,
 } from "./contracts";
-import { ticketTitle } from "./tickets";
+import { ticketTitle, withCityZones } from "./tickets";
 import { findEditable, type Refused } from "./trip-access";
 import { missingFacts, todayIn, tripState } from "./trip-state";
 
@@ -202,7 +202,10 @@ export async function getTrip(
   });
   if (!row) return null;
 
-  const commitments = row.commitments.map(toCommitmentDto);
+  const commitments = withCityZones(
+    row.commitments.map(toCommitmentDto),
+    row.destinations.map(({ city, timeZone }) => ({ name: city, timeZone })),
+  );
   return {
     ...toSummary(row, commitments.length, now),
     commitments,

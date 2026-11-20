@@ -31,6 +31,9 @@ export const SLOT_WORDS: Record<SlotKind, string> = {
   "afternoon-2": "Late afternoon",
   dinner: "Dinner",
 };
+/** A slot as a sentence names it: "lunch", "the late afternoon". */
+export const slotWords = (kind: SlotKind) =>
+  isMeal(kind) ? kind : `the ${SLOT_WORDS[kind].toLowerCase()}`;
 
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -170,8 +173,16 @@ export type PlanEntry =
       minutes: number | null;
       /** The slot a must-include with no time has been given. */
       slotId: string | null;
-      /** A ticket's ends and arrival clock, each by the clock of its place. */
-      ticket: { from: string; to: string; arrives: string | null } | null;
+      /**
+       * A ticket's ends and arrival clock, each by the clock of its place, and
+       * the arrival date when it is not the date the ticket leaves.
+       */
+      ticket: {
+        from: string;
+        to: string;
+        arrives: string | null;
+        arrivesOn: string | null;
+      } | null;
       /** Travel to a confirmed stay's check-in. Absent on every other commitment. */
       travelIn?: TravelLeg | null;
     }
@@ -209,6 +220,8 @@ export type PlanDay = {
   entries: PlanEntry[];
   /** Why travel from where the traveller stays is not counted; null when it is, or when nothing is chosen. */
   stayNote: string | null;
+  /** Why the way back from the last place is not counted; null when it is shown or there is none. */
+  returnNote: string | null;
 };
 
 /** A fact the plan cannot be laid out without. */

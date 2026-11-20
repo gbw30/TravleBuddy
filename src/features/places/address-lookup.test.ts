@@ -86,9 +86,21 @@ describe("findAddresses", () => {
 
   it("keeps no user in the saved key, and collapses the spaces and case it saves under", async () => {
     fetchMock.mockResolvedValue(Response.json([]));
-    await findAddresses("Hotel Aurora", lisbon);
+    await findAddresses("  Hotel   AURORA ", lisbon);
     expect(mocks.db.addressLookup.upsert.mock.calls[0][0].where.key).toBe(
       "hotel aurora|38.7,-9.1",
+    );
+  });
+
+  it("saves a search whose key would be longer than 200 characters under its hash", async () => {
+    fetchMock.mockResolvedValue(Response.json([]));
+    // 120 characters, each two once lower-cased.
+    await findAddresses("İ".repeat(120), lisbon);
+    const key = mocks.db.addressLookup.upsert.mock.calls[0][0].where.key;
+    expect(key).toMatch(/^sha256:[0-9a-f]{64}$/);
+    // It is read back under the same key.
+    expect(mocks.db.addressLookup.findUnique.mock.calls[0][0].where.key).toBe(
+      key,
     );
   });
 

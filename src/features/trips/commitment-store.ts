@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 
 import { findClashes } from "./clashes";
 import type { Clash, CommitmentDto, CommitmentInput } from "./contracts";
+import { withCityZones } from "./tickets";
 import { findEditable, type Refused } from "./trip-access";
 
 type Tx = Prisma.TransactionClient;
@@ -96,7 +97,14 @@ async function currentCommitments(
     select: commitmentSelect,
     orderBy: commitmentOrder,
   });
-  const commitments = rows.map(toCommitmentDto);
+  const cities = await tx.tripDestination.findMany({
+    where: { tripId },
+    select: { city: true, timeZone: true },
+  });
+  const commitments = withCityZones(
+    rows.map(toCommitmentDto),
+    cities.map(({ city, timeZone }) => ({ name: city, timeZone })),
+  );
   // Both sides of a clash are kept: the traveller decides (TB-FIX-06).
   return { commitments, clashes: findClashes(commitments) };
 }
@@ -141,6 +149,8 @@ export async function updateCommitment(
   tripId: string,
   commitmentId: string,
   input: CommitmentInput,
+  /** Zones found for a ticket's ends that had none. */
+  zones: { originTimeZone?: string; destinationTimeZone?: string } = {},
 ): Promise<Refused | CommitmentsResult> {
   const refused = await findEditable(tx, userId, tripId);
   if (refused) return refused;
@@ -150,7 +160,7 @@ export async function updateCommitment(
       ...rowData(input),
       // A ticket turned into something else no longer has a route.
       ...(input.kind === "TRANSPORT"
-        ? {}
+        ? zones
         : {
             transportMode: null,
             origin: null,

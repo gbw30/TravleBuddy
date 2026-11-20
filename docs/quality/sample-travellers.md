@@ -54,6 +54,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 17:51  Afternoon: **Yanaka Ginza** (60 min), 44 min transit to get there [opening hours not known]
 - 19:39  Dinner: **Market Kitchen** (75 min), 18 min walk to get there
 
+*Travel from where you stay is not counted.*
+
 **Day 2, Tue 11 May, Tokyo**
 
 - 09:00  Breakfast: **Sunrise Cafe** (45 min)
@@ -121,6 +123,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 13:45  Time to wander around Corner Noodles (120 min)
 - 16:40  Afternoon: **Mori Art Museum** (120 min), 25 min transit to get there
 - 19:15  Dinner: **Market Kitchen** (75 min), 5 min walk to get there
+
+*Travel from where you stay is not counted.*
 
 **Day 2, Tue 11 May, Tokyo**
 
@@ -200,7 +204,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 - 12:05  Lunch: **Harbour Canteen** (75 min)
 - 13:20  Time to wander around Harbour Canteen (60 min)
 - 14:56  Afternoon: **Lisbon Botanical Garden** (60 min), 16 min transit to get there
-- 16:33  Already decided: Check in at Hotel Avenida
+- 16:33  Already decided: Check in at Hotel Avenida, 17 min transit to get there
 - 17:31  Late afternoon: **Lisbon Cathedral** (45 min), 8 min walk to get there
 - 18:40  Dinner: **Market Kitchen** (75 min), 4 min walk to get there
 - 19:55  Back to Hotel Avenida (12 min walk)
@@ -269,7 +273,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 - 12:05  Lunch: **Harbour Canteen** (75 min)
 - 13:20  Time to wander around Harbour Canteen (60 min)
 - 14:56  Afternoon: **Lisbon Botanical Garden** (60 min), 16 min transit to get there
-- 16:33  Already decided: Check in at Hotel Avenida
+- 16:33  Already decided: Check in at Hotel Avenida, 17 min transit to get there
 - 17:31  Late afternoon: **Lisbon Cathedral** (45 min), 8 min walk to get there
 - 18:40  Dinner: **Market Kitchen** (75 min), 4 min walk to get there
 - 19:55  Back to Hotel Avenida (12 min walk)
@@ -351,6 +355,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 16:31  Afternoon: **Rome Lookout** (30 min), 16 min transit to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 8 min walk to get there
 
+*Travel from where you stay is not counted.*
+
 **Day 2, Sun 6 Jun, Rome**
 
 - 10:00  Morning: **Rome Old Town** (60 min) [opening hours not known]
@@ -381,6 +387,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 16:30  Afternoon: **Florence Castle** (60 min), 15 min transit to get there
 - 19:00  Dinner: **Harbour Canteen** (75 min), 7 min walk to get there
 
+*Travel from where you stay is not counted.*
+
 **Day 6, Thu 10 Jun, Florence**
 
 - 10:00  Morning: **Florence Old Town** (60 min) [opening hours not known]
@@ -402,6 +410,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 13:45  Time to wander around Market Kitchen (120 min)
 - 16:35  Afternoon: **Venice Lookout** (30 min), 20 min walk to get there [opening hours not known]
 - 19:00  Dinner: **Corner Noodles** (75 min), 7 min walk to get there
+
+*Travel from where you stay is not counted.*
 
 **Day 9, Sun 13 Jun, Venice**
 
@@ -433,6 +443,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 16:32  Afternoon: **Rome Cathedral** (45 min), 17 min transit to get there
 - 19:00  Dinner: **Harbour Canteen** (75 min), 2 min walk to get there
 
+*Travel from where you stay is not counted.*
+
 **Day 2, Sun 6 Jun, Rome**
 
 - 10:00  Morning: **Rome Old Town** (60 min) [opening hours not known]
@@ -463,6 +475,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 16:38  Afternoon: **Florence Cathedral** (45 min), 23 min walk to get there
 - 19:00  Dinner: **Corner Noodles** (75 min), 1 min walk to get there
 
+*Travel from where you stay is not counted.*
+
 **Day 6, Thu 10 Jun, Florence**
 
 - 10:00  Morning: **Florence Castle** (60 min)
@@ -484,6 +498,8 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 - 13:45  Time to wander around Sunrise Cafe (120 min)
 - 16:31  Afternoon: **Venice Cathedral** (45 min), 16 min transit to get there
 - 19:00  Dinner: **Corner Noodles** (75 min), 2 min walk to get there
+
+*Travel from where you stay is not counted.*
 
 **Day 9, Sun 13 Jun, Venice**
 
@@ -528,6 +544,8 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 - 16:35  Late afternoon: **Rome Old Town** (60 min), 17 min walk to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
+*Travel from where you stay is not counted.*
+
 **Day 2, Sat 11 Sept, Rome**
 
 - 09:00  Morning: **Rome Central Market** (60 min)
@@ -568,6 +586,8 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 - 14:08  Afternoon: **Rome Art Gallery** (120 min), 15 min transit to get there
 - 16:35  Late afternoon: **Rome Old Town** (60 min), 17 min walk to get there [opening hours not known]
 - 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
+
+*Travel from where you stay is not counted.*
 
 **Day 2, Sat 11 Sept, Rome**
 
@@ -620,6 +640,8 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - 14:00  Afternoon: **Rome Castle** (60 min)
 - 16:00  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
 - 19:00  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+
+*Travel from where you stay is not counted.*
 
 **Day 2, Sat 19 Jun, Rome**
 
@@ -682,6 +704,8 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - 14:00  Afternoon: **Rome Castle** (60 min)
 - 16:00  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
 - 19:00  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+
+*Travel from where you stay is not counted.*
 
 **Day 2, Sat 19 Jun, Rome**
 

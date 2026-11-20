@@ -5,7 +5,7 @@ import type { Firmness, TripFacts } from "@/features/trips/contracts";
 import { CURRENCIES } from "@/lib/currency";
 
 import { CityPicker } from "./city-picker";
-import { field, quiet } from "./styles";
+import { fieldControl, fieldLabel, quiet } from "./styles";
 
 // The fields for a trip's facts (PRD 7.2), shared by the facts form on the
 // trip page and the steps of the trip brief.
@@ -24,8 +24,6 @@ const months = [
   "November",
   "December",
 ];
-const label = "block font-sans text-[13px] text-muted";
-const control = `${field} mt-1 block w-full`;
 
 const whole = (value: string) =>
   value === "" ? null : Number.parseInt(value, 10);
@@ -108,7 +106,7 @@ export function WhereFields({
                   {[city.region, city.country].filter(Boolean).join(", ")}
                 </span>
               </span>
-              <label className={`${label} w-20`}>
+              <label className={`${fieldLabel} w-20`}>
                 Nights
                 <input
                   type="number"
@@ -124,7 +122,7 @@ export function WhereFields({
                       ),
                     )
                   }
-                  className={control}
+                  className={fieldControl}
                 />
               </label>
               <span className="flex gap-x-4">
@@ -184,23 +182,23 @@ export function WhenFields({
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className={label}>
+        <label className={fieldLabel}>
           First day
           <input
             type="date"
             value={facts.startDate ?? ""}
             onChange={(event) => set({ startDate: event.target.value || null })}
-            className={control}
+            className={fieldControl}
           />
         </label>
-        <label className={label}>
+        <label className={fieldLabel}>
           Last day
           <input
             type="date"
             value={facts.endDate ?? ""}
             min={facts.startDate ?? undefined}
             onChange={(event) => set({ endDate: event.target.value || null })}
-            className={control}
+            className={fieldControl}
           />
         </label>
       </div>
@@ -208,7 +206,7 @@ export function WhenFields({
         No dates yet? A length and a rough time of year is enough to start.
       </p>
       <div className="mt-2 grid gap-3 sm:grid-cols-2">
-        <label className={label}>
+        <label className={fieldLabel}>
           About how many nights
           <input
             type="number"
@@ -218,15 +216,15 @@ export function WhenFields({
             onChange={(event) =>
               set({ lengthNights: whole(event.target.value) })
             }
-            className={control}
+            className={fieldControl}
           />
         </label>
-        <label className={label}>
+        <label className={fieldLabel}>
           Around which month
           <select
             value={facts.timeOfYear ?? ""}
             onChange={(event) => set({ timeOfYear: whole(event.target.value) })}
-            className={control}
+            className={fieldControl}
           >
             <option value="">Not sure yet</option>
             {months.map((month, index) => (
@@ -250,7 +248,7 @@ export function WhoFields({
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className={label}>
+        <label className={fieldLabel}>
           Adults
           <input
             type="number"
@@ -258,10 +256,10 @@ export function WhoFields({
             max={20}
             value={facts.adults ?? ""}
             onChange={(event) => set({ adults: whole(event.target.value) })}
-            className={control}
+            className={fieldControl}
           />
         </label>
-        <label className={label}>
+        <label className={fieldLabel}>
           Children
           <input
             type="number"
@@ -269,7 +267,7 @@ export function WhoFields({
             max={20}
             value={facts.children ?? ""}
             onChange={(event) => set({ children: whole(event.target.value) })}
-            className={control}
+            className={fieldControl}
           />
         </label>
       </div>
@@ -282,7 +280,7 @@ export function WhoFields({
 export function BudgetFields({ facts, set }: Fields) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <label className={label}>
+      <label className={fieldLabel}>
         Amount
         <input
           type="number"
@@ -295,10 +293,10 @@ export function BudgetFields({ facts, set }: Fields) {
                 event.target.value === "" ? null : Number(event.target.value),
             })
           }
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Currency
         <select
           value={facts.budgetCurrency ?? ""}
@@ -308,7 +306,7 @@ export function BudgetFields({ facts, set }: Fields) {
                 (event.target.value as TripFacts["budgetCurrency"]) || null,
             })
           }
-          className={control}
+          className={fieldControl}
         >
           <option value="">Choose</option>
           {CURRENCIES.map((currency) => (
@@ -316,7 +314,7 @@ export function BudgetFields({ facts, set }: Fields) {
           ))}
         </select>
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         That is
         <select
           value={facts.budgetBasis ?? ""}
@@ -326,7 +324,7 @@ export function BudgetFields({ facts, set }: Fields) {
                 (event.target.value as TripFacts["budgetBasis"]) || null,
             })
           }
-          className={control}
+          className={fieldControl}
         >
           <option value="">Choose</option>
           <option value="TRIP">for the whole trip</option>
@@ -348,14 +346,14 @@ export const PURPOSES = [
 export function PurposeField({ facts, set }: Fields) {
   return (
     <>
-      <label className={label}>
+      <label className={fieldLabel}>
         What is the trip for?
         <input
           list="trip-purposes"
           maxLength={120}
           value={facts.purpose ?? ""}
           onChange={(event) => set({ purpose: event.target.value || null })}
-          className={control}
+          className={fieldControl}
         />
       </label>
       <datalist id="trip-purposes">

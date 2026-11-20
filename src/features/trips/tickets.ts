@@ -1,4 +1,4 @@
-import type { TicketInput } from "./contracts";
+import { placeName, type CommitmentDto, type TicketInput } from "./contracts";
 
 export type TicketFacts = {
   startDate: string | null;
@@ -10,14 +10,6 @@ export type TicketFacts = {
 /** "Tokyo (HND)" and " tokyo " are the same place. */
 export function placeKey(place: string): string {
   return placeName(place).toLowerCase();
-}
-
-/** The place without an airport or station code in brackets. */
-export function placeName(place: string): string {
-  return place
-    .replace(/\([^)]*\)/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 const nightsBetween = (from: string, to: string) =>
@@ -73,4 +65,37 @@ const modeWord: Record<TicketInput["mode"], string> = {
 /** "Flight · New York (JFK) → Tokyo (HND)" */
 export function ticketTitle(ticket: Pick<TicketInput, "mode" | "from" | "to">) {
   return `${modeWord[ticket.mode]} · ${ticket.from} → ${ticket.to}`;
+}
+
+/**
+ * A ticket end saved with no zone takes the zone of a trip city of the same
+ * name when it is read. Nothing else is guessed.
+ */
+export function withCityZones(
+  commitments: CommitmentDto[],
+  cities: { name: string; timeZone: string | null }[],
+): CommitmentDto[] {
+  const zoneOf = (end: string, zone: string | null) =>
+    zone ??
+    cities.find((city) => city.name.toLowerCase() === placeKey(end))
+      ?.timeZone ??
+    null;
+  return commitments.map((commitment) =>
+    commitment.transport
+      ? {
+          ...commitment,
+          transport: {
+            ...commitment.transport,
+            originZone: zoneOf(
+              commitment.transport.origin,
+              commitment.transport.originZone,
+            ),
+            destinationZone: zoneOf(
+              commitment.transport.destination,
+              commitment.transport.destinationZone,
+            ),
+          },
+        }
+      : commitment,
+  );
 }

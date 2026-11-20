@@ -8,8 +8,10 @@ import {
   cityKey,
   foodScope,
   type FoundPlace,
+  type Gathered,
   type PlaceSource,
   type Point,
+  type Reach,
 } from "./place-source";
 import { hoursDoubt } from "./opening-hours";
 import { distanceKm } from "./travel";
@@ -30,7 +32,37 @@ export const QUERY_VERSION = { sights: 2, food: 3 } as const;
 
 type PlaceRow = Prisma.PlaceGetPayload<object>;
 
-function toDto(row: PlaceRow): PlaceDto {
+/** The saved tags with string values only: the column can hold any JSON. */
+function savedTags(json: Prisma.JsonValue): Record<string, string> {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
+  return Object.fromEntries(
+    Object.entries(json).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
+}
+
+const todayUtc = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * One server log line for a request that ends as "unavailable": the error's
+ * Prisma and Postgres codes and its message, never what the traveller typed.
+ */
+function logFailure(error: unknown): void {
+  const { message, code, meta } = (error ?? {}) as {
+    message?: unknown;
+    code?: unknown;
+    meta?: { code?: unknown };
+  };
+  const codes = [code, meta?.code].filter(Boolean).join(" ");
+  const text = String(message ?? error)
+    .replace(/\s+/g, " ")
+    .slice(0, 300);
+  console.error(`[places] ${codes ? `${codes} ` : ""}${text}`);
+}
+
+/** `today` is read once by the caller, so every row of one answer is judged on the same day. */
+function toDto(row: PlaceRow, today: string): PlaceDto {
   const dto = {
     id: row.id,
     origin: row.origin,
@@ -47,13 +79,13 @@ function toDto(row: PlaceRow): PlaceDto {
     serves: row.serves,
     servesNot: row.servesNot,
     originRef: row.originRef,
-    tags: (row.osmTags ?? {}) as Record<string, string>,
+    tags: savedTags(row.osmTags),
     lastEditedAt: row.lastEditedAt?.toISOString() ?? null,
     fetchedAt: row.fetchedAt?.toISOString() ?? null,
   };
   return {
     ...dto,
-    hoursDoubt: hoursDoubt(dto, new Date().toISOString().slice(0, 10)),
+    hoursDoubt: hoursDoubt(dto, today),
   };
 }
 
@@ -80,7 +112,8 @@ export async function withinCap(
 
 // One insert for all places. A refetch updates in place, so the id stays and
 // plans that point at it stay valid. A name search only adds new places: its
-// thinner data must not overwrite what a full fetch saved.
+// thinner data must not overwrite what a full fetch saved, nor bring back a
+// place a refresh found gone. Only a refresh that returns it again does.
 async function save(
   source: PlaceSource,
   key: string,
@@ -100,10 +133,54 @@ async function save(
   "name" = EXCLUDED."name", "kind" = EXCLUDED."kind", "latitude" = EXCLUDED."latitude", "longitude" = EXCLUDED."longitude",
   "address" = EXCLUDED."address", "opening_hours" = EXCLUDED."opening_hours", "notable" = EXCLUDED."notable",
   "serves" = EXCLUDED."serves", "serves_not" = EXCLUDED."serves_not", "osm_tags" = EXCLUDED."osm_tags",
-  "last_edited_at" = EXCLUDED."last_edited_at", "fetched_at" = EXCLUDED."fetched_at", "updated_at" = EXCLUDED."updated_at"`;
+  "last_edited_at" = EXCLUDED."last_edited_at", "fetched_at" = EXCLUDED."fetched_at", "updated_at" = EXCLUDED."updated_at", "gone_at" = NULL`;
   await db.$executeRaw`INSERT INTO "places" ("origin", "origin_ref", "city_key", "name", "kind", "latitude", "longitude", "address", "opening_hours", "notable", "serves", "serves_not", "osm_tags", "last_edited_at", "fetched_at", "updated_at")
 VALUES ${Prisma.join(rows)}
 ${conflict}`;
+}
+
+/**
+ * A refresh marks gone each saved place it asks for, inside its circle, that
+ * it no longer returned. A gone place is never offered on a card again; a plan
+ * that holds it keeps it, since getPlaces still reads it.
+ */
+async function markGone(
+  source: PlaceSource,
+  key: string,
+  found: FoundPlace[],
+  reach: Reach,
+): Promise<void> {
+  const returned = new Set(found.map((place) => place.originRef));
+  const saved = await db.place.findMany({
+    where: { origin: source.origin, cityKey: key, goneAt: null },
+    select: {
+      id: true,
+      originRef: true,
+      latitude: true,
+      longitude: true,
+      osmTags: true,
+    },
+  });
+  const gone = saved.filter(
+    (place) =>
+      place.originRef !== null &&
+      !returned.has(place.originRef) &&
+      place.latitude !== null &&
+      place.longitude !== null &&
+      // Overpass measures a way's outline and only its centre is saved: a margin.
+      distanceKm(reach.centre, {
+        latitude: Number(place.latitude),
+        longitude: Number(place.longitude),
+      }) *
+        1000 <=
+        reach.radiusM * 0.9 &&
+      reach.asks(savedTags(place.osmTags)),
+  );
+  if (gone.length === 0) return;
+  await db.place.updateMany({
+    where: { id: { in: gone.map((place) => place.id) } },
+    data: { goneAt: new Date() },
+  });
 }
 
 /**
@@ -116,7 +193,7 @@ async function gather(
   city: City,
   scope: keyof typeof QUERY_VERSION,
   detail: string,
-  request: (source: PlaceSource, city: City & Point) => Promise<FoundPlace[]>,
+  request: (source: PlaceSource, city: City & Point) => Promise<Gathered>,
 ): Promise<GatherOutcome> {
   const source = activeSource();
   const key = cityKey(city);
@@ -143,15 +220,18 @@ async function gather(
   }
 
   try {
-    const found = await request(source, where);
+    const { places: found, reach } = await request(source, where);
     await save(source, key, found, "update");
+    // Only a refresh: a first fetch, also after a query change, proves nothing.
+    if (done && reach) await markGone(source, key, found, reach);
     await db.placeFetch.upsert({
       where: { cityKey_scope: fetchKey },
       create: { ...fetchKey, placeCount: found.length },
       update: { placeCount: found.length, fetchedAt: new Date() },
     });
     return { status: "ready" };
-  } catch {
+  } catch (error) {
+    logFailure(error);
     return { status: "unavailable" };
   }
 }
@@ -174,10 +254,11 @@ export function gatherFoodNear(
   );
 }
 
-/** Rows the traveller may see: the active provider's, and their own. */
+/** Rows the traveller may be offered: the active provider's, and their own; never a gone place. */
 function visible(key: string, userId: string): Prisma.PlaceWhereInput {
   return {
     cityKey: key,
+    goneAt: null,
     OR: [
       { origin: activeSource().origin },
       { origin: "USER", addedByUserId: userId },
@@ -197,7 +278,8 @@ export async function listSights(
     },
     orderBy: { id: "asc" },
   });
-  return rows.map(toDto);
+  const today = todayUtc();
+  return rows.map((row) => toDto(row, today));
 }
 
 /** The saved places to eat within walking distance of a point, in a fixed order. */
@@ -213,15 +295,18 @@ export async function listFoodNear(
     },
     orderBy: { id: "asc" },
   });
-  return rows.map(toDto).filter(
-    (place) =>
-      place.latitude === null ||
-      place.longitude === null ||
-      distanceKm(point, {
-        latitude: place.latitude,
-        longitude: place.longitude,
-      }) <= FOOD_REACH_KM,
-  );
+  const today = todayUtc();
+  return rows
+    .map((row) => toDto(row, today))
+    .filter(
+      (place) =>
+        place.latitude === null ||
+        place.longitude === null ||
+        distanceKm(point, {
+          latitude: place.latitude,
+          longitude: place.longitude,
+        }) <= FOOD_REACH_KM,
+    );
 }
 
 /** Saved places by id. A traveller's own place is returned only to them. */
@@ -236,7 +321,8 @@ export async function getPlaces(
       OR: [{ origin: { not: "USER" } }, { addedByUserId: userId }],
     },
   });
-  return rows.map(toDto);
+  const today = todayUtc();
+  return rows.map((row) => toDto(row, today));
 }
 
 export type PlaceSearchOutcome =
@@ -269,11 +355,14 @@ export async function findPlacesByName(
       where: {
         origin: source.origin,
         originRef: { in: found.map((place) => place.originRef) },
+        goneAt: null,
       },
       orderBy: { id: "asc" },
     });
-    return { status: "ok", places: rows.map(toDto) };
-  } catch {
+    const today = todayUtc();
+    return { status: "ok", places: rows.map((row) => toDto(row, today)) };
+  } catch (error) {
+    logFailure(error);
     return { status: "unavailable" };
   }
 }
@@ -296,5 +385,5 @@ export async function addOwnPlace(
       addedByUserId: userId,
     },
   });
-  return toDto(row);
+  return toDto(row, todayUtc());
 }

@@ -61,7 +61,7 @@ A shared transaction is the part that needs rework when a service moves out (ADR
 | `src/use-cases/build.ts`         | Trips, Itinerary, Conversation         | One day of a Quick plan build: the check that the trip may be changed, the new plan version, the build's progress and the ledger entry. The day is worked out before the transaction, because it reads places and may ask the place provider.             |
 | `src/use-cases/planning-mode.ts` | Trips, Memory, Conversation            | A change of the way a trip is planned: the trip's mode, and the words of the brief's "anything else" box put into the thread when the traveller turns to the conversation.                                                                                |
 
-`src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip.
+`src/use-cases/start-trip.ts` spans Places and Trips without a shared transaction: it looks the cities up first and then saves the trip. `src/use-cases/update-commitment.ts` does the same for a ticket saved again: it looks up an end whose zone is still unknown first, and then saves the change through `trip-action.ts`. Both find a zone with `src/use-cases/ticket-zones.ts`.
 
 The replay ledger (`src/features/planning/mutation.ts`, Conversation) reads and moves a trip's revision inside its own transaction through the Trips service's `tripForAction` and `advanceTripRevision`. That is the revision check every row above names.
 

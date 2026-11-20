@@ -267,6 +267,8 @@ model Place {
   lastEditedAt  DateTime?   @map("last_edited_at")
   /// When this row was last fetched. Null: fetched before provenance was kept.
   fetchedAt     DateTime?   @map("fetched_at")
+  /// When a refresh that asks for it stopped returning it. Never offered on a card again; plans keep it.
+  goneAt        DateTime?   @map("gone_at")
   /// The traveller who entered it. Set only when origin is USER.
   addedByUserId String?     @map("added_by_user_id")
   createdAt     DateTime    @default(now()) @map("created_at")

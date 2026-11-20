@@ -7,7 +7,8 @@ export {
   type CommitmentsResult,
 } from "./commitment-store";
 export { advanceTripRevision, tripForAction } from "./revision";
-export { factsFromTickets, placeKey, placeName } from "./tickets";
+export { placeName } from "./contracts";
+export { factsFromTickets, placeKey } from "./tickets";
 export { findEditable, type Refused } from "./trip-access";
 export { todayIn } from "./trip-state";
 export {

@@ -10,10 +10,7 @@ import {
 import type { Located } from "@/features/trips/contracts";
 import { callApi } from "@/lib/trip-api";
 
-import { buttonSecond, field, quiet } from "./styles";
-
-const label = "block font-sans text-[13px] text-muted";
-const control = `${field} mt-1 block w-full`;
+import { buttonSecond, fieldControl, fieldLabel, quiet } from "./styles";
 
 /**
  * Where a stay is, found by address and confirmed by the traveller. It looks
@@ -59,8 +56,14 @@ export function StayAddress({
     setFound([]);
     setStatus("Looking up the address…");
     const result = await callApi<{ addresses: FoundAddress[] }>(
-      `/api/v1/places/addresses?q=${encodeURIComponent(query)}&near=${city.latitude},${city.longitude}`,
-      { method: "GET" },
+      "/api/v1/places/addresses",
+      {
+        method: "POST",
+        body: {
+          query,
+          near: { latitude: city.latitude, longitude: city.longitude },
+        },
+      },
     );
     setSearching(false);
     if (!result.ok) {
@@ -115,12 +118,12 @@ export function StayAddress({
     <div>
       <div className="flex flex-wrap items-end gap-2">
         {cities.length > 1 && (
-          <label className={`${label} min-w-0 basis-full`}>
+          <label className={`${fieldLabel} min-w-0 basis-full`}>
             City of the stay
             <select
               value={cityIndex}
               onChange={(event) => setCityIndex(Number(event.target.value))}
-              className={control}
+              className={fieldControl}
             >
               {cities.map((option, index) => (
                 <option key={cityLabel(option)} value={index}>
@@ -130,7 +133,7 @@ export function StayAddress({
             </select>
           </label>
         )}
-        <label className={`${label} min-w-0 flex-1`}>
+        <label className={`${fieldLabel} min-w-0 flex-1`}>
           Address · optional
           <input
             ref={input}
@@ -143,7 +146,7 @@ export function StayAddress({
               event.preventDefault();
               search();
             }}
-            className={control}
+            className={fieldControl}
           />
         </label>
         <button

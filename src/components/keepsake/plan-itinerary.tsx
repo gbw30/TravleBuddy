@@ -8,7 +8,7 @@ import {
 import type { CardDto } from "@/features/recommendations/contracts";
 
 import { DayStamp } from "./day-stamp";
-import { dayLabel } from "./format";
+import { dayLabel, shortDayLabel } from "./format";
 import { ItineraryRow } from "./itinerary-row";
 import { MoveMenu } from "./move-menu";
 import { eyebrow, field, quiet } from "./styles";
@@ -60,6 +60,7 @@ const hours = (minutes: number) =>
     ? `${minutes} min`
     : `${Math.round((minutes / 60) * 2) / 2} h`.replace(".5", "½");
 
+// An allowance is a planner's round figure, so a whole hour reads "1 h", not "60 min".
 const allowed = (minutes: number) =>
   minutes % 60 === 0 ? `${minutes / 60} h` : hours(minutes);
 
@@ -141,7 +142,7 @@ export function PlanItinerary({
                           ? [
                               `Leaves ${entry.start} ${entry.ticket.from} time`,
                               entry.ticket.arrives &&
-                                `arrives ${entry.ticket.arrives} ${entry.ticket.to} time`,
+                                `arrives ${entry.ticket.arrivesOn ? `${shortDayLabel(entry.ticket.arrivesOn)} ` : ""}${entry.ticket.arrives} ${entry.ticket.to} time`,
                               entry.minutes
                                 ? hours(entry.minutes)
                                 : "length unknown",
@@ -401,6 +402,11 @@ export function PlanItinerary({
           {day.stayNote && (
             <p className="mt-3 font-sans text-[13px] leading-6 text-muted">
               {day.stayNote}
+            </p>
+          )}
+          {day.returnNote && (
+            <p className="mt-3 font-sans text-[13px] leading-6 text-muted">
+              {day.returnNote}
             </p>
           )}
         </section>

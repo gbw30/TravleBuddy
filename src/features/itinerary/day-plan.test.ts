@@ -490,6 +490,73 @@ describe("a picked place", () => {
     expect(dinner.flags.map((flag) => flag.rule)).toContain("day");
   });
 
+  describe("on a last day that ends at the way to a 18:00 flight", () => {
+    const flight = commitment({
+      id: "t",
+      kind: "TRANSPORT",
+      title: "Flight",
+      date: "2027-05-12",
+      startTime: "18:00",
+      endDate: "2027-05-12",
+      endTime: "21:00",
+    });
+    const lastDay = (pace: Pace, picks: PlanState["picks"]) =>
+      buildPlanView(
+        state({ pace, picks }),
+        context({ places, commitments: [flight] }),
+      ).days[2].entries;
+
+    it("flags the last pick that leaves an open slot no time before the day ends", () => {
+      // 10:45 to 15:05 leaves lunch to start at 15:05, with 16:00 the end.
+      const day3 = lastDay("packed", {
+        "d3-morning": pick("shrine"),
+        "d3-morning-2": pick("museum", 260),
+      });
+      const [first, last] = found(day3, "place");
+      expect(first.flags.filter((flag) => flag.rule === "day")).toEqual([]);
+      expect(last.flags.filter((flag) => flag.rule === "day")).toEqual([
+        {
+          rule: "day",
+          message: "Leaves no time for lunch before 16:00.",
+          fix: "Move it earlier or shorten the visit.",
+        },
+      ]);
+    });
+
+    it("does not flag a pick when the slot had no time without it", () => {
+      // At a relaxed pace, time to wander already runs up to the way to the flight.
+      const day3 = lastDay("relaxed", { "d3-morning": pick("museum") });
+      expect(found(day3, "place")[0].flags).toEqual([]);
+    });
+  });
+
+  it("flags the last pick when an open slot no longer fits before a booking", () => {
+    // Lunch is pushed to 13:25 and takes until 14:40; the afternoon needs an hour before 15:00.
+    const view = buildPlanView(
+      state({
+        pace: "packed",
+        picks: { "d2-morning-2": pick("museum", 160) },
+      }),
+      context({
+        places,
+        commitments: [
+          commitment({
+            date: "2027-05-11",
+            startTime: "15:00",
+            endTime: "16:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[1].entries, "place")[0].flags).toEqual([
+      {
+        rule: "day",
+        message: "Leaves no time for the afternoon before 15:00.",
+        fix: "Move it earlier or shorten the visit.",
+      },
+    ]);
+  });
+
   it("shows no travel time to or from a place with no known position", () => {
     const view = buildPlanView(
       state({
@@ -1009,6 +1076,28 @@ describe("breakfast", () => {
     );
   });
 
+  it("still gives the included row after a ticket that lands by three in the morning", () => {
+    const landing = (endTime: string) =>
+      kinds(
+        withBreakfast("included", {
+          commitments: [
+            commitment({
+              id: "t",
+              kind: "TRANSPORT",
+              title: "Late flight",
+              date: "2027-05-10",
+              startTime: "21:00",
+              endDate: "2027-05-11",
+              endTime,
+            }),
+          ],
+        }).days[1].entries,
+      );
+    expect(landing("00:30")).toContain("breakfast-at-stay");
+    expect(landing("03:00")).toContain("breakfast-at-stay");
+    expect(landing("03:01")).not.toContain("breakfast-at-stay");
+  });
+
   it("gives neither when there is none or it is not said", () => {
     for (const breakfast of ["none", undefined] as const) {
       const view = withBreakfast(breakfast);
@@ -1229,6 +1318,37 @@ describe("the time allowed at an airport or station", () => {
     expect(found(assumed.days[2].entries, "allowance")).toEqual([]);
   });
 
+  it("names the date a ticket lands on when it is not the date it leaves", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        commitments: [
+          ticket({
+            date: "2027-05-10",
+            startTime: "22:00",
+            endDate: "2027-05-11",
+            endTime: "06:00",
+          }),
+          ticket({
+            id: "home",
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "21:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[0].entries, "commitment")[0].ticket).toMatchObject({
+      arrives: "06:00",
+      arrivesOn: "2027-05-11",
+    });
+    expect(found(view.days[2].entries, "commitment")[0].ticket).toMatchObject({
+      arrives: "21:00",
+      arrivesOn: null,
+    });
+  });
+
   it("shows 60 minutes after a night flight lands today", () => {
     const view = buildPlanView(
       state(),
@@ -1311,6 +1431,31 @@ describe("the time allowed at an airport or station", () => {
     expect(kinds(landing("12:00"))).toContain("lunch");
   });
 
+  it("keeps a meal whose part of the day starts an hour after it, and drops it a minute later", () => {
+    const landing = (endTime: string) =>
+      kinds(
+        buildPlanView(
+          state(),
+          context({
+            commitments: [
+              ticket({
+                date: "2027-05-10",
+                startTime: "06:00",
+                endDate: "2027-05-10",
+                endTime,
+              }),
+            ],
+          }),
+        ).days[0].entries,
+      );
+    // Lunch is at 12:30: a landing at 12:30 starts the day at 13:30.
+    expect(landing("12:30")).toContain("lunch");
+    expect(landing("12:31")).not.toContain("lunch");
+    // Dinner is at 19:00: a landing at 19:00 starts the evening at 20:00.
+    expect(landing("19:00")).toContain("dinner");
+    expect(landing("19:01")).not.toContain("dinner");
+  });
+
   it("keeps the flight allowance for a ticket with no details, and never calls it a flight", () => {
     const view = buildPlanView(
       state(),
@@ -1383,6 +1528,75 @@ describe("the time allowed at an airport or station", () => {
     ).toHaveLength(1);
   });
 
+  it("shows a row after each landing on a later day: a night flight's and the city change's", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: acrossCities,
+        commitments: [
+          ticket({
+            id: "night",
+            date: "2027-05-11",
+            startTime: "22:00",
+            endDate: "2027-05-12",
+            endTime: "05:00",
+          }),
+          train(),
+        ],
+      }),
+    );
+    expect(
+      found(view.days[2].entries, "allowance")
+        .filter((a) => a.way === "from")
+        .map((a) => `${a.start} ${a.mode} ${a.minutes}`),
+    ).toEqual(["05:00 FLIGHT 60", "12:45 TRAIN 20"]);
+  });
+
+  it("keeps a night flight's row in the morning's city when the city change crosses the date line", () => {
+    const honolulu = {
+      ...kyoto,
+      name: "Honolulu",
+      country: "United States",
+      timeZone: "Pacific/Honolulu",
+    };
+    const entries = buildPlanView(
+      state(),
+      context({
+        facts: {
+          ...acrossCities,
+          cities: [
+            { city: tokyo, nights: 2 },
+            { city: honolulu, nights: 1 },
+          ],
+        },
+        commitments: [
+          ticket({
+            id: "night",
+            date: "2027-05-11",
+            startTime: "20:00",
+            endDate: "2027-05-12",
+            endTime: "07:00",
+          }),
+          ticket({
+            id: "east",
+            date: "2027-05-12",
+            startTime: "18:00",
+            endDate: "2027-05-12",
+            endTime: "06:30",
+          }),
+        ],
+      }),
+    ).days[2].entries;
+    const nightRow = entries.findIndex(
+      (e) => e.type === "allowance" && e.start === "07:00",
+    );
+    const east = entries.findIndex(
+      (e) => e.type === "commitment" && e.commitmentId === "east",
+    );
+    expect(nightRow).toBeGreaterThanOrEqual(0);
+    expect(nightRow).toBeLessThan(east);
+  });
+
   it("shows a flight in the small hours with the time that is really before it", () => {
     const view = buildPlanView(
       state(),
@@ -1435,6 +1649,69 @@ describe("the time allowed at an airport or station", () => {
       start: "00:00",
       minutes: 60,
     });
+  });
+});
+
+describe("a first day that starts with a flight across the date line", () => {
+  const honolulu = {
+    name: "Honolulu",
+    region: null,
+    country: "United States",
+    latitude: 21.3069,
+    longitude: -157.8583,
+    timeZone: "Pacific/Honolulu",
+  };
+  // It leaves Tokyo at 18:00 on 10 May and lands in Honolulu at 06:30 the same date.
+  const flight = commitment({
+    id: "t",
+    kind: "TRANSPORT",
+    title: "Flight to Honolulu",
+    date: "2027-05-10",
+    startTime: "18:00",
+    endDate: "2027-05-10",
+    endTime: "06:30",
+    transport: {
+      mode: "FLIGHT",
+      origin: "Tokyo",
+      destination: "Honolulu",
+      originZone: "Asia/Tokyo",
+      destinationZone: "Pacific/Honolulu",
+    },
+  });
+  const beach = place("beach", {
+    cityKey: "honolulu|united states",
+    latitude: 21.27,
+    longitude: -157.82,
+    openingHours: "Mo-Su 06:00-23:00",
+  });
+
+  it("lists the ticket first, before the time out of the airport, and never as a later step", () => {
+    const day1 = buildPlanView(
+      state({
+        picks: { "d1-afternoon-2": { placeId: "beach", minutes: 150 } },
+      }),
+      context({
+        facts: {
+          cities: [{ city: honolulu, nights: 2 }],
+          startDate: "2027-05-10",
+          endDate: null,
+          lengthNights: null,
+          timeOfYear: null,
+        },
+        commitments: [flight],
+        places: { beach },
+      }),
+    ).days[0].entries;
+    expect(day1.slice(0, 2)).toMatchObject([
+      { type: "commitment", commitmentId: "t", start: "18:00" },
+      { type: "allowance", way: "from", start: "06:30" },
+    ]);
+    // 16:00 to 18:30 runs past 18:00 by the clock, but the flight is long over.
+    expect(found(day1, "place")[0]).toMatchObject({
+      start: "16:00",
+      flags: [],
+    });
+    expect(day1.at(-1)).toMatchObject({ type: "open", kind: "dinner" });
   });
 });
 
@@ -1525,11 +1802,89 @@ describe("where you stay", () => {
     });
   });
 
-  it("adds no way back while an open slot still follows the last place, so the row is never out of time order", () => {
-    const view = placed(pick("d2-morning"));
-    const entries = view.days[1].entries;
-    expect(kinds(entries)).not.toContain("return");
-    expect(kinds(entries).at(-1)).toBe("dinner");
+  it("lists no way back, and says it is not counted, when an open slot follows the last place", () => {
+    const view = placed({ "d2-morning": { placeId: "m", minutes: 60 } });
+    expect(kinds(view.days[1].entries)).not.toContain("return");
+    expect(view.days[1].returnNote).toBe("The way back from m is not counted.");
+  });
+
+  it("lists the way back right after the last place when a booking follows, only if it ends before the booking with the pace buffer", () => {
+    const day = (startTime: string) =>
+      placed(pick("d2-afternoon-2"), {
+        commitments: [
+          stay(),
+          commitment({
+            id: "dinner",
+            date: "2027-05-11",
+            startTime,
+            endTime: "21:30",
+          }),
+        ],
+      }).days[1];
+    const visit = placeOf(day("20:30").entries, "d2-afternoon-2");
+    const end = toMinutes(visit.start) + visit.minutes;
+    const back = toMuseum();
+    // Balanced pace: 20 minutes of buffer.
+    const fits = day(toClock(end + back.minutes + 20));
+    const at = fits.entries.indexOf(placeOf(fits.entries, "d2-afternoon-2"));
+    expect(fits.entries[at + 1]).toEqual({
+      type: "return",
+      stay: "Hotel Aurora",
+      start: toClock(end),
+      travel: { means: back.means, minutes: back.minutes },
+    });
+    expect(fits.entries[at + 2]).toMatchObject({ commitmentId: "dinner" });
+    expect(fits.returnNote).toBeNull();
+
+    const tight = day(toClock(end + back.minutes + 19));
+    expect(kinds(tight.entries)).not.toContain("return");
+    expect(tight.returnNote).toBe("The way back from m is not counted.");
+  });
+
+  it("says the way back is not counted from a last place with no position, wherever it falls in the day", () => {
+    const nowhere = place("n", {
+      name: "Pop-up Stall",
+      latitude: null,
+      longitude: null,
+    });
+    for (const slot of ["d2-morning", "d2-dinner"]) {
+      const view = placed(
+        { [slot]: { placeId: "n", minutes: 60 } },
+        { places: { m: museum, n: nowhere } },
+      );
+      expect(kinds(view.days[1].entries), slot).not.toContain("return");
+      expect(view.days[1].returnNote, slot).toBe(
+        "The way back from Pop-up Stall is not counted.",
+      );
+    }
+  });
+
+  it("says the way back is not counted when a booking follows the last place too soon", () => {
+    const view = placed(pick("d2-afternoon-2"), {
+      places: { m: place("m", { name: "Ueno Museum" }) },
+      commitments: [
+        stay(),
+        commitment({
+          id: "dinner",
+          date: "2027-05-11",
+          startTime: "18:05",
+          endTime: "19:30",
+        }),
+      ],
+    });
+    const day2 = view.days[1];
+    expect(kinds(day2.entries)).not.toContain("return");
+    expect(day2.entries.at(-1)).toMatchObject({ commitmentId: "dinner" });
+    expect(day2.returnNote).toBe(
+      "The way back from Ueno Museum is not counted.",
+    );
+  });
+
+  it("says it for an open slot that starts as the last place ends, and nothing when the last place ends the day", () => {
+    const open = placed(pick("d2-afternoon"));
+    expect(kinds(open.days[1].entries)).not.toContain("return");
+    expect(open.days[1].returnNote).toBe("The way back from m is not counted.");
+    expect(placed(pick("d2-dinner")).days[1].returnNote).toBeNull();
   });
 
   it("flags the last place when the way back ends after the day", () => {
@@ -1557,6 +1912,26 @@ describe("where you stay", () => {
     ).not.toContain("day");
   });
 
+  it("counts the pace buffer in the way back", () => {
+    // Dinner from 19:00 and the way back end ten minutes before 21:30; the
+    // buffer of 20 takes them past it.
+    const minutes = 150 - toMuseum().minutes - 10;
+    const view = placed(
+      { "d2-dinner": { placeId: "r", minutes } },
+      {
+        places: { r: place("r", { kind: "restaurant", openingHours: null }) },
+      },
+    );
+    const dinner = placeOf(view.days[1].entries, "d2-dinner");
+    expect(dinner.start).toBe("19:00");
+    expect(dinner.flags).toContainEqual({
+      rule: "day",
+      message:
+        "The way back to Hotel Aurora ends at 21:40, after the day does.",
+      fix: "Move it earlier or shorten the visit.",
+    });
+  });
+
   it("does not flag a place before the check-in, and lays the check-in after the place, its leg and the time it takes", () => {
     const view = placed(
       { "d1-afternoon": { placeId: "m", minutes: 30 } },
@@ -1581,6 +1956,29 @@ describe("where you stay", () => {
     expect(toMinutes(checkIn.start!)).toBeGreaterThanOrEqual(
       Math.max(900, toMinutes(visit.start) + visit.minutes + back.minutes + 20),
     );
+  });
+
+  it("lays the check-in after a booking it would run into", () => {
+    const view = placed(
+      {},
+      {
+        commitments: [
+          stay({ startTime: "15:00" }),
+          commitment({
+            id: "tea",
+            title: "Tea ceremony",
+            date: "2027-05-10",
+            startTime: "15:15",
+            endTime: "16:00",
+          }),
+        ],
+      },
+    );
+    expect(
+      found(view.days[0].entries, "commitment").map(
+        (entry) => `${entry.start} ${entry.title}`,
+      ),
+    ).toEqual(["15:15 Tea ceremony", "16:00 Check in at Hotel Aurora"]);
   });
 
   it("says a missing stay once on the first day of a run, and again for another city", () => {
@@ -1638,6 +2036,24 @@ describe("where you stay", () => {
       null,
       "Travel from where you stay is not counted.",
     ]);
+  });
+
+  it("gives the note for the stay that is not confirmed when the other one is", () => {
+    const view = placed(pick("d2-morning"), {
+      commitments: [
+        stay({ endDate: "2027-05-11" }),
+        stay({
+          id: "s2",
+          title: "Ryokan",
+          date: "2027-05-11",
+          endDate: "2027-05-12",
+          located: null,
+        }),
+      ],
+    });
+    expect(view.days[1].stayNote).toBe(
+      "Travel from where you stay is not counted. Add its address.",
+    );
   });
 
   it("keeps the stay's own title when it has no check-in time or no position", () => {

@@ -121,8 +121,8 @@ export function isOpenFor(
 /** Hours last judged on the map more than this many months ago are in doubt. */
 export const STALE_MONTHS = 12;
 
-/** `YYYY-MM-DD`, or `YYYY-MM` for the first of that month; an edit time adds its clock. */
-const DATE = /^\d{4}-\d{2}(-\d{2})?(?=T|$)/;
+/** `YYYY-MM-DD`, or `YYYY-MM` for the first of that month, at the start of the value: an edit time, a time or a second date may follow. */
+const DATE = /^\d{4}-\d{2}(-\d{2})?(?!\d)/;
 
 /**
  * A quiet line for hours that may not be true, or null when there is no
@@ -157,9 +157,13 @@ export function hoursDoubt(
     : null;
 }
 
-/** `today` moved back STALE_MONTHS months, as `YYYY-MM-DD`. */
+/** `today` moved back STALE_MONTHS months, as `YYYY-MM-DD`. A day the month lacks, such as 29 February, becomes its last day. */
 function monthsAgo(today: string): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCMonth(date.getUTCMonth() - STALE_MONTHS);
-  return date.toISOString().slice(0, 10);
+  const [year, month, day] = today.split("-").map(Number);
+  const back = new Date(Date.UTC(year, month - 1 - STALE_MONTHS, 1));
+  const last = new Date(
+    Date.UTC(back.getUTCFullYear(), back.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  back.setUTCDate(Math.min(day, last));
+  return back.toISOString().slice(0, 10);
 }

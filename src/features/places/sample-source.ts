@@ -144,8 +144,9 @@ function foodNear(point: Point): FoundPlace[] {
 export const sampleSource: PlaceSource = {
   origin: "SAMPLE",
   metered: false,
-  sights: async (city) => sights(city),
-  foodNear: async (_city, point) => foodNear(point),
+  // Sample places never change, so none is ever gone: no reach.
+  sights: async (city) => ({ places: sights(city), reach: null }),
+  foodNear: async (_city, point) => ({ places: foodNear(point), reach: null }),
   byName: async (city, text) =>
     sights(city).filter((entry) =>
       entry.name.toLowerCase().includes(text.trim().toLowerCase()),

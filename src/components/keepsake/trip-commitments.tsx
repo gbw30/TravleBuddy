@@ -16,7 +16,14 @@ import { changeTrip } from "@/lib/trip-api";
 
 import { dayLabel } from "./format";
 import { StayAddress } from "./stay-address";
-import { button, buttonSecond, eyebrow, field, quiet } from "./styles";
+import {
+  button,
+  buttonSecond,
+  eyebrow,
+  fieldControl,
+  fieldLabel,
+  quiet,
+} from "./styles";
 import { TicketStub } from "./ticket-stub";
 
 const kindWord: Record<CommitmentKind, string> = {
@@ -26,8 +33,6 @@ const kindWord: Record<CommitmentKind, string> = {
   MUST_SEE: "Must-see",
   OTHER: "Other",
 };
-const label = "block font-sans text-[13px] text-muted";
-const control = `${field} mt-1 block w-full`;
 
 type Saved = { commitments: CommitmentDto[]; clashes: Clash[] };
 
@@ -79,23 +84,23 @@ function CommitmentForm({
       }}
       className="mt-3 grid gap-3 sm:grid-cols-2"
     >
-      <label className={`${label} sm:col-span-2`}>
+      <label className={`${fieldLabel} sm:col-span-2`}>
         What
         <input
           name="title"
           required
           maxLength={160}
           defaultValue={commitment?.title}
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Kind
         <select
           name="kind"
           defaultValue={initialKind}
           onChange={(event) => setKind(event.target.value as CommitmentKind)}
-          className={control}
+          className={fieldControl}
         >
           {COMMITMENT_KINDS.map((kind) => (
             <option key={kind} value={kind}>
@@ -104,58 +109,58 @@ function CommitmentForm({
           ))}
         </select>
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Date
         <input
           name="date"
           type="date"
           defaultValue={commitment?.date ?? ""}
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Starts at · optional
         <input
           name="startTime"
           type="time"
           defaultValue={commitment?.startTime ?? ""}
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Ends at · optional
         <input
           name="endTime"
           type="time"
           defaultValue={commitment?.endTime ?? ""}
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Ends on another day · optional
         <input
           name="endDate"
           type="date"
           defaultValue={commitment?.endDate ?? ""}
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={label}>
+      <label className={fieldLabel}>
         Booking reference · optional
         <input
           name="reference"
           maxLength={80}
           defaultValue={commitment?.reference ?? ""}
-          className={control}
+          className={fieldControl}
         />
       </label>
-      <label className={`${label} sm:col-span-2`}>
+      <label className={`${fieldLabel} sm:col-span-2`}>
         Note · optional
         <input
           name="note"
           maxLength={500}
           defaultValue={commitment?.note ?? ""}
-          className={control}
+          className={fieldControl}
         />
       </label>
       {kind === "STAY" && (

@@ -20,6 +20,9 @@ export const quietLarge = `${quietBase} min-h-11 text-[15px]`;
 const fieldBase = `rounded-[10px] border border-ink/30 bg-white font-sans text-ink transition-[border-color,box-shadow] ${settle} placeholder:text-muted hover:border-ink/60 focus-visible:border-ink focus-visible:shadow-[0_0_0_4px_rgb(164_80_44/0.18)] focus-visible:outline-none`;
 export const field = `${fieldBase} px-2.5 py-1.5 text-[13px]`;
 export const fieldLarge = `${fieldBase} px-3.5 py-2.5 text-[15px]`;
+/** A small form's label, with its control under it at full width. */
+export const fieldLabel = "block font-sans text-[13px] text-muted";
+export const fieldControl = `${field} mt-1 block w-full`;
 
 export const eyebrow =
   "font-mono text-[11px] tracking-[0.14em] text-muted uppercase";

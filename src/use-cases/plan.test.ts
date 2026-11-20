@@ -299,6 +299,90 @@ describe("proposals in guided planning", () => {
     expect(unknown.every((card) => card.travel === null)).toBe(true);
   });
 
+  it("still measures the first slot from the stay when the day starts with a commitment with no time", async () => {
+    const stay = {
+      id: "stay",
+      kind: "STAY",
+      title: "Hotel Aurora",
+      date: "2027-05-10",
+      startTime: null,
+      endDate: "2027-05-12",
+      endTime: null,
+      reference: null,
+      note: null,
+      located: {
+        latitude: 35.69,
+        longitude: 139.7,
+        ref: "way/1",
+        address: "Hotel Aurora, Tokyo",
+      },
+      transport: null,
+    };
+    const ticketNoTime = {
+      ...stay,
+      id: "train",
+      kind: "TRANSPORT",
+      title: "Train ticket, time to come",
+      date: "2027-05-11",
+      endDate: null,
+      located: null,
+    };
+    mocks.getTrip.mockResolvedValue(
+      trip({ commitments: [stay, ticketNoTime] as never }),
+    );
+    const plan = (await load("d2-morning"))!;
+    expect(plan.view.days[1].entries[0]).toMatchObject({
+      commitmentId: "train",
+      start: null,
+    });
+    expect(plan.proposal!.cards.every((card) => card.travel !== null)).toBe(
+      true,
+    );
+  });
+
+  it("measures an open slot after the last place from that place, with no way back listed before it", async () => {
+    mocks.getTrip.mockResolvedValue(
+      trip({
+        commitments: [
+          {
+            id: "stay",
+            kind: "STAY",
+            title: "Hotel Aurora",
+            date: "2027-05-10",
+            startTime: null,
+            endDate: "2027-05-12",
+            endTime: null,
+            reference: null,
+            note: null,
+            located: {
+              latitude: 35.69,
+              longitude: 139.7,
+              ref: "way/1",
+              address: "Hotel Aurora, Tokyo",
+            },
+            transport: null,
+          },
+        ] as never,
+      }),
+    );
+    mocks.readPlanState.mockResolvedValue({
+      state: state({ picks: { "d2-morning": { placeId: "s1", minutes: 60 } } }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([sights[0]]);
+    const plan = (await load("d2-afternoon"))!;
+    expect(plan.view.days[1].entries.map((e) => e.type).slice(0, 2)).toEqual([
+      "place",
+      "open",
+    ]);
+    expect(plan.view.days[1].returnNote).toBe(
+      `The way back from ${sights[0].name} is not counted.`,
+    );
+    expect(plan.proposal!.cards.every((card) => card.travel !== null)).toBe(
+      true,
+    );
+  });
+
   it("treats a sample address as no position once the sample places are off", async () => {
     const stay = {
       id: "s1",

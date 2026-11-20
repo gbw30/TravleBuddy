@@ -67,6 +67,40 @@ describe("starting a trip from tickets", () => {
     expect(asked.filter((text) => text === "Rome")).toHaveLength(1);
   });
 
+  it("uses a looked-up zone only when it is the only result, or the only one in a country the trip visits", async () => {
+    const found: Record<string, City[]> = {
+      Lyon: [{ ...city("Lyon", "Europe/Paris"), country: "France" }],
+      Paris: [
+        { ...city("Paris", "Europe/Paris"), country: "France" },
+        { ...city("Paris", "America/Chicago"), country: "United States" },
+      ],
+      Springfield: [
+        { ...city("Springfield", "America/Chicago"), country: "United States" },
+        {
+          ...city("Springfield", "America/New_York"),
+          country: "United States",
+        },
+      ],
+    };
+    mocks.findCities.mockImplementation(async (text: string) => ({
+      status: "ok",
+      cities: found[text] ?? [],
+    }));
+    const zones = async (home: string) => {
+      mocks.createTrip.mockClear();
+      await startTrip("u1", {
+        planningMode: "GUIDED",
+        tickets: [
+          ticket(home, "Lyon", "2027-06-18"),
+          ticket("Lyon", home, "2027-06-22"),
+        ],
+      });
+      return mocks.createTrip.mock.calls[0][1].tickets[0].fromZone;
+    };
+    expect(await zones("Paris")).toBe("Europe/Paris");
+    expect(await zones("Springfield")).toBeNull();
+  });
+
   it("leaves a zone empty when the lookup finds nothing", async () => {
     mocks.findCities.mockResolvedValue({ status: "ok", cities: [] });
     await startTrip("u1", {

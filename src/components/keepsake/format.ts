@@ -15,6 +15,11 @@ export function dayLabel(date: string): string {
   }).replace(",", "");
 }
 
+/** "Sat 11 Jul" */
+export function shortDayLabel(date: string): string {
+  return part(date, { weekday: "short", day: "numeric", month: "short" });
+}
+
 /** "10–12 May 2027", "28 Apr – 3 May 2027", "From 10 May 2027" or "Dates to be set". */
 export function dateRange(start: string | null, end: string | null): string {
   if (!start) return "Dates to be set";

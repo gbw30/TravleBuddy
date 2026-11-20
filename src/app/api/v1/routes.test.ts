@@ -81,7 +81,7 @@ vi.mock("@/use-cases/profile", () => ({
   forgetEverything: mocks.forgetEverything,
 }));
 
-import { GET as addresses } from "./places/addresses/route";
+import * as addressRoute from "./places/addresses/route";
 import { GET as cities } from "./places/cities/route";
 import {
   DELETE as deleteProfileEntry,
@@ -166,10 +166,11 @@ describe("signed out", () => {
         new Request("http://localhost/api/v1/places/cities?q=tokyo"),
         undefined,
       ),
-      addresses(
-        new Request(
-          "http://localhost/api/v1/places/addresses?q=rua&near=38.7,-9.1",
-        ),
+      addressRoute.POST(
+        request("POST", {
+          query: "rua",
+          near: { latitude: 38.7, longitude: -9.1 },
+        }),
         undefined,
       ),
     ]);
@@ -434,44 +435,48 @@ describe("GET /api/v1/places/cities", () => {
   });
 });
 
-describe("GET /api/v1/places/addresses", () => {
-  const search = (query: string) =>
-    addresses(
-      new Request(`http://localhost/api/v1/places/addresses?${query}`),
-      undefined,
-    );
+describe("POST /api/v1/places/addresses", () => {
+  const near = { latitude: 38.7, longitude: -9.1 };
+  const search = (body: unknown) =>
+    addressRoute.POST(request("POST", body), undefined);
 
-  it("answers the addresses found near the city", async () => {
+  it("answers the addresses found near the city, from a body and never the address bar", async () => {
     mocks.findAddresses.mockResolvedValue({
       status: "ok",
       addresses: [{ label: "Rua da Prata 12" }],
     });
-    const answer = await search("q=Rua%20da%20Prata&near=38.7,-9.1");
+    const answer = await search({ query: "Rua da Prata", near });
     expect(answer.status).toBe(200);
     expect(await answer.json()).toEqual({
       addresses: [{ label: "Rua da Prata 12" }],
     });
-    expect(mocks.findAddresses).toHaveBeenCalledWith("Rua da Prata", {
-      latitude: 38.7,
-      longitude: -9.1,
-    });
+    expect(mocks.findAddresses).toHaveBeenCalledWith("Rua da Prata", near);
+    expect("GET" in addressRoute).toBe(false);
   });
 
-  it("refuses a request with no usable position, without asking the provider", async () => {
+  it("refuses a request with no usable position or query, without asking the provider", async () => {
     mocks.findAddresses.mockClear();
-    expect((await search("q=rua&near=x,y")).status).toBe(422);
-    expect((await search("q=rua")).status).toBe(422);
+    for (const body of [
+      { query: "rua", near: { latitude: 91, longitude: 0 } },
+      { query: "rua" },
+      { near },
+      "rua",
+    ]) {
+      const answer = await search(body);
+      expect(answer.status).toBe(422);
+      expect(await answer.json()).toMatchObject({ error: "invalid_request" });
+    }
     expect(mocks.findAddresses).not.toHaveBeenCalled();
   });
 
   it("answers 503 when the lookup cannot be reached or today's allowance is used up", async () => {
     mocks.findAddresses.mockResolvedValue({ status: "unavailable" });
-    const down = await search("q=rua&near=38.7,-9.1");
+    const down = await search({ query: "rua", near });
     expect(down.status).toBe(503);
     expect(await down.json()).toEqual({ error: "lookup_unavailable" });
 
     mocks.findAddresses.mockResolvedValue({ status: "capped" });
-    const capped = await search("q=rua&near=38.7,-9.1");
+    const capped = await search({ query: "rua", near });
     expect(capped.status).toBe(503);
     expect(await capped.json()).toEqual({ error: "lookup_capped" });
   });

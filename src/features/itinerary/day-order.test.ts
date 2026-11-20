@@ -244,6 +244,47 @@ const scenarios: Scenario[] = [
     ],
   },
   {
+    name: "a night flight in, and a train to another city the same day",
+    cities: [
+      [lisbon, 2],
+      [porto, 1],
+    ],
+    commitments: (stays) => [
+      ticket(
+        "FLIGHT",
+        london,
+        lisbon,
+        ["2027-05-11", "22:00"],
+        ["2027-05-12", "05:00"],
+      ),
+      ticket(
+        "TRAIN",
+        lisbon,
+        porto,
+        ["2027-05-12", "12:00"],
+        ["2027-05-12", "15:00"],
+      ),
+      ...stay(lisbon, ["2027-05-10", "2027-05-12"], "15:00", stays),
+      ...stay(porto, ["2027-05-12", "2027-05-13"], "15:00", stays),
+    ],
+  },
+  {
+    name: "a booking soon after the check-in time",
+    cities: [[lisbon, 2]],
+    commitments: (stays) => [
+      {
+        ...base,
+        id: "tasting",
+        kind: "RESERVATION",
+        title: "Wine tasting",
+        date: "2027-05-10",
+        startTime: "15:15",
+        endTime: "16:00",
+      },
+      ...stay(lisbon, ["2027-05-10", "2027-05-12"], "15:00", stays),
+    ],
+  },
+  {
     name: "a flight in the small hours on the day the city changes",
     cities: [
       [lisbon, 2],
@@ -277,6 +318,21 @@ const scenarios: Scenario[] = [
       ),
       ...stay(tokyo, ["2027-05-10", "2027-05-11"], "15:00", stays),
       ...stay(honolulu, ["2027-05-11", "2027-05-13"], "15:00", stays),
+    ],
+  },
+  {
+    name: "a first day that starts with a flight across the date line",
+    cities: [[honolulu, 2]],
+    perSegment: true,
+    commitments: (stays) => [
+      ticket(
+        "FLIGHT",
+        tokyo,
+        honolulu,
+        ["2027-05-10", "18:00"],
+        ["2027-05-10", "06:30"],
+      ),
+      ...stay(honolulu, ["2027-05-10", "2027-05-12"], "15:00", stays),
     ],
   },
 ];
@@ -351,6 +407,7 @@ describe("every day of a plan", () => {
             ["packed", false],
             ["relaxed", true],
             ["balanced", true],
+            ["packed", true],
           ] as const) {
             const view = planned(
               {
@@ -373,6 +430,17 @@ describe("every day of a plan", () => {
             );
             for (const day of view.days) {
               days += 1;
+              // A way back comes before a booking or ends the day: never
+              // before a slot whose cards measure from the last place.
+              const back = day.entries.findIndex((e) => e.type === "return");
+              expect(
+                back < 0
+                  ? []
+                  : day.entries
+                      .slice(back + 1)
+                      .filter((e) => e.type === "open"),
+                `${scenario.name}, ${pace}, day ${day.day}: open after the way back`,
+              ).toEqual([]);
               for (const times of parts(
                 day.entries,
                 scenario.perSegment ?? false,
@@ -389,9 +457,4 @@ describe("every day of a plan", () => {
     }
     expect(days).toBeGreaterThan(1000);
   });
-
-  // shortcut: on a packed day a run of picks that each break no rule can push
-  // an open lunch past its window and the open afternoon past the way to a
-  // ticket; whether to flag or drop such a slot is the developer's to decide.
-  it.todo("stays in time order on a packed day full of picks");
 });
