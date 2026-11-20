@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   db: {
     $executeRaw: vi.fn(),
-    place: { findMany: vi.fn(), create: vi.fn() },
+    place: { findMany: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
     placeFetch: { findUnique: vi.fn(), upsert: vi.fn() },
     providerCall: { upsert: vi.fn() },
   },
@@ -14,6 +14,7 @@ vi.mock("./osm-source", () => ({
   osmSource: { origin: "OSM", metered: true, ...mocks.osm },
 }));
 
+import { foodReach, sightsReach } from "./overpass";
 import {
   addOwnPlace,
   findPlacesByName,
@@ -82,7 +83,7 @@ afterEach(() => {
 
 describe("gathering places", () => {
   it("asks the provider once, saves what it found, and records the request", async () => {
-    mocks.osm.sights.mockResolvedValue([found]);
+    mocks.osm.sights.mockResolvedValue({ places: [found], reach: null });
 
     expect(await gatherSights(tokyo)).toEqual({ status: "ready" });
 
@@ -111,7 +112,7 @@ describe("gathering places", () => {
     mocks.db.placeFetch.findUnique.mockResolvedValue({
       fetchedAt: daysAgo(31),
     });
-    mocks.osm.sights.mockResolvedValue([found]);
+    mocks.osm.sights.mockResolvedValue({ places: [found], reach: null });
 
     expect(await gatherSights(tokyo)).toEqual({ status: "ready" });
 
@@ -123,6 +124,8 @@ describe("gathering places", () => {
       'ON CONFLICT ("origin", "origin_ref") DO UPDATE',
     );
     expect(rows.values).toContain(JSON.stringify(found.tags));
+    // A place returned again is no longer gone.
+    expect(conflict.sql).toContain('"gone_at" = NULL');
     expect(mocks.db.placeFetch.upsert).toHaveBeenCalledTimes(1);
   });
 
@@ -134,7 +137,7 @@ describe("gathering places", () => {
           ? { fetchedAt: daysAgo(1) }
           : null,
     );
-    mocks.osm.foodNear.mockResolvedValue([]);
+    mocks.osm.foodNear.mockResolvedValue({ places: [], reach: null });
 
     await gatherFoodNear(tokyo, { latitude: 35.7148, longitude: 139.7967 });
 
@@ -177,7 +180,7 @@ describe("gathering places", () => {
   });
 
   it("gathers food once per square of the map", async () => {
-    mocks.osm.foodNear.mockResolvedValue([]);
+    mocks.osm.foodNear.mockResolvedValue({ places: [], reach: null });
 
     await gatherFoodNear(tokyo, { latitude: 35.7148, longitude: 139.7967 });
 
@@ -211,6 +214,113 @@ describe("gathering places", () => {
   });
 });
 
+describe("a place the provider stopped returning", () => {
+  const refresh = () =>
+    mocks.db.placeFetch.findUnique.mockResolvedValue({
+      fetchedAt: daysAgo(31),
+    });
+  const saved = (
+    id: string,
+    kind: string,
+    [latitude, longitude]: [number, number],
+    osmTags: Record<string, string> | null,
+  ) => row({ id, originRef: `node/${id}`, kind, latitude, longitude, osmTags });
+  const marked = () =>
+    mocks.db.place.updateMany.mock.calls.flatMap(
+      ([call]) => call.where.id.in as string[],
+    );
+
+  it("is marked gone by a food refresh that asks for it; food at another square and the sights stay", async () => {
+    refresh();
+    const atA = { latitude: 35.71, longitude: 139.8 };
+    mocks.osm.foodNear.mockResolvedValue({
+      places: [{ ...found, originRef: "node/kept", kind: "restaurant" }],
+      reach: foodReach(atA),
+    });
+    mocks.db.place.findMany.mockResolvedValue([
+      saved("kept", "restaurant", [35.7105, 139.8], {
+        name: "Kept",
+        amenity: "restaurant",
+      }),
+      saved("closed", "restaurant", [35.711, 139.801], {
+        name: "Closed",
+        amenity: "restaurant",
+      }),
+      // About 3 km north, at another square.
+      saved("atB", "cafe", [35.74, 139.8], { name: "At B", amenity: "cafe" }),
+      saved("temple", "temple", [35.7102, 139.8003], {
+        name: "Temple",
+        amenity: "place_of_worship",
+        wikidata: "Q1",
+      }),
+    ]);
+
+    expect(
+      await gatherFoodNear(tokyo, { latitude: 35.7148, longitude: 139.7967 }),
+    ).toEqual({ status: "ready" });
+
+    expect(mocks.db.place.findMany.mock.calls[0][0].where).toEqual({
+      origin: "OSM",
+      cityKey: "tokyo|japan",
+      goneAt: null,
+    });
+    expect(marked()).toEqual(["closed"]);
+    expect(mocks.db.place.updateMany.mock.calls[0][0].data.goneAt).toEqual(
+      expect.any(Date),
+    );
+  });
+
+  it("is not marked when the sights query never asks for it: a bar, a monument with no encyclopedia entry, a search result with no name tag", async () => {
+    refresh();
+    mocks.osm.sights.mockResolvedValue({
+      places: [],
+      reach: sightsReach(tokyo),
+    });
+    mocks.db.place.findMany.mockResolvedValue([
+      saved("bar", "bar", [35.68, 139.77], { name: "Bar", amenity: "bar" }),
+      saved("monument", "sight", [35.68, 139.76], {
+        name: "Monument",
+        historic: "monument",
+      }),
+      saved("searched", "museum", [35.68, 139.76], { tourism: "museum" }),
+      saved("untagged", "museum", [35.68, 139.76], null),
+      // About 14 km north: outside the circle.
+      saved("far", "museum", [35.8, 139.76], {
+        name: "Far",
+        tourism: "museum",
+      }),
+      saved("museum", "museum", [35.68, 139.765], {
+        name: "Museum",
+        tourism: "museum",
+      }),
+    ]);
+
+    await gatherSights(tokyo);
+
+    expect(marked()).toEqual(["museum"]);
+  });
+
+  it("is not marked by a first fetch, or by a reply that may have been cut short", async () => {
+    mocks.db.place.findMany.mockResolvedValue([
+      saved("museum", "museum", [35.68, 139.765], {
+        name: "Museum",
+        tourism: "museum",
+      }),
+    ]);
+    mocks.osm.sights.mockResolvedValue({
+      places: [],
+      reach: sightsReach(tokyo),
+    });
+    await gatherSights(tokyo);
+
+    refresh();
+    mocks.osm.sights.mockResolvedValue({ places: [], reach: null });
+    await gatherSights(tokyo);
+
+    expect(mocks.db.place.updateMany).not.toHaveBeenCalled();
+  });
+});
+
 describe("reading saved places", () => {
   it("lists sights from the active provider and the traveller's own, in a fixed order", async () => {
     mocks.db.place.findMany.mockResolvedValue([row()]);
@@ -229,6 +339,7 @@ describe("reading saved places", () => {
       { origin: "USER", addedByUserId: "user-1" },
     ]);
     expect(query.where.kind.in).not.toContain("restaurant");
+    expect(query.where.goneAt).toBeNull();
     expect(query.orderBy).toEqual({ id: "asc" });
   });
 
@@ -311,14 +422,14 @@ describe("adding a place by name or by hand", () => {
     expect(outcome).toMatchObject({ status: "ok", places: [{ id: "p1" }] });
   });
 
-  it("a name search does not overwrite a place Overpass saved", async () => {
+  it("a name search does not overwrite a place Overpass saved, but brings back one marked gone", async () => {
     mocks.osm.byName.mockResolvedValue([found]);
 
     await findPlacesByName(tokyo, "senso");
 
     const [, , conflict] = mocks.db.$executeRaw.mock.calls[0];
-    expect(conflict.sql).toContain("DO NOTHING");
-    expect(conflict.sql).not.toContain("DO UPDATE");
+    expect(conflict.sql).toContain('DO UPDATE SET "gone_at" = NULL');
+    expect(conflict.sql).not.toContain("EXCLUDED");
   });
 
   it("does not search for text too short, and reports a failed or capped search", async () => {

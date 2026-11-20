@@ -28,6 +28,19 @@ export type FoundPlace = {
 };
 
 /**
+ * What one request asks for: a saved place inside its circle whose tags it
+ * asks for. A place that fits and was not returned is gone.
+ */
+export type Reach = {
+  centre: Point;
+  radiusM: number;
+  asks(tags: Record<string, string>): boolean;
+};
+
+/** A request's places, and its reach when the reply is known to be whole. */
+export type Gathered = { places: FoundPlace[]; reach: Reach | null };
+
+/**
  * The common adapter every place provider sits behind (TB-SYS-09). Each
  * method is one provider request and throws when the provider cannot answer.
  */
@@ -36,9 +49,9 @@ export interface PlaceSource {
   /** Counts toward the daily request cap. */
   readonly metered: boolean;
   /** Things to see and do across a city. */
-  sights(city: City & Point): Promise<FoundPlace[]>;
+  sights(city: City & Point): Promise<Gathered>;
   /** Places to eat within walking distance of a point. */
-  foodNear(city: City & Point, point: Point): Promise<FoundPlace[]>;
+  foodNear(city: City & Point, point: Point): Promise<Gathered>;
   /** Places in or near the city whose name matches what the traveller typed. */
   byName(city: City & Point, text: string): Promise<FoundPlace[]>;
 }

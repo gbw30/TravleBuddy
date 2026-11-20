@@ -8,8 +8,10 @@ import {
   cityKey,
   foodScope,
   type FoundPlace,
+  type Gathered,
   type PlaceSource,
   type Point,
+  type Reach,
 } from "./place-source";
 import { hoursDoubt } from "./opening-hours";
 import { distanceKm } from "./travel";
@@ -29,6 +31,16 @@ export const REFRESH_DAYS = 30;
 export const QUERY_VERSION = { sights: 2, food: 3 } as const;
 
 type PlaceRow = Prisma.PlaceGetPayload<object>;
+
+/** The saved tags with string values only: the column can hold any JSON. */
+function savedTags(json: Prisma.JsonValue): Record<string, string> {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
+  return Object.fromEntries(
+    Object.entries(json).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
+}
 
 function toDto(row: PlaceRow): PlaceDto {
   const dto = {
@@ -80,7 +92,8 @@ export async function withinCap(
 
 // One insert for all places. A refetch updates in place, so the id stays and
 // plans that point at it stay valid. A name search only adds new places: its
-// thinner data must not overwrite what a full fetch saved.
+// thinner data must not overwrite what a full fetch saved. Either way a place
+// returned again is no longer gone.
 async function save(
   source: PlaceSource,
   key: string,
@@ -95,15 +108,59 @@ async function save(
   );
   const conflict =
     onConflict === "keep"
-      ? Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO NOTHING`
+      ? Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO UPDATE SET "gone_at" = NULL WHERE "places"."gone_at" IS NOT NULL`
       : Prisma.sql`ON CONFLICT ("origin", "origin_ref") DO UPDATE SET
   "name" = EXCLUDED."name", "kind" = EXCLUDED."kind", "latitude" = EXCLUDED."latitude", "longitude" = EXCLUDED."longitude",
   "address" = EXCLUDED."address", "opening_hours" = EXCLUDED."opening_hours", "notable" = EXCLUDED."notable",
   "serves" = EXCLUDED."serves", "serves_not" = EXCLUDED."serves_not", "osm_tags" = EXCLUDED."osm_tags",
-  "last_edited_at" = EXCLUDED."last_edited_at", "fetched_at" = EXCLUDED."fetched_at", "updated_at" = EXCLUDED."updated_at"`;
+  "last_edited_at" = EXCLUDED."last_edited_at", "fetched_at" = EXCLUDED."fetched_at", "updated_at" = EXCLUDED."updated_at", "gone_at" = NULL`;
   await db.$executeRaw`INSERT INTO "places" ("origin", "origin_ref", "city_key", "name", "kind", "latitude", "longitude", "address", "opening_hours", "notable", "serves", "serves_not", "osm_tags", "last_edited_at", "fetched_at", "updated_at")
 VALUES ${Prisma.join(rows)}
 ${conflict}`;
+}
+
+/**
+ * A refresh marks gone each saved place it asks for, inside its circle, that
+ * it no longer returned. A gone place is never offered on a card again; a plan
+ * that holds it keeps it, since getPlaces still reads it.
+ */
+async function markGone(
+  source: PlaceSource,
+  key: string,
+  found: FoundPlace[],
+  reach: Reach,
+): Promise<void> {
+  const returned = new Set(found.map((place) => place.originRef));
+  const saved = await db.place.findMany({
+    where: { origin: source.origin, cityKey: key, goneAt: null },
+    select: {
+      id: true,
+      originRef: true,
+      latitude: true,
+      longitude: true,
+      osmTags: true,
+    },
+  });
+  const gone = saved.filter(
+    (place) =>
+      place.originRef !== null &&
+      !returned.has(place.originRef) &&
+      place.latitude !== null &&
+      place.longitude !== null &&
+      // Overpass measures a way's outline and only its centre is saved: a margin.
+      distanceKm(reach.centre, {
+        latitude: Number(place.latitude),
+        longitude: Number(place.longitude),
+      }) *
+        1000 <=
+        reach.radiusM * 0.9 &&
+      reach.asks(savedTags(place.osmTags)),
+  );
+  if (gone.length === 0) return;
+  await db.place.updateMany({
+    where: { id: { in: gone.map((place) => place.id) } },
+    data: { goneAt: new Date() },
+  });
 }
 
 /**
@@ -116,7 +173,7 @@ async function gather(
   city: City,
   scope: keyof typeof QUERY_VERSION,
   detail: string,
-  request: (source: PlaceSource, city: City & Point) => Promise<FoundPlace[]>,
+  request: (source: PlaceSource, city: City & Point) => Promise<Gathered>,
 ): Promise<GatherOutcome> {
   const source = activeSource();
   const key = cityKey(city);
@@ -143,8 +200,10 @@ async function gather(
   }
 
   try {
-    const found = await request(source, where);
+    const { places: found, reach } = await request(source, where);
     await save(source, key, found, "update");
+    // Only a refresh: a first fetch, also after a query change, proves nothing.
+    if (done && reach) await markGone(source, key, found, reach);
     await db.placeFetch.upsert({
       where: { cityKey_scope: fetchKey },
       create: { ...fetchKey, placeCount: found.length },
@@ -174,10 +233,11 @@ export function gatherFoodNear(
   );
 }
 
-/** Rows the traveller may see: the active provider's, and their own. */
+/** Rows the traveller may be offered: the active provider's, and their own; never a gone place. */
 function visible(key: string, userId: string): Prisma.PlaceWhereInput {
   return {
     cityKey: key,
+    goneAt: null,
     OR: [
       { origin: activeSource().origin },
       { origin: "USER", addedByUserId: userId },

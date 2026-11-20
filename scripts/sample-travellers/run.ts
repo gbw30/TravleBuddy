@@ -278,8 +278,8 @@ async function planOne(
       longitude: city.longitude ?? 0,
     };
     const places = [
-      ...(await sampleSource.sights({ ...city, ...point })),
-      ...(await sampleSource.foodNear({ ...city, ...point }, point)),
+      ...(await sampleSource.sights({ ...city, ...point })).places,
+      ...(await sampleSource.foodNear({ ...city, ...point }, point)).places,
     ];
     for (const place of places) {
       known.set(place.name, {

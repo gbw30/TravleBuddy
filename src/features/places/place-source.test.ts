@@ -4,7 +4,13 @@ import { isMealKind } from "./kinds";
 
 import { placesFromNominatim } from "./nominatim";
 import { politeFetch, ProviderBusyError, resetPoliteFetch } from "./osm-http";
-import { foodQuery, placesFromOverpass, sightsQuery } from "./overpass";
+import {
+  foodQuery,
+  foodReach,
+  placesFromOverpass,
+  readOverpass,
+  sightsQuery,
+} from "./overpass";
 import { overpassFixture } from "./overpass-fixture";
 import { cityKey, foodScope } from "./place-source";
 import { sampleSource } from "./sample-source";
@@ -177,6 +183,40 @@ describe("placesFromOverpass", () => {
   });
 });
 
+describe("readOverpass", () => {
+  const restaurants = (count: number) =>
+    Array.from({ length: count }, (_, id) => ({
+      type: "node",
+      id,
+      lat: 35.71,
+      lon: 139.8,
+      tags: { name: `Restaurant ${id}`, amenity: "restaurant" },
+    }));
+  const reach = foodReach(tokyo);
+
+  it("says what a complete reply could have returned", () => {
+    const reply = readOverpass({ elements: restaurants(199) }, reach);
+    expect(reply.places).toHaveLength(199);
+    expect(reply.reach).toBe(reach);
+  });
+
+  it("claims nothing for a reply at the query's limit, or one Overpass cut short", () => {
+    expect(
+      readOverpass({ elements: restaurants(200) }, reach).reach,
+    ).toBeNull();
+    const late = readOverpass(
+      {
+        elements: restaurants(3),
+        remark: 'runtime error: Query timed out in "query" at line 3',
+      },
+      reach,
+    );
+    expect(late.places).toHaveLength(3);
+    expect(late.reach).toBeNull();
+    expect(readOverpass(null, reach)).toEqual({ places: [], reach: null });
+  });
+});
+
 describe("placesFromNominatim", () => {
   it("reads a named place and keeps an unplanned kind as a sight", () => {
     const places = placesFromNominatim([
@@ -239,8 +279,8 @@ describe("provenance from Nominatim and samples", () => {
 
   it("sample places carry no tags and no edit time", async () => {
     const places = [
-      ...(await sampleSource.sights(tokyo)),
-      ...(await sampleSource.foodNear(tokyo, tokyo)),
+      ...(await sampleSource.sights(tokyo)).places,
+      ...(await sampleSource.foodNear(tokyo, tokyo)).places,
     ];
     expect(
       places.every((p) => p.tags === null && p.lastEditedAt === null),
@@ -250,14 +290,16 @@ describe("provenance from Nominatim and samples", () => {
 
 describe("sample source and keys", () => {
   it("gives the same sample places every time, each with a kind and a position", async () => {
-    const first = await sampleSource.sights(tokyo);
-    expect(first).toEqual(await sampleSource.sights(tokyo));
+    const { places: first, reach } = await sampleSource.sights(tokyo);
+    expect(first).toEqual((await sampleSource.sights(tokyo)).places);
+    // Sample places never change, so none is ever gone.
+    expect(reach).toBeNull();
     expect(first.length).toBeGreaterThanOrEqual(12);
     expect(new Set(first.map((place) => place.originRef)).size).toBe(
       first.length,
     );
 
-    const lisbon = await sampleSource.sights({
+    const { places: lisbon } = await sampleSource.sights({
       ...tokyo,
       name: "Lisbon",
       latitude: 38.7,
@@ -268,7 +310,7 @@ describe("sample source and keys", () => {
       lisbon.every((place) => Math.abs(place.latitude - 38.7) < 0.05),
     ).toBe(true);
 
-    const food = await sampleSource.foodNear(tokyo, {
+    const { places: food } = await sampleSource.foodNear(tokyo, {
       latitude: 35.71,
       longitude: 139.8,
     });

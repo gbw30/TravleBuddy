@@ -1,12 +1,14 @@
 import { dietsFromOsmTags, keptTags, kindFromOsmTags } from "./kinds";
 import { politeFetch } from "./osm-http";
-import type { FoundPlace, Point } from "./place-source";
+import type { FoundPlace, Gathered, Point, Reach } from "./place-source";
 
 // OpenStreetMap's Overpass API: one area query per city and kind of place,
 // saved by the caller and never repeated (ADR-009).
 const ENDPOINT = "https://overpass-api.de/api/interpreter";
 const SIGHTS_RADIUS_M = 9000;
 const FOOD_RADIUS_M = 1200;
+const SIGHTS_LIMIT = 500;
+const FOOD_LIMIT = 200;
 
 const around = (radius: number, point: Point) =>
   `(around:${radius},${point.latitude},${point.longitude})`;
@@ -26,7 +28,7 @@ export function sightsQuery(centre: Point): string {
   nwr["amenity"="place_of_worship"]["name"]["wikidata"]${area};
   nwr["leisure"~"^(park|garden)$"]["name"]["wikidata"]${area};
 );
-out center meta 500;`;
+out center meta ${SIGHTS_LIMIT};`;
 }
 
 /** Restaurants, cafes and bakeries within walking distance of a point. */
@@ -37,7 +39,41 @@ export function foodQuery(centre: Point): string {
   nwr["amenity"~"^(restaurant|cafe)$"]["name"]${area};
   nwr["shop"="bakery"]["name"]${area};
 );
-out center meta 200;`;
+out center meta ${FOOD_LIMIT};`;
+}
+
+type Reply = Reach & { limit: number };
+
+/** The saved tags sightsQuery asks for, inside its circle. */
+export function sightsReach({ latitude, longitude }: Point): Reply {
+  return {
+    centre: { latitude, longitude },
+    radiusM: SIGHTS_RADIUS_M,
+    limit: SIGHTS_LIMIT,
+    asks: (tags) =>
+      Boolean(tags.name) &&
+      (/^(museum|gallery|viewpoint|theme_park|zoo|aquarium|attraction)$/.test(
+        tags.tourism ?? "",
+      ) ||
+        tags.amenity === "marketplace" ||
+        (Boolean(tags.wikidata) &&
+          (Boolean(tags.historic) ||
+            tags.amenity === "place_of_worship" ||
+            /^(park|garden)$/.test(tags.leisure ?? "")))),
+  };
+}
+
+/** The saved tags foodQuery asks for, inside its circle. */
+export function foodReach({ latitude, longitude }: Point): Reply {
+  return {
+    centre: { latitude, longitude },
+    radiusM: FOOD_RADIUS_M,
+    limit: FOOD_LIMIT,
+    asks: (tags) =>
+      Boolean(tags.name) &&
+      (/^(restaurant|cafe)$/.test(tags.amenity ?? "") ||
+        tags.shop === "bakery"),
+  };
 }
 
 type Tags = Record<string, string | undefined>;
@@ -106,13 +142,33 @@ export function placesFromOverpass(reply: unknown): FoundPlace[] {
   });
 }
 
+/**
+ * A reply's places, with the query's reach only when the reply is whole: one
+ * at the query's limit may have been cut, and a remark means Overpass stopped
+ * early, so neither shows that a place is gone.
+ */
+export function readOverpass(reply: unknown, reach: Reply): Gathered {
+  const { elements, remark } = (reply ?? {}) as {
+    elements?: unknown;
+    remark?: unknown;
+  };
+  const whole =
+    Array.isArray(elements) &&
+    elements.length < reach.limit &&
+    remark === undefined;
+  return { places: placesFromOverpass(reply), reach: whole ? reach : null };
+}
+
 /** Runs one query. Throws when Overpass cannot be reached or refuses. */
-export async function runOverpass(query: string): Promise<FoundPlace[]> {
+export async function runOverpass(
+  query: string,
+  reach: Reply,
+): Promise<Gathered> {
   const response = await politeFetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ data: query }),
     timeoutMs: 25_000,
   });
-  return placesFromOverpass(await response.json());
+  return readOverpass(await response.json(), reach);
 }
