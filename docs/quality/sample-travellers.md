@@ -618,44 +618,44 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - 10:00  Already decided: Flight · London → Rome
 - 13:00  Allowed 60 min from the airport (flight)
 - 14:00  Afternoon: **Rome Castle** (60 min)
-- 16:00  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
-- 19:00  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+- 16:00  Late afternoon: **Rome Art Gallery** (120 min), 19 min walk to get there
+- 19:00  Dinner: **Market Kitchen** (75 min), 3 min walk to get there
 
 **Day 2, Sat 19 Jun, Rome**
 
 - 09:00  Breakfast: **Sunrise Cafe** (45 min)
 - 10:26  Morning: **Rome Botanical Garden** (60 min), 21 min transit to get there
-- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
+- 12:30  Lunch: **Corner Noodles** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Corner Noodles (60 min)
 - 15:21  Afternoon: **Rome Cathedral** (45 min), 16 min transit to get there
-- 16:37  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Harbour Canteen** (75 min), 9 min transit to get there
+- 16:37  Late afternoon: **Rome Old Town** (60 min), 11 min walk to get there [opening hours not known]
+- 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
 **Day 3, Sun 20 Jun, Rome**
 
 - 09:00  Breakfast: **Corner Bakery** (45 min)
 - 10:20  Morning: **Rome Riverside Park** (60 min), 15 min transit to get there [opening hours not known]
-- 12:30  Lunch: **Morning Cafe** (45 min), 8 min transit to get there
+- 12:30  Lunch: **Morning Cafe** (45 min), 2 min walk to get there
 - 13:45  Time to wander around Morning Cafe (60 min)
-- 15:17  Afternoon: **Rome City Museum** (120 min), 12 min transit to get there
-- 17:52  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Lantern Grill** (75 min), 11 min transit to get there
+- 15:20  Afternoon: **Rome City Museum** (120 min), 15 min walk to get there
+- 17:55  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Lantern Grill** (75 min), 10 min walk to get there
 
 **Day 4, Mon 21 Jun, Rome**
 
 - 09:00  Breakfast: **Riverside Cafe** (45 min)
-- 10:16  Morning: **Rome Central Market** (60 min), 11 min transit to get there
-- 12:30  Lunch: **Garden Table** (75 min), 11 min transit to get there [opening hours not known]
+- 10:17  Morning: **Rome Central Market** (60 min), 12 min walk to get there
+- 12:30  Lunch: **Garden Table** (75 min), 12 min walk to get there [opening hours not known]
 - 13:45  Time to wander around Garden Table (60 min)
 - 14:45  Afternoon: *open*
 - 16:00  Late afternoon: *open*
-- 19:00  Dinner: **Corner Noodles** (75 min), 9 min transit to get there
+- 19:00  Dinner: **Corner Noodles** (75 min), 5 min walk to get there
 
 **Day 5, Tue 22 Jun, Rome**
 
 - 09:00  Breakfast: **Corner Bakery** (45 min)
 - 09:45  Morning: *open*
-- 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
+- 12:30  Lunch: **Market Kitchen** (75 min), 5 min walk to get there
 - 13:45  Time to wander around Market Kitchen (60 min)
 - 14:45  Afternoon: *open*
 - 16:00  Allowed 120 min to the airport (flight)
@@ -680,44 +680,44 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 - 10:00  Already decided: Flight · London → Rome
 - 13:00  Allowed 60 min from the airport (flight)
 - 14:00  Afternoon: **Rome Castle** (60 min)
-- 16:00  Late afternoon: **Rome Art Gallery** (120 min), 13 min transit to get there
-- 19:00  Dinner: **Market Kitchen** (75 min), 9 min transit to get there
+- 16:00  Late afternoon: **Rome Art Gallery** (120 min), 19 min walk to get there
+- 19:00  Dinner: **Market Kitchen** (75 min), 3 min walk to get there
 
 **Day 2, Sat 19 Jun, Rome**
 
 - 09:00  Breakfast: **Sunrise Cafe** (45 min)
 - 10:26  Morning: **Rome Botanical Garden** (60 min), 21 min transit to get there
-- 12:30  Lunch: **Corner Noodles** (75 min), 10 min transit to get there
+- 12:30  Lunch: **Corner Noodles** (75 min), 7 min walk to get there
 - 13:45  Time to wander around Corner Noodles (60 min)
 - 15:21  Afternoon: **Rome Cathedral** (45 min), 16 min transit to get there
-- 16:37  Late afternoon: **Rome Old Town** (60 min), 11 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Harbour Canteen** (75 min), 9 min transit to get there
+- 16:37  Late afternoon: **Rome Old Town** (60 min), 11 min walk to get there [opening hours not known]
+- 19:00  Dinner: **Harbour Canteen** (75 min), 3 min walk to get there
 
 **Day 3, Sun 20 Jun, Rome**
 
 - 09:00  Breakfast: **Corner Bakery** (45 min)
 - 10:20  Morning: **Rome Riverside Park** (60 min), 15 min transit to get there [opening hours not known]
-- 12:30  Lunch: **Morning Cafe** (45 min), 8 min transit to get there
+- 12:30  Lunch: **Morning Cafe** (45 min), 2 min walk to get there
 - 13:45  Time to wander around Morning Cafe (60 min)
-- 15:17  Afternoon: **Rome City Museum** (120 min), 12 min transit to get there
-- 17:52  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
-- 19:00  Dinner: **Lantern Grill** (75 min), 11 min transit to get there
+- 15:20  Afternoon: **Rome City Museum** (120 min), 15 min walk to get there
+- 17:55  Late afternoon: **Rome Lookout** (30 min), 15 min transit to get there [opening hours not known]
+- 19:00  Dinner: **Lantern Grill** (75 min), 10 min walk to get there
 
 **Day 4, Mon 21 Jun, Rome**
 
 - 09:00  Breakfast: **Riverside Cafe** (45 min)
-- 10:16  Morning: **Rome Central Market** (60 min), 11 min transit to get there
-- 12:30  Lunch: **Garden Table** (75 min), 11 min transit to get there [opening hours not known]
+- 10:17  Morning: **Rome Central Market** (60 min), 12 min walk to get there
+- 12:30  Lunch: **Garden Table** (75 min), 12 min walk to get there [opening hours not known]
 - 13:45  Time to wander around Garden Table (60 min)
 - 14:45  Afternoon: *open*
 - 16:00  Late afternoon: *open*
-- 19:00  Dinner: **Corner Noodles** (75 min), 9 min transit to get there
+- 19:00  Dinner: **Corner Noodles** (75 min), 5 min walk to get there
 
 **Day 5, Tue 22 Jun, Rome**
 
 - 09:00  Breakfast: **Corner Bakery** (45 min)
 - 09:45  Morning: *open*
-- 12:30  Lunch: **Market Kitchen** (75 min), 9 min transit to get there
+- 12:30  Lunch: **Market Kitchen** (75 min), 5 min walk to get there
 - 13:45  Time to wander around Market Kitchen (60 min)
 - 14:45  Afternoon: *open*
 - 16:00  Allowed 120 min to the airport (flight)
