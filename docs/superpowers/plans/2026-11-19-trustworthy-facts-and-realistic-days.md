@@ -32,6 +32,10 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 13. Proposal messages worded              | `feature/m9-word-proposals`    | TB-AGT-09, TB-TRU-03                                             |              |
 | 14. Quick plan report worded              | `feature/m9-word-report`       | TB-QPL-10, TB-TRU-03                                             |              |
 | 15. Evidence                              | `feature/m9-evidence`          | all of the above, re-checked                                     |              |
+| 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      |              |
+| 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-ITN-22, TB-FIX-08, TB-CRD-13                       |              |
+| 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             |              |
+| 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
 
 The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89.
 
@@ -435,7 +439,125 @@ One pull request each, in this order. Each passes its piece-10 templates through
 - [ ] `docs/quality/requirements-evidence.md` marks every requirement this milestone names. `docs/status/current-implementation.md`, `docs/api/v1.md`, the roadmap and this plan are updated.
 - [ ] The pull request of the milestone into `main` is opened, not merged.
 
+### Piece 16: The rest of the review
+
+Added on 2026-11-20 at the developer's word ("fix the wave scope"). It covers everything the whole-batch review and the fix-wave re-review left open, plus the ledger's deferred minors that cost little. In the ledger these are R1, R2 and the "minor (deferred)" lines.
+
+**Owners:** Itinerary, Trips, Places, Recommendations, scripts. **Migration:** only for item 13 (`<timestamp>_place_gone`), development only.
+
+**The order of a day** (`src/features/itinerary/day-plan.ts`, its tests and `day-order.test.ts`):
+
+1. **R1: a day-1 date-line ticket.** On day 1, a ticket that lands today at an earlier clock time than it left sorts first, before its "from" row. An example is Tokyo 18:00 → Honolulu 06:30 on a trip that starts in Honolulu. Such a ticket is never a "later" step for the overlap or wander checks, and the clock reset at a date-line ticket applies only where the ticket is in order. Add the scenario to `day-order.test.ts`, checked per segment.
+2. **R2: a pick that leaves no time for an open slot.** In pass 3, an open slot that no longer fits its hour before its part of the day ends flags the last pick before it in that part with rule `day`. The test is `start + 60 > until`, the same one pass 1 uses to create slots. The flag reads "Leaves no time for {lunch} before {16:00}." The `it.todo` becomes a case with packed-pace picks. `cardsFor` then refuses such cards through its existing "no new broken rule" check.
+3. **A check-in and a booking.** A check-in step and its leg never run into a timed booking that starts after it; the check-in goes after that booking instead.
+4. **Breakfast after a night ticket.** The included breakfast is skipped only when a ticket that left on an earlier date lands after `NIGHT_AT_STAY_UNTIL` (03:00 local). An earlier landing still leaves a night at the stay.
+5. **Stay notes.** A day with one confirmed stay and one unconfirmed stay gets the note for the unconfirmed one. A day whose last item is an open slot or a booking still says how the way back is handled: the return row follows the last place when it fits in order, or else a quiet line reads "The way back from {last place} is not counted."
+6. **Two "from" rows.** On a later day, a night-flight landing and a same-day city-change landing each get their "from" row.
+7. **Tests:**
+   - a 13:30 landing keeps lunch;
+   - dinner under the late-meal rule;
+   - a test fails if the pace buffer leaves the return flag;
+   - untimed commitments are transparent for "from the stay" (`plan.ts` ~1160).
+
+**Tickets** (`src/features/trips/`, `src/use-cases/start-trip.ts`, `src/components/keepsake/plan-itinerary.tsx`):
+
+8. **The arrival date on the stub.** A ticket that lands on another date names that date: "arrives Sat 11 Jul 07:00 Madrid time".
+9. **Where a ticket end's zone comes from.**
+   - First, a trip city of the same name.
+   - Otherwise, a lookup result, used only when it is unambiguous: one result, or exactly one result in a country the trip visits.
+   - Otherwise the zone stays unknown, and the length reads unknown.
+   - A failed lookup is tried again on the next save of that ticket.
+10. **Old tickets.** A ticket end with no zone, whose city has the same name as one of the trip's cities, takes that city's zone when it is read. Nothing else is guessed.
+11. **One helper.** `withoutCode` moves to `trips/contracts.ts`; the copy in `day-plan.ts` goes.
+
+**Places** (`src/features/places/`, `src/components/keepsake/stay-address.tsx`, `src/app/api/v1/places/addresses/route.ts`):
+
+12. **The address search moves to POST.** It becomes `POST /api/v1/places/addresses` with a JSON body, so the typed address stays out of request logs. Update `docs/api/v1.md` (with its 422), the component, its tests and the design walk. Hash the saved key when it would be longer than 200 characters.
+13. **A place the provider stopped returning.** A refresh that no longer returns a place marks it as gone. A gone place is never offered on a card again, and a plan that holds it keeps it.
+14. **The `DATE` pattern.** It reads a date at the start of the value again (`(?!\d)` rather than `(?=T|$)`), so "2021-03-15;2023-01-02" and "2021-03-15 10:00" are read. Year-month values and ISO times stay. Add a test.
+15. **Small fixes from the ledger:**
+    - The `osmTags` cast is checked.
+    - A USER-origin diet sentence never says "its listing says".
+    - `toDto` reads the clock once per call.
+    - `hoursDoubt` gets a 12-month boundary test and a 29 February test.
+    - The refresh gets an exact 30-day boundary test.
+    - The prototype's static text stops saying "well-known" and "15 min walk".
+    - The design walk treats breakfast as a meal, and its Shift+Tab and "holding: food" lines get a one-line why.
+    - `allowed` in `plan-itinerary.tsx` gets a one-line why.
+    - The stay-address label and control styles are shared with the bookings form.
+    - The samples report prints the check-in leg and the stay note.
+    - "Four sample travellers" and "eight itineraries" become five and ten in the docs, in `scripts/sample-travellers/run.ts` and in TB-SYS-15.
+
+Not in this piece:
+
+- the hand-made Overpass fixture, which waits for a real reply (piece 1);
+- expiry of saved searches, which `city_lookups` lacks too;
+- old vegan rows, which refetch;
+- a booking's city on a date-line day, which is in piece 19.
+
+**Checks:**
+
+- lint, typecheck, tests and build;
+- `quality:samples` with 0 failed, and the regenerated report committed;
+- `quality:design` in Chromium, Firefox and WebKit;
+- `prisma migrate status` on development.
+
+### Piece 17: Traveller choices
+
+Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, TB-ITN-22, TB-FIX-08, TB-CRD-13.
+
+1. **Breakfast may repeat.** A place picked for a breakfast slot is not moved out of breakfast slots on other days. This is the one exception to "a place sits in one slot only" (`plan-actions.ts` ~46-52). The same-day exclusion stays, and lunch and dinner still do not repeat. The ranking may prefer a new café, but it never hides a repeat. Update the samples' "nothing decided moved" and no-repeat checks.
+2. **The ticket type is required.** Every path that creates or changes a ticket needs one of `TICKET_MODES`:
+   - the commitments POST and PATCH schemas (a PATCH that would leave a ticket without a type is refused with 422);
+   - the bookings form, as a required control with no blank choice;
+   - the conversation's ticket capture (`read-typed.ts`, also fixing its booking-kinds mismatch);
+   - Quick plan and start-trip;
+   - the fixtures, the design walk, the e2e tests and `docs/api/v1.md`.
+
+   The column stays nullable, and old tickets keep the neutral wording.
+
+3. **Remove a place you added.** A place the traveller added by hand (origin `USER`) can be removed by that traveller, from the closer look, with a confirm step.
+   - First check that such a place records who added it. If it does not, add that (development-only migration), and refuse removal of a row with no owner.
+   - Any slot holding the place reopens, and the plan says "{place} was removed."
+   - It crosses Places and Itinerary through a use-case and the contracts.
+   - The design walk removes its Kyoto place at the end.
+4. **Check-in reads as a window.** The check-in row says "Check in from 15:00", and it is laid after the arrival and its leg.
+
+**Checks:** as piece 16.
+
+### Piece 18: Fair use: rate limits and per-person shares
+
+Added on 2026-11-20. **Requirements:** TB-SYS-16, TB-SYS-17. **Build after the developer approves this design.**
+
+- **Who is counted.** The signed-in person's id, through `withUser`. A hashed network address is used only where nobody is signed in: an HMAC with the existing `AUTH_SECRET`, with no fingerprinting. Many people can share one address, so the per-address limit is generous.
+- **Where the counts are kept.** Postgres fixed-window counters, updated by upsert, in the pattern of `withinCap`. They live in a new table owned by one service, entered in `service-map.json`, the borders document and the ownership test. Old windows are deleted as new ones open.
+  - Not in memory, because it does not hold across serverless instances.
+  - Not Redis or another new resource.
+  - Vercel's firewall rate limits can be an outer layer only if the existing plan includes them. Check before proposing them.
+- **Request limits,** as named constants, per person per minute:
+  - 60 across `/api/v1`;
+  - 20 for place gathering and cards;
+  - 10 for city and address lookups;
+  - 10 for conversation turns and plan builds;
+  - 30 per address without sign-in.
+- **Daily shares per person:**
+  - place gathering, 30;
+  - address lookups, 20;
+  - AI model spend, $1 a day within the $15 monthly cap.
+- **Over a limit,** the answer is 429 with `Retry-After`, and the screen says "You have made a lot of requests in a short time. Try again in a minute." Read the Next 16 guide on proxy and middleware before choosing where the check runs.
+
+### Piece 19: Cities, going back a day, and both ways to get there
+
+Added on 2026-11-20. **Requirements:** TB-ITN-25, TB-ITN-26, TB-ITN-27. **It waits for the developer's pick of the mockups,** and R1 (piece 16) lands first.
+
+- **Rows grouped by city.** A day's rows are grouped by city: every row carries its segment's city, and the tickets and allowance rows sit between the groups. A booking on a date-line day goes with the city whose local window holds its time.
+- **Going back a day.** A ticket that lands on an earlier date than it left gets the chosen cue. Trip validation compares instants using both zones, not local dates.
+- **Legs and cards show both ways.** They show the time by the traveller's preferred means. When the hop is within walking distance, they also show the walking distance and time, with a directions link (fixed host, encoded query). The plan still schedules by the preferred means (TB-ITN-06), and it never assumes a walk.
+
 ## Waiting for the developer
+
+- **Piece 18:** approve the fair-use design (who is counted, the limits, the daily shares).
+- **Piece 19:** pick one option of each mockup.
 
 - **Piece 1:** set `PLACES_USER_AGENT` in Vercel production; open the slot on production; say afterwards whether production stays on real places.
 - **If Overpass refuses Vercel too:** the known mirrors are IPv6-only, and Vercel functions may have no outbound IPv6 (not verified). If the mirrors cannot be reached, places need a self-hosted or paid Overpass or an extract, which the operating constraints allow only with your approval.
