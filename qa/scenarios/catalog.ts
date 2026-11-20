@@ -294,7 +294,7 @@ const entries = [
   },
   {
     id: "ITN-P0-SAMPLE-TRAVELLERS",
-    title: "The four sample travellers plan without a failed check",
+    title: "The five sample travellers plan without a failed check",
     feature: "cards-itinerary",
     documentedStage: "Milestone 8",
     priority: "P0",

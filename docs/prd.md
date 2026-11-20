@@ -433,14 +433,15 @@ Because the look can only be judged by seeing it, a clickable prototype of the m
 
 ## 18. Judging itinerary quality
 
-"The plan is good" is judged against four sample travellers. Each is planned with both Guided planning and Quick plan.
+"The plan is good" is judged against five sample travellers. Each is planned with both Guided planning and Quick plan.
 
-| Sample                                                                                                            | What it tests                                        |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Maya: alone, six days in Tokyo, mid budget, vegetarian, slow pace, food-led                                       | A hard limit, pace, and a first trip with no memory  |
-| The Okafors: two adults and children of 7 and 11, five days in Lisbon, flights booked, early dinners              | Tickets, a party with children, day shape            |
-| Dan and Priya: honeymoon, nine days by train through Rome, Florence and Venice, high budget, unlike Dan's profile | Several cities, a trip that differs from the profile |
-| Sam: returning user, three-day city break, Quick plan with only step 1 filled                                     | Memory, defaults, and the report of assumptions      |
+| Sample                                                                                                                | What it tests                                        |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Maya: alone, six days in Tokyo, mid budget, vegetarian, slow pace, food-led                                           | A hard limit, pace, and a first trip with no memory  |
+| The Okafors: two adults and children of 7 and 11, five days in Lisbon, flights booked, early dinners                  | Tickets, a party with children, day shape            |
+| Dan and Priya: honeymoon, nine days by train through Rome, Florence and Venice, high budget, unlike Dan's profile     | Several cities, a trip that differs from the profile |
+| Sam: returning user, three-day city break, Quick plan with only step 1 filled                                         | Memory, defaults, and the report of assumptions      |
+| Lena: alone, four nights in Rome, a same-day flight there and back from London, public transport, breakfast suggested | A ticket that crosses a time zone, and breakfast     |
 
 For each sample:
 
@@ -464,7 +465,7 @@ These were decided by the specification author, not stated by the product owner,
 7. Ranking and scheduling use fixed rules; the AI model only reads and words.
 8. The spending cap of 20 US dollars a month.
 9. Travel time is estimated from distance when no routing data is available, and is labelled as an estimate.
-10. The four sample travellers.
+10. The five sample travellers.
 11. A traveller's own move is saved with a flag when it breaks a rule; only a move onto a booked item is refused.
 12. Provisional dates and assumed transfers when the real ones are not yet known.
 13. Costs and visit lengths may be estimated from standard tables and are labelled as estimates.

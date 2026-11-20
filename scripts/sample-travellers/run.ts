@@ -26,7 +26,7 @@ import { signedIn, type Call } from "../site";
 import { TRAVELLERS, type Traveller } from "./travellers";
 
 // Plans the sample travellers of PRD 18 through the running site, by
-// Guided planning and by Quick plan, checks each plan, and writes the eight
+// Guided planning and by Quick plan, checks each plan, and writes the ten
 // itineraries out for the developer to read (TB-SYS-15).
 //
 //   npm run quality:samples -- http://localhost:3100
