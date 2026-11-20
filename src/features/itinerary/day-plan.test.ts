@@ -919,6 +919,62 @@ describe("breakfast", () => {
     expect(kinds(day.entries)).not.toContain("breakfast-at-stay");
   });
 
+  it("lists the included row in time order, after anything earlier in the day", () => {
+    const early = commitment({
+      id: "b",
+      title: "Tour",
+      date: "2027-05-11",
+      startTime: "07:00",
+      endTime: "08:00",
+    });
+    const day = withBreakfast("included", { commitments: [early] }).days[1];
+    expect(
+      day.entries.slice(0, 3).map((e) => [e.type, "start" in e && e.start]),
+    ).toEqual([
+      ["commitment", "07:00"],
+      ["breakfast-at-stay", "09:00"],
+      ["open", "09:45"],
+    ]);
+  });
+
+  it("gives no included row after a night in transit, but still suggests a cafe", () => {
+    const nightTrain = commitment({
+      id: "t",
+      kind: "TRANSPORT",
+      title: "Night train",
+      date: "2027-05-10",
+      startTime: "22:00",
+      endDate: "2027-05-11",
+      endTime: "06:00",
+      transport: {
+        mode: "TRAIN",
+        origin: "Tokyo",
+        destination: "Kyoto",
+        originZone: "Asia/Tokyo",
+        destinationZone: "Asia/Tokyo",
+      },
+    });
+    const over = {
+      facts: {
+        cities: [
+          { city: tokyo, nights: 0 },
+          { city: kyoto, nights: 2 },
+        ],
+        startDate: "2027-05-10",
+        endDate: null,
+        lengthNights: null,
+        timeOfYear: null,
+      },
+      commitments: [nightTrain],
+    };
+    const included = withBreakfast("included", over);
+    expect(kinds(included.days[1].entries)).not.toContain("breakfast-at-stay");
+    expect(kinds(included.days[2].entries)).toContain("breakfast-at-stay");
+    expect(kinds(withBreakfast("suggest", over).days[1].entries)).toContain(
+      "breakfast",
+    );
+  });
+
   it("gives neither when there is none or it is not said", () => {
     for (const breakfast of ["none", undefined] as const) {
       const view = withBreakfast(breakfast);

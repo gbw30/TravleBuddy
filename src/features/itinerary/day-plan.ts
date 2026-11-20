@@ -483,7 +483,9 @@ export function buildPlanView(
 
     const slots: DraftSlot[] = [];
     // Breakfast starts with the day, and only a day that starts in the
-    // morning has one. Day 1 has no night behind it, so none is "at the stay".
+    // morning has one. Day 1 has no night behind it, so none is "at the
+    // stay"; nor has a morning after a night on a ticket that lands today.
+    const overnight = landed.some((c) => c.date !== date);
     const dayStart = segments[0].from;
     let stayBreakfast: number | null = null;
     if (
@@ -506,7 +508,12 @@ export function buildPlanView(
             city: segments[0].city,
           });
         }
-      } else if (context.breakfast === "included" && index > 0 && !taken) {
+      } else if (
+        context.breakfast === "included" &&
+        index > 0 &&
+        !overnight &&
+        !taken
+      ) {
         stayBreakfast = dayStart;
       }
     }
@@ -622,9 +629,13 @@ export function buildPlanView(
       | { allowance: Draft["allowances"][number] }
       | { slot: DraftSlot }
       | { checkIn: Fixed }
+      | { breakfast: true }
     );
     const changes = draft.segments.length > 1;
     const steps: Step[] = [
+      ...(draft.stayBreakfast === null
+        ? []
+        : [{ at: draft.stayBreakfast, segment: 0, breakfast: true as const }]),
       // A check-in is a window, not an appointment: it waits until the
       // traveller is in its city and out of any station or airport, and is
       // laid at the first gap after that.
@@ -677,17 +688,7 @@ export function buildPlanView(
       slotId: null,
       ticket: null,
     }));
-    if (draft.stayBreakfast !== null) {
-      entries.push({
-        type: "breakfast-at-stay",
-        start: toClock(draft.stayBreakfast),
-        minutes: BREAKFAST.minutes,
-      });
-    }
-    // Breakfast where the traveller stays takes its time, as a slot does.
-    let clock =
-      draft.segments[0].from +
-      (draft.stayBreakfast === null ? 0 : BREAKFAST.minutes);
+    let clock = draft.segments[0].from;
     type Point = { latitude: number; longitude: number };
     // The day starts where the traveller slept, when that is confirmed.
     let lastPoint = (draft.morningStay?.located ?? null) as Point | null;
@@ -701,6 +702,17 @@ export function buildPlanView(
     } | null;
 
     steps.forEach((step, position) => {
+      if ("breakfast" in step) {
+        // Breakfast where the traveller stays takes its time, as a slot does.
+        entries.push({
+          type: "breakfast-at-stay",
+          start: toClock(step.at),
+          minutes: BREAKFAST.minutes,
+        });
+        clock = Math.max(clock, step.at + BREAKFAST.minutes);
+        lastPoint = draft.morningStay?.located ?? null;
+        return;
+      }
       if ("checkIn" in step) {
         const { commitment, start, end } = step.checkIn;
         const spot = commitment.located;
