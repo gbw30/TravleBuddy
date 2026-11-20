@@ -66,4 +66,27 @@ describe("NextAuth's routes, reached without sign-in", () => {
     expect(answer.headers.get("Location")).toBe("http://localhost/home");
     expect(answer.headers.getSetCookie()).toEqual(["tb_device=new; Path=/"]);
   });
+
+  it("keep each of NextAuth's own cookies separate beside the device cookie", async () => {
+    mocks.identify.mockReturnValue({
+      person: visitor,
+      cookie: "tb_device=new; Path=/",
+    });
+    mocks.GET.mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: [
+          ["Location", "http://localhost/home"],
+          ["Set-Cookie", "authjs.session-token=s; Path=/; HttpOnly"],
+          ["Set-Cookie", "authjs.callback-url=c; Path=/"],
+        ],
+      }),
+    );
+    const answer = await GET(request("GET"));
+    expect(answer.headers.getSetCookie()).toEqual([
+      "authjs.session-token=s; Path=/; HttpOnly",
+      "authjs.callback-url=c; Path=/",
+      "tb_device=new; Path=/",
+    ]);
+  });
 });
