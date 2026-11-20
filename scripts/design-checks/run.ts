@@ -1141,6 +1141,28 @@ async function stayAddress(page: Page, call: Call, data: Data): Promise<Row[]> {
     ) {
       problems.push("focus is not on the confirmed address");
     }
+    if ((await confirmed.count()) === 1) {
+      // Removing it moves the focus to the address field; then it is confirmed again.
+      await decided
+        .getByRole("button", { name: "Remove address" })
+        .press("Enter");
+      const field = decided.getByLabel("Address");
+      await field.waitFor({ timeout: 5_000 }).catch(() => undefined);
+      const focused = () =>
+        field
+          .evaluate((el) => el === document.activeElement)
+          .catch(() => false);
+      if (!(await focused())) {
+        await page.waitForTimeout(200);
+        if (!(await focused())) {
+          problems.push("focus is not on the address field once it is removed");
+        }
+      }
+      await lookup.click();
+      await confirm.waitFor({ timeout: 10_000 }).catch(() => undefined);
+      await confirm.press("Enter");
+      await confirmed.waitFor({ timeout: 5_000 }).catch(() => undefined);
+    }
   }
   await decided.getByRole("button", { name: "Add", exact: true }).click();
   // The page refreshes itself after the change; the way back appears with it.
