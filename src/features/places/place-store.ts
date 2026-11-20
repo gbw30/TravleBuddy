@@ -42,7 +42,10 @@ function savedTags(json: Prisma.JsonValue): Record<string, string> {
   );
 }
 
-function toDto(row: PlaceRow): PlaceDto {
+const todayUtc = () => new Date().toISOString().slice(0, 10);
+
+/** `today` is read once by the caller, so every row of one answer is judged on the same day. */
+function toDto(row: PlaceRow, today: string): PlaceDto {
   const dto = {
     id: row.id,
     origin: row.origin,
@@ -59,13 +62,13 @@ function toDto(row: PlaceRow): PlaceDto {
     serves: row.serves,
     servesNot: row.servesNot,
     originRef: row.originRef,
-    tags: (row.osmTags ?? {}) as Record<string, string>,
+    tags: savedTags(row.osmTags),
     lastEditedAt: row.lastEditedAt?.toISOString() ?? null,
     fetchedAt: row.fetchedAt?.toISOString() ?? null,
   };
   return {
     ...dto,
-    hoursDoubt: hoursDoubt(dto, new Date().toISOString().slice(0, 10)),
+    hoursDoubt: hoursDoubt(dto, today),
   };
 }
 
@@ -257,7 +260,8 @@ export async function listSights(
     },
     orderBy: { id: "asc" },
   });
-  return rows.map(toDto);
+  const today = todayUtc();
+  return rows.map((row) => toDto(row, today));
 }
 
 /** The saved places to eat within walking distance of a point, in a fixed order. */
@@ -273,15 +277,18 @@ export async function listFoodNear(
     },
     orderBy: { id: "asc" },
   });
-  return rows.map(toDto).filter(
-    (place) =>
-      place.latitude === null ||
-      place.longitude === null ||
-      distanceKm(point, {
-        latitude: place.latitude,
-        longitude: place.longitude,
-      }) <= FOOD_REACH_KM,
-  );
+  const today = todayUtc();
+  return rows
+    .map((row) => toDto(row, today))
+    .filter(
+      (place) =>
+        place.latitude === null ||
+        place.longitude === null ||
+        distanceKm(point, {
+          latitude: place.latitude,
+          longitude: place.longitude,
+        }) <= FOOD_REACH_KM,
+    );
 }
 
 /** Saved places by id. A traveller's own place is returned only to them. */
@@ -296,7 +303,8 @@ export async function getPlaces(
       OR: [{ origin: { not: "USER" } }, { addedByUserId: userId }],
     },
   });
-  return rows.map(toDto);
+  const today = todayUtc();
+  return rows.map((row) => toDto(row, today));
 }
 
 export type PlaceSearchOutcome =
@@ -332,7 +340,8 @@ export async function findPlacesByName(
       },
       orderBy: { id: "asc" },
     });
-    return { status: "ok", places: rows.map(toDto) };
+    const today = todayUtc();
+    return { status: "ok", places: rows.map((row) => toDto(row, today)) };
   } catch {
     return { status: "unavailable" };
   }
@@ -356,5 +365,5 @@ export async function addOwnPlace(
       addedByUserId: userId,
     },
   });
-  return toDto(row);
+  return toDto(row, todayUtc());
 }

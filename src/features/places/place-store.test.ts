@@ -370,6 +370,21 @@ describe("reading saved places", () => {
     expect(places.map((place) => place.id)).toEqual(["near", "mine"]);
   });
 
+  it("reads only the string tags of a saved row, whatever JSON the column holds", async () => {
+    mocks.db.place.findMany.mockResolvedValue([
+      row({
+        id: "tagged",
+        osmTags: { amenity: "cafe", wikidata: "Q1", level: 3, a: { b: "c" } },
+      }),
+      row({ id: "list", osmTags: ["amenity", "cafe"] }),
+    ]);
+
+    const [tagged, list] = await listSights(tokyo, "user-1");
+
+    expect(tagged.tags).toEqual({ amenity: "cafe", wikidata: "Q1" });
+    expect(list.tags).toEqual({});
+  });
+
   it("returns another traveller's own place to nobody else", async () => {
     await getPlaces(["p1", "p2"], "user-1");
     expect(mocks.db.place.findMany.mock.calls[0][0].where).toEqual({
