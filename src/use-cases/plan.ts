@@ -40,6 +40,7 @@ import {
   getPlaces,
   listFoodNear,
   listSights,
+  usesSamplePlaces,
   type GatherOutcome,
 } from "@/features/places";
 import {
@@ -132,6 +133,17 @@ export async function tasteOf(
   return tasteInUse(profile.entries, said);
 }
 
+/**
+ * The commitments as the plan may place them: a sample address is no
+ * position once the sample places are off, so it gives no legs.
+ */
+const positioned = (commitments: CommitmentDto[]): CommitmentDto[] =>
+  usesSamplePlaces()
+    ? commitments
+    : commitments.map((c) =>
+        c.located?.ref.startsWith("sample/") ? { ...c, located: null } : c,
+      );
+
 /** The way of getting around the traveller named, if they named one. */
 const meansOf = (taste: TasteInUse): TravelMeans | undefined =>
   TRAVEL_MEANS.find((means) => means === taste.getting_around?.values[0]);
@@ -156,7 +168,7 @@ export async function contextFor(
   const inUse = taste ?? (await tasteOf(userId, trip.id));
   return {
     facts: trip.facts,
-    commitments: trip.commitments,
+    commitments: positioned(trip.commitments),
     places: Object.fromEntries(places.map((place) => [place.id, place])),
     dayShift: DAY_SHIFT[inUse.day_shape?.values[0] ?? ""] ?? 0,
     means: meansOf(inUse),
@@ -318,7 +330,7 @@ export async function cardsFor(
           longitude: before.longitude,
         }
       : last === undefined
-        ? stayAt(morningStayOf(trip.commitments, day.date))
+        ? stayAt(morningStayOf(positioned(trip.commitments), day.date))
         : last.type === "commitment" && last.travelIn !== undefined
           ? stayAt(trip.commitments.find((c) => c.id === last.commitmentId))
           : null;

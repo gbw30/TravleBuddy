@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   readTripTaste: vi.fn(),
   readProfile: vi.fn(),
   appendMessages: vi.fn(),
+  usesSamplePlaces: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
 vi.mock("@/features/trips", () => ({
@@ -40,6 +41,7 @@ vi.mock("@/features/places", () => ({
   gatherFoodNear: vi.fn(),
   addOwnPlace: vi.fn(),
   findPlacesByName: vi.fn(),
+  usesSamplePlaces: mocks.usesSamplePlaces,
 }));
 vi.mock("@/features/recommendations", async (actual) => ({
   ...(await actual<typeof import("@/features/recommendations")>()),
@@ -295,6 +297,59 @@ describe("proposals in guided planning", () => {
     );
     const unknown = (await load("d2-morning"))!.proposal!.cards;
     expect(unknown.every((card) => card.travel === null)).toBe(true);
+  });
+
+  it("treats a sample address as no position once the sample places are off", async () => {
+    const stay = {
+      id: "s1",
+      kind: "STAY",
+      title: "Hotel Aurora",
+      date: "2027-05-10",
+      startTime: null,
+      endDate: "2027-05-12",
+      endTime: null,
+      reference: null,
+      note: null,
+      located: {
+        latitude: 35.69,
+        longitude: 139.7,
+        ref: "sample/centre",
+        address: "Sample address, city centre",
+      },
+      transport: null,
+    };
+    mocks.getTrip.mockResolvedValue(trip({ commitments: [stay] as never }));
+    mocks.readPlanState.mockResolvedValue({
+      state: state({
+        picks: { "d2-afternoon": { placeId: "s1", minutes: null } },
+      }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([sights[0]]);
+    const day2 = async (sampleMode: boolean) => {
+      mocks.usesSamplePlaces.mockReturnValue(sampleMode);
+      const plan = (await load("d2-morning"))!;
+      return {
+        cards: plan.proposal!.cards,
+        day: plan.view.days[1],
+      };
+    };
+
+    const off = await day2(false);
+    expect(off.cards.every((card) => card.travel === null)).toBe(true);
+    expect(off.day.entries.find((e) => e.type === "place")).toMatchObject({
+      travelIn: null,
+    });
+    expect(off.day.stayNote).toBe(
+      "Travel from where you stay is not counted. Add its address.",
+    );
+
+    const on = await day2(true);
+    expect(on.cards.every((card) => card.travel !== null)).toBe(true);
+    expect(on.day.entries.find((e) => e.type === "place")).toMatchObject({
+      travelIn: { means: "transit" },
+    });
+    expect(on.day.stayNote).toBeNull();
   });
 
   it("does not save the same proposal twice", async () => {
