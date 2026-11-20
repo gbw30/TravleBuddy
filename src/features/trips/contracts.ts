@@ -76,6 +76,15 @@ export const COMMITMENT_KINDS = [
 ] as const;
 export type CommitmentKind = (typeof COMMITMENT_KINDS)[number];
 
+/** A stay's address, once the traveller has confirmed the one found. */
+export const locatedSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  ref: z.string().trim().min(1).max(80),
+  address: z.string().trim().min(1).max(240),
+});
+export type Located = z.infer<typeof locatedSchema>;
+
 export const commitmentInputSchema = z
   .object({
     kind: z.enum(COMMITMENT_KINDS),
@@ -86,6 +95,11 @@ export const commitmentInputSchema = z
     endTime: clock.nullish().transform((value) => value ?? null),
     reference: optionalText(80),
     note: optionalText(500),
+    located: locatedSchema.nullish().transform((value) => value ?? null),
+  })
+  .refine((c) => c.kind === "STAY" || !c.located, {
+    path: ["located"],
+    message: "Only a stay has an address.",
   })
   .refine((c) => !c.startTime || c.date, {
     path: ["date"],
@@ -223,6 +237,8 @@ export type CommitmentDto = {
   endTime: string | null;
   reference: string | null;
   note: string | null;
+  /** A stay's confirmed address. Null: none confirmed, and nothing is guessed. */
+  located: Located | null;
   transport: {
     mode: string;
     origin: string;

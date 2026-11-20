@@ -24,6 +24,10 @@ export const commitmentSelect = {
   destination: true,
   originTimeZone: true,
   destinationTimeZone: true,
+  latitude: true,
+  longitude: true,
+  locatedRef: true,
+  locatedAddress: true,
 } satisfies Prisma.FixedCommitmentSelect;
 
 export const commitmentOrder = [
@@ -52,6 +56,18 @@ export function toCommitmentDto(row: CommitmentRow): CommitmentDto {
     endTime: row.endTime,
     reference: row.reference,
     note: row.note,
+    located:
+      row.latitude !== null &&
+      row.longitude !== null &&
+      row.locatedRef &&
+      row.locatedAddress
+        ? {
+            latitude: Number(row.latitude),
+            longitude: Number(row.longitude),
+            ref: row.locatedRef,
+            address: row.locatedAddress,
+          }
+        : null,
     transport:
       row.transportMode && row.origin && row.destination
         ? {
@@ -95,6 +111,10 @@ function rowData(input: CommitmentInput) {
     endTime: input.endTime,
     reference: input.reference,
     note: input.note,
+    latitude: input.located?.latitude ?? null,
+    longitude: input.located?.longitude ?? null,
+    locatedRef: input.located?.ref ?? null,
+    locatedAddress: input.located?.address ?? null,
   };
 }
 

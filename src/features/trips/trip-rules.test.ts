@@ -127,7 +127,33 @@ describe("commitmentInputSchema", () => {
       endTime: null,
       reference: null,
       note: null,
+      located: null,
     });
+  });
+
+  it("keeps a confirmed position on a stay and refuses one on anything else", () => {
+    const located = {
+      latitude: 38.711,
+      longitude: -9.14,
+      ref: "way/4242",
+      address: "Rua da Prata 12, Lisbon, Portugal",
+    };
+    expect(
+      commitmentInputSchema.parse({ ...base, kind: "STAY", located }).located,
+    ).toEqual(located);
+    for (const kind of ["RESERVATION", "TRANSPORT", "MUST_SEE", "OTHER"]) {
+      expect(
+        commitmentInputSchema.safeParse({ ...base, kind, located }).success,
+        kind,
+      ).toBe(false);
+    }
+    expect(
+      commitmentInputSchema.safeParse({
+        ...base,
+        kind: "STAY",
+        located: { ...located, latitude: 91 },
+      }).success,
+    ).toBe(false);
   });
 
   it("needs a date for a time, and an end after the start", () => {
