@@ -34,7 +34,7 @@ Alone, six days in Tokyo, mid budget, vegetarian, slow pace, food-led. *Tests: A
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 29 places, each one the place source knows, none twice |
+| No place is invented | pass | 29 places, each one the place source knows, none twice, except breakfast on another day (3 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
@@ -105,7 +105,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 29 places, each one the place source knows, none twice |
+| No place is invented | pass | 29 places, each one the place source knows, none twice, except breakfast on another day (3 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | no meal is at a place that says it does not serve vegetarian food |
@@ -186,7 +186,7 @@ Two adults and children of 7 and 11, five days in Lisbon, flights booked, early 
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 18 places, each one the place source knows, none twice |
+| No place is invented | pass | 18 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 3 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -256,7 +256,7 @@ Pace: I will keep a balanced pace. Shape of the day: early starts. Interests: pa
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 18 places, each one the place source knows, none twice |
+| No place is invented | pass | 18 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 3 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -336,7 +336,7 @@ Honeymoon, nine days by train through Rome, Florence and Venice, high budget, un
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 31 places, each one the place source knows, none twice |
+| No place is invented | pass | 31 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -425,7 +425,7 @@ Pace: relaxed. Shape of the day: I will start the days at about nine. Interests:
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 31 places, each one the place source knows, none twice |
+| No place is invented | pass | 31 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 1 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -524,7 +524,7 @@ Returning user, three-day city break, Quick plan with only step 1 filled. *Tests
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 15 places, each one the place source knows, none twice |
+| No place is invented | pass | 15 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -568,7 +568,7 @@ Pace: packed (you told me). Shape of the day: I will start the days at about nin
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 15 places, each one the place source knows, none twice |
+| No place is invented | pass | 15 places, each one the place source knows, none twice, except breakfast on another day (0 repeats) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | nothing was decided beforehand |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -622,7 +622,7 @@ Alone, four nights in Rome, a same-day flight there and back from London, public
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 21 places, each one the place source knows, none twice |
+| No place is invented | pass | 21 places, each one the place source knows, none twice, except breakfast on another day (1 repeat) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
@@ -687,7 +687,7 @@ Pace: I will keep a balanced pace. Shape of the day: I will start the days at ab
 
 | Check | Result | What was found |
 | --- | --- | --- |
-| No place is invented | pass | 21 places, each one the place source knows, none twice |
+| No place is invented | pass | 21 places, each one the place source knows, none twice, except breakfast on another day (1 repeat) |
 | No rule is broken | pass | no place carries a broken-rule flag |
 | Nothing already decided was moved | pass | 2 decided, each where it was |
 | No hard limit is broken | pass | the traveller has no dietary rule |
