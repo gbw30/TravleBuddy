@@ -28,7 +28,7 @@ const savedAddresses = z.array(
 const ADDRESS_SERVICE = "ADDRESS";
 const ADDRESS_DAILY_CAP = Number(process.env.PLACE_DAILY_REQUEST_CAP ?? 100);
 
-/** The search is bounded to a tenth of a degree around the city, which is also part of its saved key. */
+/** The search is bounded to 0.3 of a degree around the city, whose position, to a tenth of a degree, is part of its saved key. */
 const REACH = 0.3;
 const tenth = (value: number) => Math.round(value * 10) / 10;
 
