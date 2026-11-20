@@ -397,6 +397,27 @@ describe("a ticket across the date line", () => {
     });
   });
 
+  it("lists the Tokyo part of the day, then the Honolulu part, each in its own clock's order", () => {
+    const rows = view("Pacific/Honolulu").days[1].entries.map((e) =>
+      e.type === "open"
+        ? `${e.kind} ${e.start}`
+        : e.type === "allowance"
+          ? `${e.way} ${e.start}`
+          : `${e.type} ${e.start}`,
+    );
+    expect(rows).toEqual([
+      "morning 09:30",
+      "lunch 12:30",
+      "wander 13:45",
+      "afternoon 14:45",
+      "to 16:00",
+      "commitment 18:00",
+      "from 06:30",
+      "afternoon-2 16:00",
+      "dinner 19:00",
+    ]);
+  });
+
   it("shows no length and no 60-minute end when a zone is unknown", () => {
     const entry = view(null).days[1].entries.find(
       (e) => e.type === "commitment",

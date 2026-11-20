@@ -334,6 +334,8 @@ export function buildPlanView(
     allowances: Extract<PlanEntry, { type: "allowance" }>[];
     /** When the transfer arrives, by the clock of the city of arrival. */
     landsAt: number;
+    /** When the traveller leaves the morning's city, on a day with two segments. */
+    leaves: number;
     slots: DraftSlot[];
     /** When breakfast where the traveller stays is shown, if it is. */
     stayBreakfast: number | null;
@@ -406,6 +408,7 @@ export function buildPlanView(
     let segments: Segment[];
     let transfer: Draft["transfer"] = null;
     let landsAt = 0;
+    let leaves = 0;
     if (cityKeyOf(morningCity) === cityKeyOf(eveningCity)) {
       segments = [{ city: morningCity, from, until }];
     } else {
@@ -429,6 +432,7 @@ export function buildPlanView(
         ? ticket.end
         : Math.max(leave, leave + travel + ahead);
       landsAt = arrive;
+      leaves = leave;
       if (!ticket) {
         transfer = {
           type: "transfer",
@@ -537,6 +541,7 @@ export function buildPlanView(
       transfer,
       allowances,
       landsAt,
+      leaves,
       slots,
       stayBreakfast,
       held: new Map(),
@@ -598,24 +603,46 @@ export function buildPlanView(
   const usedPicks = new Set<string>();
   const notes: ({ key: string; text: string } | null | undefined)[] = [];
   const days: PlanDay[] = drafts.map((draft) => {
-    type Step =
-      | { at: number; fixed: Fixed }
-      | { at: number; transfer: NonNullable<Draft["transfer"]> }
-      | { at: number; allowance: Draft["allowances"][number] }
-      | { at: number; slot: DraftSlot };
+    // A step's segment: 0 for where the day starts, 1 after the city
+    // changes. Steps go by segment, then time: across the date line the
+    // clock of the city of arrival can read earlier than the one left.
+    type Step = { at: number; segment: number } & (
+      | { fixed: Fixed }
+      | { transfer: NonNullable<Draft["transfer"]> }
+      | { allowance: Draft["allowances"][number] }
+      | { slot: DraftSlot }
+    );
+    const changes = draft.segments.length > 1;
     const steps: Step[] = [
       ...draft.fixed
         .filter((fixed) => !isCheckIn(fixed, draft.date))
-        .map((fixed) => ({ at: fixed.start, fixed })),
-      ...draft.allowances.map((allowance) => ({
-        at: toMinutes(allowance.start),
-        allowance,
-      })),
+        .map((fixed) => ({
+          at: fixed.start,
+          segment: changes && fixed.start > draft.leaves ? 1 : 0,
+          fixed,
+        })),
+      ...draft.allowances.map((allowance) => {
+        const at = toMinutes(allowance.start);
+        // Only the way out of the ticket that changes city is in the new one.
+        const after =
+          changes && allowance.way === "from" && at >= draft.landsAt;
+        return { at, segment: after ? 1 : 0, allowance };
+      }),
       ...(draft.transfer
-        ? [{ at: toMinutes(draft.transfer.start), transfer: draft.transfer }]
+        ? [
+            {
+              at: toMinutes(draft.transfer.start),
+              segment: 0,
+              transfer: draft.transfer,
+            },
+          ]
         : []),
-      ...draft.slots.map((slot) => ({ at: slot.earliest, slot })),
-    ].sort((a, b) => a.at - b.at);
+      ...draft.slots.map((slot) => ({
+        at: slot.earliest,
+        segment: draft.segments.findIndex((s) => s.city === slot.city),
+        slot,
+      })),
+    ].sort((a, b) => a.segment - b.segment || a.at - b.at);
 
     const entries: PlanEntry[] = draft.notes.map((commitment) => ({
       type: "commitment",
@@ -710,7 +737,9 @@ export function buildPlanView(
                 }
               : null,
         });
-        clock = Math.max(clock, end);
+        // A ticket that lands earlier by the clock than it left crossed the
+        // date line: the day goes on by the clock it lands in.
+        clock = end < start ? end : Math.max(clock, end);
         lastPoint = null;
         lastPlace = null;
         return;
