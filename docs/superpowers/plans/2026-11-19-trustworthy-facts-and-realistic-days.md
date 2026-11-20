@@ -506,7 +506,7 @@ Not in this piece:
 
 ### Piece 17: Traveller choices
 
-Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, TB-ITN-22, TB-FIX-08, TB-CRD-13.
+Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, TB-FIX-08, TB-CRD-13. Check-in as a window moved to piece 21.
 
 1. **Breakfast may repeat.** A place picked for a breakfast slot is not moved out of breakfast slots on other days. This is the one exception to "a place sits in one slot only" (`plan-actions.ts` ~46-52). The same-day exclusion stays, and lunch and dinner still do not repeat. The ranking may prefer a new café, but it never hides a repeat. Update the samples' "nothing decided moved" and no-repeat checks.
 2. **The ticket type is required.** Every path that creates or changes a ticket needs one of `TICKET_MODES`:
@@ -523,7 +523,6 @@ Added on 2026-11-20 from the developer's answers. **Requirements:** TB-ITN-21, T
    - Any slot holding the place reopens, and the plan says "{place} was removed."
    - It crosses Places and Itinerary through a use-case and the contracts.
    - The design walk removes its Kyoto place at the end.
-     Check-in as a window moved to piece 21.
 
 **Checks:** as piece 16.
 
