@@ -44,24 +44,39 @@ export function TripFactsForm({
   readOnly: boolean;
 }) {
   const router = useRouter();
-  const [facts, setFacts] = useState(initial);
+  // Only what the traveller changed here: the conversation may have set other
+  // facts since the page loaded, and a save must not put the old ones back.
+  const [edits, setEdits] = useState<Partial<TripFacts>>({});
+  // The facts as they were when a save went through. The edits stay shown
+  // until the page reads the trip again, so an edit never jumps back.
+  const [savedOver, setSavedOver] = useState<TripFacts | null>(null);
+  if (savedOver && initial !== savedOver) {
+    setSavedOver(null);
+    setEdits({});
+  }
+  const facts = { ...initial, ...edits };
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(
     null,
   );
   const set = (change: Partial<TripFacts>) => {
-    setFacts((current) => ({ ...current, ...change }));
+    setEdits((current) => ({ ...current, ...change }));
     setStatus(null);
   };
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
+    // A lone end date skips the "ends before it starts" check, so send both.
+    const dated = "startDate" in edits || "endDate" in edits;
     const result = await changeTrip(tripId, revision, "PATCH", {
       action: "facts",
-      facts,
+      facts: dated
+        ? { ...edits, startDate: facts.startDate, endDate: facts.endDate }
+        : edits,
     });
     setSaving(false);
+    if (result.ok) setSavedOver(initial);
     setStatus(
       result.ok
         ? { ok: true, text: "Saved." }

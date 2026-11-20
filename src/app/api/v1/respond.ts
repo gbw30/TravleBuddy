@@ -4,6 +4,7 @@ import {
   assertAuthenticatedApiUser,
   UnauthorizedError,
 } from "@/lib/authorization";
+import { DATES_ORDER_MESSAGE } from "@/features/trips/contracts";
 import type { TripActionOutcome } from "@/use-cases/trip-action";
 
 // Shared by every /api/v1 route. The routes are documented in docs/api/v1.md.
@@ -54,6 +55,7 @@ const refusals = {
   archived: ["archived", 409],
   stale: ["stale_revision", 409],
   conflict: ["operation_id_conflict", 409],
+  bad_dates: ["invalid_request", 422],
   too_many: ["too_many", 422],
 } as const;
 
@@ -70,6 +72,15 @@ export function outcomeResponse(
   }
   if (outcome.status === "refused") {
     return json({ error: "refused", message: outcome.message }, 409);
+  }
+  if (outcome.status === "bad_dates") {
+    return json(
+      {
+        error: "invalid_request",
+        issues: [{ path: ["endDate"], message: DATES_ORDER_MESSAGE }],
+      },
+      422,
+    );
   }
   const [error, status] = refusals[outcome.status];
   return json({ error }, status);

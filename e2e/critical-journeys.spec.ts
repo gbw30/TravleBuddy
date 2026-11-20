@@ -30,8 +30,52 @@ test.describe("critical authenticated journeys", () => {
     expect(response?.status()).toBe(200);
 
     await expect(page.locator('[data-qa="trip-workspace"]')).toBeVisible();
-    await expect(page.getByRole("heading", { name: "The facts" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "The facts" }),
+    ).toBeVisible();
     await expect(page.locator('[data-qa="commitments"]')).toBeVisible();
+  });
+
+  test("@critical saving the facts keeps the conversation's answers", async ({
+    page,
+  }) => {
+    // A new trip with a city and dates, so "Who is travelling?" is asked next.
+    // The owner's trips go with the QA fixtures when the run is cleaned up.
+    await page.goto("/trips/new");
+    await page.getByRole("button", { name: "Start planning together" }).click();
+    await expect(page).toHaveURL(/\/trips\/[^/]+$/);
+    const facts = page.getByRole("form", { name: "The facts" });
+    await facts.getByLabel("Add a city").fill("Lisbon");
+    await facts.getByRole("button", { name: "Find city" }).click();
+    await facts.getByRole("button", { name: /^Lisbon/ }).click();
+    await facts.getByLabel("First day").fill("2027-04-01");
+    await facts.getByLabel("Last day").fill("2027-04-05");
+    await facts.getByRole("button", { name: "Save the facts" }).click();
+    await expect(facts.getByText("Saved.")).toBeVisible();
+    await page.reload();
+
+    const waiting = page.getByRole("group", { name: "Who is travelling?" });
+    await expect(waiting).toBeVisible();
+
+    // The conversation sets the travellers after the page has loaded.
+    await waiting
+      .getByRole("button", { name: "Two adults and a child" })
+      .click();
+    await expect(waiting).toBeHidden();
+
+    // The traveller then saves the facts with something else changed.
+    await facts.getByLabel("Nights", { exact: true }).fill("4");
+    await facts.getByRole("button", { name: "Save the facts" }).click();
+    await expect(facts.getByText("Saved.")).toBeVisible();
+    await expect(facts.getByLabel("Nights", { exact: true })).toHaveValue("4");
+
+    await page.reload();
+    await expect(facts.getByLabel("Nights", { exact: true })).toHaveValue("4");
+    await expect(facts.getByLabel("Adults")).toHaveValue("2");
+    await expect(facts.getByLabel("Children")).toHaveValue("1");
+    await expect(
+      page.getByRole("group", { name: "Who is travelling?" }),
+    ).toBeHidden();
   });
 
   test("@nightly critical pages have no serious accessibility violations", async ({
@@ -48,7 +92,9 @@ test.describe("critical authenticated journeys", () => {
     expect(blocking).toEqual([]);
   });
 
-  test("@nightly mobile-width pages do not overflow horizontally", async ({ page }) => {
+  test("@nightly mobile-width pages do not overflow horizontally", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/home");
     const dimensions = await page.evaluate(() => ({
@@ -56,6 +102,8 @@ test.describe("critical authenticated journeys", () => {
       scrollWidth: document.documentElement.scrollWidth,
     }));
 
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(
+      dimensions.clientWidth + 1,
+    );
   });
 });

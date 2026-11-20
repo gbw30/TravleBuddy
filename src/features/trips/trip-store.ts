@@ -299,14 +299,27 @@ export async function saveTripFacts(
   if (refused) return refused;
 
   const { cities, startDate, endDate, ...plain } = facts;
-  await tx.trip.update({
-    where: { id: tripId },
+  // The schema compares two dates sent together; a lone date is compared with
+  // the stored one in the write itself, so a concurrent save cannot slip in.
+  const start = startDate ? asDate(startDate) : null;
+  const end = endDate ? asDate(endDate) : null;
+  const written = await tx.trip.updateMany({
+    where: {
+      id: tripId,
+      ...(end && startDate === undefined
+        ? { OR: [{ startDate: null }, { startDate: { lte: end } }] }
+        : {}),
+      ...(start && endDate === undefined
+        ? { OR: [{ endDate: null }, { endDate: { gte: start } }] }
+        : {}),
+    },
     data: {
       ...plain,
       ...(startDate === undefined ? {} : { startDate: asDate(startDate) }),
       ...(endDate === undefined ? {} : { endDate: asDate(endDate) }),
     },
   });
+  if (written.count === 0) return "bad_dates";
   if (cities) await replaceCities(tx, tripId, cities);
   return { saved: true };
 }
