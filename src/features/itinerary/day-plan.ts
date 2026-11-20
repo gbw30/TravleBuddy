@@ -942,19 +942,28 @@ export function buildPlanView(
         lastPick = { flags, segment: step.segment };
       } else {
         const start = Math.max(slot.earliest, clock);
+        // It needs an hour before its part of the day ends, or before
+        // something decided in it begins.
+        const decided = steps
+          .slice(position + 1)
+          .find((later) => "fixed" in later || "transfer" in later);
+        const until =
+          decided?.segment === step.segment
+            ? Math.min(segment.until, decided.at)
+            : segment.until;
         const bareStart = bare?.days[draft.day - 1].entries.find(
           (entry) => entry.type === "open" && entry.slotId === slot.id,
         )?.start;
         if (
-          start + 60 > segment.until &&
+          start + 60 > until &&
           lastPick?.segment === step.segment &&
           bareStart != null &&
-          toMinutes(bareStart) + 60 <= segment.until &&
+          toMinutes(bareStart) + 60 <= until &&
           !lastPick.flags.some((flag) => flag.rule === "day")
         ) {
           lastPick.flags.push({
             rule: "day",
-            message: `Leaves no time for ${slotWords(slot.kind)} before ${toClock(segment.until)}.`,
+            message: `Leaves no time for ${slotWords(slot.kind)} before ${toClock(until)}.`,
             fix: "Move it earlier or shorten the visit.",
           });
         }

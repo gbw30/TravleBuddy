@@ -244,6 +244,22 @@ const scenarios: Scenario[] = [
     ],
   },
   {
+    name: "a booking soon after the check-in time",
+    cities: [[lisbon, 2]],
+    commitments: (stays) => [
+      {
+        ...base,
+        id: "tasting",
+        kind: "RESERVATION",
+        title: "Wine tasting",
+        date: "2027-05-10",
+        startTime: "15:15",
+        endTime: "16:00",
+      },
+      ...stay(lisbon, ["2027-05-10", "2027-05-12"], "15:00", stays),
+    ],
+  },
+  {
     name: "a flight in the small hours on the day the city changes",
     cities: [
       [lisbon, 2],

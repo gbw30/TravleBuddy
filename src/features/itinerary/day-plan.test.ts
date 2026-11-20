@@ -530,6 +530,33 @@ describe("a picked place", () => {
     });
   });
 
+  it("flags the last pick when an open slot no longer fits before a booking", () => {
+    // Lunch is pushed to 13:25 and takes until 14:40; the afternoon needs an hour before 15:00.
+    const view = buildPlanView(
+      state({
+        pace: "packed",
+        picks: { "d2-morning-2": pick("museum", 160) },
+      }),
+      context({
+        places,
+        commitments: [
+          commitment({
+            date: "2027-05-11",
+            startTime: "15:00",
+            endTime: "16:00",
+          }),
+        ],
+      }),
+    );
+    expect(found(view.days[1].entries, "place")[0].flags).toEqual([
+      {
+        rule: "day",
+        message: "Leaves no time for the afternoon before 15:00.",
+        fix: "Move it earlier or shorten the visit.",
+      },
+    ]);
+  });
+
   it("shows no travel time to or from a place with no known position", () => {
     const view = buildPlanView(
       state({
