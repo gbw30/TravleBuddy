@@ -108,6 +108,29 @@ describe("gathering places", () => {
     expect(mocks.db.providerCall.upsert).not.toHaveBeenCalled();
   });
 
+  it("fetches again exactly 30 days after the last request, and not a moment before", async () => {
+    vi.useFakeTimers({
+      now: new Date("2027-05-11T12:00:00Z"),
+      toFake: ["Date"],
+    });
+    try {
+      mocks.osm.sights.mockResolvedValue({ places: [], reach: null });
+      mocks.db.placeFetch.findUnique.mockResolvedValue({
+        fetchedAt: new Date(Date.now() - 30 * 86_400_000 + 1),
+      });
+      await gatherSights(tokyo);
+      expect(mocks.osm.sights).not.toHaveBeenCalled();
+
+      mocks.db.placeFetch.findUnique.mockResolvedValue({
+        fetchedAt: new Date(Date.now() - 30 * 86_400_000),
+      });
+      await gatherSights(tokyo);
+      expect(mocks.osm.sights).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("fetches a scope again after 30 days, writing one upsert", async () => {
     mocks.db.placeFetch.findUnique.mockResolvedValue({
       fetchedAt: daysAgo(31),
