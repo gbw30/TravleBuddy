@@ -813,6 +813,40 @@ describe("the time lunch takes", () => {
     // A quarter of an hour is not time to wander.
     expect(wanderWith("14:00")).toEqual([]);
   });
+
+  it("ends where the way to the last day's ticket begins, so what follows stays before it", () => {
+    const view = buildPlanView(
+      state({ pace: "relaxed" }),
+      context({
+        commitments: [
+          commitment({
+            id: "t",
+            kind: "TRANSPORT",
+            title: "Flight",
+            date: "2027-05-12",
+            startTime: "17:30",
+            endDate: "2027-05-12",
+            endTime: "20:00",
+          }),
+        ],
+      }),
+    );
+    // The way to the flight starts at 15:30; lunch ends at 13:45.
+    const day3 = view.days[2].entries;
+    expect(found(day3, "wander").map((e) => `${e.start} ${e.minutes}`)).toEqual(
+      ["13:45 105"],
+    );
+    expect(
+      day3.map((e) => (e.type === "open" ? `${e.kind} ${e.start}` : e.type)),
+    ).toEqual([
+      "morning 10:00",
+      "lunch 12:30",
+      "wander",
+      "afternoon 15:30",
+      "allowance",
+      "commitment",
+    ]);
+  });
 });
 
 describe("breakfast", () => {

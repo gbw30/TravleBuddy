@@ -914,12 +914,18 @@ export function buildPlanView(
       }
 
       // Time to wander or rest follows lunch, with the last place as its area.
-      // It ends where something decided, or a transfer, begins.
+      // It ends where something decided, a transfer, or the way to a
+      // ticket begins.
       if (slot.kind === "lunch" && wander > 0) {
         const start = Math.max(clock, slot.earliest + MEAL_MINUTES);
         const next = steps
           .slice(position + 1)
-          .find((later) => "fixed" in later || "transfer" in later);
+          .find(
+            (later) =>
+              "fixed" in later ||
+              "transfer" in later ||
+              ("allowance" in later && later.allowance.way === "to"),
+          );
         const minutes = Math.min(wander, next ? next.at - start : wander);
         if (minutes >= MIN_WANDER) {
           entries.push({
