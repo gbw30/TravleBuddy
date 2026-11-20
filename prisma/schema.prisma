@@ -546,3 +546,19 @@ model ForgottenEvidence {
   @@unique([userId, topic, value])
   @@map("forgotten_evidence")
 }
+
+/// Fair use (Fair use service): requests and spend counted per person in
+/// fixed windows (TB-SYS-16, TB-SYS-17). `key` names the limit and one of the
+/// person's identifiers, as "api:a:<user id>", "api:d:<device id>" or
+/// "gather:s:<signature>". No relation to users: a device or a signature is
+/// not a user. A window is deleted once it has ended.
+model FairUseCount {
+  key    String   @db.VarChar(100)
+  /// When the window ends: the next minute, or the next UTC midnight.
+  endsAt DateTime @map("ends_at") @db.Timestamptz(3)
+  count  Int      @default(0)
+
+  @@id([key, endsAt])
+  @@index([endsAt])
+  @@map("fair_use_counts")
+}

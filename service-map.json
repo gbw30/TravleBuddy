@@ -51,6 +51,10 @@
     "itinerary": {
       "code": ["src/features/itinerary/**"],
       "tables": ["Plan", "PlanVersion"]
+    },
+    "fair-use": {
+      "code": ["src/features/fair-use/**"],
+      "tables": ["FairUseCount"]
     }
   },
   "crossBorderForeignKeys": [
