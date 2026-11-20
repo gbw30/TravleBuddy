@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   appendMessages: vi.fn(),
   usesSamplePlaces: vi.fn(),
   removeOwnPlace: vi.fn(),
+  listTrips: vi.fn(),
+  advanceTripRevision: vi.fn(),
   runTripAction: vi.fn(),
   findEditable: vi.fn(),
 }));
@@ -28,6 +30,8 @@ vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
 vi.mock("@/features/trips", () => ({
   getTrip: mocks.getTrip,
   findEditable: mocks.findEditable,
+  listTrips: mocks.listTrips,
+  advanceTripRevision: mocks.advanceTripRevision,
 }));
 vi.mock("@/features/itinerary", async (actual) => ({
   ...(await actual<typeof import("@/features/itinerary")>()),
@@ -70,7 +74,12 @@ vi.mock("./trip-action", () => ({
   },
 }));
 
-import { loadPlan, removeTripPlace, setPlanPace } from "./plan";
+import {
+  loadPlan,
+  removeTripPlace,
+  setPlanPace,
+  tripsAlsoHolding,
+} from "./plan";
 
 const tokyo = {
   name: "Tokyo",
@@ -151,6 +160,7 @@ beforeEach(() => {
   mocks.listSights.mockResolvedValue(sights);
   mocks.listFoodNear.mockResolvedValue(food);
   mocks.readDiscards.mockResolvedValue([]);
+  mocks.listTrips.mockResolvedValue([]);
   mocks.readTripTaste.mockResolvedValue({});
   mocks.readProfile.mockResolvedValue({ entries: [] });
   // Every card is shown for the first time.
@@ -927,5 +937,79 @@ describe("removing a place the traveller added", () => {
     mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
     expect(await remove()).toEqual({ summary: "Aunt's flat was removed." });
     expect(mocks.writePlanVersion).not.toHaveBeenCalled();
+  });
+
+  it("reopens the slot in every other trip that holds it, and says so there", async () => {
+    mocks.removeOwnPlace.mockResolvedValue("Aunt's flat");
+    mocks.listTrips.mockResolvedValue([
+      { id: "trip-1", title: "Tokyo" },
+      { id: "trip-2", title: "Lisbon and Porto" },
+      { id: "trip-3", title: "Never used it" },
+    ]);
+    const plans: Record<string, PlanState> = {
+      "trip-1": state({ picks: { "d1-morning": picked("own") } }),
+      "trip-2": state({
+        picks: { "d2-lunch": picked("own"), "d1-morning": picked("s1") },
+      }),
+      "trip-3": state({ picks: { "d1-morning": picked("s1") } }),
+    };
+    mocks.readPlanState.mockImplementation(async (_db, id: string) => ({
+      state: plans[id],
+      canUndo: false,
+    }));
+    await remove();
+    const written = mocks.writePlanVersion.mock.calls.map(([, id, next]) => [
+      id,
+      Object.keys(next.picks),
+    ]);
+    expect(written).toEqual([
+      ["trip-2", ["d1-morning"]],
+      ["trip-1", []],
+    ]);
+    expect(mocks.writePlanVersion.mock.calls[0][3]).toBe(
+      "Aunt's flat was removed.",
+    );
+    expect(mocks.appendMessages).toHaveBeenCalledWith(tx, "trip-2", [
+      {
+        from: "agent",
+        body: { kind: "text", text: "Aunt's flat was removed." },
+      },
+    ]);
+    expect(mocks.advanceTripRevision).toHaveBeenCalledWith(
+      tx,
+      "user-1",
+      "trip-2",
+      undefined,
+    );
+    expect(mocks.advanceTripRevision).not.toHaveBeenCalledWith(
+      tx,
+      "user-1",
+      "trip-3",
+      undefined,
+    );
+  });
+
+  it("names the other trips that hold a place of the traveller's own, for the confirm step", async () => {
+    mocks.getPlaces.mockResolvedValue([
+      { ...place("own", "museum"), origin: "USER" },
+    ]);
+    mocks.listTrips.mockResolvedValue([
+      { id: "trip-1", title: "Tokyo" },
+      { id: "trip-2", title: "Lisbon and Porto" },
+      { id: "trip-3", title: "Never used it" },
+    ]);
+    mocks.readPlanState.mockImplementation(async (_db, id: string) => ({
+      state:
+        id === "trip-3"
+          ? state()
+          : state({ shelf: [{ placeId: "own", reason: null }] }),
+      canUndo: false,
+    }));
+    expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([
+      { id: "trip-2", title: "Lisbon and Porto" },
+    ]);
+    // Not a place of their own: nothing to say.
+    mocks.getPlaces.mockResolvedValue([place("own", "museum")]);
+    expect(await tripsAlsoHolding("user-1", "trip-1", "own")).toEqual([]);
   });
 });

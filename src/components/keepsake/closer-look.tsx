@@ -16,12 +16,26 @@ const look = {
   overlay: "max-w-2xl rounded-[14px] bg-card p-6 md:p-8",
 };
 
+/** What the confirm step says about the traveller's other trips that hold the place. */
+export function alsoInSentence(titles: string[]): string {
+  if (titles.length === 0) return "";
+  const quoted = titles.map((title) => `"${title}"`);
+  const list =
+    quoted.length === 1
+      ? quoted[0]
+      : `${quoted.slice(0, -1).join(", ")} and ${quoted.at(-1)}`;
+  return titles.length === 1
+    ? `It is also in your trip ${list}. Removing it opens that slot too.`
+    : `It is also in your trips ${list}. Removing it opens those slots too.`;
+}
+
 export function CloserLook({
   place,
   variant,
   showPhoto,
   onClose,
   onRemove,
+  othersHolding,
 }: {
   place: CardPlace | null;
   variant: "enlarged" | "overlay";
@@ -29,12 +43,15 @@ export function CloserLook({
   onClose: () => void;
   /** Offered for a place the traveller added by hand, after a confirm step. */
   onRemove?: (placeId: string) => void;
+  /** The titles of the traveller's other trips that hold the place. */
+  othersHolding?: (placeId: string) => Promise<string[]>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // The last place shown stays on the card while it closes.
   const [shown, setShown] = useState(place);
   if (place && place !== shown) setShown(place);
   const [confirming, setConfirming] = useState(false);
+  const [others, setOthers] = useState<string[]>([]);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -152,7 +169,8 @@ export function CloserLook({
               {confirming ? (
                 <>
                   <p role="alert" className="text-[15px]">
-                    Remove {shown.name}? Any slot that holds it reopens.
+                    Remove {shown.name}? Any slot that holds it reopens.{" "}
+                    {alsoInSentence(others)}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-3">
                     <button
@@ -175,7 +193,10 @@ export function CloserLook({
                 <button
                   type="button"
                   className={quiet}
-                  onClick={() => setConfirming(true)}
+                  onClick={async () => {
+                    setOthers((await othersHolding?.(shown.id)) ?? []);
+                    setConfirming(true);
+                  }}
                 >
                   Remove this place
                 </button>

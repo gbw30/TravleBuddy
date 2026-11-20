@@ -366,3 +366,24 @@ describe("forgetting a place", () => {
     });
   });
 });
+
+describe("a plan that still points at a place that was removed", () => {
+  it("shows the slot open, as after Undo restores a step from before the removal", () => {
+    const restored = state({
+      picks: { "d1-morning": pick("gone"), "d1-afternoon": pick("a") },
+      shelf: [{ placeId: "gone", reason: null }],
+    });
+    const view = buildPlanView(restored, context);
+    const entries = view.days.flatMap((day) => day.entries);
+    expect(
+      entries.find((e) => "slotId" in e && e.slotId === "d1-morning")?.type,
+    ).toBe("open");
+    expect(
+      entries.some((e) => e.type === "place" && e.placeId === "gone"),
+    ).toBe(false);
+    // The place that still exists is untouched.
+    expect(entries.some((e) => e.type === "place" && e.placeId === "a")).toBe(
+      true,
+    );
+  });
+});

@@ -1,7 +1,7 @@
 import { controlSchema } from "@/features/trips/contracts";
-import { removeTripPlace } from "@/use-cases/plan";
+import { removeTripPlace, tripsAlsoHolding } from "@/use-cases/plan";
 
-import { outcomeResponse, readBody, withUser } from "../../../../respond";
+import { json, outcomeResponse, readBody, withUser } from "../../../../respond";
 
 type Context = { params: Promise<{ tripId: string; placeId: string }> };
 
@@ -17,4 +17,10 @@ export const DELETE = withUser<Context>(async (userId, request, context) => {
   return outcomeResponse(
     await removeTripPlace({ userId, tripId, placeId, control: body.data }),
   );
+});
+
+/** The traveller's other trips that hold this place, for the confirm step before removing it. */
+export const GET = withUser<Context>(async (userId, _request, context) => {
+  const { tripId, placeId } = await context.params;
+  return json({ otherTrips: await tripsAlsoHolding(userId, tripId, placeId) });
 });

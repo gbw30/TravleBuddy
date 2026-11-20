@@ -207,3 +207,11 @@ export function forgetPlace(state: PlanState, placeId: string): PlanState {
     shelf: state.shelf.filter((item) => item.placeId !== placeId),
   };
 }
+
+/** Whether the choices hold the place in a slot or on the shelf. */
+export function holdsPlace(state: PlanState, placeId: string): boolean {
+  return (
+    Object.values(state.picks).some((pick) => pick.placeId === placeId) ||
+    state.shelf.some((item) => item.placeId === placeId)
+  );
+}

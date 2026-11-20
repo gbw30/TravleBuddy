@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
     findTripPlaces: vi.fn(),
     addTripPlace: vi.fn(),
     removeTripPlace: vi.fn(),
+    tripsAlsoHolding: vi.fn(),
     takeTurn: vi.fn(),
     loadConversation: vi.fn(),
     loadBrief: vi.fn(),
@@ -59,6 +60,7 @@ vi.mock("@/use-cases/plan", () => ({
   findTripPlaces: mocks.findTripPlaces,
   addTripPlace: mocks.addTripPlace,
   removeTripPlace: mocks.removeTripPlace,
+  tripsAlsoHolding: mocks.tripsAlsoHolding,
 }));
 
 vi.mock("@/use-cases/conversation", () => ({
@@ -116,7 +118,10 @@ import {
   GET as findPlaces,
   POST as addPlace,
 } from "./trips/[tripId]/places/route";
-import { DELETE as removePlace } from "./trips/[tripId]/places/[placeId]/route";
+import {
+  DELETE as removePlace,
+  GET as tripsHoldingPlace,
+} from "./trips/[tripId]/places/[placeId]/route";
 import { POST as createTrip } from "./trips/route";
 
 const control = {
@@ -685,6 +690,16 @@ describe("a place of the traveller's own", () => {
       placeId: "own",
       control,
     });
+    mocks.tripsAlsoHolding.mockResolvedValue([{ id: "t2", title: "Lisbon" }]);
+    const asked = await tripsHoldingPlace(request("GET"), place);
+    expect(await asked.json()).toEqual({
+      otherTrips: [{ id: "t2", title: "Lisbon" }],
+    });
+    expect(mocks.tripsAlsoHolding).toHaveBeenCalledWith(
+      "user-1",
+      "trip-1",
+      "own",
+    );
     mocks.removeTripPlace.mockClear();
     expect((await removePlace(request("DELETE"), place)).status).toBe(422);
     expect(mocks.removeTripPlace).not.toHaveBeenCalled();

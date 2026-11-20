@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { CloserLook } from "./closer-look";
+import { alsoInSentence, CloserLook } from "./closer-look";
 import { DayStamp } from "./day-stamp";
 import { ItineraryRow } from "./itinerary-row";
 import { PlaceArt } from "./place-art";
@@ -86,6 +86,16 @@ describe("keepsake components", () => {
       expect(render({ own: true }, remove)).not.toContain("Keep it");
       expect(render({ own: false }, remove)).not.toContain("Remove this place");
       expect(render({ own: true })).not.toContain("Remove this place");
+    });
+
+    it("names the other trips that hold the place, and says nothing when there are none", () => {
+      expect(alsoInSentence([])).toBe("");
+      expect(alsoInSentence(["Lisbon and Porto"])).toBe(
+        'It is also in your trip "Lisbon and Porto". Removing it opens that slot too.',
+      );
+      expect(alsoInSentence(["A", "B", "C"])).toBe(
+        'It is also in your trips "A", "B" and "C". Removing it opens those slots too.',
+      );
     });
 
     it("puts the doubt under the hours in the label style", () => {

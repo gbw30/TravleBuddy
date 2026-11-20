@@ -261,6 +261,15 @@ export function TripWorkspace({
     await refresh(wanted.current);
   }
 
+  /** The titles of the traveller's other trips that hold a place, for the confirm step. */
+  async function tripsHolding(placeId: string): Promise<string[]> {
+    const result = await callApi<{ otherTrips: { title: string }[] }>(
+      `/api/v1/trips/${tripId}/places/${placeId}`,
+      { method: "GET" },
+    );
+    return result.ok ? result.data.otherTrips.map((trip) => trip.title) : [];
+  }
+
   async function searchByName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const query = String(
@@ -780,6 +789,7 @@ export function TripWorkspace({
         showPhoto
         onClose={() => setLooking(null)}
         onRemove={readOnly ? undefined : removePlace}
+        othersHolding={tripsHolding}
       />
     </section>
   );
