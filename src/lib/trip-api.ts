@@ -2,7 +2,13 @@
 
 export type ApiResult<T> =
   | { ok: true; data: T; revision: number | null }
-  | { ok: false; error: string; message: string };
+  | {
+      ok: false;
+      error: string;
+      message: string;
+      /** Over a request limit: the seconds until another request is let through. */
+      retryAfter?: number;
+    };
 
 const messages: Record<string, string> = {
   stale_revision:
@@ -48,6 +54,10 @@ export async function callApi<T>(
       error === "refused" && typeof reply.message === "string"
         ? reply.message
         : (messages[error] ?? fallback);
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+      return { ok: false, error, message, retryAfter };
+    }
     return { ok: false, error, message };
   } catch {
     return { ok: false, error: "network", message: fallback };

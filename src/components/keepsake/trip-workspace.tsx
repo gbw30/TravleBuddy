@@ -191,7 +191,7 @@ export function TripWorkspace({
     setBuildProblem(null);
     setReportHidden(false);
     setStarting(start);
-    for (let first = start; ; first = false) {
+    for (let first = start; ; ) {
       const result = await changeTrip<{ done: boolean }>(
         tripId,
         revision,
@@ -199,12 +199,22 @@ export function TripWorkspace({
         first ? { start: true } : {},
         "/build",
       );
+      // Over a request limit a long build says so, waits its turn and goes
+      // on with the same step (TB-SYS-16).
+      if (!result.ok && result.retryAfter) {
+        const wait = result.retryAfter * 1000;
+        setBuildProblem(result.message);
+        await new Promise((go) => setTimeout(go, wait));
+        setBuildProblem(null);
+        continue;
+      }
       if (!result.ok) {
         setBuildProblem(result.message);
         // Nothing shows a problem unless a build is on screen.
         if (first) setProblem(result.message);
         break;
       }
+      first = false;
       await refresh(wanted.current);
       setStarting(false);
       if (result.data.done) break;
