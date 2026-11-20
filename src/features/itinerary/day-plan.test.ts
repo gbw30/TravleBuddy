@@ -1687,7 +1687,9 @@ describe("a first day that starts with a flight across the date line", () => {
 
   it("lists the ticket first, before the time out of the airport, and never as a later step", () => {
     const day1 = buildPlanView(
-      state({ picks: { "d1-afternoon-2": { placeId: "beach", minutes: 150 } } }),
+      state({
+        picks: { "d1-afternoon-2": { placeId: "beach", minutes: 150 } },
+      }),
       context({
         facts: {
           cities: [{ city: honolulu, nights: 2 }],
@@ -1800,19 +1802,61 @@ describe("where you stay", () => {
     });
   });
 
-  it("shows the way back right after the last place when it ends before the open slot that follows", () => {
+  it("lists no way back, and says it is not counted, when an open slot follows the last place", () => {
     const view = placed({ "d2-morning": { placeId: "m", minutes: 60 } });
-    const entries = view.days[1].entries;
-    const visit = placeOf(entries, "d2-morning");
+    expect(kinds(view.days[1].entries)).not.toContain("return");
+    expect(view.days[1].returnNote).toBe("The way back from m is not counted.");
+  });
+
+  it("lists the way back right after the last place when a booking follows, only if it ends before the booking with the pace buffer", () => {
+    const day = (startTime: string) =>
+      placed(pick("d2-afternoon-2"), {
+        commitments: [
+          stay(),
+          commitment({
+            id: "dinner",
+            date: "2027-05-11",
+            startTime,
+            endTime: "21:30",
+          }),
+        ],
+      }).days[1];
+    const visit = placeOf(day("20:30").entries, "d2-afternoon-2");
+    const end = toMinutes(visit.start) + visit.minutes;
     const back = toMuseum();
-    expect(entries[entries.indexOf(visit) + 1]).toEqual({
+    // Balanced pace: 20 minutes of buffer.
+    const fits = day(toClock(end + back.minutes + 20));
+    const at = fits.entries.indexOf(placeOf(fits.entries, "d2-afternoon-2"));
+    expect(fits.entries[at + 1]).toEqual({
       type: "return",
       stay: "Hotel Aurora",
-      start: toClock(toMinutes(visit.start) + visit.minutes),
+      start: toClock(end),
       travel: { means: back.means, minutes: back.minutes },
     });
-    expect(kinds(entries).at(-1)).toBe("dinner");
-    expect(view.days[1].returnNote).toBeNull();
+    expect(fits.entries[at + 2]).toMatchObject({ commitmentId: "dinner" });
+    expect(fits.returnNote).toBeNull();
+
+    const tight = day(toClock(end + back.minutes + 19));
+    expect(kinds(tight.entries)).not.toContain("return");
+    expect(tight.returnNote).toBe("The way back from m is not counted.");
+  });
+
+  it("says the way back is not counted from a last place with no position, wherever it falls in the day", () => {
+    const nowhere = place("n", {
+      name: "Pop-up Stall",
+      latitude: null,
+      longitude: null,
+    });
+    for (const slot of ["d2-morning", "d2-dinner"]) {
+      const view = placed(
+        { [slot]: { placeId: "n", minutes: 60 } },
+        { places: { m: museum, n: nowhere } },
+      );
+      expect(kinds(view.days[1].entries), slot).not.toContain("return");
+      expect(view.days[1].returnNote, slot).toBe(
+        "The way back from Pop-up Stall is not counted.",
+      );
+    }
   });
 
   it("says the way back is not counted when a booking follows the last place too soon", () => {
@@ -1831,7 +1875,9 @@ describe("where you stay", () => {
     const day2 = view.days[1];
     expect(kinds(day2.entries)).not.toContain("return");
     expect(day2.entries.at(-1)).toMatchObject({ commitmentId: "dinner" });
-    expect(day2.returnNote).toBe("The way back from Ueno Museum is not counted.");
+    expect(day2.returnNote).toBe(
+      "The way back from Ueno Museum is not counted.",
+    );
   });
 
   it("says it for an open slot that starts as the last place ends, and nothing when the last place ends the day", () => {
@@ -1880,7 +1926,8 @@ describe("where you stay", () => {
     expect(dinner.start).toBe("19:00");
     expect(dinner.flags).toContainEqual({
       rule: "day",
-      message: "The way back to Hotel Aurora ends at 21:40, after the day does.",
+      message:
+        "The way back to Hotel Aurora ends at 21:40, after the day does.",
       fix: "Move it earlier or shorten the visit.",
     });
   });

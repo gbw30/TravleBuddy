@@ -340,7 +340,7 @@ describe("proposals in guided planning", () => {
     );
   });
 
-  it("measures a slot after the way back from the last place, as the plan will once it is filled", async () => {
+  it("measures an open slot after the last place from that place, with no way back listed before it", async () => {
     mocks.getTrip.mockResolvedValue(
       trip({
         commitments: [
@@ -371,12 +371,13 @@ describe("proposals in guided planning", () => {
     });
     mocks.getPlaces.mockResolvedValue([sights[0]]);
     const plan = (await load("d2-afternoon"))!;
-    // The way back follows the morning's place, before the open lunch.
-    expect(plan.view.days[1].entries.map((e) => e.type).slice(0, 3)).toEqual([
+    expect(plan.view.days[1].entries.map((e) => e.type).slice(0, 2)).toEqual([
       "place",
-      "return",
       "open",
     ]);
+    expect(plan.view.days[1].returnNote).toBe(
+      `The way back from ${sights[0].name} is not counted.`,
+    );
     expect(plan.proposal!.cards.every((card) => card.travel !== null)).toBe(
       true,
     );

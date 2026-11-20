@@ -430,6 +430,17 @@ describe("every day of a plan", () => {
             );
             for (const day of view.days) {
               days += 1;
+              // A way back comes before a booking or ends the day: never
+              // before a slot whose cards measure from the last place.
+              const back = day.entries.findIndex((e) => e.type === "return");
+              expect(
+                back < 0
+                  ? []
+                  : day.entries
+                      .slice(back + 1)
+                      .filter((e) => e.type === "open"),
+                `${scenario.name}, ${pace}, day ${day.day}: open after the way back`,
+              ).toEqual([]);
               for (const times of parts(
                 day.entries,
                 scenario.perSegment ?? false,

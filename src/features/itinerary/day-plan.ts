@@ -734,10 +734,10 @@ export function buildPlanView(
       until: number;
     } | null;
     let lastPick = null as { flags: PlanFlag[]; segment: number } | null;
-    // The last place with a position, wherever it ends up: the way back is from it.
+    // The day's last place, wherever it ends up: the way back is from it.
     let finalPlace = null as {
       index: number;
-      point: Point;
+      point: Point | null;
       end: number;
       name: string;
     } | null;
@@ -967,9 +967,12 @@ export function buildPlanView(
         lastPlace = point ? { flags, point, until: segment.until } : null;
         lastPlaceName = place.name;
         lastPick = { flags, segment: step.segment };
-        finalPlace = point
-          ? { index: entries.length - 1, point, end, name: place.name }
-          : null;
+        finalPlace = {
+          index: entries.length - 1,
+          point,
+          end,
+          name: place.name,
+        };
       } else {
         const start = Math.max(slot.earliest, clock);
         // It needs an hour before its part of the day ends, or before
@@ -1059,16 +1062,17 @@ export function buildPlanView(
         });
       }
     }
-    // Only open slots, time to wander or bookings follow the last place: the
-    // way back from it is listed right after it when it is over before the
-    // next row starts. Otherwise the day says it is not counted.
+    // When the last place does not end the day and nothing after it goes to
+    // the stay, the way back is listed right after it only before a booking
+    // it ends ahead of, buffer included. Before an open slot, whose cards
+    // measure from the last place, or from a place with no position, the day
+    // says it is not counted.
     let returnNote: string | null = null;
     const after = finalPlace ? entries.slice(finalPlace.index + 1) : [];
     if (
       evening &&
       !lastPlace &&
       finalPlace &&
-      after.length > 0 &&
       after.every(
         (entry) =>
           entry.type === "open" ||
@@ -1078,9 +1082,17 @@ export function buildPlanView(
             entry.commitmentKind !== "STAY"),
       )
     ) {
-      const back = travelEstimate(finalPlace.point, evening, context.means);
-      const next = after[0].start;
-      if (next !== null && finalPlace.end + back.minutes <= toMinutes(next)) {
+      const back =
+        finalPlace.point &&
+        travelEstimate(finalPlace.point, evening, context.means);
+      const next = after[0];
+      if (
+        back &&
+        next?.type === "commitment" &&
+        next.start !== null &&
+        after.every((entry) => entry.type !== "open") &&
+        finalPlace.end + back.minutes + buffer <= toMinutes(next.start)
+      ) {
         entries.splice(finalPlace.index + 1, 0, {
           type: "return",
           stay: draft.eveningStay!.title,
