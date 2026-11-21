@@ -31,9 +31,9 @@ import {
   readTripTaste,
   limitsInUse,
   tasteInUse,
+  type RememberedEntry,
   type TasteInUse,
 } from "@/features/memory";
-import type { ProfileEntry } from "@/features/memory/contracts";
 import type { PlanningTransaction } from "@/features/planning";
 import {
   addOwnPlace,
@@ -208,12 +208,14 @@ export type Limits = ReturnType<typeof limitsInUse>;
 
 function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
   // The trip a remembered value was learned from, so a reason can name it (TB-MEM-06).
-  const tripOf = (entries: ProfileEntry[] = [], value?: string) => {
-    const entry = entries.find(
+  const entryOf = (entries: RememberedEntry[] = [], value?: string) =>
+    entries.find(
       (item) =>
         item.source.type === "trip" &&
         (value === undefined || item.value === value),
     );
+  const tripOf = (entries?: RememberedEntry[], value?: string) => {
+    const entry = entryOf(entries, value);
     return entry?.source.type === "trip" ? entry.source.tripTitle : undefined;
   };
   const atmosphere = taste.atmosphere?.values[0];
@@ -223,6 +225,8 @@ function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
           value,
           label: labelsOf(QUESTIONS.interests, [value])[0].toLowerCase(),
           from: tripOf(taste.interests?.entries, value),
+          entry: taste.interests?.entries.find((item) => item.value === value)
+            ?.id,
         }))
       : null,
     atmosphere:
@@ -236,6 +240,14 @@ function cardTaste(taste: TasteInUse, limits: Limits): CardTaste {
     rememberedFrom: {
       atmosphere: tripOf(taste.atmosphere?.entries),
       onFoot: tripOf(taste.getting_around?.entries),
+    },
+    rememberedEntry: {
+      atmosphere: entryOf(taste.atmosphere?.entries)?.id,
+      onFoot: entryOf(taste.getting_around?.entries)?.id,
+    },
+    limitEntries: {
+      food: limits.entryIds.dietaryRules,
+      allergies: limits.entryIds.allergies,
     },
   };
 }

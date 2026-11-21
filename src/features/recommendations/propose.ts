@@ -53,7 +53,9 @@ export type CardTaste = {
    * null when not asked yet. `from` is the trip an interest is remembered
    * from, when it was not said for this trip.
    */
-  interests: { value: string; label: string; from?: string }[] | null;
+  interests:
+    | { value: string; label: string; from?: string; entry?: string }[]
+    | null;
   atmosphere: "lively" | "quiet" | null;
   /** The traveller likes to get around on foot. */
   onFoot: boolean;
@@ -61,6 +63,16 @@ export type CardTaste = {
   means?: TravelMeans;
   /** The trips the atmosphere and the way of getting around are remembered from (TB-MEM-06). */
   rememberedFrom?: { atmosphere?: string; onFoot?: string };
+  /** The ids of the profile entries those trips were remembered through. */
+  rememberedEntry?: { atmosphere?: string; onFoot?: string };
+  /**
+   * The profile entry each dietary rule or allergy came from, by value. A
+   * value missing here was given for this trip.
+   */
+  limitEntries?: {
+    food?: Record<string, string>;
+    allergies?: Record<string, string>;
+  };
   /**
    * The dietary rules proposals must respect, such as "vegetarian": those
    * given for this trip and those remembered. Empty when there are none,
@@ -122,7 +134,9 @@ type Ranked = {
   /** Whether its listing says it serves every dietary rule of the traveller's. */
   dietConfirmed: boolean;
   /** The interest of the traveller's this place answers, if any. */
-  interest: { value: string; label: string; from?: string } | undefined;
+  interest:
+    | { value: string; label: string; from?: string; entry?: string }
+    | undefined;
 };
 
 function rank(input: ProposeInput): Ranked[] {
@@ -240,6 +254,12 @@ const fromTraveller = (gap: string, value: string, ref: string): Fact => ({
   value,
   source: { type: "traveller", ref },
 });
+/** "profile:<entryId>" for a value remembered in the profile, else the trip's own answers. */
+const refOf = (entry: string | undefined, topic: string) =>
+  entry ? `profile:${entry}` : `trip-taste:${topic}`;
+/** One ref for several values, each from its own source; the distinct refs, comma separated. */
+const refsOf = (entries: (string | undefined)[], topic: string) =>
+  [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");
 const fromPlace = (
   gap: string,
   value: string,
@@ -277,11 +297,22 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
   // is safe for one (PRD 12.2, TB-MEM-05).
   const rules = meal ? (taste.food ?? []) : [];
   const allergies = meal ? (taste.allergies ?? []) : [];
-  const ruleFact = fromTraveller("rules", words(rules), "trip-taste:food");
+  const limits = taste.limitEntries ?? {};
+  const ruleFact = fromTraveller(
+    "rules",
+    words(rules),
+    refsOf(
+      rules.map((rule) => limits.food?.[rule]),
+      "food",
+    ),
+  );
   const allergyFact = fromTraveller(
     "allergy",
     `${words(allergies)} allergy`,
-    "trip-taste:allergies",
+    refsOf(
+      allergies.map((item) => limits.allergies?.[item]),
+      "allergies",
+    ),
   );
   const listedFact = () =>
     fromPlace("listed", words(listedWords(place, rules)), place, "diet:*");
@@ -338,12 +369,13 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
     liked: string,
     facts: Fact[],
     topic: string,
+    entry: string | undefined,
   ) =>
     trip
       ? sentence(
           `${template}-recalled`,
           `I remember from your trip “{trip}” that you ${liked}`,
-          [fromTraveller("trip", trip, `profile:${topic}`), ...facts],
+          [fromTraveller("trip", trip, refOf(entry, topic)), ...facts],
         )
       : sentence(`${template}-said`, said, facts);
   const from = taste.rememberedFrom ?? {};
@@ -357,10 +389,11 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
         fromTraveller(
           "interest",
           ranked.interest.label,
-          "trip-taste:interests",
+          refOf(ranked.interest.entry, "interests"),
         ),
       ],
       "interests",
+      ranked.interest.entry,
     );
     return { ...s, text: `${s.text}.` };
   }
@@ -391,6 +424,7 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
         "like quiet places",
         [],
         "atmosphere",
+        taste.rememberedEntry?.atmosphere,
       ),
     );
   }
@@ -403,6 +437,7 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
         "like lively places",
         [],
         "atmosphere",
+        taste.rememberedEntry?.atmosphere,
       ),
     );
   }
@@ -414,6 +449,7 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
       "like to get around on foot",
       [],
       "getting_around",
+      taste.rememberedEntry?.onFoot,
     );
     return { ...s, text: `${s.text}, and this is a walk away.` };
   }
@@ -438,7 +474,15 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
       : taste.interests.length === 0
         ? ["You left what to see open", "and", "interests"]
         : ["It is not one of the interests you named", "but", "interests"];
-  const toldFact = fromTraveller("told", told, `trip-taste:${topic}`);
+  // The interests named may be remembered ones; the food answer has no entry of its own.
+  const toldRef =
+    topic === "interests" && taste.interests
+      ? refsOf(
+          taste.interests.map((item) => item.entry),
+          "interests",
+        )
+      : `trip-taste:${topic}`;
+  const toldFact = fromTraveller("told", told, toldRef);
   return adds
     ? sentence(`told-${joiner}-adds`, `{told}, ${joiner} {adds}.`, [
         toldFact,

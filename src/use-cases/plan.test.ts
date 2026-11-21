@@ -546,6 +546,31 @@ describe("the record of a card's reason", () => {
   });
 });
 
+describe("the facts of a reason that rest on the profile", () => {
+  it("cite the entry's id, read through to the record", async () => {
+    mocks.readProfile.mockResolvedValue({
+      entries: [
+        {
+          id: "entry-9",
+          topic: "interests",
+          value: "museums",
+          sureness: "always",
+          source: { type: "told" },
+        },
+      ],
+    });
+    await load();
+    const refs = mocks.recordWordings.mock.calls
+      .flatMap(([, , rows]) => rows)
+      .flatMap((row) => row.sentences)
+      .flatMap((sentence) => sentence.facts)
+      .flatMap((fact) =>
+        fact.source.type === "traveller" ? [fact.source.ref] : [],
+      );
+    expect(refs).toContain("profile:entry-9");
+  });
+});
+
 describe("proposals outside guided planning", () => {
   it("never wait for the food question and are not written to a conversation", async () => {
     mocks.getTrip.mockResolvedValue(trip({ planningMode: "QUICK" }));

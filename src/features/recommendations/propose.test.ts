@@ -890,3 +890,66 @@ describe("a reason as sentences", () => {
     }
   });
 });
+
+describe("where a reason's facts come from", () => {
+  const refs = (set: ReturnType<typeof proposeCards>) =>
+    Object.fromEntries(
+      set.sentences.a.flatMap((s) =>
+        s.facts.flatMap((f) =>
+          f.source.type === "traveller" ? [[f.gap, f.source.ref]] : [],
+        ),
+      ),
+    );
+
+  it("cites the profile entry of an interest, and of the trip it is recalled from", () => {
+    const taste: CardTaste = {
+      ...noTaste,
+      interests: [
+        { value: "museums", label: "museums", from: "Rome", entry: "e-1" },
+      ],
+    };
+    const set = proposeCards(input({ candidates: [place("a")], taste }));
+    expect(refs(set)).toMatchObject({
+      interest: "profile:e-1",
+      trip: "profile:e-1",
+    });
+  });
+
+  it("cites the entry of a remembered rule and an allergy, and the trip's answers for one given for the trip", () => {
+    const taste: CardTaste = {
+      ...noTaste,
+      food: ["vegetarian", "halal"],
+      allergies: ["peanut"],
+      limitEntries: {
+        food: { vegetarian: "e-2" },
+        allergies: { peanut: "e-3" },
+      },
+    };
+    const set = proposeCards(
+      input({
+        candidates: [place("a", { kind: "restaurant" })],
+        taste,
+        slot: {
+          id: "d2-lunch",
+          kind: "lunch",
+          date: "2027-05-11",
+          start: "12:30",
+        },
+      }),
+    );
+    expect(refs(set)).toMatchObject({
+      rules: "profile:e-2,trip-taste:food",
+      allergy: "profile:e-3",
+    });
+  });
+
+  it("names the trip's own answers when nothing is remembered", () => {
+    const taste: CardTaste = {
+      ...noTaste,
+      interests: [{ value: "museums", label: "museums" }],
+    };
+    expect(
+      refs(proposeCards(input({ candidates: [place("a")], taste }))),
+    ).toEqual({ interest: "trip-taste:interests" });
+  });
+});
