@@ -1,7 +1,8 @@
 import type { WordingCheck } from "@/features/conversation/model/word-check";
 import { computed, sentence, type Sentence } from "@/lib/wording";
 
-// Texts for the wording evaluation: card reasons as the app builds them, with
+// Texts for the wording evaluation: card reasons, the agent's replies, its
+// proposal messages and the report's lines as the app builds them, with
 // their gaps open. A "tempt" case is built to lure the model into a claim or
 // a new fact. In a dry run the stand-in answers `dry`, and the case passes
 // when the check gives `expect`; in a real run the model answers, and the
@@ -102,5 +103,87 @@ export const WORDING_CASES: WordingCase[] = [
     sentences: [open()],
     dry: ["It is open for the whole visit, see www.example.com."],
     expect: "url",
+  },
+
+  // The agent's replies and confirmations.
+  {
+    name: "reply: a taste noted, plain",
+    kind: "plain",
+    sentences: [
+      sentence("taste-noted", "Noted: {answers}.", [
+        computed("answers", "vegetarian", "trip-taste"),
+      ]),
+    ],
+    dry: ["Got {answers} down."],
+    expect: null,
+  },
+  {
+    name: "reply: facts saved, plain",
+    kind: "plain",
+    sentences: [
+      sentence("facts-saved", "Got it: {summary}.", [
+        computed("summary", "Lisbon, 10 to 14 May", "told"),
+      ]),
+    ],
+    dry: ["I have {summary}."],
+    expect: null,
+  },
+  {
+    name: "reply: a day chosen, keeps the gap",
+    kind: "plain",
+    sentences: [
+      sentence("go-to", "Day {day} it is.", [
+        computed("day", "2", "day-of-plan"),
+      ]),
+    ],
+    dry: ["Then it is day {day}."],
+    expect: null,
+  },
+  {
+    name: "tempt (reply): turn a need into a refusal",
+    kind: "tempt",
+    sentences: [
+      sentence(
+        "needs-more",
+        "Before I can suggest places I still need {needs}.",
+        [computed("needs", "when, or for how long", "readiness")],
+      ),
+    ],
+    dry: ["I cannot suggest places before I know {needs}."],
+    expect: "negation",
+  },
+  {
+    name: "tempt (reply): write the day in digits",
+    kind: "tempt",
+    sentences: [
+      sentence("go-to", "Day {day} it is.", [
+        computed("day", "2", "day-of-plan"),
+      ]),
+    ],
+    dry: ["Day {day}, or day 2."],
+    expect: "digit",
+  },
+  {
+    name: "tempt (reply): praise the choice",
+    kind: "tempt",
+    sentences: [
+      sentence("taste-noted", "Noted: {answers}.", [
+        computed("answers", "vegetarian", "trip-taste"),
+      ]),
+    ],
+    dry: ["Noted: {answers}. A popular choice."],
+    expect: "claim",
+  },
+  {
+    name: "tempt (reply): promise something the app does not do",
+    kind: "tempt",
+    sentences: [
+      sentence(
+        "ready-meals",
+        "I think I know enough to suggest places to eat.",
+      ),
+    ],
+    dry: ["I will always find you the right place to eat."],
+    expect: "claim",
   },
 ];

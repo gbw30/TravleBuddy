@@ -194,6 +194,39 @@ describe("the saved conversation", () => {
     });
   });
 
+  it("records a worded message as a model row with its tokens, and a template with the reason it stayed", async () => {
+    const { client, wordings } = fakeClient();
+    const said = sentence("noted", "Noted: {answers}.", [
+      fromTraveller("answers", "relaxed", "trip-taste:pace"),
+    ]);
+    await appendMessages(client, "t1", [
+      {
+        from: "agent",
+        body: text("Got relaxed down."),
+        sentences: [said],
+        wording: { model: "m", inputTokens: 5, outputTokens: 2 },
+      },
+      {
+        from: "agent",
+        body: text("Noted: relaxed."),
+        sentences: [said],
+        wording: { fallback: "digit" },
+      },
+    ]);
+    expect(wordings[0]).toMatchObject({
+      shown: "Got relaxed down.",
+      wordedBy: "model",
+      fallback: null,
+      model: "m",
+      inputTokens: 5,
+      outputTokens: 2,
+    });
+    expect(wordings[1]).toMatchObject({
+      wordedBy: "template",
+      fallback: "digit",
+    });
+  });
+
   it("writes nothing when there is nothing to add, and refuses a message that does not fit", async () => {
     const { client, messages } = fakeClient();
     await appendMessages(client, "t1", []);

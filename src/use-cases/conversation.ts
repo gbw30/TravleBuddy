@@ -6,6 +6,7 @@ import {
   intentOfTap,
   labelsOf,
   lastQuestionTopic,
+  MODEL,
   OFFER_ASK,
   readLastMessage,
   nextQuestion,
@@ -29,7 +30,13 @@ import type {
   Turn,
   TurnResult,
 } from "@/features/conversation/contracts";
-import { fillAll, fromTraveller, sentence } from "@/lib/wording";
+import {
+  fillAll,
+  fixedSentence,
+  fromTraveller,
+  sentence,
+  type Sentence,
+} from "@/lib/wording";
 import { PACES } from "@/features/itinerary/contracts";
 import { TOPIC_NAMES } from "@/features/memory/contracts";
 import {
@@ -55,6 +62,7 @@ import { modelGate, payForModel } from "./model-gate";
 import { planDays, setPlanPace } from "./plan";
 import { tellProfileIn } from "./profile";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
+import { wordMessage } from "./wording";
 
 // The guided conversation spans five services: Conversation holds the script,
 // the thread and the AI model boundary; Trips the facts and commitments;
@@ -95,10 +103,10 @@ const openModel = async (now: Date): Promise<ModelCall | null> => {
   return typeof gate === "string" ? null : gate;
 };
 
-/** A reply of one fixed sentence. */
+/** A reply of one fixed sentence: an instruction that names a label, never reworded. */
 const reply = (template: string, text: string) => ({
   says: text,
-  sentences: [sentence(template, text)],
+  sentences: [fixedSentence(template, text)],
 });
 
 /**
@@ -306,6 +314,29 @@ export async function takeTurn(input: {
           .map((entry) => entry.value),
       );
 
+  // What the agent says before the transaction changes anything: the
+  // decision, the note on what it now knows and an offer's question, which
+  // comes last. Sentences made inside the transaction are added after these.
+  const made =
+    prepared && !(prepared instanceof Refusal)
+      ? [
+          ...prepared.decision.sentences,
+          ...readinessNote(
+            readiness(state),
+            readiness(stateAfter(state, prepared.decision.change)),
+            prepared.decision.change,
+          ),
+          ...(prepared.decision.offer ? [OFFER_ASK] : []),
+        ]
+      : [];
+  // The model words it here, never inside the transaction. A turn that is a
+  // repeat or made against an old revision has moved the trip's revision on
+  // (or will be refused), so it is not worded again and not paid for twice.
+  const worded =
+    made.length > 0 && trip.revision === input.control.expectedRevision
+      ? await wordMessage(made).catch(() => ({ fallback: "error" }))
+      : { fallback: "off" };
+
   return runTripAction<TurnResult>({
     userId,
     tripId,
@@ -320,18 +351,8 @@ export async function takeTurn(input: {
 
       const { said, decision } = prepared;
       const { change } = decision;
-      const note = readinessNote(
-        readiness(state),
-        readiness(stateAfter(state, change)),
-        change,
-      );
-      // An offer's question comes last, after anything else the agent says.
-      // The sentences the reply is made of, which are also its record.
-      let sentences = [
-        ...decision.sentences,
-        ...note,
-        ...(decision.offer ? [OFFER_ASK] : []),
-      ];
+      // Made inside the transaction, from what it saved: shown as templates.
+      let tail: Sentence[] = [];
       if (change?.type === "facts") {
         const saved = await saveTripFacts(tx, userId, tripId, change.facts);
         if (typeof saved === "string") return saved;
@@ -345,7 +366,7 @@ export async function takeTurn(input: {
           pace &&
           (await setPlanPace(tx, trip, userId, pace))
         ) {
-          sentences.push(
+          tail.push(
             sentence("pace-follows", "The plan now follows a {pace} pace.", [
               fromTraveller("pace", pace, "trip-taste:pace"),
             ]),
@@ -369,7 +390,7 @@ export async function takeTurn(input: {
         const entries = [...byTopic].map(
           ([name, labels]) => `${name}: ${labels.join(" and ")}`,
         );
-        sentences =
+        tail =
           entries.length > 0
             ? [
                 sentence(
@@ -391,7 +412,7 @@ export async function takeTurn(input: {
                 ),
               ]
             : [
-                sentence(
+                fixedSentence(
                   "remembered-note",
                   "Noted for every trip. It does not affect suggestions yet.",
                 ),
@@ -419,8 +440,8 @@ export async function takeTurn(input: {
             (clash) => clash.first === fresh.id || clash.second === fresh.id,
           );
         if (clashes) {
-          sentences.push(
-            sentence(
+          tail.push(
+            fixedSentence(
               "commitment-clash",
               "It overlaps with something else you have decided. Have a look under Already decided.",
             ),
@@ -443,7 +464,13 @@ export async function takeTurn(input: {
               },
             ]
           : [];
-      const says = fillAll(sentences);
+      const sentences = [...made, ...tail];
+      const says = [
+        "shown" in worded ? worded.shown : fillAll(made),
+        fillAll(tail),
+      ]
+        .filter(Boolean)
+        .join(" ");
       await appendMessages(tx, tripId, [
         ...asked,
         { from: "traveller", body: { kind: "text", text: said } },
@@ -453,6 +480,14 @@ export async function takeTurn(input: {
             ? { kind: "offer", text: says, remember: decision.offer }
             : { kind: "text", text: says },
           sentences,
+          wording:
+            "shown" in worded
+              ? {
+                  model: MODEL,
+                  inputTokens: worded.usage?.inputTokens,
+                  outputTokens: worded.usage?.outputTokens,
+                }
+              : { fallback: worded.fallback },
         },
       ]);
       return {

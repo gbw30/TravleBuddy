@@ -1,6 +1,7 @@
 import {
   computed,
   fillAll,
+  fixedSentence,
   fromTraveller,
   sentence,
   type Fact,
@@ -92,10 +93,14 @@ const reply = (...sentences: Sentence[]) => ({
   says: fillAll(sentences),
   sentences,
 });
-/** A sentence with no fact in it: fixed words. */
-const fixed = (template: string, text: string) => sentence(template, text);
+// Refusals, questions, instructions that name a label and the traveller's own
+// words are never reworded: they are fixed sentences. Acknowledgements are free.
+/** A sentence with no fact in it, shown word for word. */
+const fixed = (template: string, text: string) => fixedSentence(template, text);
 const problem = (template: string, text: string, why: string, issue: string) =>
-  sentence(template, text, [computed("reason", why, "validation", { issue })]);
+  fixedSentence(template, text, [
+    computed("reason", why, "validation", { issue }),
+  ]);
 
 const list = (items: string[]) =>
   items.length < 3
@@ -173,7 +178,7 @@ function stayNote(trip: Trip): Sentence[] {
   const open = nightsWithoutStay(trip);
   if (open === null) return [];
   return open === 0
-    ? [fixed("stay-all-booked", "Every night has a booked stay.")]
+    ? [sentence("stay-all-booked", "Every night has a booked stay.")]
     : [
         sentence("stay-nights-open", "{nights} no booked stay yet.", [
           computed(
@@ -325,7 +330,7 @@ function facts(
       const missing = named.filter((_, index) => !cities[index]);
       if (missing.length > 0) {
         notes.push(
-          sentence(
+          fixedSentence(
             "facts-cities-not-found",
             "I could not find {names}. Please pick {them} under the facts.",
             [
@@ -459,7 +464,7 @@ function goTo(
   const wanted = days.find((item) => item.day === intent.day);
   if (!wanted) {
     return nothing(
-      sentence("go-to-no-such-day", "This trip has {days}.", [
+      fixedSentence("go-to-no-such-day", "This trip has {days}.", [
         computed("days", count(days.length, "day"), "days-in-plan", {
           days: days.length,
         }),
@@ -478,7 +483,7 @@ function goTo(
   });
   if (!slot) {
     return nothing(
-      sentence("go-to-full", "Day {day} has no slot to fill.", [dayFact]),
+      fixedSentence("go-to-full", "Day {day} has no slot to fill.", [dayFact]),
     );
   }
   return {
@@ -538,7 +543,7 @@ export function decide(input: DecideInput): Decision {
       return {
         change: null,
         ...reply(
-          sentence("statement-said", "You said: “{text}”.", [
+          fixedSentence("statement-said", "You said: “{text}”.", [
             told("text", intent.text),
           ]),
         ),
@@ -683,7 +688,7 @@ export function readinessNote(
 ): Sentence[] {
   if (!before.sights && after.sights) {
     return [
-      fixed(
+      sentence(
         "ready-sights",
         "I know enough to start suggesting places for your days.",
       ),
@@ -691,7 +696,10 @@ export function readinessNote(
   }
   if (!before.meals && after.meals) {
     return [
-      fixed("ready-meals", "I think I know enough to suggest places to eat."),
+      sentence(
+        "ready-meals",
+        "I think I know enough to suggest places to eat.",
+      ),
     ];
   }
   if (!after.sights && change?.type === "facts") {
