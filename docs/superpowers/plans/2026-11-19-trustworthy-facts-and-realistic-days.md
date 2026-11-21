@@ -644,6 +644,16 @@ The parts:
 
 **Checks:** as piece 16. The design checks add a walk through the drawer, and checks that the flight and the stamp leave the same row as a plain pick.
 
+## How the rest is run (developer, 2026-11-21)
+
+The developer approved five changes to speed up the remaining pieces:
+
+- **Reviews.** The most capable model reviews only the risky pieces: 18, the fair use, and 22, the trip page. The other pieces get the standard model.
+- **Design checks.** Each piece runs them in Chromium only. All three browsers run once, before the final review.
+- **End-to-end tests.** The local `@critical` run happens only for pieces that touch those journeys.
+- **Pieces 12 to 14.** They are built together on one branch and merged by one pull request.
+- **Worktrees.** Independent pieces build side by side, each in its own worktree outside the repository folder. Track A, in the main checkout: 18, 19, 21, 22. Track B, in a worktree: 9, 10, 11, then 12 to 14, then 15. Each track uses its own dev-server port: 3100 for A, 3101 for B.
+
 ## Waiting for the developer
 
 - **Piece 1:** the live test on 2026-11-20 failed ("I could not reach the place provider"), and the code logged nothing to say why. Production went back to sample places (`PLACE_PROVIDER_MODE=mock`) the same day, at the developer's word. Step 2 now logs the host and status of every refusal, and the QA preview moves to this milestone (developer, 2026-11-20) so the test can run again there, with real places on the QA preview only.
