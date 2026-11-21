@@ -117,7 +117,9 @@ describe("proposeCards", () => {
       }),
     );
     expect(ids(set)).toEqual(["near", "mid", "far"]);
+    // No means said: a short hop is walked, with no second walking part.
     expect(set.cards[0].travel).toMatchObject({ means: "walk" });
+    expect(set.cards[0].travel?.walk).toBeUndefined();
     expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min walk$/);
     expect(set.cards[0].reason).toMatch(
       /minute walk from Senso-ji, so it fits your morning/,
@@ -429,7 +431,11 @@ describe("the traveller's taste in the ranking", () => {
       "famous",
     );
     const onFoot = proposeCards(
-      input({ from: sensoji, candidates, taste: taste({ onFoot: true }) }),
+      input({
+        from: sensoji,
+        candidates,
+        taste: taste({ onFoot: true, means: "walk" }),
+      }),
     );
     expect(ids(onFoot)[0]).toBe("close");
     expect(reasonOf(onFoot, "close")).toContain(
@@ -699,8 +705,26 @@ describe("true sentences", () => {
       }),
     );
     expect(set.cards[0].travel?.means).toBe("drive");
-    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min drive$/);
+    expect(set.cards[0].essentials).toMatch(
+      /^Museum · about \d+ min drive(?: · or [\d.]+ (?:m|km), about \d+ min on foot)?$/,
+    );
     expect(set.cards[0].reason).toMatch(/minute drive from Senso-ji/);
+  });
+
+  it("shows the walk beside the traveller's own means on one line, for a short hop only", () => {
+    const set = (to: typeof near) =>
+      proposeCards(
+        input({
+          from: sensoji,
+          candidates: [place("a", to)],
+          taste: taste({ means: "transit" }),
+        }),
+      ).cards[0];
+    expect(set(near).essentials).toMatch(
+      /^Museum · about \d+ min ride · or \d+ m, about \d+ min on foot$/,
+    );
+    expect(set(near).travel?.walk).toBeDefined();
+    expect(set(far).essentials).toMatch(/^Museum · about \d+ min ride$/);
   });
 
   it("says about N min on the front of the card", () => {

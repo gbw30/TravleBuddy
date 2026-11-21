@@ -32,3 +32,16 @@ export function dateRange(start: string | null, end: string | null): string {
   const sameYear = start.slice(0, 4) === end.slice(0, 4);
   return `${part(start, sameYear ? { day: "numeric", month: "short" } : full)} – ${part(end, full)}`;
 }
+
+/** "Saturday" */
+export function weekdayName(date: string): string {
+  return part(date, { weekday: "long" });
+}
+
+/** The month and day of a date, as a calendar leaf shows them: "JUL", "10". */
+export function leafOf(date: string): { month: string; day: string } {
+  return {
+    month: part(date, { month: "short" }).toUpperCase(),
+    day: part(date, { day: "numeric" }),
+  };
+}

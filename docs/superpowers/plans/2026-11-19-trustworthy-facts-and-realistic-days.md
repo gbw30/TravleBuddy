@@ -34,7 +34,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 15. Evidence                              | `feature/m9-evidence`          | all of the above, re-checked                                     |              |
 | 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      | #90          |
 | 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  | #92          |
-| 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             |              |
+| 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             | #94          |
 | 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
 | 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       | #91          |
 | 21. Time windows                          | `feature/m9-time-windows`      | TB-ITN-22                                                        |              |
@@ -560,7 +560,7 @@ Added on 2026-11-20. **Requirements:** TB-ITN-25, TB-ITN-26, TB-ITN-27. The deve
 
 - **Rows grouped by city (1B).** City groups with a tinted journey strip between them. A day's rows are grouped by city: every row carries its segment's city, and the tickets and allowance rows sit between the groups. A booking on a date-line day goes with the city whose local window holds its time.
 - **Going back a day (2A).** A ticket that lands on an earlier date than it left gets the calendar cue ("You get Friday twice"). A ticket that lands on the same date at an earlier clock time gets the small clock. Trip validation compares instants using both zones, not local dates.
-- **Legs and cards show both ways, on one line (3A).** They show the time by the traveller's preferred means. When the hop is within walking distance, the same line adds the walking distance and time, with a directions link (fixed host, encoded query): "about 10 min by public transport · or 650 m, about 9 min on foot · Directions". The developer asked for one line, not a separate walkable badge. The plan still schedules by the preferred means (TB-ITN-06), and it never assumes a walk.
+- **Legs and cards show both ways, on one line (3A).** They show the time by the traveller's preferred means. When the hop is within walking distance, the same line adds the walking distance and time, with a directions link (fixed host, encoded query): "about 10 min by public transport · or 650 m, about 9 min on foot · Directions". The developer asked for one line, not a separate walkable badge. The plan still schedules by the preferred means (TB-ITN-06), and it never assumes a walk. A traveller who skipped how they get around keeps the stated default: short hops are walked and the rest uses public transport, and the agent says so (developer, 2026-11-21).
 
 ### Piece 20: Saving the facts keeps the conversation's answers
 

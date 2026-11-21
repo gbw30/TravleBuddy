@@ -3,6 +3,7 @@ import {
   distanceKm,
   isMealKind,
   isOpenFor,
+  legOf,
   parseOpeningHours,
   travelEstimate,
   visitMinutes,
@@ -33,6 +34,13 @@ import { offsetAt, ticketMinutes } from "./local-time";
 // Lays a plan out from the traveller's choices and the trip's facts, and
 // checks it against the rules of PRD 9.3. Pure: no clock, no randomness, no
 // database, so the same inputs always give the same plan (TB-ITN-17).
+
+/** An entry before it is given its city. */
+type Unlaid = PlanEntry extends infer E
+  ? E extends unknown
+    ? Omit<E, "city">
+    : never
+  : never;
 
 export type PlanContext = {
   facts: Pick<
@@ -328,11 +336,11 @@ export function buildPlanView(
     city: City;
     segments: Segment[];
     fixed: Fixed[];
-    transfer: Extract<PlanEntry, { type: "transfer" }> | null;
+    transfer: Extract<Unlaid, { type: "transfer" }> | null;
     /** Time allowed to get to and from tickets today. */
-    allowances: Extract<PlanEntry, { type: "allowance" }>[];
+    allowances: Extract<Unlaid, { type: "allowance" }>[];
     /** The row out of the ticket that changes city: the one allowance in the new city's part. */
-    arrival: Extract<PlanEntry, { type: "allowance" }> | null;
+    arrival: Extract<Unlaid, { type: "allowance" }> | null;
     /** When the transfer arrives, by the clock of the city of arrival. */
     landsAt: number;
     /** When the traveller leaves the morning's city, on a day with two segments. */
@@ -656,6 +664,17 @@ export function buildPlanView(
       | { breakfast: true }
     );
     const changes = draft.segments.length > 1;
+    // A booking goes with the city whose local window holds its time. Across
+    // the date line both windows can hold it, and the clock before the
+    // departure then means the city left behind.
+    const segmentOf = (fixed: Fixed) => {
+      const usual = changes && fixed.start > draft.leaves ? 1 : 0;
+      if (!changes || fixed.commitment.kind === "TRANSPORT") return usual;
+      const holds = (s: Segment) =>
+        s.from <= fixed.start && fixed.start <= s.until;
+      const holder = draft.segments.findIndex(holds);
+      return holds(draft.segments[usual]) || holder === -1 ? usual : holder;
+    };
     const steps: Step[] = [
       ...(draft.stayBreakfast === null
         ? []
@@ -686,7 +705,7 @@ export function buildPlanView(
             !(changes && fixed.start >= draft.leaves)
               ? -1
               : fixed.start,
-          segment: changes && fixed.start > draft.leaves ? 1 : 0,
+          segment: segmentOf(fixed),
           fixed,
         })),
       // Only the way out of the ticket that changes city is in the new one.
@@ -711,16 +730,23 @@ export function buildPlanView(
       })),
     ].sort((a, b) => a.segment - b.segment || a.at - b.at);
 
-    const entries: PlanEntry[] = draft.notes.map((commitment) => ({
-      type: "commitment",
-      commitmentId: commitment.id,
-      commitmentKind: commitment.kind,
-      title: commitment.title,
-      start: null,
-      minutes: null,
-      slotId: null,
-      ticket: null,
-    }));
+    const entries: PlanEntry[] = [];
+    let city = draft.city.name;
+    const put = (entry: Unlaid) => {
+      entries.push({ ...entry, city } as PlanEntry);
+    };
+    for (const commitment of draft.notes) {
+      put({
+        type: "commitment",
+        commitmentId: commitment.id,
+        commitmentKind: commitment.kind,
+        title: commitment.title,
+        start: null,
+        minutes: null,
+        slotId: null,
+        ticket: null,
+      });
+    }
     let clock = draft.segments[0].from;
     type Point = { latitude: number; longitude: number };
     // The day starts where the traveller slept, when that is confirmed.
@@ -769,7 +795,7 @@ export function buildPlanView(
         waiting = step;
         return;
       }
-      entries.push({
+      put({
         type: "commitment",
         commitmentId: commitment.id,
         commitmentKind: commitment.kind,
@@ -780,7 +806,7 @@ export function buildPlanView(
         ticket: null,
         ...(spot
           ? {
-              travelIn: leg ? { means: leg.means, minutes: leg.minutes } : null,
+              travelIn: leg ? legOf(leg) : null,
             }
           : {}),
       });
@@ -790,9 +816,13 @@ export function buildPlanView(
     };
 
     steps.forEach((step, position) => {
+      city =
+        draft.segments[
+          Math.max(0, Math.min(step.segment, draft.segments.length - 1))
+        ].city.name;
       if ("breakfast" in step) {
         // Breakfast where the traveller stays takes its time, as a slot does.
-        entries.push({
+        put({
           type: "breakfast-at-stay",
           start: toClock(step.at),
           minutes: BREAKFAST.minutes,
@@ -810,7 +840,7 @@ export function buildPlanView(
         // A ticket seen on its departure day; one landing today is a point.
         const ticketBound =
           commitment.kind === "TRANSPORT" && commitment.date === draft.date;
-        entries.push({
+        put({
           type: "commitment",
           commitmentId: commitment.id,
           commitmentKind: commitment.kind,
@@ -845,7 +875,7 @@ export function buildPlanView(
         return;
       }
       if ("allowance" in step) {
-        entries.push(step.allowance);
+        put(step.allowance);
         if (step.allowance.way === "from") {
           clock = Math.max(clock, step.at + step.allowance.minutes);
         }
@@ -854,7 +884,7 @@ export function buildPlanView(
         return;
       }
       if ("transfer" in step) {
-        entries.push(step.transfer);
+        put(step.transfer);
         clock = Math.max(clock, draft.landsAt);
         lastPoint = null;
         lastPlace = null;
@@ -868,7 +898,7 @@ export function buildPlanView(
       const segment = draft.segments.find((s) => s.city === slot.city)!;
 
       if (held) {
-        entries.push({
+        put({
           type: "commitment",
           commitmentId: held.id,
           commitmentKind: held.kind,
@@ -949,7 +979,7 @@ export function buildPlanView(
           });
         }
 
-        const entry: Extract<PlanEntry, { type: "place" }> = {
+        const entry: Extract<Unlaid, { type: "place" }> = {
           type: "place",
           slotId: slot.id,
           kind: slot.kind,
@@ -958,10 +988,10 @@ export function buildPlanView(
           start: toClock(start),
           minutes,
           minutesEstimated: pick.minutes === null,
-          travelIn: leg ? { means: leg.means, minutes: leg.minutes } : null,
+          travelIn: leg ? legOf(leg) : null,
           flags,
         };
-        entries.push(entry);
+        put(entry);
         clock = end;
         lastPoint = point;
         lastPlace = point ? { flags, point, until: segment.until } : null;
@@ -1002,7 +1032,7 @@ export function buildPlanView(
         }
         // An open slot comes after the last place, so the way back follows it.
         lastPlace = null;
-        entries.push({
+        put({
           type: "open",
           slotId: slot.id,
           kind: slot.kind,
@@ -1030,7 +1060,7 @@ export function buildPlanView(
           );
         const minutes = Math.min(wander, next ? next.at - start : wander);
         if (minutes >= MIN_WANDER) {
-          entries.push({
+          put({
             type: "wander",
             start: toClock(start),
             minutes,
@@ -1045,7 +1075,7 @@ export function buildPlanView(
     const evening = draft.eveningStay?.located;
     if (evening && lastPlace) {
       const back = travelEstimate(lastPlace.point, evening, context.means);
-      entries.push({
+      put({
         type: "return",
         stay: draft.eveningStay!.title,
         start: toClock(clock),
@@ -1094,6 +1124,7 @@ export function buildPlanView(
         finalPlace.end + back.minutes + buffer <= toMinutes(next.start)
       ) {
         entries.splice(finalPlace.index + 1, 0, {
+          city: entries[finalPlace.index].city,
           type: "return",
           stay: draft.eveningStay!.title,
           start: toClock(finalPlace.end),
