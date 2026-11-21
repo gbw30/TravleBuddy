@@ -7,6 +7,8 @@ import {
   readSkippedFacts,
   skipFact,
 } from "./conversation-store";
+import { fromTraveller, sentence, type Sentence } from "@/lib/wording";
+
 import { underCap } from "./model/budget";
 import { addUsage, readUsage } from "./model/usage-store";
 
@@ -25,6 +27,12 @@ function fakeClient() {
   const messages: MessageRow[] = [];
   const skipped: Record<string, string[]> = {};
   const usage: Record<string, UsageRow> = {};
+  const wordings: {
+    tripId: string;
+    subject: string;
+    shown: string;
+    sentences: Sentence[];
+  }[] = [];
   const now = new Date("2026-11-19T08:00:00Z");
   const client = {
     conversationMessage: {
@@ -33,14 +41,16 @@ function fakeClient() {
         messages
           .filter((row) => row.tripId === where.tripId)
           .sort((a, b) => b.id - a.id)[0] ?? null,
-      createMany: async ({
+      createManyAndReturn: async ({
         data,
       }: {
         data: Omit<MessageRow, "id" | "createdAt">[];
-      }) => {
-        for (const row of data)
-          messages.push({ ...row, id: messages.length + 1, createdAt: now });
-      },
+      }) =>
+        data.map((row) => {
+          const saved = { ...row, id: messages.length + 1, createdAt: now };
+          messages.push(saved);
+          return { id: saved.id };
+        }),
       findMany: async ({
         where,
         take,
@@ -52,6 +62,11 @@ function fakeClient() {
           .filter((row) => row.tripId === where.tripId)
           .sort((a, b) => b.id - a.id)
           .slice(0, take),
+    },
+    wordingRecord: {
+      createMany: async ({ data }: { data: (typeof wordings)[number][] }) => {
+        wordings.push(...data);
+      },
     },
     conversation: {
       findUnique: async ({ where }: { where: { tripId: string } }) =>
@@ -100,7 +115,7 @@ function fakeClient() {
       },
     },
   };
-  return { client: client as never, messages, skipped, usage };
+  return { client: client as never, messages, skipped, usage, wordings };
 }
 
 const text = (words: string) => ({ kind: "text" as const, text: words });
@@ -154,6 +169,28 @@ describe("the saved conversation", () => {
     expect(thread[0]).toMatchObject({
       id: "1",
       at: "2026-11-19T08:00:00.000Z",
+    });
+  });
+
+  it("records the sentences of an agent message under its own id, and a fact from the message just before it cites that message", async () => {
+    const { client, wordings } = fakeClient();
+    const said = sentence("noted", "Noted: {answers}.", [
+      fromTraveller("answers", "relaxed", "message:previous"),
+    ]);
+    await appendMessages(client, "t1", [
+      { from: "traveller", body: text("Relaxed") },
+      { from: "agent", body: text("Noted: relaxed."), sentences: [said] },
+      { from: "agent", body: text("A message with no record") },
+    ]);
+    expect(wordings).toHaveLength(1);
+    expect(wordings[0]).toMatchObject({
+      tripId: "t1",
+      subject: "message:2",
+      shown: "Noted: relaxed.",
+    });
+    expect(wordings[0].sentences[0].facts[0].source).toEqual({
+      type: "traveller",
+      ref: "message:1",
     });
   });
 
