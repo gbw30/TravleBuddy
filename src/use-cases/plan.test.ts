@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlanState } from "@/features/itinerary/contracts";
 import type { PlaceDto } from "@/features/places/contracts";
 import type { TripDetail } from "@/features/trips/contracts";
+import { fillAll } from "@/lib/wording";
 
 // The stores are stand-ins. Laying the plan out and ranking the cards are the
 // real ones.
@@ -193,6 +194,10 @@ describe("proposals in guided planning", () => {
       "Tokyo National Museum",
       "Ueno Park",
     ]);
+    // It is recorded with the sentence it was made of.
+    expect(message.sentences).toHaveLength(1);
+    expect(message.sentences[0]).toMatchObject({ template: "proposal-offer" });
+    expect(fillAll(message.sentences)).toBe(message.body.text);
   });
 
   it("ranks by the taste the traveller told, and the reason names it", async () => {

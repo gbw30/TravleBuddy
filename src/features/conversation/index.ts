@@ -38,6 +38,7 @@ export {
 export {
   decide,
   decideDifference,
+  OFFER_ASK,
   OFFER_ASKS,
   intentOfTap,
   labelsOf,
