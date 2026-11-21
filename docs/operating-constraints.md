@@ -15,23 +15,30 @@ environments.
 - `main` is the stable and release branch.
 - `qa` is the branch behind the QA preview and the protected QA workflows.
 - Since 2026-11-18, by the developer's instruction, each roadmap milestone is
-  built on a branch `milestone/<number>-<name>`, and each piece of it on a
-  feature branch `feature/m<number>-<piece>` cut from the milestone branch.
-  A finished feature branch is merged into its milestone branch without asking
-  once lint, type check, tests and build pass.
-- Feature branches exist for traceability: each is merged by a pull request
-  with a merge commit, the pull request names the requirement IDs it covers,
-  and its number is recorded in the milestone's plan. The existing `Verify`
-  workflow runs on pull requests into `milestone/**` as well as `main`.
+  built on a branch `milestone/<number>-<name>`. Since 2026-11-21 (developer),
+  each piece is committed straight to the milestone branch, with the
+  requirement IDs it covers in the commit message, once
+  `scripts/changed-checks.sh` passes. Per-piece feature branches and their
+  pull requests are retired; the existing ones stay as history.
+- The existing `Verify` workflow runs on pushes to `milestone/**` that change
+  more than documents, and on pull requests into `main`.
+- Checks are selective per change and complete per milestone (developer,
+  2026-11-21). A change runs lint on its files, the type check and the tests
+  related to its files. The sample travellers run when planning logic changes;
+  the design checks (Chromium) and the local `@critical` browser tests run
+  when pages, components, routes or use cases change. Before the milestone's
+  pull request into `main`, everything runs in full, with the design checks in
+  all three browsers.
+- A piece gets its own review only when it touches planning logic, money or AI
+  cost, security or privacy, the database schema, or a main screen. Every
+  milestone gets a final whole-branch review.
 - A milestone branch is merged into `main` by pull request, together with the
   developer, when the milestone is done. `qa` is updated from a milestone
   branch only when the developer asks for the QA preview or the QA gate.
-- Feature and milestone branches are not deployed: `vercel.json` turns
-  automatic Vercel deployments off for them.
+- Milestone branches are not deployed: `vercel.json` turns automatic Vercel
+  deployments off for them.
 - Do not create any other branch (release, QA, or `codex/*`) unless the
-  developer explicitly requests one. Worktrees for feature branches are
-  allowed (developer, 2026-11-21): outside the repository folder, one per
-  feature branch, removed after the branch merges.
+  developer explicitly requests one.
 - Existing historical branches may remain. This policy does not authorize
   deleting them.
 - Reuse the repository's existing workflows and GitHub environments. Do not

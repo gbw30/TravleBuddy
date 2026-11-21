@@ -4,11 +4,15 @@ on:
   pull_request:
     branches:
       - main
-      # A feature branch is verified when it asks to join its milestone branch.
-      - "milestone/**"
   push:
     branches:
       - main
+      # Pieces are committed straight to the milestone branch (developer,
+      # 2026-11-21); a push that changes only documents is not verified.
+      - "milestone/**"
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 permissions:
   contents: read

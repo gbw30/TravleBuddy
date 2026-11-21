@@ -654,6 +654,12 @@ The developer approved five changes to speed up the remaining pieces:
 - **Pieces 12 to 14.** They are built together on one branch and merged by one pull request.
 - **Worktrees.** Independent pieces build side by side, each in its own worktree outside the repository folder. Track A, in the main checkout: 18, 19, 21, 22. Track B, in a worktree: 9, 10, 11, then 12 to 14, then 15. Each track uses its own dev-server port: 3100 for A, 3101 for B.
 
+**Streamlined (developer, 2026-11-21, later the same day).** Per-piece time went to fix rounds, full local checks and builders' full runs, not to pull requests (about two minutes each). So from piece 22 on:
+
+- **No more feature branches.** Pieces are committed straight to `milestone/9-trustworthy-wording`, with their requirement IDs in the commit messages; the remaining table rows record commit ranges, not pull request numbers. Piece 22a, already on `feature/m9-trip-page`, joins the milestone by one local merge.
+- **Selective checks.** Each change runs `scripts/changed-checks.sh`: lint on the changed files, the type check, and the related tests; the sample travellers, design checks and `@critical` only when the change can affect them. `Verify` runs on each push to the milestone branch. Everything runs in full before the pull request into `main`.
+- **Reviews for risky pieces only.** 22b (the trip page) keeps its review; 15 (evidence) goes straight to the final whole-branch review.
+
 ## Waiting for the developer
 
 - **Piece 1:** the live test on 2026-11-20 failed ("I could not reach the place provider"), and the code logged nothing to say why. Production went back to sample places (`PLACE_PROVIDER_MODE=mock`) the same day, at the developer's word. Step 2 now logs the host and status of every refusal, and the QA preview moves to this milestone (developer, 2026-11-20) so the test can run again there, with real places on the QA preview only.

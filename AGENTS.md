@@ -39,28 +39,35 @@ Never infer current implementation from a target requirement, permanent product 
 The developer has chosen a fixed, minimal project topology. This is a standing
 instruction for every Codex session working in this repository:
 
-- Branches, as the developer set on 2026-11-18. Build each roadmap milestone on
-  its own branch, `milestone/<number>-<name>`, cut from `main`, or from `qa`
-  while `qa` is ahead of `main`. Do each piece of the milestone on a feature
-  branch, `feature/m<number>-<piece>`, cut from the milestone branch. Merge a
-  finished feature branch into its milestone branch without asking, once lint,
-  type check, tests and build pass. The milestone branch is merged into `main`
-  together with the developer when the milestone is done; never merge into
-  `main` unasked. `qa` stays the branch behind the QA preview and the protected
-  QA workflows; update it from a milestone branch only when the developer asks
-  for the preview or the QA gate. Do not create a branch outside this pattern,
-  and do not delete a merged branch without being asked. Worktrees are allowed
-  since 2026-11-21 (developer) to build independent feature branches side by
-  side. Keep each one outside the repository folder, one per feature branch,
-  and remove it after its branch merges.
-- Feature branches exist for traceability. Merge each one into its milestone
-  branch by a pull request with a merge commit. The pull request names the
-  requirement IDs it covers and its check results, and its number is written
-  into the milestone's plan under `docs/superpowers/plans/`. The existing
-  `Verify` workflow runs on these pull requests.
-- Feature and milestone branches are not deployed: `vercel.json` turns
-  automatic deployments off for them, so the Vercel topology below is
-  unchanged.
+- Branches, as the developer set on 2026-11-18 and streamlined on 2026-11-21.
+  Build each roadmap milestone on its own branch, `milestone/<number>-<name>`,
+  cut from `main`, or from `qa` while `qa` is ahead of `main`. Commit each
+  piece straight to the milestone branch once the checks it needs pass (next
+  bullet), name the requirement IDs it covers in the commit message, and push.
+  The `Verify` workflow runs on every push to a milestone branch that changes
+  more than documents. The milestone branch is merged into `main` by pull
+  request together with the developer when the milestone is done; never merge
+  into `main` unasked. `qa` stays the branch behind the QA preview and the
+  protected QA workflows; update it from a milestone branch only when the
+  developer asks for the preview or the QA gate. Do not create a branch outside
+  this pattern, and do not delete a branch without being asked. Per-piece
+  feature branches (`feature/m<number>-<piece>`) and their pull requests were
+  retired on 2026-11-21 (developer); the existing ones stay as history.
+- Checks per change (developer, 2026-11-21). Run `scripts/changed-checks.sh
+  <base>` before committing a piece. It lints the changed files, type checks,
+  and runs only the tests related to the changed files, or nothing for a
+  documents-only change, and it names the slow checks the change needs: the
+  sample travellers when planning logic changes, and the design checks
+  (Chromium) and the local `@critical` browser tests when pages, components,
+  routes or use cases change. Everything runs in full once, before the
+  milestone's pull request into `main`: lint, type check, all tests, build,
+  sample travellers, design checks in all three browsers, and `@critical`.
+- Reviews (developer, 2026-11-21). A piece gets its own review only when it
+  touches planning logic, money or AI cost, security or privacy, the database
+  schema, or a main screen. Other pieces go straight to the milestone's final
+  whole-branch review.
+- Milestone branches are not deployed: `vercel.json` turns automatic
+  deployments off for them, so the Vercel topology below is unchanged.
 - Reuse the currently configured QA and production databases. Do not create a
   Neon branch, database clone, disposable cloud database, or additional
   persistent database. The PostgreSQL service already defined inside the
