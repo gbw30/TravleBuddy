@@ -58,6 +58,7 @@ const input = (kind: CommitmentInput["kind"]): CommitmentInput => ({
   startTime: "10:00",
   endDate: "2027-06-18",
   endTime: "13:30",
+  timeShape: null,
   reference: "AB123",
   note: null,
   located: null,

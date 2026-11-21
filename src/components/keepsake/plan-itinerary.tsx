@@ -7,6 +7,7 @@ import {
   type TravelLeg,
 } from "@/features/itinerary/contracts";
 import { walkWords } from "@/features/places/contracts";
+import { windowWords } from "@/features/trips/contracts";
 import type { CardDto } from "@/features/recommendations/contracts";
 
 import type { ReactNode } from "react";
@@ -18,6 +19,7 @@ import { ItineraryRow } from "./itinerary-row";
 import { MoveMenu } from "./move-menu";
 import { eyebrow, field, quiet } from "./styles";
 import { TicketStub } from "./ticket-stub";
+import { WindowRow } from "./window-row";
 
 export const slotWord = SLOT_WORDS;
 const meansWord = { walk: "Walk", transit: "Transit", drive: "Drive" };
@@ -152,33 +154,47 @@ export function PlanItinerary({
                 className={entry.travelIn ? "" : "mt-2.5 first:mt-0"}
               >
                 {entry.travelIn && <TravelLine leg={entry.travelIn} />}
-                <TicketStub
-                  time={entry.start ?? "—"}
-                  title={entry.title}
-                  note={
-                    entry.ticket && entry.start
-                      ? [
-                          `Leaves ${entry.start} ${entry.ticket.from} time`,
-                          entry.ticket.arrives &&
-                            `arrives ${entry.ticket.arrivesOn ? `${shortDayLabel(entry.ticket.arrivesOn)} ` : ""}${entry.ticket.arrives} ${entry.ticket.to} time`,
-                          entry.minutes
-                            ? hours(entry.minutes)
-                            : "length unknown",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")
-                      : [
-                          kindWord[entry.commitmentKind],
-                          entry.start
-                            ? entry.minutes
+                {entry.window ? (
+                  <WindowRow
+                    time={entry.start ?? "—"}
+                    window={entry.window}
+                    {...windowWords(
+                      {
+                        kind: entry.commitmentKind,
+                        title: entry.window.name,
+                      },
+                      entry.window,
+                    )}
+                  />
+                ) : (
+                  <TicketStub
+                    time={entry.start ?? "—"}
+                    title={entry.title}
+                    note={
+                      entry.ticket && entry.start
+                        ? [
+                            `Leaves ${entry.start} ${entry.ticket.from} time`,
+                            entry.ticket.arrives &&
+                              `arrives ${entry.ticket.arrivesOn ? `${shortDayLabel(entry.ticket.arrivesOn)} ` : ""}${entry.ticket.arrives} ${entry.ticket.to} time`,
+                            entry.minutes
                               ? hours(entry.minutes)
-                              : null
-                            : "time to be set, I plan around it",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")
-                  }
-                />
+                              : "length unknown",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : [
+                            kindWord[entry.commitmentKind],
+                            entry.start
+                              ? entry.minutes
+                                ? hours(entry.minutes)
+                                : null
+                              : "time to be set, I plan around it",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                    }
+                  />
+                )}
                 {entry.ticket?.arrivesOn &&
                   entry.ticket.arrivesOn < day.date && (
                     <BackADay left={day.date} lands={entry.ticket.arrivesOn} />

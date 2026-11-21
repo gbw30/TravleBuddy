@@ -869,6 +869,7 @@ describe("a typed message with the model on", () => {
       startTime: "15:00",
       endDate: null,
       endTime: null,
+      timeShape: null,
       reference: null,
       note: null,
       located: null,

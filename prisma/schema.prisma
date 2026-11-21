@@ -218,6 +218,8 @@ model FixedCommitment {
   startTime           String?            @map("start_time") @db.VarChar(5)
   endDate             DateTime?          @map("end_date") @db.Date
   endTime             String?            @map("end_time") @db.VarChar(5)
+  /// How the times read: AFTER, BEFORE, ANY or BETWEEN. Null is a set time (a stay's check-in reads as AFTER).
+  timeShape           String?            @map("time_shape") @db.VarChar(8)
   reference           String?            @db.VarChar(80)
   note                String?            @db.VarChar(500)
   transportMode       TravelSegmentMode? @map("transport_mode")

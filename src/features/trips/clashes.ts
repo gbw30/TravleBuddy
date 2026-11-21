@@ -1,8 +1,8 @@
-import type { Clash, CommitmentDto } from "./contracts";
+import { windowOf, type Clash, type CommitmentDto } from "./contracts";
 
 type Timed = Pick<
   CommitmentDto,
-  "id" | "kind" | "date" | "startTime" | "endDate" | "endTime"
+  "id" | "kind" | "date" | "startTime" | "endDate" | "endTime" | "timeShape"
 >;
 
 /** The period a commitment takes up, as sortable `YYYY-MM-DDTHH:MM` text. */
@@ -10,6 +10,8 @@ function period(commitment: Timed): [string, string] | null {
   // A stay runs alongside everything else during it, so it never clashes.
   if (commitment.kind === "STAY") return null;
   if (!commitment.date || !commitment.startTime) return null;
+  // A window is laid by the plan, which says when it cannot fit.
+  if (windowOf(commitment)) return null;
 
   const start = `${commitment.date}T${commitment.startTime}`;
   const end = commitment.endTime
