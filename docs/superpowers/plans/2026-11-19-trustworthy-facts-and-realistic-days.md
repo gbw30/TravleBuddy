@@ -28,9 +28,9 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 9. The private record of card reasons     | `feature/m9-reason-record`     | TB-RSN-03, TB-TRU-02, TB-CRD-03                                  | #93          |
 | 10. The private record of agent messages  | `feature/m9-message-record`    | TB-RSN-01, TB-TRU-02, TB-QPL-10                                  | #95          |
 | 11. The wording check, and reasons worded | `feature/m9-word-reasons`      | TB-RSN-03, TB-TRU-03, TB-TRU-04, TB-AGT-15, TB-SYS-10, TB-SYS-11 | #97          |
-| 12. Replies and confirmations worded      | `feature/m9-word-replies`      | TB-TRU-03, TB-AGT-15, TB-SYS-10, TB-SYS-11                       |              |
-| 13. Proposal messages worded              | `feature/m9-word-replies`      | TB-AGT-09, TB-TRU-03                                             |              |
-| 14. Quick plan report worded              | `feature/m9-word-replies`      | TB-QPL-10, TB-TRU-03                                             |              |
+| 12. Replies and confirmations worded      | `feature/m9-word-replies`      | TB-TRU-03, TB-AGT-15, TB-SYS-10, TB-SYS-11                       | #99          |
+| 13. Proposal messages worded              | `feature/m9-word-replies`      | TB-AGT-09, TB-TRU-03                                             | #99          |
+| 14. Quick plan report worded              | `feature/m9-word-replies`      | TB-QPL-10, TB-TRU-03                                             | #99          |
 | 15. Evidence                              | `feature/m9-evidence`          | all of the above, re-checked                                     |              |
 | 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      | #90          |
 | 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  | #92          |
