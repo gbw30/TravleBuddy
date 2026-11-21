@@ -634,19 +634,17 @@ The parts:
   - **Preview (M2).** Pointing at or focusing a card shows a dashed preview in its slot, with what it means for the day: when it ends, the free time before the next fixed thing, and the leg.
   - **Flight (M1).** Pick sends a small copy of the card along an arc into the slot. The row fills, the leg unfolds, and the count goes up.
   - **Stamp (M2).** A "PICKED" postmark presses onto the row.
-  - **Reduced motion.** With reduced motion set, the row fills with a short fade and nothing flies.
-  - **Touch screens.** There is no pointing preview; Pick still plays the flight and the stamp. Planner's call.
+  - **Reduced motion.** With reduced motion set, the row fills with a short fade and nothing flies. Confirmed by the developer, 2026-11-20.
+  - **Touch screens.** There is no pointing preview; Pick still plays the flight and the stamp. Confirmed by the developer, 2026-11-20.
 - **The trip facts drawer (F2).** A "Trip facts" button beside the title opens a side panel with every fact's control stacked: nights per city, dates, who, daily budget, pace and purpose. One "Save changes".
   - It saves through the same partial-edit path as piece 20: only the edits are sent.
   - The conversation adds one quiet line ("You changed … I kept everything else you told me.") and asks nothing again.
 - **Picks a change displaces.** Changing nights or dates can move a day to another city, or drop it. Before saving, the drawer names each pick that leaves, and that pick goes back to Saved for later.
-  - Ruling: as drawn in round two, because the traveller sees what moves before it moves, and nothing is lost. The developer may change it.
+  - Decided by the developer on 2026-11-20 (option A). Rejected: keeping the picks on their days, marked as no longer fitting.
 
 **Checks:** as piece 16. The design checks add a walk through the drawer, and checks that the flight and the stamp leave the same row as a plain pick.
 
 ## Waiting for the developer
-
-- **Picks a change displaces (piece 22):** the ruling sends them back to Saved for later and names them before saving. The alternative is to keep them and mark them as no longer fitting.
 
 - **Piece 1:** the live test on 2026-11-20 failed ("I could not reach the place provider"), and the code logged nothing to say why. Production went back to sample places (`PLACE_PROVIDER_MODE=mock`) the same day, at the developer's word. Step 2 now logs the host and status of every refusal, and the QA preview moves to this milestone (developer, 2026-11-20) so the test can run again there, with real places on the QA preview only.
 - **If Overpass refuses Vercel too:** the known mirrors are IPv6-only, and Vercel functions may have no outbound IPv6 (not verified). If the mirrors cannot be reached, places need a self-hosted or paid Overpass or an extract, which the operating constraints allow only with your approval.
