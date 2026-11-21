@@ -9,4 +9,4 @@ export const GET = withUser(async (_userId, request) => {
   return outcome.status === "ok"
     ? json({ cities: outcome.cities })
     : json({ error: "lookup_unavailable" }, 503);
-});
+}, "lookups");

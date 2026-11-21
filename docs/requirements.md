@@ -214,7 +214,7 @@ Last reviewed: 2026-11-12
 | TB-SYS-13 | A trip records a visibility setting, private in the first version, and its owner separately from who may view it.                                                                                        |
 | TB-SYS-14 | The Itinerary service can copy an itinerary into a new trip. No screen exposes this in the first version.                                                                                                |
 | TB-SYS-15 | Itinerary quality is checked against the five sample travellers in PRD 18 before the first version is called complete.                                                                                   |
-| TB-SYS-16 | API calls are limited per signed-in person, and per network address only where nobody is signed in. Over a limit the answer is 429 with a retry time, and the screen says so plainly.                    |
+| TB-SYS-16 | API calls are limited per person, counted by account, device and signature, never by network address alone. Over a limit the answer is 429 with a retry time, and the screen says so plainly.            |
 | TB-SYS-17 | Each shared daily allowance (place gathering, address lookups, AI model spend) also has a per-person share, so one account cannot use it up for everyone.                                                |
 
 ## 14. Later stages

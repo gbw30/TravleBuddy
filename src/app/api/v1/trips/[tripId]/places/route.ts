@@ -39,7 +39,7 @@ export const GET = withUser<Context>(async (userId, request, context) => {
     },
     503,
   );
-});
+}, "places");
 
 /** Adds a place the provider does not know. It is marked as the traveller's own. */
 export const POST = withUser<Context>(async (userId, request, context) => {
@@ -50,4 +50,4 @@ export const POST = withUser<Context>(async (userId, request, context) => {
   const { slotId, ...place } = body.data;
   const card = await addTripPlace(userId, tripId, slotId, place);
   return card ? json({ card }, 201) : json({ error: "not_found" }, 404);
-});
+}, "places");

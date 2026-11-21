@@ -28,8 +28,14 @@ const mocks = vi.hoisted(() => ({
   readLastMessage: vi.fn(),
   tellProfileIn: vi.fn(),
   runTripAction: vi.fn(),
+  aiShareLeft: vi.fn(),
+  addAiSpend: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
+vi.mock("@/features/fair-use", () => ({
+  aiShareLeft: mocks.aiShareLeft,
+  addAiSpend: mocks.addAiSpend,
+}));
 vi.mock("@/features/trips", () => ({
   getTrip: mocks.getTrip,
   saveTripFacts: mocks.saveTripFacts,
@@ -175,6 +181,7 @@ beforeEach(() => {
   mocks.saveTripFacts.mockResolvedValue({ saved: true });
   mocks.lastQuestionTopic.mockResolvedValue(null);
   mocks.modelCall.mockReturnValue(null);
+  mocks.aiShareLeft.mockResolvedValue(true);
   // The ledger runs the change once and answers with the next revision.
   mocks.runTripAction.mockImplementation(async ({ apply }) => {
     const data = await apply(tx);
@@ -215,6 +222,32 @@ describe("reading the conversation", () => {
       outputTokens: 0,
     });
     expect((await loadConversation("user-1", "trip-1"))?.limited).toBe(true);
+  });
+});
+
+describe("each person's daily share of AI spend", () => {
+  it("leaves the agent limited once the person's share is spent, inside the monthly cap", async () => {
+    const call = model({ type: "taste", topic: "pace", values: ["packed"] });
+    mocks.modelCall.mockReturnValue(call);
+    mocks.aiShareLeft.mockResolvedValue(false);
+    expect((await loadConversation("user-1", "trip-1"))?.limited).toBe(true);
+    await say("relaxed");
+    expect(call).not.toHaveBeenCalled();
+    expect(mocks.saveTripAnswer).toHaveBeenCalledWith(tx, "trip-1", "pace", {
+      values: ["relaxed"],
+      source: "told",
+    });
+  });
+
+  it("counts a call's cost once in the month and once against the person who made it", async () => {
+    mocks.modelCall.mockReturnValue(
+      model({ type: "taste", topic: "pace", values: ["relaxed"] }),
+    );
+    await say("relaxed");
+    expect(mocks.addUsage).toHaveBeenCalledTimes(1);
+    // 900 input and 40 output tokens.
+    expect(mocks.addAiSpend).toHaveBeenCalledTimes(1);
+    expect(mocks.addAiSpend.mock.calls[0][0]).toBeCloseTo(0.00011, 10);
   });
 });
 
