@@ -45,6 +45,7 @@ environments.
 - Reuse the currently configured QA database for writable QA, migrations, and
   integration evidence.
 - Reuse the currently configured production database for production only.
+- The production smoke stays read-only. Exemption (developer, 2026-11-21): the app's own `fair_use_counts` upserts caused by the smoke's requests are allowed; nothing else is exempt.
 - Never point writable QA at production.
 - Do not create another Neon branch, database clone, disposable cloud
   database, or additional persistent database without explicit approval.

@@ -542,6 +542,7 @@ const entries = [
       "Public, login, anonymous-protection, and preprovisioned read surfaces are healthy.",
       "Browser POST, PUT, PATCH, and DELETE requests are aborted by the QA harness.",
       "Smoke output contains no credentials, cookies, tokens, or provider secrets.",
+      "Exemption (developer, 2026-11-21): the app's own `fair_use_counts` upserts caused by the smoke's requests are allowed; nothing else is exempt.",
     ],
   },
 ] satisfies Scenario[];
