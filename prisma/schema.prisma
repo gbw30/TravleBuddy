@@ -434,7 +434,7 @@ model WordingRecord {
   shown        String   @db.Text
   /// "template" or "model".
   wordedBy     String   @map("worded_by") @db.VarChar(10)
-  /// Why the template was shown: "off", "cap", "timeout", "error" or the failed check.
+  /// Why the template was shown: "off", "cap", "timeout", "error", "fixed" (only cautions), "unusable" (a reply that could not be used) or the failed check's name.
   fallback     String?  @db.VarChar(40)
   model        String?  @db.VarChar(40)
   inputTokens  Int?     @map("input_tokens")

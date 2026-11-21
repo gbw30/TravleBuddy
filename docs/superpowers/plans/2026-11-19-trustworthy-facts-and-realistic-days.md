@@ -26,7 +26,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 7. Airport and station time shown         | `feature/m9-ticket-allowances` | TB-ITN-23                                                        | #87          |
 | 8. Where you stay                         | `feature/m9-stay`              | TB-FIX-07, TB-ITN-22, TB-ITN-06                                  | #88          |
 | 9. The private record of card reasons     | `feature/m9-reason-record`     | TB-RSN-03, TB-TRU-02, TB-CRD-03                                  | #93          |
-| 10. The private record of agent messages  | `feature/m9-message-record`    | TB-RSN-01, TB-TRU-02, TB-QPL-10                                  |              |
+| 10. The private record of agent messages  | `feature/m9-message-record`    | TB-RSN-01, TB-TRU-02, TB-QPL-10                                  | #95          |
 | 11. The wording check, and reasons worded | `feature/m9-word-reasons`      | TB-RSN-03, TB-TRU-03, TB-TRU-04, TB-AGT-15, TB-SYS-10, TB-SYS-11 |              |
 | 12. Replies and confirmations worded      | `feature/m9-word-replies`      | TB-TRU-03, TB-AGT-15, TB-SYS-10, TB-SYS-11                       |              |
 | 13. Proposal messages worded              | `feature/m9-word-proposals`    | TB-AGT-09, TB-TRU-03                                             |              |

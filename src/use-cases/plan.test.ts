@@ -27,6 +27,10 @@ const mocks = vi.hoisted(() => ({
   advanceTripRevision: vi.fn(),
   runTripAction: vi.fn(),
   findEditable: vi.fn(),
+  findPlacesByName: vi.fn(),
+  wordingMode: vi.fn(),
+  modelCall: vi.fn(),
+  readWordings: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
 vi.mock("@/features/trips", () => ({
@@ -49,7 +53,7 @@ vi.mock("@/features/places", () => ({
   gatherSights: vi.fn(),
   gatherFoodNear: vi.fn(),
   addOwnPlace: vi.fn(),
-  findPlacesByName: vi.fn(),
+  findPlacesByName: mocks.findPlacesByName,
   usesSamplePlaces: mocks.usesSamplePlaces,
   removeOwnPlace: mocks.removeOwnPlace,
 }));
@@ -69,6 +73,9 @@ vi.mock("@/features/conversation", async (actual) => ({
   ...(await actual<typeof import("@/features/conversation")>()),
   appendMessages: mocks.appendMessages,
   recordWordings: mocks.recordWordings,
+  readWordings: mocks.readWordings,
+  wordingMode: mocks.wordingMode,
+  modelCall: mocks.modelCall,
 }));
 vi.mock("./trip-action", () => ({
   runTripAction: mocks.runTripAction,
@@ -78,6 +85,7 @@ vi.mock("./trip-action", () => ({
 }));
 
 import {
+  findTripPlaces,
   loadPlan,
   removeTripPlace,
   setPlanPace,
@@ -164,6 +172,7 @@ beforeEach(() => {
   mocks.listFoodNear.mockResolvedValue(food);
   mocks.readDiscards.mockResolvedValue([]);
   mocks.listTrips.mockResolvedValue([]);
+  mocks.wordingMode.mockReturnValue("off");
   mocks.readTripTaste.mockResolvedValue({});
   mocks.readProfile.mockResolvedValue({ entries: [] });
   // Every card is shown for the first time.
@@ -1098,5 +1107,18 @@ describe("removing a place the traveller added", () => {
     mocks.getTrip.mockResolvedValue(null);
     expect(await tripsAlsoHolding("user-1", "trip-9", "own")).toBeNull();
     expect(mocks.listTrips).not.toHaveBeenCalled();
+  });
+});
+
+describe("a read that shows no reasons", () => {
+  it("never asks the model, even with wording on (the city for a place search)", async () => {
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(vi.fn());
+    mocks.readWordings.mockResolvedValue([]);
+    mocks.findPlacesByName.mockResolvedValue({ status: "ok", places: [] });
+    await findTripPlaces("user-1", "trip-1", "d1-morning", "senso");
+    expect(mocks.findPlacesByName).toHaveBeenCalledTimes(1);
+    expect(mocks.modelCall).not.toHaveBeenCalled();
+    expect(mocks.readWordings).not.toHaveBeenCalled();
   });
 });

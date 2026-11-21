@@ -1,8 +1,6 @@
 import {
-  addUsage,
   aiMode,
   appendMessages,
-  costUsd,
   decide,
   decideDifference,
   intentOfTap,
@@ -10,7 +8,6 @@ import {
   lastQuestionTopic,
   OFFER_ASK,
   readLastMessage,
-  modelCall,
   nextQuestion,
   readAnswerByRule,
   readConversation,
@@ -18,11 +15,8 @@ import {
   readinessNote,
   readSkippedFacts,
   readTypedInput,
-  readUsage,
   skipFact,
   stateAfter,
-  underCap,
-  usageMonth,
   type Decision,
   type ModelCall,
   type NewMessage,
@@ -35,7 +29,6 @@ import type {
   Turn,
   TurnResult,
 } from "@/features/conversation/contracts";
-import { addAiSpend, aiShareLeft } from "@/features/fair-use";
 import { fillAll, fromTraveller, sentence } from "@/lib/wording";
 import { PACES } from "@/features/itinerary/contracts";
 import { TOPIC_NAMES } from "@/features/memory/contracts";
@@ -58,6 +51,7 @@ import {
 import type { TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 
+import { modelGate, payForModel } from "./model-gate";
 import { planDays, setPlanPace } from "./plan";
 import { tellProfileIn } from "./profile";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
@@ -96,14 +90,10 @@ async function scriptState(
  * The way to call the model, or null when it is off, this month's cap is
  * reached (TB-SYS-11), or the person has spent their share of today (TB-SYS-17).
  */
-async function openModel(now: Date): Promise<ModelCall | null> {
-  const call = modelCall();
-  if (!call) return null;
-  return underCap(await readUsage(db, usageMonth(now))) &&
-    (await aiShareLeft(now))
-    ? call
-    : null;
-}
+const openModel = async (now: Date): Promise<ModelCall | null> => {
+  const gate = await modelGate(now);
+  return typeof gate === "string" ? null : gate;
+};
 
 /** A reply of one fixed sentence. */
 const reply = (template: string, text: string) => ({
@@ -139,10 +129,7 @@ async function readSaid(
   if (reading.status === "failed") return { intent: byRule(), limited: true };
   // Counted outside the turn's transaction: the call is paid for whatever
   // happens to the turn.
-  await addUsage(db, usageMonth(now), reading.usage);
-  // The same cost again, only to divide the month among people: the share
-  // is checked before a call, so a burst can pass it by a call or two.
-  await addAiSpend(costUsd(reading.usage), now);
+  await payForModel(reading.usage, now);
   return {
     intent: reading.status === "read" ? reading.intent : byRule(),
     limited: false,

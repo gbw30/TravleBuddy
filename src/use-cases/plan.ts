@@ -444,6 +444,7 @@ async function proposalFor(
   limits: Limits,
   gather: boolean,
   plan: { state: PlanState; context: PlanContext },
+  word: boolean,
 ): Promise<PlanSnapshot["proposal"]> {
   const found = await cardsFor(
     trip,
@@ -468,6 +469,7 @@ async function proposalFor(
       subject: `card:${entry.slotId}:${card.placeId}`,
       sentences: sentences[card.placeId],
     })),
+    { word },
   );
   set.cards = set.cards.map((card, i) => ({ ...card, reason: shown[i] }));
   const fresh = await recordPresented(
@@ -529,6 +531,7 @@ async function chosenCards(
   places: Record<string, PlaceDto>,
   trip: TripDetail,
   built: Set<string>,
+  word: boolean,
 ): Promise<Record<string, CardDto>> {
   const cityName = (key: string) =>
     trip.facts.cities.find(({ city }) => cityKeyOf(city) === key)?.city.name ??
@@ -581,6 +584,7 @@ async function chosenCards(
   const shown = await shownWords(
     trip.id,
     ids.map((id) => words[id]),
+    { word },
   );
   ids.forEach((id, i) => (cards[id] = { ...cards[id], reason: shown[i] }));
   for (const item of view.shelf) {
@@ -620,9 +624,11 @@ export async function loadPlan(
   wanted?: string,
   /** False keeps the provider out of a page load; the screen then asks again. */
   gather = true,
+  /** False for a read that shows no reasons, so the model is never asked. */
+  word = true,
 ): Promise<PlanSnapshot | null> {
   try {
-    return await readPlan(userId, tripId, wanted, gather);
+    return await readPlan(userId, tripId, wanted, gather, word);
   } catch (error) {
     // Reading a plan records the cards it shows against the trip. A trip
     // deleted while it is being read is gone, not broken: answer as for
@@ -637,6 +643,7 @@ async function readPlan(
   tripId: string,
   wanted: string | undefined,
   gather: boolean,
+  word: boolean,
 ): Promise<PlanSnapshot | null> {
   const trip = await getTrip(userId, tripId);
   if (!trip) return null;
@@ -673,6 +680,7 @@ async function readPlan(
       context.places,
       trip,
       new Set(builtPlaceIds(progress, state)),
+      word,
     ),
     proposal: proposing
       ? await proposalFor(
@@ -685,6 +693,7 @@ async function readPlan(
           limits,
           gather,
           { state, context },
+          word,
         )
       : null,
     holding: holding ? "food" : null,
@@ -870,7 +879,7 @@ async function cityFor(
   tripId: string,
   slotId: string | undefined,
 ): Promise<City | null> {
-  const plan = await loadPlan(userId, tripId, slotId, false);
+  const plan = await loadPlan(userId, tripId, slotId, false, false);
   const trip = await getTrip(userId, tripId);
   if (!plan || !trip) return null;
   const entry = plan.view.days
