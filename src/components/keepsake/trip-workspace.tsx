@@ -9,7 +9,7 @@ import {
   discardReason,
   type CardDto,
 } from "@/features/recommendations/contracts";
-import { callApi, changeTrip } from "@/lib/trip-api";
+import { callApi, changeTrip, patiently } from "@/lib/trip-api";
 import type { PlanSnapshot } from "@/use-cases/plan-snapshot";
 
 import { AgentMessage } from "./agent-message";
@@ -124,28 +124,30 @@ export function TripWorkspace({
       ? { day: focusEntry.day.day, ...focusEntry.entry }
       : null;
 
-  /** `patient`: a build's read waits out a request limit instead of stopping. */
+  /**
+   * `patient`: a build's read waits out a request limit a few times
+   * (TB-SYS-16). Hands back the limit's message when it still stands.
+   */
   async function refresh(slot?: string | null, patient = false) {
     const mine = ++reading.current;
     wanted.current = slot ?? null;
-    for (;;) {
-      const result = await callApi<{ plan: PlanSnapshot }>(
+    // Only the newest read is shown: an older one may answer later.
+    const newest = () => mine === reading.current;
+    const read = () =>
+      callApi<{ plan: PlanSnapshot }>(
         `/api/v1/trips/${tripId}/plan${slot ? `?slot=${slot}` : ""}`,
         { method: "GET" },
       );
-      // Only the newest read is shown: an older one may answer later.
-      if (mine !== reading.current) return;
-      if (result.ok) return show(result.data.plan);
-      if (!patient || !result.retryAfter) return setProblem(result.message);
-      await waitOut(result.retryAfter, result.message);
+    const result = patient
+      ? await patiently(read, setBuildProblem, newest)
+      : await read();
+    if (!newest()) return null;
+    if (result.ok) {
+      show(result.data.plan);
+      return null;
     }
-  }
-
-  /** Over a request limit a build says so and waits its turn (TB-SYS-16). */
-  async function waitOut(seconds: number, message: string) {
-    setBuildProblem(message);
-    await new Promise((go) => setTimeout(go, seconds * 1000));
-    setBuildProblem(null);
+    setProblem(result.message);
+    return result.retryAfter ? result.message : null;
   }
 
   // The page loads without waiting for the place provider; ask for the
@@ -203,18 +205,19 @@ export function TripWorkspace({
     setReportHidden(false);
     setStarting(start);
     for (let first = start; ; ) {
-      const result = await changeTrip<{ done: boolean }>(
-        tripId,
-        revision,
-        "POST",
-        first ? { start: true } : {},
-        "/build",
+      const body = first ? { start: true } : {};
+      // Over a request limit the same step is asked for again, a few times.
+      const result = await patiently(
+        () =>
+          changeTrip<{ done: boolean }>(
+            tripId,
+            revision,
+            "POST",
+            body,
+            "/build",
+          ),
+        setBuildProblem,
       );
-      // Over a request limit the same step is asked for again.
-      if (!result.ok && result.retryAfter) {
-        await waitOut(result.retryAfter, result.message);
-        continue;
-      }
       if (!result.ok) {
         setBuildProblem(result.message);
         // Nothing shows a problem unless a build is on screen.
@@ -222,7 +225,12 @@ export function TripWorkspace({
         break;
       }
       first = false;
-      await refresh(wanted.current, true);
+      // A read still over a limit stops the build; "Continue building" resumes.
+      const limited = await refresh(wanted.current, true);
+      if (limited) {
+        setBuildProblem(limited);
+        break;
+      }
       setStarting(false);
       if (result.data.done) break;
     }

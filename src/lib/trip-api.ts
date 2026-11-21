@@ -64,6 +64,37 @@ export async function callApi<T>(
   }
 }
 
+/**
+ * Waits a request limit may last in a row before one request gives up
+ * (TB-SYS-16). A wait runs to the end of the limit's minute, so one is
+ * nearly always enough.
+ */
+export const LIMIT_WAITS = 3;
+
+/**
+ * Sends a request, and sends it again once a request limit's wait is over,
+ * at most LIMIT_WAITS waits in a row. `waiting` hears the limit's message
+ * while a wait lasts and null when it ends. A request no longer `wanted` is
+ * not sent again. The last answer is handed back.
+ */
+export async function patiently<T>(
+  ask: () => Promise<ApiResult<T>>,
+  waiting: (message: string | null) => void,
+  wanted: () => boolean = () => true,
+): Promise<ApiResult<T>> {
+  for (let waits = 0; ; waits++) {
+    const result = await ask();
+    if (result.ok || !result.retryAfter || waits === LIMIT_WAITS || !wanted()) {
+      return result;
+    }
+    const wait = result.retryAfter * 1000;
+    waiting(result.message);
+    await new Promise((go) => setTimeout(go, wait));
+    waiting(null);
+    if (!wanted()) return result;
+  }
+}
+
 // The newest revision seen for each trip in this tab. Several panels on one
 // page change the same trip, and each must send the revision the last one got.
 const latestRevision = new Map<string, number>();
