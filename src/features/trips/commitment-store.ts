@@ -1,7 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
 
 import { findClashes } from "./clashes";
-import type { Clash, CommitmentDto, CommitmentInput } from "./contracts";
+import {
+  TIME_SHAPES,
+  type Clash,
+  type CommitmentDto,
+  type CommitmentInput,
+} from "./contracts";
 import { withCityZones } from "./tickets";
 import { findEditable, type Refused } from "./trip-access";
 
@@ -18,6 +23,7 @@ export const commitmentSelect = {
   startTime: true,
   endDate: true,
   endTime: true,
+  timeShape: true,
   reference: true,
   note: true,
   transportMode: true,
@@ -46,6 +52,9 @@ const dateOnly = (value: Date | null) =>
 const asDate = (value: string | null) =>
   value ? new Date(`${value}T00:00:00Z`) : null;
 
+const toShape = (value: string | null) =>
+  TIME_SHAPES.find((shape) => shape === value) ?? null;
+
 export function toCommitmentDto(row: CommitmentRow): CommitmentDto {
   return {
     id: row.id,
@@ -55,6 +64,7 @@ export function toCommitmentDto(row: CommitmentRow): CommitmentDto {
     startTime: row.startTime,
     endDate: dateOnly(row.endDate),
     endTime: row.endTime,
+    timeShape: toShape(row.timeShape),
     reference: row.reference,
     note: row.note,
     located:
@@ -118,6 +128,7 @@ function rowData(input: CommitmentInput) {
     startTime: input.startTime,
     endDate: asDate(input.endDate),
     endTime: input.endTime,
+    timeShape: input.timeShape,
     reference: input.reference,
     note: input.note,
     latitude: input.located?.latitude ?? null,

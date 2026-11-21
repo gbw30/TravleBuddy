@@ -13,7 +13,9 @@ import {
 } from "@/features/places/contracts";
 import {
   placeName,
+  windowOf,
   type CommitmentDto,
+  type TimeShape,
   type TripFacts,
 } from "@/features/trips/contracts";
 
@@ -189,6 +191,8 @@ type Fixed = {
   commitment: CommitmentDto;
   start: number;
   end: number;
+  /** Set on a step laid inside a window of the day, not at a set time. `to` null: open-ended. */
+  window?: { shape: TimeShape; from: number; to: number | null };
 };
 
 /** Travel between two cities with no ticket: distance at a train's pace, plus getting to and from it. */
@@ -244,10 +248,6 @@ function stayForNight(
 export const morningStayOf = (commitments: CommitmentDto[], date: string) =>
   stayForNight(commitments, addDays(date, -1));
 
-/** A stay's check-in time is a window, not an appointment: it is laid at the first gap after it. */
-const isCheckIn = (fixed: Fixed, date: string) =>
-  fixed.commitment.kind === "STAY" && fixed.commitment.date === date;
-
 /** When a commitment with a time starts and ends on one day. */
 function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
   // A ticket that left on an earlier day shows where it lands.
@@ -258,6 +258,22 @@ function fixedOn(commitment: CommitmentDto, date: string): Fixed | null {
   ) {
     const landing = toMinutes(commitment.endTime);
     return { commitment, start: landing, end: landing };
+  }
+  // A window is not an appointment: it is laid at the first gap inside it.
+  const window = windowOf(commitment);
+  if (window && commitment.date === date) {
+    const from = window.from ? toMinutes(window.from) : 0;
+    const length = commitment.kind === "STAY" ? 30 : 60;
+    return {
+      commitment,
+      start: from,
+      end: from + length,
+      window: {
+        shape: window.shape,
+        from,
+        to: window.to ? toMinutes(window.to) : null,
+      },
+    };
   }
   if (commitment.date !== date || !commitment.startTime) return null;
   const start = toMinutes(commitment.startTime);
@@ -345,7 +361,7 @@ export function buildPlanView(
     landsAt: number;
     /** When the traveller leaves the morning's city, on a day with two segments. */
     leaves: number;
-    /** The segment in tonight's city, where a check-in today waits; -1 when it is not reached today. */
+    /** The segment in tonight's city, where a window today waits; -1 when it is not reached today. */
     stayIn: number;
     slots: DraftSlot[];
     /** When breakfast where the traveller stays is shown, if it is. */
@@ -521,6 +537,7 @@ export function buildPlanView(
       const taken = fixed.some(
         (f) =>
           f.commitment.kind !== "STAY" &&
+          !f.window &&
           f.start < dayStart + BREAKFAST.minutes &&
           dayStart < f.end,
       );
@@ -553,6 +570,7 @@ export function buildPlanView(
       const taken = fixed.some(
         (f) =>
           f.commitment.kind !== "STAY" &&
+          !f.window &&
           f.start < earliest + 60 &&
           earliest < f.end,
       );
@@ -584,10 +602,12 @@ export function buildPlanView(
       slots,
       stayBreakfast,
       held: new Map(),
-      // A check-in in a city the traveller does not reach today has no time today.
+      // A window in a city the traveller does not reach today has no time today.
       notes:
         stayIn === -1
-          ? fixed.filter((f) => isCheckIn(f, date)).map((f) => f.commitment)
+          ? fixed
+              .filter((f) => f.window && f.window.shape !== "BEFORE")
+              .map((f) => f.commitment)
           : [],
       morningStay: stayForNight(context.commitments, addDays(date, -1)),
       eveningStay: stayForNight(context.commitments, date),
@@ -605,7 +625,7 @@ export function buildPlanView(
         (wantMeal === null || isMeal(slot.kind) === wantMeal),
     );
   for (const commitment of context.commitments) {
-    if (commitment.startTime) continue;
+    if (commitment.startTime || windowOf(commitment)) continue;
     if (unplaced.some((u) => u.commitmentId === commitment.id)) continue;
     const dated = drafts.find((draft) => draft.date === commitment.date);
     if (commitment.kind === "STAY" || commitment.kind === "TRANSPORT") {
@@ -679,20 +699,23 @@ export function buildPlanView(
       ...(draft.stayBreakfast === null
         ? []
         : [{ at: draft.stayBreakfast, segment: 0, breakfast: true as const }]),
-      // A check-in is a window, not an appointment: it waits until the
-      // traveller is in its city and out of any station or airport, and is
-      // laid at the first gap after that.
-      ...(draft.stayIn === -1
-        ? []
-        : draft.fixed
-            .filter((fixed) => isCheckIn(fixed, draft.date))
-            .map((checkIn) => ({
-              at: Math.max(checkIn.start, draft.segments[draft.stayIn].from),
-              segment: draft.stayIn,
-              checkIn,
-            }))),
+      // A window waits until the traveller is in its city and out of any
+      // station or airport, and is laid at the first gap after that. One that
+      // ends "by" a time is laid before the traveller leaves the city.
+      ...draft.fixed.flatMap((checkIn) => {
+        const segment = checkIn.window?.shape === "BEFORE" ? 0 : draft.stayIn;
+        return checkIn.window && segment !== -1
+          ? [
+              {
+                at: Math.max(checkIn.window.from, draft.segments[segment].from),
+                segment,
+                checkIn,
+              },
+            ]
+          : [];
+      }),
       ...draft.fixed
-        .filter((fixed) => !isCheckIn(fixed, draft.date))
+        .filter((fixed) => !fixed.window)
         .map((fixed) => ({
           // On day 1, a ticket into the first city that lands earlier by the
           // clock than it left is over before the day starts: it goes first.
@@ -774,7 +797,7 @@ export function buildPlanView(
       step: Extract<Step, { checkIn: Fixed }>,
       position: number,
     ) => {
-      const { commitment, start, end } = step.checkIn;
+      const { commitment, start, end, window } = step.checkIn;
       const spot = commitment.located;
       // From the last point in this city; a station has no position.
       const leg =
@@ -795,11 +818,25 @@ export function buildPlanView(
         waiting = step;
         return;
       }
+      // Never moved outside its window: what does not fit is said so.
+      if (window?.to != null && at + (end - start) > window.to) {
+        unplaced.push({
+          commitmentId: commitment.id,
+          title: commitment.title,
+          reason:
+            "It does not fit inside its window today. Widen the window, or move what is booked in it.",
+        });
+        return;
+      }
       put({
         type: "commitment",
         commitmentId: commitment.id,
         commitmentKind: commitment.kind,
         title: spot ? `Check in at ${commitment.title}` : commitment.title,
+        window: {
+          ...windowOf(commitment)!,
+          name: commitment.title,
+        },
         start: toClock(at),
         minutes: end - start,
         slotId: null,

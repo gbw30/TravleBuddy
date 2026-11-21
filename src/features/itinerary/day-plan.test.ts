@@ -5,7 +5,7 @@ import {
   travelEstimate,
   type PlaceDto,
 } from "@/features/places/contracts";
-import type { CommitmentDto } from "@/features/trips/contracts";
+import { windowOf, type CommitmentDto } from "@/features/trips/contracts";
 
 import {
   emptyPlanState,
@@ -2284,3 +2284,85 @@ describe("where you stay", () => {
     });
   });
 });
+
+describe("time windows", () => {
+  const entryOf = (view: ReturnType<typeof buildPlanView>, id: string) =>
+    found(view.days[0].entries, "commitment").find(
+      (entry) => entry.commitmentId === id,
+    );
+  const plan = (commitments: CommitmentDto[]) =>
+    buildPlanView(state(), context({ commitments }));
+  const hire = (over: Partial<CommitmentDto>) =>
+    commitment({
+      id: "hire",
+      kind: "OTHER",
+      title: "Pick up the hire car",
+      date: "2027-05-10",
+      ...over,
+    });
+
+  it("lays 'between' at the start of its window, around a booking", () => {
+    const view = plan([
+      hire({ timeShape: "BETWEEN", startTime: "10:00", endTime: "13:00" }),
+      commitment({
+        id: "tea",
+        title: "Tea",
+        date: "2027-05-10",
+        startTime: "10:00",
+        endTime: "11:00",
+      }),
+    ]);
+    expect(entryOf(view, "hire")).toMatchObject({
+      start: "11:00",
+      window: { shape: "BETWEEN", from: "10:00", to: "13:00" },
+    });
+    expect(view.unplaced).toEqual([]);
+  });
+
+  it("says so, and does not move it, when the window cannot hold it", () => {
+    const view = plan([
+      hire({ timeShape: "BETWEEN", startTime: "10:00", endTime: "11:00" }),
+      commitment({
+        id: "tea",
+        title: "Tea",
+        date: "2027-05-10",
+        startTime: "10:00",
+        endTime: "10:45",
+      }),
+    ]);
+    expect(entryOf(view, "hire")).toBeUndefined();
+    expect(view.unplaced.map((u) => u.commitmentId)).toEqual(["hire"]);
+  });
+
+  it("lays 'by' before the time and 'any time' in the first gap", () => {
+    const view = plan([
+      hire({ id: "out", timeShape: "BEFORE", startTime: "11:00" }),
+      hire({ id: "any", timeShape: "ANY" }),
+    ]);
+    const out = entryOf(view, "out")!;
+    expect(toMinutesOf(out.start!) + out.minutes!).toBeLessThanOrEqual(660);
+    expect(entryOf(view, "any")).toMatchObject({ window: { shape: "ANY" } });
+  });
+
+  it("reads a stay's check-in as 'any time after' with no stored shape", () => {
+    expect(
+      windowOf({
+        kind: "STAY",
+        startTime: "15:00",
+        endTime: null,
+        timeShape: null,
+      }),
+    ).toEqual({ shape: "AFTER", from: "15:00", to: null });
+    expect(
+      windowOf({
+        kind: "RESERVATION",
+        startTime: "15:00",
+        endTime: null,
+        timeShape: null,
+      }),
+    ).toBeNull();
+  });
+});
+
+const toMinutesOf = (clock: string) =>
+  Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
