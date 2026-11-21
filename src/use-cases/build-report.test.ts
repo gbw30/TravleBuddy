@@ -173,6 +173,43 @@ describe("the report of a build", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("keeps every caution, doubt and assumption as fixed text, and leaves what it did free", () => {
+    const { sentences } = worded({
+      view: view(
+        [
+          [at("d1-morning", "Castle", ["hours-unknown"])],
+          [at("d2-lunch", "Garden Table")],
+        ],
+        { provisionalDates: true },
+      ),
+      style: [answer("pace", "profile", ["relaxed"], "from your trip")],
+      dietaryRules: ["vegetarian"],
+      progress: progress({
+        built: { "d1-morning": "Castle", "d2-lunch": "Garden Table" },
+        close: ["d1-morning"],
+        unreachable: true,
+      }),
+    });
+    const fixed = (template: string) =>
+      sentences.flat().filter((item) => item.template === template);
+    for (const template of [
+      "hours-unknown",
+      "check-first",
+      "diet-unconfirmed",
+      "places-unreachable",
+      "assumed-start",
+      "style-pace-from",
+      "close-for-slot",
+    ]) {
+      expect(fixed(template).length, template).toBeGreaterThan(0);
+      expect(fixed(template).every((item) => item.fixed === true)).toBe(true);
+    }
+    for (const template of ["built-days", "built-both", "close-chose"]) {
+      expect(fixed(template).length, template).toBeGreaterThan(0);
+      expect(fixed(template).some((item) => item.fixed)).toBe(false);
+    }
+  });
+
   it("says what was built in two sentences", () => {
     expect(report().built).toEqual([
       "2 days in Lisbon.",

@@ -236,4 +236,87 @@ export const WORDING_CASES: WordingCase[] = [
     dry: ["For day {day}, {part} at {start}, I suggest {choice} near Rossio."],
     expect: "capital",
   },
+
+  // The Quick plan report's free lines. Its cautions and doubts are fixed
+  // sentences and never reach the model.
+  {
+    name: "report: what was built, plain",
+    kind: "plain",
+    sentences: [
+      sentence("built-days", "{days} in {cities}.", [
+        computed("days", "3 days", "days-in-plan"),
+        computed("cities", "Lisbon", "trip-cities"),
+      ]),
+    ],
+    dry: ["{days}, all in {cities}."],
+    expect: null,
+  },
+  {
+    name: "report: what was chosen, plain",
+    kind: "plain",
+    sentences: [
+      sentence("built-see", "I chose {places} to see.", [
+        computed("places", "4 places", "places-chosen"),
+      ]),
+    ],
+    dry: ["I picked {places} to see."],
+    expect: null,
+  },
+  {
+    name: "report: a slot nothing fits, keeps the negation",
+    kind: "plain",
+    sentences: [
+      sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
+        computed("slot", "dinner on day 2", "slot-of-plan"),
+      ]),
+    ],
+    dry: ["I know nothing that fits {slot}."],
+    expect: null,
+  },
+  {
+    name: "tempt (report): turn a gap into a count",
+    kind: "tempt",
+    sentences: [
+      sentence("built-see", "I chose {places} to see.", [
+        computed("places", "4 places", "places-chosen"),
+      ]),
+    ],
+    dry: ["I chose {places} to see, about twelve in all."],
+    expect: "number",
+  },
+  {
+    name: "tempt (report): praise the plan",
+    kind: "tempt",
+    sentences: [
+      sentence("built-days", "{days} in {cities}.", [
+        computed("days", "3 days", "days-in-plan"),
+        computed("cities", "Lisbon", "trip-cities"),
+      ]),
+    ],
+    dry: ["{days} in {cities}, a lively, authentic plan."],
+    expect: "claim",
+  },
+  {
+    name: "tempt (report): say a slot is fine after all",
+    kind: "tempt",
+    sentences: [
+      sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
+        computed("slot", "dinner on day 2", "slot-of-plan"),
+      ]),
+    ],
+    dry: ["Something I know fits {slot}."],
+    expect: "negation",
+  },
+  {
+    name: "tempt (report): swap the cities and the days",
+    kind: "tempt",
+    sentences: [
+      sentence("built-days", "{days} in {cities}.", [
+        computed("days", "3 days", "days-in-plan"),
+        computed("cities", "Lisbon", "trip-cities"),
+      ]),
+    ],
+    dry: ["{cities} in {days}."],
+    expect: "gaps",
+  },
 ];

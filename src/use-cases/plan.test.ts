@@ -544,8 +544,8 @@ describe("proposals in guided planning", () => {
   });
 });
 
-/** A model that rewords the proposal's offer and leaves every other text as it is. */
-const rewordsOffer = (version: (text: string) => string) =>
+/** A model that rewords every sentence by `version`. */
+const rewords = (version: (text: string) => string) =>
   vi.fn(async (request: { messages: { content: string }[] }) => {
     const { texts } = JSON.parse(request.messages[0].content) as {
       texts: string[][];
@@ -579,7 +579,7 @@ describe("the proposal's message, worded", () => {
   it("shows an accepted version and records the model", async () => {
     mocks.wordingMode.mockReturnValue("on");
     mocks.modelCall.mockReturnValue(
-      rewordsOffer((text) => text.replace("I suggest", "I would pick")),
+      rewords((text) => text.replace("I suggest", "I would pick")),
     );
     await load();
     expect(shown().body.text).toMatch(/I would pick one of these\.$/);
@@ -591,7 +591,7 @@ describe("the proposal's message, worded", () => {
   it("shows the template when the version adds a number", async () => {
     mocks.wordingMode.mockReturnValue("on");
     mocks.modelCall.mockReturnValue(
-      rewordsOffer((text) => text.replace("I suggest", "I suggest 3 of")),
+      rewords((text) => text.replace("I suggest", "I suggest 3 of")),
     );
     await load();
     expect(shown().body.text).toMatch(/I suggest one of these\.$/);
@@ -600,10 +600,78 @@ describe("the proposal's message, worded", () => {
 
   it("is not worded again on a read that proposes nothing new", async () => {
     mocks.wordingMode.mockReturnValue("on");
-    mocks.modelCall.mockReturnValue(rewordsOffer((text) => text));
+    mocks.modelCall.mockReturnValue(rewords((text) => text));
     mocks.recordPresented.mockResolvedValue([]);
     await load();
     expect(mocks.appendMessages).not.toHaveBeenCalled();
+  });
+});
+
+describe("the report of a build, worded on read", () => {
+  const built = () => {
+    mocks.readPlanState.mockResolvedValue({
+      state: state({
+        picks: { "d1-morning": { placeId: "s1", minutes: null } },
+      }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([sights[0]]);
+    mocks.readBuild.mockResolvedValue({
+      nextDay: 2,
+      built: { "d1-morning": "s1" },
+      close: [],
+      empty: [],
+      unreachable: false,
+    });
+  };
+  const rows = () => mocks.recordWordings.mock.calls.flatMap(([, , r]) => r);
+
+  it("is the template with wording off, and recorded as one", async () => {
+    built();
+    const plan = await load();
+    expect(plan?.build?.built).toContain("I chose 1 place to see.");
+    expect(
+      rows().find((row) => row.subject.startsWith("report:")),
+    ).toMatchObject({ wordedBy: "template", fallback: "off" });
+  });
+
+  it("shows an accepted version and records it as the model's", async () => {
+    built();
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(
+      rewords((text) => text.replace("I chose", "I picked")),
+    );
+    const plan = await load();
+    expect(plan?.build?.built).toContain("I picked 1 place to see.");
+    const recorded = rows().find(
+      (row) => row.subject === "report:2" && row.wordedBy === "model",
+    );
+    expect(recorded?.shown).toMatch(/^I picked 1 place to see\.$/);
+    expect(fillAll(recorded?.sentences)).toBe("I chose 1 place to see.");
+  });
+
+  it("shows the template when the version adds a claim", async () => {
+    built();
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(
+      rewords((text) => text.replace("I chose", "I chose the best")),
+    );
+    const plan = await load();
+    expect(plan?.build?.built).toContain("I chose 1 place to see.");
+    expect(
+      rows().find(
+        (row) => row.subject === "report:2" && row.fallback === "claim",
+      ),
+    ).toBeDefined();
+  });
+
+  it("is never worded by a read that shows no reasons", async () => {
+    built();
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(rewords((text) => text));
+    mocks.findPlacesByName.mockResolvedValue({ status: "ok", places: [] });
+    await findTripPlaces("user-1", "trip-1", "d1-morning", "senso");
+    expect(mocks.modelCall).not.toHaveBeenCalled();
   });
 });
 
