@@ -200,7 +200,7 @@ describe("PlanItinerary", () => {
 
   it("shows a place with its estimated travel and visit length, its flag, and its controls", () => {
     const html = render();
-    expect(html).toContain("Walk · about 12 min (estimate)");
+    expect(html).toContain("about 12 min on foot");
     expect(html).toContain("2 h (estimate)");
     expect(html).toContain(
       "Needs a look: Opening hours are not known. Check before you go.",
@@ -332,7 +332,7 @@ describe("PlanItinerary", () => {
       ],
     });
     expect(html).toContain("Check in at Hotel Aurora");
-    expect(html).toContain("Transit · about 21 min (estimate)");
+    expect(html).toContain("about 21 min by public transport");
     expect(html).toContain(
       "Back to Hotel Aurora · Walk · about 12 min (estimate)",
     );
@@ -377,5 +377,229 @@ describe("slot labels and options", () => {
     expect(
       slotOptions(view, "d1-dinner").map((option) => option.value),
     ).toEqual(["d1-afternoon-2", "d2-morning"]);
+  });
+});
+
+describe("a day that changes city (TB-ITN-25)", () => {
+  const row = (
+    city: string,
+    title: string,
+    start: string,
+  ): PlanView["days"][number]["entries"][number] => ({
+    type: "commitment",
+    commitmentId: title,
+    commitmentKind: "RESERVATION",
+    title,
+    start,
+    minutes: 60,
+    slotId: null,
+    ticket: null,
+    city,
+  });
+  const changing: PlanView = {
+    ...view,
+    unplaced: [],
+    days: [
+      {
+        ...view.days[0],
+        city: "Rome",
+        entries: [
+          row("Rome", "Rome Central Market", "10:00"),
+          {
+            type: "allowance",
+            way: "to",
+            mode: "TRAIN",
+            start: "11:00",
+            minutes: 30,
+            city: "Rome",
+          },
+          {
+            type: "commitment",
+            commitmentId: "t",
+            commitmentKind: "TRANSPORT",
+            title: "Train · Rome → Florence",
+            start: "12:00",
+            minutes: 255,
+            slotId: null,
+            ticket: {
+              from: "Rome",
+              to: "Florence",
+              arrives: "16:15",
+              arrivesOn: null,
+            },
+            city: "Rome",
+          },
+          {
+            type: "allowance",
+            way: "from",
+            mode: "TRAIN",
+            start: "16:15",
+            minutes: 20,
+            city: "Florence",
+          },
+          row("Florence", "Dinner at Lantern Grill", "19:00"),
+        ],
+      },
+    ],
+  };
+
+  it("groups the rows by city, with the ticket and its allowances between the groups", () => {
+    const html = render(false, changing);
+    const at = (text: string) => html.indexOf(text);
+    expect(html.match(/data-qa="city-group"/g)).toHaveLength(2);
+    expect(html.match(/data-qa="journey-strip"/g)).toHaveLength(1);
+    expect(at("Rome Central Market")).toBeLessThan(at("To the station"));
+    expect(at("To the station")).toBeLessThan(at("Train · Rome"));
+    expect(at("Train · Rome")).toBeLessThan(at("From the station"));
+    expect(at("From the station")).toBeLessThan(at("Dinner at Lantern Grill"));
+    // The strip is between the two groups, naming both ends.
+    const strip = html.slice(
+      html.indexOf('data-qa="journey-strip"'),
+      html.indexOf("Dinner at Lantern Grill"),
+    );
+    expect(strip).toContain("Rome");
+    expect(strip).toContain("Florence");
+    expect(strip).toContain("Train · Rome");
+    expect(strip).not.toContain("Rome Central Market");
+  });
+
+  it("leaves a day in one city as one plain list", () => {
+    const html = render(false, {
+      ...changing,
+      days: [
+        {
+          ...changing.days[0],
+          entries: changing.days[0].entries.map((entry) => ({
+            ...entry,
+            city: "Rome",
+          })),
+        },
+      ],
+    });
+    expect(html).not.toContain('data-qa="city-group"');
+    expect(html).not.toContain('data-qa="journey-strip"');
+  });
+});
+
+describe("a ticket that lands before it left (TB-ITN-26)", () => {
+  const flight = (
+    date: string,
+    start: string,
+    arrives: string,
+    arrivesOn: string | null,
+  ): PlanView => ({
+    ...view,
+    unplaced: [],
+    days: [
+      {
+        ...view.days[0],
+        date,
+        entries: [
+          {
+            type: "commitment",
+            commitmentId: "f",
+            commitmentKind: "TRANSPORT",
+            title: "Flight · Tokyo → Honolulu",
+            start,
+            minutes: 540,
+            slotId: null,
+            ticket: { from: "Tokyo", to: "Honolulu", arrives, arrivesOn },
+            city: "Tokyo",
+          },
+        ],
+      },
+    ],
+  });
+
+  it("says which weekday comes twice when it lands on an earlier date", () => {
+    const html = render(
+      false,
+      flight("2027-07-11", "01:00", "13:30", "2027-07-10"),
+    );
+    expect(html).toContain('data-qa="back-a-day"');
+    expect(html).toContain("You go back a day");
+    expect(html).toContain("You get Saturday twice");
+    expect(html).not.toContain("earlier on the clock");
+  });
+
+  it("shows only a small clock when it lands on the same date at an earlier time", () => {
+    const html = render(false, flight("2027-07-10", "18:00", "06:30", null));
+    expect(html).toContain('data-qa="earlier-clock"');
+    expect(html).toContain("Lands 06:30, earlier on the clock than it left.");
+    expect(html).not.toContain('data-qa="back-a-day"');
+  });
+
+  it("shows no cue for an ordinary ticket", () => {
+    for (const html of [
+      render(false, flight("2027-07-10", "10:00", "13:30", null)),
+      render(false, flight("2027-07-10", "20:00", "06:00", "2027-07-11")),
+    ]) {
+      expect(html).not.toContain('data-qa="back-a-day"');
+      expect(html).not.toContain('data-qa="earlier-clock"');
+    }
+  });
+});
+
+describe("a leg shows both ways on one line (TB-ITN-27)", () => {
+  const withLeg = (travelIn: PlanView["days"][number]["entries"][number]) =>
+    render(false, {
+      ...view,
+      unplaced: [],
+      days: [{ ...view.days[0], entries: [travelIn] }],
+    });
+  const place = (
+    travelIn: Extract<
+      PlanView["days"][number]["entries"][number],
+      { type: "place" }
+    >["travelIn"],
+  ) =>
+    withLeg({
+      type: "place",
+      slotId: "d1-afternoon-2",
+      kind: "afternoon-2",
+      cityKey: "tokyo|japan",
+      placeId: "p1",
+      start: "16:00",
+      minutes: 120,
+      minutesEstimated: true,
+      travelIn,
+      flags: [],
+      city: "Tokyo",
+    });
+  const directions =
+    "https://www.google.com/maps/dir/?api=1&origin=35.1%2C139.1&destination=35.2%2C139.2&travelmode=transit";
+
+  it("gives the traveller's means, the walk, and a directions link in one paragraph", () => {
+    const html = place({
+      means: "transit",
+      minutes: 10,
+      walk: { metres: 650, minutes: 9 },
+      directions,
+    });
+    const line = html.match(
+      /<p[^>]*>about 10 min by public transport.*?<\/p>/,
+    )![0];
+    expect(line.replace(/<[^>]+>/g, "")).toBe(
+      "about 10 min by public transport · or 650 m, about 9 min on foot · Directions",
+    );
+    expect(line).toContain(`href="${directions.replaceAll("&", "&amp;")}"`);
+    expect(line).toContain('rel="noopener noreferrer"');
+    expect(html).not.toContain("badge");
+  });
+
+  it("leaves the walk off when the hop is too far, or when the means is walking", () => {
+    expect(place({ means: "transit", minutes: 21, directions })).toContain(
+      "about 21 min by public transport · ",
+    );
+    expect(place({ means: "transit", minutes: 21, directions })).not.toContain(
+      "on foot",
+    );
+    const walked = place({ means: "walk", minutes: 9, directions });
+    expect(walked).toContain("about 9 min on foot");
+    expect(walked).not.toContain(" · or ");
+    expect(place({ means: "drive", minutes: 6 })).toContain(
+      "about 6 min by car",
+    );
+    expect(place({ means: "drive", minutes: 6 })).not.toContain("Directions");
   });
 });
