@@ -15,7 +15,8 @@ export type FactSource =
       name: string;
       inputs: Record<string, string | number>;
     }
-  | { type: "traveller"; ref: string }; // "profile:<entryId>", "trip-taste:<topic>", "message:<id>"
+  // "profile:<entryId>", "trip-taste:<topic>", "message:<id>". A fact resting on several sources joins their refs with commas.
+  | { type: "traveller"; ref: string };
 
 export type Fact = { gap: string; value: string; source: FactSource };
 

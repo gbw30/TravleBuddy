@@ -259,7 +259,9 @@ const refOf = (entry: string | undefined, topic: string) =>
   entry ? `profile:${entry}` : `trip-taste:${topic}`;
 /** One ref for several values, each from its own source; the distinct refs, comma separated. */
 const refsOf = (entries: (string | undefined)[], topic: string) =>
-  [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");
+  entries.length === 0
+    ? refOf(undefined, topic)
+    : [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");
 const fromPlace = (
   gap: string,
   value: string,

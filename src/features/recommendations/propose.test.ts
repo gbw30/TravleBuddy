@@ -952,4 +952,14 @@ describe("where a reason's facts come from", () => {
       refs(proposeCards(input({ candidates: [place("a")], taste }))),
     ).toEqual({ interest: "trip-taste:interests" });
   });
+
+  it("names the trip's own answers when the interests were left open", () => {
+    const set = proposeCards(
+      input({
+        candidates: [place("a")],
+        taste: { ...noTaste, interests: [] },
+      }),
+    );
+    expect(refs(set)).toEqual({ told: "trip-taste:interests" });
+  });
 });
