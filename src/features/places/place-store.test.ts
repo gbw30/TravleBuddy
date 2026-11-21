@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
     providerCall: { upsert: vi.fn() },
   },
   osm: { sights: vi.fn(), foodNear: vi.fn(), byName: vi.fn() },
+  withinShare: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: mocks.db }));
+vi.mock("@/features/fair-use", () => ({ withinShare: mocks.withinShare }));
 vi.mock("./osm-source", () => ({
   osmSource: { origin: "OSM", metered: true, ...mocks.osm },
 }));
@@ -76,6 +78,7 @@ beforeEach(() => {
   mocks.db.placeFetch.findUnique.mockResolvedValue(null);
   mocks.db.providerCall.upsert.mockResolvedValue({ count: 1 });
   mocks.db.place.findMany.mockResolvedValue([]);
+  mocks.withinShare.mockResolvedValue(true);
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -222,6 +225,38 @@ describe("gathering places", () => {
 
     expect(await gatherSights(tokyo)).toEqual({ status: "capped" });
     expect(mocks.osm.sights).not.toHaveBeenCalled();
+  });
+
+  it("stops at the traveller's daily share before counting against everyone's allowance", async () => {
+    mocks.withinShare.mockResolvedValue(false);
+
+    expect(await gatherSights(tokyo)).toEqual({ status: "capped" });
+    expect(
+      await gatherFoodNear(tokyo, { latitude: 35.7148, longitude: 139.7967 }),
+    ).toEqual({ status: "capped" });
+    expect(await findPlacesByName(tokyo, "senso")).toEqual({
+      status: "capped",
+    });
+    expect(mocks.withinShare.mock.calls).toEqual([
+      ["gather"],
+      ["gather"],
+      ["gather"],
+    ]);
+    expect(mocks.db.providerCall.upsert).not.toHaveBeenCalled();
+    expect(mocks.osm.sights).not.toHaveBeenCalled();
+    expect(mocks.osm.foodNear).not.toHaveBeenCalled();
+    expect(mocks.osm.byName).not.toHaveBeenCalled();
+  });
+
+  it("spends no share when nothing is asked of the provider", async () => {
+    mocks.db.placeFetch.findUnique.mockResolvedValue({
+      fetchedAt: daysAgo(1),
+    });
+    expect(await gatherSights(tokyo)).toEqual({ status: "ready" });
+    vi.stubEnv("PLACE_PROVIDER_MODE", "mock");
+    mocks.db.placeFetch.findUnique.mockResolvedValue(null);
+    await gatherSights(tokyo);
+    expect(mocks.withinShare).not.toHaveBeenCalled();
   });
 
   it("cannot gather for a city with no known position", async () => {

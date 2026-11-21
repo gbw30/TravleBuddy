@@ -28,8 +28,10 @@ environments.
   branch only when the developer asks for the QA preview or the QA gate.
 - Feature and milestone branches are not deployed: `vercel.json` turns
   automatic Vercel deployments off for them.
-- Do not create any other branch (release, QA, or `codex/*`) or a worktree
-  unless the developer explicitly requests one.
+- Do not create any other branch (release, QA, or `codex/*`) unless the
+  developer explicitly requests one. Worktrees for feature branches are
+  allowed (developer, 2026-11-21): outside the repository folder, one per
+  feature branch, removed after the branch merges.
 - Existing historical branches may remain. This policy does not authorize
   deleting them.
 - Reuse the repository's existing workflows and GitHub environments. Do not

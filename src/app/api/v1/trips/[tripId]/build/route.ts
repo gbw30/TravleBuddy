@@ -9,6 +9,17 @@ type Context = { params: Promise<{ tripId: string }> };
 
 const bodySchema = controlSchema.extend({ start: z.boolean().optional() });
 
+/** A plan build is the request that starts one; each next day counts only as an API call. */
+const startsBuild = async (request: Request) =>
+  (
+    await request
+      .clone()
+      .json()
+      .catch(() => null)
+  )?.start === true
+    ? ("turns" as const)
+    : null;
+
 // One day can take a request to the place provider for each of its slots.
 export const maxDuration = 60;
 
@@ -25,4 +36,4 @@ export const POST = withUser<Context>(async (userId, request, context) => {
   return outcomeResponse(
     await buildNextDay({ userId, tripId, control, start: start ?? false }),
   );
-});
+}, startsBuild);

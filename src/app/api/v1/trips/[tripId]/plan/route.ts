@@ -33,7 +33,7 @@ export const GET = withUser<Context>(async (userId, request, context) => {
     focus.success ? focus.data : undefined,
   );
   return plan ? json({ plan }) : json({ error: "not_found" }, 404);
-});
+}, "places");
 
 /** One change to the plan. Answers the plan as it stands afterwards. */
 export const POST = withUser<Context>(async (userId, request, context) => {
@@ -47,4 +47,4 @@ export const POST = withUser<Context>(async (userId, request, context) => {
   // A repeat returns the ledger's entry; either way the answer is the plan now.
   const plan = await loadPlan(userId, tripId, focus);
   return json({ data: { ...outcome.data, plan }, revision: outcome.revision });
-});
+}, "places");

@@ -5,8 +5,10 @@ const mocks = vi.hoisted(() => ({
     addressLookup: { findUnique: vi.fn(), upsert: vi.fn() },
     providerCall: { upsert: vi.fn() },
   },
+  withinShare: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: mocks.db }));
+vi.mock("@/features/fair-use", () => ({ withinShare: mocks.withinShare }));
 
 import { findAddresses } from "./address-lookup";
 import { addressesFromNominatim } from "./nominatim";
@@ -57,6 +59,7 @@ describe("findAddresses", () => {
     mocks.db.addressLookup.findUnique.mockResolvedValue(null);
     mocks.db.addressLookup.upsert.mockResolvedValue({});
     mocks.db.providerCall.upsert.mockResolvedValue({ count: 1 });
+    mocks.withinShare.mockResolvedValue(true);
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -114,6 +117,7 @@ describe("findAddresses", () => {
     expect(outcome).toMatchObject({ status: "ok" });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(mocks.db.providerCall.upsert).not.toHaveBeenCalled();
+    expect(mocks.withinShare).not.toHaveBeenCalled();
   });
 
   it("saves a search that found nothing, so it is not asked again", async () => {
@@ -144,6 +148,16 @@ describe("findAddresses", () => {
     expect(
       mocks.db.providerCall.upsert.mock.calls[0][0].where.day_service.service,
     ).toBe("ADDRESS");
+  });
+
+  it("reports capped once the traveller's own share is used up, before counting against everyone's", async () => {
+    mocks.withinShare.mockResolvedValue(false);
+    expect(await findAddresses("Rua da Prata 12", lisbon)).toEqual({
+      status: "capped",
+    });
+    expect(mocks.withinShare).toHaveBeenCalledWith("addresses");
+    expect(mocks.db.providerCall.upsert).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not ask for text too short or too long to be an address", async () => {

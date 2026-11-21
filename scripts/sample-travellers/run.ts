@@ -31,7 +31,7 @@ import { TRAVELLERS, type Traveller } from "./travellers";
 //
 //   npm run quality:samples -- http://localhost:3100
 //
-// It needs a local server started with PLACE_PROVIDER_MODE=mock, AI_MODE=off
+// It needs a local server started with FAIR_USE_LIMITS=off, PLACE_PROVIDER_MODE=mock, AI_MODE=off
 // and the development sign-in. It signs in as the development user, resets
 // that user's profile, and deletes the trips it makes.
 

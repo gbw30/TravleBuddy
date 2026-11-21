@@ -25,7 +25,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 6. Ticket clocks across time zones        | `feature/m9-ticket-clocks`     | TB-ITN-16, TB-ITN-24, TB-SYS-15                                  | #86          |
 | 7. Airport and station time shown         | `feature/m9-ticket-allowances` | TB-ITN-23                                                        | #87          |
 | 8. Where you stay                         | `feature/m9-stay`              | TB-FIX-07, TB-ITN-22, TB-ITN-06                                  | #88          |
-| 9. The private record of card reasons     | `feature/m9-reason-record`     | TB-RSN-03, TB-TRU-02, TB-CRD-03                                  |              |
+| 9. The private record of card reasons     | `feature/m9-reason-record`     | TB-RSN-03, TB-TRU-02, TB-CRD-03                                  | #93          |
 | 10. The private record of agent messages  | `feature/m9-message-record`    | TB-RSN-01, TB-TRU-02, TB-QPL-10                                  |              |
 | 11. The wording check, and reasons worded | `feature/m9-word-reasons`      | TB-RSN-03, TB-TRU-03, TB-TRU-04, TB-AGT-15, TB-SYS-10, TB-SYS-11 |              |
 | 12. Replies and confirmations worded      | `feature/m9-word-replies`      | TB-TRU-03, TB-AGT-15, TB-SYS-10, TB-SYS-11                       |              |
@@ -33,11 +33,12 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 14. Quick plan report worded              | `feature/m9-word-report`       | TB-QPL-10, TB-TRU-03                                             |              |
 | 15. Evidence                              | `feature/m9-evidence`          | all of the above, re-checked                                     |              |
 | 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      | #90          |
-| 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  |              |
+| 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  | #92          |
 | 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             |              |
 | 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
 | 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       | #91          |
 | 21. Time windows                          | `feature/m9-time-windows`      | TB-ITN-22                                                        |              |
+| 22. The trip page                         | `feature/m9-trip-page`         | TB-AGT-01, TB-AGT-02, TB-AGT-03, TB-FAC-01, TB-ITN-02            |              |
 
 The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89. Piece 20 is built straight after piece 16, because it stops the loss of a traveller's answers on the live site. It then reaches `main` with the milestone (developer, 2026-11-20).
 
@@ -47,7 +48,7 @@ Order follows the design: Overpass first, then Part 1 (pieces 2 to 4), Part 4 (5
 
 - Service borders: import another service only through its `index.ts` or `contracts.ts`; query only the tables a service owns; raw SQL only inside the service owning every table it touches; never add to `eslint-suppressions.json`. Every new table goes into `service-map.json` and `docs/architecture/service-borders.md`, and `prisma/service-ownership.test.ts` passes.
 - Migrations: one per piece that needs one (pieces 2, 6, 8, 9), written with `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`, applied with `prisma migrate deploy` to the development database only. An applied migration is never edited. They reach QA and production only through the developer's merge of the milestone and the protected migration workflow (`docs/operating-constraints.md`). No column is dropped.
-- Everything works with the AI model off. Tests, the sample travellers and the design checks run with `AI_MODE=off` and `PLACE_PROVIDER_MODE=mock`.
+- Everything works with the AI model off. Tests, the sample travellers and the design checks run with `AI_MODE=off` and `PLACE_PROVIDER_MODE=mock`. The sample travellers and the design checks also need `FAIR_USE_LIMITS=off`, which lifts the request limits on a local development server only: `FAIR_USE_LIMITS=off PLACE_PROVIDER_MODE=mock AI_MODE=off npm run dev -- -p 3100`.
 - **The repository is public.** The contact address for OpenStreetMap lives only in `PLACES_USER_AGENT` in each environment. It never appears in code, tests, fixtures, documents, commit messages or pull requests.
 - OpenStreetMap: Nominatim at most one request a second, on submit only, every result saved; light use of Overpass; the footer credit "Place data © OpenStreetMap contributors" stays.
 - Google: only Maps URLs, which need no key, are linked. Nothing from Google is fetched or stored.
@@ -546,7 +547,7 @@ Added on 2026-11-20. **Requirements:** TB-SYS-16, TB-SYS-17. The developer appro
   - 20 for place gathering and cards;
   - 10 for city and address lookups;
   - 10 for conversation turns and plan builds;
-  - 30 per address without sign-in.
+  - 30 per device without sign-in (the device cookie and the signature, never the internet address alone).
 - **Daily shares per person:**
   - place gathering, 30;
   - address lookups, 20;
@@ -602,9 +603,58 @@ Added on 2026-11-20. **Requirement:** TB-ITN-22. It takes over check-in as a win
 
 **Checks:** as piece 16.
 
-## Waiting for the developer
+### Piece 22: The trip page
 
-- **The trip page:** pick one option in each area of the workspace mockups (https://claude.ai/artifact/HgjhYdBmSuWhzYEaaFD2BP). The pick becomes its own piece.
+Added on 2026-11-20. **Requirements:** TB-AGT-01, TB-AGT-02, TB-AGT-03, TB-FAC-01, TB-ITN-02. The developer picked from two rounds of mockups.
+
+- Round one (https://claude.ai/artifact/HgjhYdBmSuWhzYEaaFD2BP): 1B, 2B, 3A.
+- Round two (https://claude.ai/artifact/WUmfT5ha3mDdszYQU8TwEU): D1, M1 and M2, F2.
+
+The developer's reasons:
+
+- "A main selling point of this product is that you can see the schedule being built live", so the pick moving into the itinerary must be visible.
+- It must look premium.
+- The custom question controls "add value to the user experience, which is a differentiation factor".
+
+The parts:
+
+- **The question is the headline (1B).** The agent's question is the page's large headline. The trip title is small, and the trip's actions sit in a quiet row.
+  - The right column holds the itinerary from the first question to the last pick, so the page keeps one shape.
+  - Progress uses the numbered steps from the new-trip page.
+  - Limited mode sits under the message line, in small text.
+- **The desk (D1).** The planning area (the question or the cards, and the itinerary) sits on a deeper warm surface. The itinerary lies on it as a paper sheet, with two sheets showing underneath.
+  - The surface has its own text tokens, so muted text keeps 4.5:1.
+  - On a phone, the question sits on the surface, and the itinerary bar is the paper sheet.
+- **The answer slip (2B).**
+  - Nights per city: a strip of the trip's nights, divided by dragging, with a stepper for each city for keyboards and screen readers.
+  - Dates: a small calendar.
+  - Confirm, Skip and typing stay (TB-AGT-01, TB-AGT-02).
+- **Folded days (3A).** The current day is open. Every other day folds to one line with a dot per slot and a count, and open slots stay visible as dots (TB-ITN-02). City groups and the journey strip come from piece 19.
+- **The pick goes in (M1 and M2).**
+  - **Preview (M2).** Pointing at or focusing a card shows a dashed preview in its slot, with what it means for the day: when it ends, the free time before the next fixed thing, and the leg.
+  - **Flight (M1).** Pick sends a small copy of the card along an arc into the slot. The row fills, the leg unfolds, and the count goes up.
+  - **Stamp (M2).** A "PICKED" postmark presses onto the row.
+  - **Reduced motion.** With reduced motion set, the row fills with a short fade and nothing flies. Confirmed by the developer, 2026-11-20.
+  - **Touch screens.** There is no pointing preview; Pick still plays the flight and the stamp. Confirmed by the developer, 2026-11-20.
+- **The trip facts drawer (F2).** A "Trip facts" button beside the title opens a side panel with every fact's control stacked: nights per city, dates, who, daily budget, pace and purpose. One "Save changes".
+  - It saves through the same partial-edit path as piece 20: only the edits are sent.
+  - The conversation adds one quiet line ("You changed … I kept everything else you told me.") and asks nothing again.
+- **Picks a change displaces.** Changing nights or dates can move a day to another city, or drop it. Before saving, the drawer names each pick that leaves, and that pick goes back to Saved for later.
+  - Decided by the developer on 2026-11-20 (option A). Rejected: keeping the picks on their days, marked as no longer fitting.
+
+**Checks:** as piece 16. The design checks add a walk through the drawer, and checks that the flight and the stamp leave the same row as a plain pick.
+
+## How the rest is run (developer, 2026-11-21)
+
+The developer approved five changes to speed up the remaining pieces:
+
+- **Reviews.** The most capable model reviews only the risky pieces: 18, the fair use, and 22, the trip page. The other pieces get the standard model.
+- **Design checks.** Each piece runs them in Chromium only. All three browsers run once, before the final review.
+- **End-to-end tests.** The local `@critical` run happens only for pieces that touch those journeys.
+- **Pieces 12 to 14.** They are built together on one branch and merged by one pull request.
+- **Worktrees.** Independent pieces build side by side, each in its own worktree outside the repository folder. Track A, in the main checkout: 18, 19, 21, 22. Track B, in a worktree: 9, 10, 11, then 12 to 14, then 15. Each track uses its own dev-server port: 3100 for A, 3101 for B.
+
+## Waiting for the developer
 
 - **Piece 1:** the live test on 2026-11-20 failed ("I could not reach the place provider"), and the code logged nothing to say why. Production went back to sample places (`PLACE_PROVIDER_MODE=mock`) the same day, at the developer's word. Step 2 now logs the host and status of every refusal, and the QA preview moves to this milestone (developer, 2026-11-20) so the test can run again there, with real places on the QA preview only.
 - **If Overpass refuses Vercel too:** the known mirrors are IPv6-only, and Vercel functions may have no outbound IPv6 (not verified). If the mirrors cannot be reached, places need a self-hosted or paid Overpass or an extract, which the operating constraints allow only with your approval.

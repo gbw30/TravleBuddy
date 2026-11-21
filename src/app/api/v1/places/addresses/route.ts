@@ -20,4 +20,4 @@ export const POST = withUser(async (_userId, request) => {
     },
     503,
   );
-});
+}, "lookups");

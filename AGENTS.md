@@ -48,8 +48,11 @@ instruction for every Codex session working in this repository:
   together with the developer when the milestone is done; never merge into
   `main` unasked. `qa` stays the branch behind the QA preview and the protected
   QA workflows; update it from a milestone branch only when the developer asks
-  for the preview or the QA gate. Do not create a branch outside this pattern
-  or a worktree, and do not delete a merged branch without being asked.
+  for the preview or the QA gate. Do not create a branch outside this pattern,
+  and do not delete a merged branch without being asked. Worktrees are allowed
+  since 2026-11-21 (developer) to build independent feature branches side by
+  side. Keep each one outside the repository folder, one per feature branch,
+  and remove it after its branch merges.
 - Feature branches exist for traceability. Merge each one into its milestone
   branch by a pull request with a merge commit. The pull request names the
   requirement IDs it covers and its check results, and its number is written

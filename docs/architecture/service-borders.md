@@ -27,6 +27,7 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 | Places          | `src/features/places`                                | AddressLookup, CityLookup, Place, PlaceFetch, ProviderCall                         |
 | Recommendations | `src/features/recommendations`                       | CardEvent                                                                          |
 | Itinerary       | `src/features/itinerary`                             | Plan, PlanVersion                                                                  |
+| Fair use        | `src/features/fair-use`                              | FairUseCount                                                                       |
 
 `service-map.json` wins if this table and the map disagree. The earlier planner's code was removed on 2026-11-18, and its 15 tables were dropped by the migration `20261119150000_drop_earlier_planner`.
 
