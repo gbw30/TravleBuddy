@@ -251,3 +251,5 @@ export const placeWordFor = (mode: string | null): string | null =>
       : mode === "FERRY"
         ? "port"
         : "station";
+
+export { ticketLength } from "./local-time";

@@ -99,6 +99,45 @@ describe("saving a ticket again", () => {
     );
   });
 
+  it("refuses a ticket that lands before it leaves by the clocks of both places, and saves one that lands after", async () => {
+    mocks.getTrip.mockResolvedValue({
+      facts: { cities: [{ city: rome, nights: 4 }] },
+      commitments: [
+        {
+          ...flight,
+          transport: { ...flight.transport, originZone: "Asia/Tokyo" },
+        },
+      ],
+    });
+    mocks.findCities.mockResolvedValue({ status: "ok", cities: [] });
+    const lands = (endDate: string, endTime: string) => ({
+      ...input("TRANSPORT"),
+      date: "2027-06-18",
+      startTime: "10:00",
+      endDate,
+      endTime,
+    });
+    // Tokyo 10:00 is 03:00 in Rome: Rome 02:00 the same date is before it left.
+    const early = await updateTripCommitment(
+      "u1",
+      "t1",
+      "f1",
+      lands("2027-06-18", "02:00"),
+      control,
+    );
+    expect(early).toMatchObject({ status: "refused" });
+    expect(mocks.updateCommitment).not.toHaveBeenCalled();
+    // The same clock a day earlier would be before it too; 04:00 is an hour after.
+    const late = await updateTripCommitment(
+      "u1",
+      "t1",
+      "f1",
+      lands("2027-06-18", "04:00"),
+      control,
+    );
+    expect(late).toMatchObject({ status: "ok" });
+  });
+
   it("looks nothing up for anything but a ticket", async () => {
     await updateTripCommitment("u1", "t1", "f1", input("RESERVATION"), control);
     expect(mocks.findCities).not.toHaveBeenCalled();

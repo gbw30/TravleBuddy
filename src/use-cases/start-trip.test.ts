@@ -101,6 +101,34 @@ describe("starting a trip from tickets", () => {
     expect(await zones("Springfield")).toBeNull();
   });
 
+  it("refuses a ticket that lands before it leaves by both clocks, and saves nothing", async () => {
+    mocks.findCities.mockImplementation(async (text: string) => ({
+      status: "ok",
+      cities: [
+        city(text, text === "Tokyo" ? "Asia/Tokyo" : "Pacific/Honolulu"),
+      ],
+    }));
+    const flight = (arriveTime: string): TicketInput => ({
+      ...ticket("Tokyo", "Honolulu", "2027-06-18"),
+      departTime: "18:00",
+      arriveTime,
+    });
+    // Tokyo 18:00 lands Honolulu 06:30 the same date: 7 hours 30 later. Fine.
+    const ok = await startTrip("u1", {
+      planningMode: "GUIDED",
+      tickets: [flight("06:30")],
+    });
+    expect(ok).toEqual({ id: "t1" });
+    // Honolulu 22:00 the same date is before it left (Tokyo 18:00 is 23:00 the day before).
+    mocks.createTrip.mockClear();
+    const bad = await startTrip("u1", {
+      planningMode: "GUIDED",
+      tickets: [{ ...flight("22:00"), arriveDate: "2027-06-17" }],
+    });
+    expect(bad).toMatchObject({ refused: expect.any(String) });
+    expect(mocks.createTrip).not.toHaveBeenCalled();
+  });
+
   it("leaves a zone empty when the lookup finds nothing", async () => {
     mocks.findCities.mockResolvedValue({ status: "ok", cities: [] });
     await startTrip("u1", {

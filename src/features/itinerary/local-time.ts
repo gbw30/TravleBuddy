@@ -47,6 +47,37 @@ export function offsetAt(
 const clockMinutes = (clock: string) =>
   Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
 
+type TicketTimes = {
+  date: string | null;
+  startTime: string | null;
+  endDate: string | null;
+  endTime: string | null;
+  originZone: string | null;
+  destinationZone: string | null;
+};
+
+/**
+ * Minutes from leaving to landing, each end by the clock of its own zone, so
+ * a landing on an earlier date or clock time is still after the departure.
+ * Zero or less means the ticket lands before it leaves. Null when either
+ * zone, or the arrival, is not known.
+ */
+export function ticketLength(t: TicketTimes): number | null {
+  if (!t.originZone || !t.destinationZone) return null;
+  if (!t.date || !t.startTime || !t.endTime) return null;
+  const arriveDate = t.endDate ?? t.date;
+  const leaves = clockMinutes(t.startTime);
+  const lands = clockMinutes(t.endTime);
+  const instant = (date: string, minutes: number, zone: string) =>
+    Date.parse(`${date}T00:00:00Z`) / 60_000 +
+    minutes -
+    offsetAt(zone, date, minutes);
+  return (
+    instant(arriveDate, lands, t.destinationZone) -
+    instant(t.date, leaves, t.originZone)
+  );
+}
+
 /**
  * How long a ticket lasts, measured with the clock of each end. Null when
  * either end's zone, or the arrival, is not known, or the answer is not
@@ -54,17 +85,14 @@ const clockMinutes = (clock: string) =>
  */
 export function ticketMinutes(c: CommitmentDto): number | null {
   const t = c.transport;
-  if (!t?.originZone || !t.destinationZone) return null;
-  if (!c.date || !c.startTime || !c.endTime) return null;
-  const arriveDate = c.endDate ?? c.date;
-  const leaves = clockMinutes(c.startTime);
-  const lands = clockMinutes(c.endTime);
-  const instant = (date: string, minutes: number, zone: string) =>
-    Date.parse(`${date}T00:00:00Z`) / 60_000 +
-    minutes -
-    offsetAt(zone, date, minutes);
-  const length =
-    instant(arriveDate, lands, t.destinationZone) -
-    instant(c.date, leaves, t.originZone);
-  return length > 0 ? length : null;
+  if (!t) return null;
+  const length = ticketLength({
+    date: c.date,
+    startTime: c.startTime,
+    endDate: c.endDate,
+    endTime: c.endTime,
+    originZone: t.originZone,
+    destinationZone: t.destinationZone,
+  });
+  return length !== null && length > 0 ? length : null;
 }

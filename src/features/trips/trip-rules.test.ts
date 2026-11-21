@@ -253,6 +253,47 @@ describe("commitmentInputSchema", () => {
   });
 });
 
+describe("a ticket's own end (TB-ITN-26)", () => {
+  const flight = {
+    kind: "TRANSPORT",
+    title: "Flight",
+    transportMode: "FLIGHT",
+    date: "2027-07-11",
+    startTime: "01:00",
+  };
+
+  it("may land a day earlier, or earlier on the clock the same day: the zones decide, not the dates", () => {
+    for (const lands of [
+      { endDate: "2027-07-10", endTime: "13:30" },
+      { endDate: "2027-07-11", endTime: "00:30" },
+    ]) {
+      expect(
+        commitmentInputSchema.safeParse({ ...flight, ...lands }).success,
+        JSON.stringify(lands),
+      ).toBe(true);
+    }
+  });
+
+  it("still refuses a landing two days back, and the same slips for anything that is not a ticket", () => {
+    expect(
+      commitmentInputSchema.safeParse({
+        ...flight,
+        endDate: "2027-07-09",
+        endTime: "13:30",
+      }).success,
+    ).toBe(false);
+    expect(
+      commitmentInputSchema.safeParse({
+        ...flight,
+        kind: "RESERVATION",
+        transportMode: null,
+        endDate: "2027-07-11",
+        endTime: "00:30",
+      }).success,
+    ).toBe(false);
+  });
+});
+
 describe("tripFactsSchema and tripActionSchema", () => {
   it("accepts a partial save and refuses a trip that ends before it starts", () => {
     expect(tripFactsSchema.parse({ adults: 2 })).toEqual({ adults: 2 });
