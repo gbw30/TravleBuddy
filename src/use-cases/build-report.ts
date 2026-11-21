@@ -132,7 +132,7 @@ export function buildReportOf(input: {
       : say(sentence("built-days", "{days} in {cities}.", [days, cities])),
     say(
       standing.length === 0
-        ? sentence("built-nothing", "I have not placed anything yet.")
+        ? fixedSentence("built-nothing", "I have not placed anything yet.")
         : meals.length === 0
           ? sentence("built-see", "I chose {places} to see.", [
               chosen(standing.length),
@@ -256,14 +256,14 @@ export function buildReportOf(input: {
       stillOpen.map((slotId) => ({ slotId })),
       ({ slotId }) => ({
         line: say(
-          sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
+          fixedSentence("open-nothing-fits", "Nothing I know fits {slot}.", [
             at(slotId),
           ]),
         ),
         slotId,
       }),
       (more) =>
-        sentence("open-more", "{slots} open for the same reason.", [
+        fixedSentence("open-more", "{slots} open for the same reason.", [
           counted(
             "slots",
             count(more, "more slot is", "more slots are"),

@@ -43,6 +43,15 @@ vi.mock("@/features/trips", () => ({
   saveTripFacts: mocks.saveTripFacts,
   addCommitment: mocks.addCommitment,
   findEditable: mocks.findEditable,
+  commitmentsFull: (count: number) => count >= 100,
+  datesBackwards: (
+    have: { startDate: string | null; endDate: string | null },
+    input: { startDate?: string | null; endDate?: string | null },
+  ) => {
+    const start = input.startDate ?? have.startDate;
+    const end = input.endDate ?? have.endDate;
+    return Boolean(start && end && end < start);
+  },
   todayIn: () => "2026-11-19",
 }));
 vi.mock("@/features/memory", async (actual) => ({
@@ -1118,5 +1127,49 @@ describe("a reply the model words", () => {
     await vegetarian();
     expect(call).not.toHaveBeenCalled();
     expect(reply().wording).toEqual({ fallback: "off" });
+  });
+
+  describe("a turn the transaction will refuse", () => {
+    const lunch = {
+      type: "commitment",
+      kind: "RESERVATION",
+      title: "Lunch",
+      date: "2027-05-13",
+      startTime: "13:00",
+    };
+    /** The first call reads the typed message, the next ones would word the reply. */
+    const reads = (intent: unknown) => {
+      const reading = model(intent);
+      const calls = vi.fn(async () =>
+        calls.mock.calls.length === 1
+          ? reading()
+          : wording(["Added {title} on {day} at {time}."])(),
+      );
+      return calls;
+    };
+    const full = Array.from({ length: 100 }, (_, i) => ({
+      located: null,
+      ...dinner,
+      id: `c${i}`,
+    }));
+
+    it("is not worded, so the model is called once only to read the message", async () => {
+      const call = reads(lunch);
+      mocks.modelCall.mockReturnValue(call);
+      mocks.getTrip.mockResolvedValue(trip({ commitments: full }));
+      mocks.addCommitment.mockResolvedValue("too_many");
+      expect(await say("lunch on Thursday at 1")).toEqual({
+        status: "too_many",
+      });
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+
+    it("is worded when it is valid", async () => {
+      const call = reads(lunch);
+      mocks.modelCall.mockReturnValue(call);
+      mocks.addCommitment.mockResolvedValue({ commitments: [], clashes: [] });
+      await say("lunch on Thursday at 1");
+      expect(call).toHaveBeenCalledTimes(2);
+    });
   });
 });

@@ -155,12 +155,11 @@ export const WORDING_CASES: WordingCase[] = [
     kind: "tempt",
     sentences: [
       sentence(
-        "needs-more",
-        "Before I can suggest places I still need {needs}.",
-        [computed("needs", "when, or for how long", "readiness")],
+        "ready-sights",
+        "I know enough to start suggesting places for your days.",
       ),
     ],
-    dry: ["I cannot suggest places before I know {needs}."],
+    dry: ["I cannot yet suggest places for your days."],
     expect: "negation",
   },
   {
@@ -263,14 +262,14 @@ export const WORDING_CASES: WordingCase[] = [
     expect: null,
   },
   {
-    name: "report: a slot nothing fits, keeps the negation",
+    name: "report: the place chosen, plain",
     kind: "plain",
     sentences: [
-      sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
-        computed("slot", "dinner on day 2", "slot-of-plan"),
+      sentence("close-chose", "I chose {place}.", [
+        computed("place", "Castle", "place-name"),
       ]),
     ],
-    dry: ["I know nothing that fits {slot}."],
+    dry: ["I picked {place}."],
     expect: null,
   },
   {
@@ -297,14 +296,14 @@ export const WORDING_CASES: WordingCase[] = [
     expect: "claim",
   },
   {
-    name: "tempt (report): say a slot is fine after all",
+    name: "tempt (report): say a place is not on the shelf",
     kind: "tempt",
     sentences: [
-      sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
-        computed("slot", "dinner on day 2", "slot-of-plan"),
+      sentence("shelf-place", "{place} is on your shelf.", [
+        computed("place", "Castle", "place-name"),
       ]),
     ],
-    dry: ["Something I know fits {slot}."],
+    dry: ["{place} is not on your shelf."],
     expect: "negation",
   },
   {

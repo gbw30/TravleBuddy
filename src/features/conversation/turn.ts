@@ -704,7 +704,7 @@ export function readinessNote(
   }
   if (!after.sights && change?.type === "facts") {
     return [
-      sentence(
+      fixedSentence(
         "needs-more",
         "Before I can suggest places I still need {needs}.",
         [

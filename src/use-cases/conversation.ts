@@ -50,6 +50,8 @@ import { findCities } from "@/features/places";
 import type { City } from "@/features/places/contracts";
 import {
   addCommitment,
+  commitmentsFull,
+  datesBackwards,
   findEditable,
   getTrip,
   saveTripFacts,
@@ -332,8 +334,20 @@ export async function takeTurn(input: {
   // The model words it here, never inside the transaction. A turn that is a
   // repeat or made against an old revision has moved the trip's revision on
   // (or will be refused), so it is not worded again and not paid for twice.
+  // A turn the transaction will refuse is not worded: its refusal is fixed text.
+  // The transaction still decides. What this misses (a change between here and
+  // there, two in-flight requests with one operation id) is bounded by the cap.
+  const change =
+    prepared && !(prepared instanceof Refusal)
+      ? prepared.decision.change
+      : null;
+  const refused =
+    (change?.type === "facts" && datesBackwards(trip.facts, change.facts)) ||
+    (change?.type === "commitment" && commitmentsFull(trip.commitments.length));
   const worded =
-    made.length > 0 && trip.revision === input.control.expectedRevision
+    made.length > 0 &&
+    !refused &&
+    trip.revision === input.control.expectedRevision
       ? await wordMessage(made).catch(() => ({ fallback: "error" }))
       : { fallback: "off" };
 

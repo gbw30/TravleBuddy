@@ -210,6 +210,35 @@ describe("the report of a build", () => {
     }
   });
 
+  it("keeps the admissions of a limit as fixed text", () => {
+    const empty = worded({
+      view: view([
+        [at("d1-morning", null), at("d1-lunch", null)],
+        [at("d2-morning", null), at("d2-lunch", null)],
+        [at("d3-morning", null), at("d3-lunch", null)],
+        [at("d4-morning", null), at("d4-lunch", null)],
+      ]),
+      progress: progress({
+        empty: [
+          "d1-morning",
+          "d1-lunch",
+          "d2-morning",
+          "d2-lunch",
+          "d3-morning",
+        ],
+      }),
+    }).sentences.flat();
+    for (const template of [
+      "built-nothing",
+      "open-nothing-fits",
+      "open-more",
+    ]) {
+      const found = empty.filter((item) => item.template === template);
+      expect(found.length, template).toBeGreaterThan(0);
+      expect(found.every((item) => item.fixed === true)).toBe(true);
+    }
+  });
+
   it("says what was built in two sentences", () => {
     expect(report().built).toEqual([
       "2 days in Lisbon.",
