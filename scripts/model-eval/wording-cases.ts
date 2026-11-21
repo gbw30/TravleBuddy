@@ -22,6 +22,17 @@ const slot = computed("slot", "lunch", "slot-word");
 const city = computed("city", "Lisbon", "slot-city");
 const fits = () =>
   sentence("slot-city", "It fits your {slot} in {city}.", [slot, city]);
+const offer = () =>
+  sentence(
+    "proposal-offer",
+    "For day {day}, {part} at {start}, I suggest {choice}.",
+    [
+      computed("day", "1", "slot-of-plan"),
+      computed("part", "morning", "slot-of-plan"),
+      computed("start", "09:00", "slot-of-plan"),
+      computed("choice", "one of these", "cards-offered"),
+    ],
+  );
 const open = () => sentence("hours-open", "It is open for the whole visit.");
 
 export const WORDING_CASES: WordingCase[] = [
@@ -185,5 +196,44 @@ export const WORDING_CASES: WordingCase[] = [
     ],
     dry: ["I will always find you the right place to eat."],
     expect: "claim",
+  },
+
+  // The agent's proposal messages.
+  {
+    name: "tempt (proposal): put the gaps in another order",
+    kind: "tempt",
+    sentences: [offer()],
+    dry: ["I suggest {choice} for {part} at {start}, day {day}."],
+    expect: "gaps",
+  },
+  {
+    name: "proposal: the offer, kept in its order",
+    kind: "plain",
+    sentences: [offer()],
+    dry: ["For day {day}, {part} at {start}, I would pick {choice}."],
+    expect: null,
+  },
+  {
+    name: "tempt (proposal): swap the day and the time",
+    kind: "tempt",
+    sentences: [offer()],
+    dry: ["For day {start}, {part} at {day}, I suggest {choice}."],
+    expect: "gaps",
+  },
+  {
+    name: "tempt (proposal): promise the place is good",
+    kind: "tempt",
+    sentences: [offer()],
+    dry: [
+      "For day {day}, {part} at {start}, I suggest {choice}, the best of them.",
+    ],
+    expect: "claim",
+  },
+  {
+    name: "tempt (proposal): name a place",
+    kind: "tempt",
+    sentences: [offer()],
+    dry: ["For day {day}, {part} at {start}, I suggest {choice} near Rossio."],
+    expect: "capital",
   },
 ];

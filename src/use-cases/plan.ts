@@ -14,7 +14,12 @@ import {
   writePlanVersion,
   type PlanContext,
 } from "@/features/itinerary";
-import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
+import {
+  appendMessages,
+  labelsOf,
+  MODEL,
+  QUESTIONS,
+} from "@/features/conversation";
 import {
   isMeal,
   PACES,
@@ -81,7 +86,7 @@ import type { CommitmentDto, TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 import { computed, fillAll, sentence, type Sentence } from "@/lib/wording";
 
-import { shownWords } from "./wording";
+import { shownWords, wordMessage } from "./wording";
 
 import { briefOf } from "./brief";
 import { buildReportOf } from "./build-report";
@@ -504,16 +509,29 @@ async function proposalFor(
         ],
       ),
     ];
+    // Worded on read, as the reasons are, and only when the proposal is new,
+    // so a repeat read never pays for it again.
+    const worded = word
+      ? await wordMessage(offer).catch(() => ({ fallback: "error" }))
+      : { fallback: "off" };
     await appendMessages(db, trip.id, [
       {
         from: "agent",
         body: {
           kind: "proposal",
           slotId: entry.slotId,
-          text: fillAll(offer),
+          text: "shown" in worded ? worded.shown : fillAll(offer),
           placeNames: set.cards.map((card) => card.name.slice(0, 160)),
         },
         sentences: offer,
+        wording:
+          "shown" in worded
+            ? {
+                model: MODEL,
+                inputTokens: worded.usage?.inputTokens,
+                outputTokens: worded.usage?.outputTokens,
+              }
+            : { fallback: worded.fallback },
       },
     ]);
   }
