@@ -9,5 +9,14 @@ export const POST = withUser(async (userId, request) => {
   if ("response" in body) return body.response;
 
   const trip = await startTrip(userId, body.data);
+  if ("refused" in trip) {
+    return json(
+      {
+        error: "invalid_request",
+        issues: [{ path: ["tickets"], message: trip.refused }],
+      },
+      422,
+    );
+  }
   return json({ trip }, 201);
 });

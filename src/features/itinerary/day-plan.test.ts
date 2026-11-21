@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { travelEstimate, type PlaceDto } from "@/features/places/contracts";
+import {
+  legOf,
+  travelEstimate,
+  type PlaceDto,
+} from "@/features/places/contracts";
 import type { CommitmentDto } from "@/features/trips/contracts";
 
 import {
@@ -374,6 +378,7 @@ describe("a picked place", () => {
       slotId: "d2-morning",
       kind: "morning",
       cityKey: "tokyo|japan",
+      city: "Tokyo",
       placeId: "museum",
       start: "09:30",
       minutes: 120,
@@ -424,8 +429,11 @@ describe("a picked place", () => {
         ).days[1].entries,
         "place",
       )[1].travelIn;
-    // About a kilometre apart: walked unless the traveller said otherwise.
+    // About a kilometre apart: walked unless the traveller said otherwise,
+    // and then the walk is only information beside their means.
     expect(leg()?.means).toBe("walk");
+    expect(leg()?.walk).toBeUndefined();
+    expect(leg("transit")?.walk).toBeDefined();
     expect(leg("drive")?.means).toBe("drive");
     expect(leg("transit")?.means).toBe("transit");
   });
@@ -995,6 +1003,7 @@ describe("breakfast", () => {
       type: "breakfast-at-stay",
       start: "09:00",
       minutes: 45,
+      city: "Tokyo",
     });
     for (const day of view.days) {
       expect(kinds(day.entries)).not.toContain("breakfast");
@@ -1274,6 +1283,7 @@ describe("the time allowed at an airport or station", () => {
     expect(found(day3, "allowance")).toEqual([
       {
         type: "allowance",
+        city: "Tokyo",
         way: "to",
         mode: "TRAIN",
         start: "10:00",
@@ -1281,6 +1291,7 @@ describe("the time allowed at an airport or station", () => {
       },
       {
         type: "allowance",
+        city: "Kyoto",
         way: "from",
         mode: "TRAIN",
         start: "12:45",
@@ -1366,6 +1377,7 @@ describe("the time allowed at an airport or station", () => {
     expect(found(view.days[0].entries, "allowance")).toEqual([
       {
         type: "allowance",
+        city: "Tokyo",
         way: "from",
         mode: "FLIGHT",
         start: "06:00",
@@ -1482,6 +1494,7 @@ describe("the time allowed at an airport or station", () => {
     expect(found(view.days[0].entries, "allowance")).toEqual([
       {
         type: "allowance",
+        city: "Tokyo",
         way: "from",
         mode: null,
         start: "14:35",
@@ -1491,6 +1504,7 @@ describe("the time allowed at an airport or station", () => {
     expect(found(view.days[2].entries, "allowance")).toEqual([
       {
         type: "allowance",
+        city: "Tokyo",
         way: "to",
         mode: null,
         start: "16:00",
@@ -1614,6 +1628,7 @@ describe("the time allowed at an airport or station", () => {
     expect(found(view.days[2].entries, "allowance")).toEqual([
       {
         type: "allowance",
+        city: "Tokyo",
         way: "to",
         mode: "FLIGHT",
         start: "00:00",
@@ -1644,6 +1659,7 @@ describe("the time allowed at an airport or station", () => {
     );
     expect(found(view.days[2].entries, "allowance")[0]).toEqual({
       type: "allowance",
+      city: "Tokyo",
       way: "to",
       mode: "FLIGHT",
       start: "00:00",
@@ -1752,10 +1768,7 @@ describe("where you stay", () => {
       const view = placed(pick("d2-morning"), { means });
       const first = placeOf(view.days[1].entries, "d2-morning");
       const leg = toMuseum(means);
-      expect(first.travelIn).toEqual({
-        means: leg.means,
-        minutes: leg.minutes,
-      });
+      expect(first.travelIn).toEqual(legOf(leg));
       // The day starts at nine; the leg and the buffer come before the visit.
       expect(first.start).toBe(
         `${String(Math.floor((540 + leg.minutes + 20) / 60)).padStart(2, "0")}:${String((540 + leg.minutes + 20) % 60).padStart(2, "0")}`,
@@ -1796,6 +1809,7 @@ describe("where you stay", () => {
     const visit = placeOf(entries, "d2-dinner");
     expect(last).toEqual({
       type: "return",
+      city: "Tokyo",
       stay: "Hotel Aurora",
       start: toClock(toMinutes(visit.start) + visit.minutes),
       travel: { means: back.means, minutes: back.minutes },
@@ -1829,6 +1843,7 @@ describe("where you stay", () => {
     const at = fits.entries.indexOf(placeOf(fits.entries, "d2-afternoon-2"));
     expect(fits.entries[at + 1]).toEqual({
       type: "return",
+      city: "Tokyo",
       stay: "Hotel Aurora",
       start: toClock(end),
       travel: { means: back.means, minutes: back.minutes },

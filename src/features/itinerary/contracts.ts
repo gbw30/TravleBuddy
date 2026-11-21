@@ -2,7 +2,7 @@
 // import server code.
 import { z } from "zod";
 
-import type { TravelMeans } from "@/features/places/contracts";
+import type { Leg } from "@/features/places/contracts";
 import type { CommitmentKind } from "@/features/trips/contracts";
 
 export const PACES = ["relaxed", "balanced", "packed"] as const;
@@ -137,9 +137,12 @@ export type PlanFlag = {
   fix: string | null;
 };
 
-export type TravelLeg = { means: TravelMeans; minutes: number };
+export type TravelLeg = Leg;
 
-export type PlanEntry =
+/** Every row carries the name of the city its part of the day is in. */
+export type PlanEntry = PlanEntryBody & { city: string };
+
+type PlanEntryBody =
   | {
       type: "open";
       slotId: string;
@@ -248,3 +251,5 @@ export const placeWordFor = (mode: string | null): string | null =>
       : mode === "FERRY"
         ? "port"
         : "station";
+
+export { ticketLength } from "./local-time";

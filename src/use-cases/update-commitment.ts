@@ -1,5 +1,9 @@
+import { ticketLength } from "@/features/itinerary/contracts";
 import { getTrip, updateCommitment } from "@/features/trips";
-import type { CommitmentInput } from "@/features/trips/contracts";
+import {
+  LANDS_BEFORE_LEAVING,
+  type CommitmentInput,
+} from "@/features/trips/contracts";
 
 import { ticketZones } from "./ticket-zones";
 import { runTripAction } from "./trip-action";
@@ -28,6 +32,18 @@ export async function updateTripCommitment(
     if (!route.originZone && origin) zones.originTimeZone = origin;
     if (!route.destinationZone && destination)
       zones.destinationTimeZone = destination;
+    // Both clocks decide whether it lands after it leaves (TB-ITN-26).
+    const length = ticketLength({
+      ...commitment,
+      originZone: route.originZone ?? origin,
+      destinationZone: route.destinationZone ?? destination,
+    });
+    if (length !== null && length <= 0) {
+      return {
+        status: "refused" as const,
+        message: LANDS_BEFORE_LEAVING,
+      };
+    }
   }
   return runTripAction({
     userId,

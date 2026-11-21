@@ -423,6 +423,37 @@ describe("a ticket across the date line", () => {
     ]);
   });
 
+  it("gives every row its city, and a booking goes with the city whose window holds its time", () => {
+    const booking = commitment({
+      title: "Early swim",
+      kind: "RESERVATION",
+      date: "2027-05-11",
+      startTime: "08:00",
+    });
+    const day = buildPlanView(
+      state(),
+      trip(
+        [
+          { city: tokyo, nights: 1 },
+          { city: honolulu, nights: 2 },
+        ],
+        "2027-05-10",
+        "2027-05-13",
+        { commitments: [zoned("18:00", "06:30", "Pacific/Honolulu"), booking] },
+      ),
+    ).days[1];
+    const at = (title: string) =>
+      day.entries.find((e) => e.type === "commitment" && e.title === title)!;
+    // 08:00 is before Tokyo's day starts and after Honolulu's allowance ends.
+    expect(at("Early swim").city).toBe("Honolulu");
+    expect(at("Flight").city).toBe("Tokyo");
+    expect(
+      day.entries.find((e) => e.type === "allowance" && e.way === "from")!.city,
+    ).toBe("Honolulu");
+    expect(day.entries[0].city).toBe("Tokyo");
+    expect(day.entries.at(-1)!.city).toBe("Honolulu");
+  });
+
   it("shows no length and no 60-minute end when a zone is unknown", () => {
     const entry = view(null).days[1].entries.find(
       (e) => e.type === "commitment",

@@ -47,6 +47,11 @@ const daysBetween = (from: string, to: string) =>
   (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
   86_400_000;
 
+const addDays = (date: string, days: number) =>
+  new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+
 export const ticketInputSchema = z
   .object({
     mode: z.enum(TICKET_MODES),
@@ -126,12 +131,22 @@ export const commitmentInputSchema = z
     path: ["startTime"],
     message: "An end time needs a start time.",
   })
-  .refine((c) => !c.endDate || (c.date && c.endDate >= c.date), {
-    path: ["endDate"],
-    message: "The end date is before the start.",
-  })
+  // A ticket's two ends are in two places, so their dates and clocks cannot be
+  // compared as written: a flight west can land a day earlier, or earlier on
+  // the clock. Zones are known only later, where the ticket is saved.
   .refine(
     (c) =>
+      !c.endDate ||
+      (c.date &&
+        c.endDate >= (c.kind === "TRANSPORT" ? addDays(c.date, -1) : c.date)),
+    {
+      path: ["endDate"],
+      message: "The end date is before the start.",
+    },
+  )
+  .refine(
+    (c) =>
+      c.kind === "TRANSPORT" ||
       !c.endTime ||
       !c.startTime ||
       (c.endDate && c.endDate !== c.date) ||
@@ -148,6 +163,8 @@ export type BudgetBasis = (typeof BUDGET_BASES)[number];
 const count = (min: number, max: number) => z.number().int().min(min).max(max);
 
 export const DATES_ORDER_MESSAGE = "The trip ends before it starts.";
+export const LANDS_BEFORE_LEAVING =
+  "The ticket lands before it leaves, by the clocks of both places. Check the times and dates.";
 
 /** Every fact is optional: a save changes only the facts it names. */
 export const tripFactsSchema = z
