@@ -139,7 +139,10 @@ export type PlanFlag = {
 
 export type TravelLeg = Leg;
 
-export type PlanEntry =
+/** Every row carries the name of the city its part of the day is in. */
+export type PlanEntry = PlanEntryBody & { city: string };
+
+type PlanEntryBody =
   | {
       type: "open";
       slotId: string;
