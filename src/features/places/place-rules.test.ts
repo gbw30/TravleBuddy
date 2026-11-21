@@ -9,7 +9,7 @@ import {
   visitMinutes,
 } from "./kinds";
 import { isOpenFor, parseOpeningHours } from "./opening-hours";
-import { distanceKm, travelEstimate } from "./travel";
+import { directionsUrl, distanceKm, travelEstimate, walkWords } from "./travel";
 
 describe("kinds of place", () => {
   it("reads the kind from OpenStreetMap tags, most specific first", () => {
@@ -187,15 +187,43 @@ describe("travelEstimate", () => {
   });
 
   it("walks a short hop and takes transit further, always as an estimate", () => {
-    expect(travelEstimate(sensoji, skytree)).toEqual({
+    expect(travelEstimate(sensoji, skytree)).toMatchObject({
       means: "walk",
       minutes: 22,
+      walk: null,
       estimated: true,
     });
     const far = travelEstimate(sensoji, shibuya);
     expect(far.means).toBe("transit");
     expect(far.minutes).toBeGreaterThan(40);
     expect(far.minutes).toBeLessThan(60);
+  });
+
+  it("adds the walk to a short hop by another means, and to nothing else", () => {
+    const short = travelEstimate(sensoji, skytree, "transit");
+    expect(short.means).toBe("transit");
+    expect(short.walk).toEqual({ metres: expect.any(Number), minutes: 22 });
+    expect(short.walk!.metres % 10).toBe(0);
+    expect(walkWords({ metres: 650, minutes: 9 })).toBe("650 m, about 9 min");
+    expect(walkWords({ metres: 1240, minutes: 17 })).toBe(
+      "1.2 km, about 17 min",
+    );
+    expect(travelEstimate(sensoji, shibuya, "transit").walk).toBeNull();
+    expect(travelEstimate(sensoji, skytree, "walk").walk).toBeNull();
+  });
+
+  it("links to directions on a fixed host with the points encoded", () => {
+    const url = new URL(directionsUrl(sensoji, skytree, "transit"));
+    expect(url.origin).toBe("https://www.google.com");
+    expect(url.pathname).toBe("/maps/dir/");
+    expect(url.searchParams.get("origin")).toBe(
+      `${sensoji.latitude},${sensoji.longitude}`,
+    );
+    expect(url.searchParams.get("travelmode")).toBe("transit");
+    expect(url.href).toContain(
+      "origin=" +
+        encodeURIComponent(`${sensoji.latitude},${sensoji.longitude}`),
+    );
   });
 
   it("uses the traveller's means when given, and never says zero minutes", () => {

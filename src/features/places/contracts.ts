@@ -91,8 +91,13 @@ export {
 export {
   distanceKm,
   TRAVEL_MEANS,
+  directionsUrl,
+  legOf,
+  walkWords,
   travelEstimate,
+  type Leg,
   type TravelEstimate,
+  type WalkOption,
   type TravelMeans,
 } from "./travel";
 

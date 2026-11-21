@@ -1,9 +1,9 @@
 // What a card and a set of cards look like. Safe to import in the browser:
 // this file must not import server code.
 import type {
+  Leg,
   PlaceDto,
   PlaceLinks,
-  TravelMeans,
 } from "@/features/places/contracts";
 
 /** The common reasons for turning a card down (PRD 8.3). */
@@ -47,7 +47,7 @@ export type CardDto = {
   /** The standard visit length for its kind: an estimate. */
   visitMinutes: number;
   /** Estimated travel from the stop before it. Null when a position is unknown. */
-  travel: { means: TravelMeans; minutes: number } | null;
+  travel: Leg | null;
   /**
    * The traveller's hard limits the place's listing cannot confirm, such as
    * "vegetarian" or "shellfish allergy" (TB-MEM-05). The card is marked, and

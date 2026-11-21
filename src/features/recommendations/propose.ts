@@ -7,10 +7,12 @@ import {
   distanceKm,
   isOpenFor,
   kindLabel,
+  legOf,
   parseOpeningHours,
   placeLinks,
   travelEstimate,
   visitMinutes,
+  walkWords,
   type PlaceDto,
   type PlaceKind,
   type TravelMeans,
@@ -563,7 +565,7 @@ export function toCard(
     // The mark is on the front of the card, where it is seen before picking.
     essentials: [
       travel
-        ? `${kind} · about ${travel.minutes} min ${meansWord[travel.means]}`
+        ? `${kind} · about ${travel.minutes} min ${meansWord[travel.means]}${travel.walk ? ` · or ${walkWords(travel.walk)} on foot` : ""}`
         : kind,
       ...(unconfirmed.length > 0
         ? [`not confirmed: ${unconfirmed.join(", ")}`]
@@ -623,9 +625,7 @@ export function proposeCards(
         ranked.place,
         input.cityName,
         fillAll(sentences[ranked.place.id]),
-        ranked.travel
-          ? { means: ranked.travel.means, minutes: ranked.travel.minutes }
-          : null,
+        ranked.travel ? legOf(ranked.travel) : null,
         unconfirmedFor(ranked, input),
       ),
     ),

@@ -3,6 +3,7 @@ import {
   distanceKm,
   isMealKind,
   isOpenFor,
+  legOf,
   parseOpeningHours,
   travelEstimate,
   visitMinutes,
@@ -780,7 +781,7 @@ export function buildPlanView(
         ticket: null,
         ...(spot
           ? {
-              travelIn: leg ? { means: leg.means, minutes: leg.minutes } : null,
+              travelIn: leg ? legOf(leg) : null,
             }
           : {}),
       });
@@ -958,7 +959,7 @@ export function buildPlanView(
           start: toClock(start),
           minutes,
           minutesEstimated: pick.minutes === null,
-          travelIn: leg ? { means: leg.means, minutes: leg.minutes } : null,
+          travelIn: leg ? legOf(leg) : null,
           flags,
         };
         entries.push(entry);

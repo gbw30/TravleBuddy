@@ -1752,10 +1752,13 @@ describe("where you stay", () => {
       const view = placed(pick("d2-morning"), { means });
       const first = placeOf(view.days[1].entries, "d2-morning");
       const leg = toMuseum(means);
-      expect(first.travelIn).toEqual({
+      expect(first.travelIn).toMatchObject({
         means: leg.means,
         minutes: leg.minutes,
       });
+      expect(first.travelIn?.directions).toMatch(
+        /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&origin=/,
+      );
       // The day starts at nine; the leg and the buffer come before the visit.
       expect(first.start).toBe(
         `${String(Math.floor((540 + leg.minutes + 20) / 60)).padStart(2, "0")}:${String((540 + leg.minutes + 20) % 60).padStart(2, "0")}`,
