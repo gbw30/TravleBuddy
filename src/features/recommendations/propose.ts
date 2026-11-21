@@ -24,6 +24,7 @@ import {
   fromTraveller,
   refOf,
   refsOf,
+  fixedSentence,
   sentence,
   type Sentence,
 } from "@/lib/wording";
@@ -291,17 +292,17 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
   if (rules.length > 0 && allergies.length > 0) {
     return ranked.dietConfirmed
       ? isSample(place)
-        ? sentence(
+        ? fixedSentence(
             "diet-allergy-confirmed-sample",
             "The sample data says it serves {rules} food, but place data cannot tell whether it is safe for your {allergy}, so check with the venue.",
             [ruleFact, allergyFact],
           )
-        : sentence(
+        : fixedSentence(
             "diet-allergy-confirmed-listing",
             "Its listing says it has {listed} options, but place data cannot tell whether it is safe for your {allergy}, so check with the venue.",
             [listedFact(), allergyFact],
           )
-      : sentence(
+      : fixedSentence(
           "diet-allergy-unconfirmed",
           "You eat {rules} food and have a {allergy}, and the place data confirms neither, so check with the venue.",
           [ruleFact, allergyFact],
@@ -310,24 +311,24 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
   if (rules.length > 0) {
     return ranked.dietConfirmed
       ? isSample(place)
-        ? sentence(
+        ? fixedSentence(
             "diet-confirmed-sample",
             "You eat {rules} food, and the sample data says it serves it.",
             [ruleFact],
           )
-        : sentence(
+        : fixedSentence(
             "diet-confirmed-listing",
             "You eat {rules} food, and its listing says it has {listed} options.",
             [ruleFact, listedFact()],
           )
-      : sentence(
+      : fixedSentence(
           "diet-unconfirmed",
           "You eat {rules} food, and the place data does not say whether this place serves it, so check with the venue.",
           [ruleFact],
         );
   }
   if (allergies.length > 0) {
-    return sentence(
+    return fixedSentence(
       "allergy-only",
       "You have a {allergy}, and place data cannot tell whether a place is safe for it, so check with the venue.",
       [allergyFact],
@@ -502,7 +503,7 @@ function reasonFor(ranked: Ranked, input: ProposeInput): Sentence[] {
         : place.origin === "SAMPLE"
           ? sentence("hours-sample", "Its sample hours cover the whole visit.")
           : sentence("hours-open", "It is open for the whole visit.")
-      : sentence(
+      : fixedSentence(
           "hours-unknown",
           "Its opening hours are not known, so check before you go.",
         ),

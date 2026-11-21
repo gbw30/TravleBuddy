@@ -28,6 +28,8 @@ export type Sentence = {
   /** The words, with each gap written as {name}. */
   text: string;
   facts: Fact[];
+  /** A caution or doubt: shown word for word, never sent to the model. */
+  fixed?: true;
 };
 
 const GAP = /\{(\w+)\}/g;
@@ -64,6 +66,11 @@ export const sentence = (
   facts: Fact[] = [],
   version = 1,
 ): Sentence => ({ template, version, text, facts });
+
+/** A sentence that carries a caution or doubt, or a dietary claim: fixed text, never reworded. */
+export const fixedSentence = (
+  ...args: Parameters<typeof sentence>
+): Sentence => ({ ...sentence(...args), fixed: true });
 
 export const fromTraveller = (
   gap: string,

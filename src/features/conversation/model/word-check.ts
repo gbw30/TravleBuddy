@@ -33,6 +33,8 @@ export const CLAIM_WORDS = [
 export type WordingCheck =
   | "gaps"
   | "digit"
+  | "number"
+  | "negation"
   | "url"
   | "email"
   | "capital"
@@ -43,45 +45,76 @@ export type WordingCheck =
 const GAP = /\{(\w+)\}/g;
 const MAX_LENGTH_RATIO = 1.5;
 
-const gapCounts = (text: string): Map<string, number> => {
-  const counts = new Map<string, number>();
-  for (const [, gap] of text.matchAll(GAP))
-    counts.set(gap, (counts.get(gap) ?? 0) + 1);
-  return counts;
-};
+/** Spelled-out amounts. A version may use one only when the fixed text has it. */
+const NUMBER_WORDS = new Set(
+  (
+    "zero one two three four five six seven eight nine ten eleven twelve " +
+    "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty " +
+    "thirty forty fifty sixty seventy eighty ninety hundred thousand dozen " +
+    "half once twice couple"
+  ).split(" "),
+);
+const NEGATION =
+  /\b(?:not|no|never|cannot|without|unknown|nothing|none)\b|n['’]t\b/gi;
+
+/** A word that says what a gap is to the sentence; swapping it swaps the facts. */
+const DIRECTION = /\b(from|to|into|towards|before|after)\s+$/i;
+
+/** Each gap with the direction word right before it, if any, in order. */
+const gapRoles = (text: string): string =>
+  [...text.matchAll(GAP)]
+    .map(
+      ({ 1: gap, index }) =>
+        `${DIRECTION.exec(text.slice(0, index))?.[1].toLowerCase() ?? ""}:${gap}`,
+    )
+    .join();
 
 /** The text with each gap replaced by a mark that is neither a letter nor a digit. */
 const fixedText = (text: string) => text.replace(GAP, "\u0001");
 
-/** Every match of `pattern` in `version` that `template` does not contain. */
-const unknownIn = (pattern: RegExp, version: string, template: string) =>
-  (version.match(pattern) ?? []).some((hit) => !template.includes(hit));
+/** The whole tokens `pattern` finds, without trailing punctuation. */
+const tokens = (pattern: RegExp, text: string, fold = false): Set<string> =>
+  new Set(
+    (text.match(pattern) ?? []).map((hit) => {
+      const bare = hit.replace(/[.,;:!?)"'’]+$/, "");
+      return fold ? bare.toLowerCase() : bare;
+    }),
+  );
+
+/** Whether `version` has a whole token that `template` lacks. */
+const adds = (
+  pattern: RegExp,
+  version: string,
+  template: string,
+  fold = false,
+  allowed: (token: string) => boolean = () => true,
+) => {
+  const known = tokens(pattern, template, fold);
+  return [...tokens(pattern, version, fold)].some(
+    (token) => allowed(token) && !known.has(token),
+  );
+};
+
+const URL_PATTERN =
+  /(?:https?:\/\/|www\.)\S+|\b(?:[\w-]+\.)+(?:com|net|org|io|co|uk|app|me)\b(?:\.[a-z]{2,})*/gi;
 
 /** The first check the version fails, or null when it may be shown. */
 export function checkWording(
   template: string,
   version: string,
 ): WordingCheck | null {
-  const want = gapCounts(template);
-  const have = gapCounts(version);
-  if (
-    want.size !== have.size ||
-    [...want].some(([gap, count]) => have.get(gap) !== count)
-  )
-    return "gaps";
+  // The same gaps, each as often as in the template, and in the same order.
+  if (gapRoles(template) !== gapRoles(version)) return "gaps";
 
   const fixed = fixedText(template);
   const words = fixedText(version);
-  if (unknownIn(/\S*\d\S*/g, words, fixed)) return "digit";
-  if (unknownIn(/\S+@\S+/g, words, fixed)) return "email";
-  if (
-    unknownIn(
-      /(?:https?:\/\/|www\.)\S+|\b[\w-]+\.(?:com|net|org|io|co|uk|app|me)\b/gi,
-      words,
-      fixed,
-    )
-  )
-    return "url";
+  if (adds(/\d+(?:[.,:]\d+)*/g, words, fixed)) return "digit";
+  if (adds(/[^\s@]+@[^\s@]+/g, words, fixed, true)) return "email";
+  if (adds(URL_PATTERN, words, fixed, true)) return "url";
+
+  const letters = /\p{L}+(?:['’]\p{L}+)?/gu;
+  if (adds(letters, words, fixed, true, (word) => NUMBER_WORDS.has(word)))
+    return "number";
 
   for (const { 0: word, index } of words.matchAll(/\p{Lu}[\p{L}'’-]*/gu)) {
     const before = words.slice(0, index).trimEnd();
@@ -89,15 +122,23 @@ export function checkWording(
     if (
       !startsSentence &&
       !/^I(?:['’]\w+)?$/.test(word) &&
-      !fixed.includes(word)
+      !tokens(/\p{Lu}[\p{L}'’-]*/gu, fixed).has(word)
     )
       return "capital";
   }
 
-  const has = (text: string, claim: string) =>
-    new RegExp(`\\b${claim}\\b`, "i").test(text);
-  if (CLAIM_WORDS.some((claim) => has(words, claim) && !has(fixed, claim)))
+  if (
+    adds(letters, words, fixed, true, (word) =>
+      (CLAIM_WORDS as readonly string[]).includes(word),
+    )
+  )
     return "claim";
+  // Adding a "not" or dropping one turns a fact into its opposite.
+  if (
+    (words.match(NEGATION) ?? []).length !==
+    (fixed.match(NEGATION) ?? []).length
+  )
+    return "negation";
 
   if (
     version.trim() === "" ||

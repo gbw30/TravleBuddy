@@ -58,7 +58,7 @@ export async function shownWords(
     tripId,
     items.map(({ subject }) => subject),
   );
-  const pending = all.filter((i) => {
+  const unsettled = all.filter((i) => {
     const rows = known.filter(
       (row) => row.subject === items[i].subject && row.factsKey === keys[i],
     );
@@ -69,25 +69,29 @@ export async function shownWords(
       !rows.some((row) => row.fallback && !RETRIED.includes(row.fallback))
     );
   });
-  if (pending.length === 0) return shown;
+  // A reason of cautions only has nothing to word; its record says so, once.
+  const free = (i: number) => items[i].sentences.filter(({ fixed }) => !fixed);
+  const pending = unsettled.filter((i) => free(i).length > 0);
+  const settled = unsettled
+    .filter((i) => free(i).length === 0)
+    .map((i) => template(i, "fixed"));
+  if (pending.length === 0) {
+    if (settled.length > 0) await recordWordings(db, tripId, settled);
+    return shown;
+  }
 
   const now = new Date();
   const gate = await modelGate(now, "on");
   if (typeof gate === "string") {
-    await recordWordings(
-      db,
-      tripId,
-      pending.map((i) => template(i, gate)),
-    );
+    await recordWordings(db, tripId, [
+      ...settled,
+      ...pending.map((i) => template(i, gate)),
+    ]);
     return shown;
   }
 
   const signal = AbortSignal.timeout(WORDING_BUDGET_MS);
-  const wording = await wordSentences(
-    pending.map((i) => items[i].sentences),
-    gate,
-    signal,
-  );
+  const wording = await wordSentences(pending.map(free), gate, signal);
   if (wording.usage) await payForModel(wording.usage, now);
 
   const rows = pending.map((i, k): WordingRow => {
@@ -102,12 +106,17 @@ export async function shownWords(
       );
     }
     const versions = wording.versions[k];
-    const failed = items[i].sentences
-      .map(({ text }, j) => checkWording(text, versions[j]))
-      .find((check) => check !== null);
+    const reworded = free(i).map(({ text }, j) =>
+      checkWording(text, versions[j]),
+    );
+    const failed = reworded.find((check) => check !== null);
     if (failed) return template(i, failed);
+    // Cautions keep their own words, in their place among the worded sentences.
+    let next = 0;
     shown[i] = items[i].sentences
-      .map((made, j) => fill({ ...made, text: versions[j] }))
+      .map((made) =>
+        made.fixed ? fill(made) : fill({ ...made, text: versions[next++] }),
+      )
       .join(" ");
     return {
       ...template(i, ""),
@@ -122,6 +131,6 @@ export async function shownWords(
     rows[0].inputTokens = wording.usage.inputTokens;
     rows[0].outputTokens = wording.usage.outputTokens;
   }
-  await recordWordings(db, tripId, rows);
+  await recordWordings(db, tripId, [...settled, ...rows]);
   return shown;
 }

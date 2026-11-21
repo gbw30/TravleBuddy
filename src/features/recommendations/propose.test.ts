@@ -455,6 +455,12 @@ describe("the traveller's taste in the ranking", () => {
         taste: taste({ food: ["vegetarian", "gluten-free"] }),
       }),
     );
+    // The sentence that tells the traveller to check is fixed text.
+    for (const made of Object.values(ruled.sentences).flat()) {
+      expect(made.fixed === true).toBe(
+        /^(diet|allergy|hours-unknown)/.test(made.template),
+      );
+    }
     for (const card of ruled.cards) {
       expect(card.reason).toBe(
         "It fits your lunch in Tokyo. You eat vegetarian and gluten-free food, and the place data does not say whether this place serves it, so check with the venue. Its listed hours cover the whole visit.",

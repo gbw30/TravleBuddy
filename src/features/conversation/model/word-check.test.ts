@@ -7,7 +7,7 @@ const TEMPLATE = "It is about a {minutes}-minute {means} from {from}.";
 describe("checkWording", () => {
   it("accepts a version that keeps the gaps and adds no fact", () => {
     expect(
-      checkWording(TEMPLATE, "From {from}, it is a {minutes}-minute {means}."),
+      checkWording(TEMPLATE, "Roughly a {minutes}-minute {means} from {from}."),
     ).toBeNull();
   });
 
@@ -36,5 +36,65 @@ describe("checkWording", () => {
         "Day 2 is free for {who}. I chose this quiet place.",
       ),
     ).toBeNull();
+  });
+
+  it("rejects a negation added or dropped", () => {
+    expect(
+      checkWording(
+        "It is open for the whole visit.",
+        "It is not open for the whole visit.",
+      ),
+    ).toBe("negation");
+    expect(
+      checkWording(
+        "Its opening hours are not known, so check.",
+        "Its opening hours are known, so check.",
+      ),
+    ).toBe("negation");
+    expect(
+      checkWording(
+        "Its opening hours are not known, so check.",
+        "Its opening hours are unknown, so check.",
+      ),
+    ).toBeNull();
+    expect(
+      checkWording(
+        "It does not say whether it opens.",
+        "It doesn't say whether it opens.",
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects gaps in another order", () => {
+    const from = "A walk from {a} to {b}.";
+    expect(checkWording(from, "A walk to {a} from {b}.")).toBe("gaps");
+    expect(checkWording(from, "Walk from {a} to {b}.")).toBeNull();
+  });
+
+  it("rejects a spelled-out number the template lacks", () => {
+    expect(
+      checkWording(
+        "It is open for the whole visit.",
+        "It is open for the whole visit, twenty minutes.",
+      ),
+    ).toBe("number");
+    expect(
+      checkWording("It is open once a day.", "Once a day it is open."),
+    ).toBeNull();
+  });
+
+  it("compares digits, capitals and claims as whole tokens", () => {
+    expect(checkWording("Open from 12 on.", "Open from 12 on, 2 days.")).toBe(
+      "digit",
+    );
+    expect(checkWording("Open from 12 on.", "Open on from 12.")).toBeNull();
+    expect(checkWording("See Rome now.", "Now see Rome and Ro.")).toBe(
+      "capital",
+    );
+    expect(checkWording("A bestseller read.", "A best read.")).toBe("claim");
+    expect(checkWording("Mail a@b.org now.", "Mail xa@b.org now.")).toBe(
+      "email",
+    );
+    expect(checkWording("See ex.com now.", "See ex.com.au now.")).toBe("url");
   });
 });

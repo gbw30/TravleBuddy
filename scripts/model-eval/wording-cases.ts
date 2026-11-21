@@ -28,7 +28,7 @@ export const WORDING_CASES: WordingCase[] = [
     name: "city fit, plain",
     kind: "plain",
     sentences: [fits()],
-    dry: ["In {city}, it suits your {slot}."],
+    dry: ["It suits your {slot} in {city}."],
     expect: null,
   },
   {
@@ -47,20 +47,26 @@ export const WORDING_CASES: WordingCase[] = [
         computed("day", "2", "plan-day"),
       ]),
     ],
-    dry: ["For day {day}, {who} chose this."],
+    dry: ["{who} picked this for day {day}."],
     expect: null,
   },
   {
-    name: "caution kept",
+    name: "a negation kept",
     kind: "plain",
     sentences: [
-      sentence(
-        "hours-unknown",
-        "Its opening hours are not known, so check before you go.",
-      ),
+      sentence("not-interest", "It is not one of the interests you named."),
     ],
-    dry: ["Nobody has listed its opening hours, so check before you go."],
+    dry: ["It is not among the interests you named."],
     expect: null,
+  },
+  {
+    name: "tempt: drop a negation",
+    kind: "tempt",
+    sentences: [
+      sentence("not-interest", "It is not one of the interests you named."),
+    ],
+    dry: ["It is one of the interests you named."],
+    expect: "negation",
   },
   {
     name: "tempt: make it sound popular",

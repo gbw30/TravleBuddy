@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { computed, sentence, type Sentence } from "@/lib/wording";
+import {
+  computed,
+  fixedSentence,
+  sentence,
+  type Sentence,
+} from "@/lib/wording";
 
 const mocks = vi.hoisted(() => ({
   modelCall: vi.fn(),
@@ -100,11 +105,11 @@ describe("shownWords with wording", () => {
   });
 
   it("records a model row for an accepted version, counts the usage, and takes one call for three reasons", async () => {
-    const call = worded("In {city}, it suits your {slot}.");
+    const call = worded("It suits your {slot} in {city}.");
     mocks.modelCall.mockReturnValue(call);
     const shown = await shownWords("t1", reasons(3), { word: true });
     expect(call).toHaveBeenCalledTimes(1);
-    expect(shown).toEqual(Array(3).fill("In Lisbon, it suits your lunch."));
+    expect(shown).toEqual(Array(3).fill("It suits your lunch in Lisbon."));
     expect(rowsRecorded()).toHaveLength(3);
     expect(rowsRecorded()[0]).toMatchObject({
       wordedBy: "model",
@@ -117,7 +122,9 @@ describe("shownWords with wording", () => {
   });
 
   it("shows the template, naming the check, for a rejected version, and does not pay for it twice", async () => {
-    mocks.modelCall.mockReturnValue(worded("A quiet lunch in {city}, {slot}."));
+    mocks.modelCall.mockReturnValue(
+      worded("A quiet fit for your {slot} in {city}."),
+    );
     const shown = await shownWords("t1", reasons(1), { word: true });
     expect(shown).toEqual(["It fits your lunch in Lisbon."]);
     expect(rowsRecorded()[0]).toMatchObject({
@@ -133,7 +140,7 @@ describe("shownWords with wording", () => {
   });
 
   it("reuses an accepted model row with no second call", async () => {
-    const call = worded("x");
+    const call = worded("It suits your {slot} in {city}.");
     mocks.modelCall.mockReturnValue(call);
     const items = reasons(1);
     await shownWords("t1", items, { word: true });
@@ -161,6 +168,42 @@ describe("shownWords with wording", () => {
     await shownWords("t1", reasons(1), { word: true });
     expect(slow).toHaveBeenCalledTimes(2);
   }, 10_000);
+
+  it("keeps a caution word for word and sends only the other sentences", async () => {
+    const caution = "Its opening hours are not known, so check before you go.";
+    const items = [
+      {
+        subject: "card:s1:p0",
+        sentences: [
+          reasons(1)[0].sentences[0],
+          fixedSentence("hours-unknown", caution),
+        ],
+      },
+    ];
+    const call = worded("It suits your {slot} in {city}.");
+    mocks.modelCall.mockReturnValue(call);
+    const shown = await shownWords("t1", items, { word: true });
+    expect(shown).toEqual([`It suits your lunch in Lisbon. ${caution}`]);
+    const sent = JSON.parse(call.mock.calls[0][0].messages[0].content);
+    expect(sent.texts).toEqual([["It fits your {slot} in {city}."]]);
+    expect(rowsRecorded()[0]).toMatchObject({ wordedBy: "model" });
+  });
+
+  it("makes no call for a reason of cautions only", async () => {
+    const call = worded("x");
+    mocks.modelCall.mockReturnValue(call);
+    const items = [
+      {
+        subject: "card:s1:p0",
+        sentences: [fixedSentence("hours-unknown", "Check before you go.")],
+      },
+    ];
+    expect(await shownWords("t1", items, { word: true })).toEqual([
+      "Check before you go.",
+    ]);
+    expect(call).not.toHaveBeenCalled();
+    expect(rowsRecorded()[0].fallback).toBe("fixed");
+  });
 
   it("records template rows with fallback off when wording is not asked for", async () => {
     mocks.modelCall.mockReturnValue(worded("x"));
