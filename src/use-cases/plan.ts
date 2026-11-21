@@ -79,6 +79,9 @@ import {
 } from "@/features/trips";
 import type { CommitmentDto, TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
+import type { Sentence } from "@/lib/wording";
+
+import { shownWords } from "./wording";
 
 import { briefOf } from "./brief";
 import { buildReportOf } from "./build-report";
@@ -295,7 +298,7 @@ export async function cardsFor(
    */
   plan?: { state: PlanState; context: PlanContext },
 ): Promise<{
-  set: CardSet;
+  set: CardSet & { sentences: Record<string, Sentence[]> };
   cityName: string;
   gathered: GatherOutcome | null;
 } | null> {
@@ -443,8 +446,18 @@ async function proposalFor(
     plan,
   );
   if (!found) return null;
-  const { set, cityName, gathered } = found;
+  const { sentences, ...set } = found.set;
+  const { cityName, gathered } = found;
   const { day, entry } = slot;
+  // What is shown is recorded with its sentences (outside any transaction).
+  const shown = await shownWords(
+    trip.id,
+    set.cards.map((card) => ({
+      subject: `card:${entry.slotId}:${card.placeId}`,
+      sentences: sentences[card.placeId],
+    })),
+  );
+  set.cards = set.cards.map((card, i) => ({ ...card, reason: shown[i] }));
   const fresh = await recordPresented(
     db,
     trip.id,
@@ -475,16 +488,17 @@ async function proposalFor(
 }
 
 /** A card for each place already chosen, so the traveller can look at it again. */
-function chosenCards(
+async function chosenCards(
   view: PlanView,
   places: Record<string, PlaceDto>,
   trip: TripDetail,
   built: Set<string>,
-): Record<string, CardDto> {
+): Promise<Record<string, CardDto>> {
   const cityName = (key: string) =>
     trip.facts.cities.find(({ city }) => cityKeyOf(city) === key)?.city.name ??
     "the city";
   const cards: Record<string, CardDto> = {};
+  const words: Record<string, { subject: string; sentences: Sentence[] }> = {};
   for (const day of view.days) {
     for (const entry of day.entries) {
       const place = entry.type === "place" ? places[entry.placeId] : undefined;
@@ -492,11 +506,47 @@ function chosenCards(
       cards[place.id] = toCard(
         place,
         cityName(place.cityKey),
-        `${built.has(place.id) ? "I" : "You"} chose this for day ${day.day}.`,
+        "",
         entry.travelIn,
       );
+      words[place.id] = {
+        subject: `card:${entry.slotId}:${place.id}`,
+        sentences: [
+          {
+            template: "chosen",
+            version: 1,
+            text: "{who} chose this for day {day}.",
+            facts: [
+              {
+                gap: "who",
+                value: built.has(place.id) ? "I" : "You",
+                source: {
+                  type: "computation",
+                  name: "chosen-by",
+                  inputs: { built: built.has(place.id) ? "yes" : "no" },
+                },
+              },
+              {
+                gap: "day",
+                value: String(day.day),
+                source: {
+                  type: "computation",
+                  name: "plan-day",
+                  inputs: { slotId: entry.slotId },
+                },
+              },
+            ],
+          },
+        ],
+      };
     }
   }
+  const ids = Object.keys(words);
+  const shown = await shownWords(
+    trip.id,
+    ids.map((id) => words[id]),
+  );
+  ids.forEach((id, i) => (cards[id] = { ...cards[id], reason: shown[i] }));
   for (const item of view.shelf) {
     const place = places[item.placeId];
     if (!place) continue;
@@ -582,7 +632,7 @@ async function readPlan(
   const proposing = focus !== null && !holding;
   return {
     view,
-    chosen: chosenCards(
+    chosen: await chosenCards(
       view,
       context.places,
       trip,

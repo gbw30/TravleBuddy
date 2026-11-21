@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { PlaceDto } from "@/features/places/contracts";
 
+import { fill } from "@/lib/wording";
+
 import { discardReason, DISCARD_REASONS } from "./contracts";
 import {
   INTEREST_KINDS,
@@ -854,5 +856,37 @@ describe("true sentences", () => {
     expect(plain.cards[0].reason).toContain(
       "You eat vegetarian food, and the sample data says it serves it.",
     );
+  });
+});
+
+describe("a reason as sentences", () => {
+  it("is the filled sentences, each fact with a source", () => {
+    const set = proposeCards(
+      input({
+        from: sensoji,
+        candidates: [
+          place("a", { ...near, notable: true }),
+          place("b", { serves: ["vegetarian"], tags: { "diet:vegan": "yes" } }),
+        ],
+        kindsInDay: ["temple"],
+        taste: { ...noTaste, food: ["vegetarian"], allergies: ["peanut"] },
+        slot: {
+          id: "d2-lunch",
+          kind: "lunch",
+          date: "2027-05-11",
+          start: "12:30",
+        },
+      }),
+    );
+    expect(set.cards.length).toBe(2);
+    for (const card of set.cards) {
+      const sentences = set.sentences[card.placeId];
+      expect(card.reason).toBe(sentences.map(fill).join(" "));
+      for (const sentence of sentences) {
+        expect(sentence.version).toBe(1);
+        for (const fact of sentence.facts)
+          expect(fact.source.type).toBeTruthy();
+      }
+    }
   });
 });

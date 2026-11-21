@@ -22,7 +22,7 @@ TravleBuddy is one deployment divided into eight services. Each service owns its
 | --------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | Identity        | `src/lib/auth*.ts`, `src/lib/authorization*.ts`      | User, Account, Session, VerificationToken                                          |
 | Trips           | `src/features/trips`                                 | Trip, TripDestination, FixedCommitment                                             |
-| Conversation    | `src/features/conversation`, `src/features/planning` | PlanningMutation, Conversation, ConversationMessage, AiUsage                       |
+| Conversation    | `src/features/conversation`, `src/features/planning` | PlanningMutation, Conversation, ConversationMessage, AiUsage, WordingRecord        |
 | Memory          | `src/features/memory`                                | TripProfile, Profile, ProfileEntry, ProfileNote, ProfileHistory, ForgottenEvidence |
 | Places          | `src/features/places`                                | AddressLookup, CityLookup, Place, PlaceFetch, ProviderCall                         |
 | Recommendations | `src/features/recommendations`                       | CardEvent                                                                          |

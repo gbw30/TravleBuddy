@@ -16,6 +16,8 @@ import {
   type TravelMeans,
 } from "@/features/places/contracts";
 
+import { fillAll, type Fact, type Sentence } from "@/lib/wording";
+
 import type { CardDto, CardSet } from "./contracts";
 
 // Which places are offered for a slot, in what order, and why. Fixed rules
@@ -228,12 +230,44 @@ const words = (items: string[]) =>
     ? items.join(" and ")
     : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 
+const sentence = (
+  template: string,
+  text: string,
+  facts: Fact[] = [],
+): Sentence => ({ template, version: 1, text, facts });
+const fromTraveller = (gap: string, value: string, ref: string): Fact => ({
+  gap,
+  value,
+  source: { type: "traveller", ref },
+});
+const fromPlace = (
+  gap: string,
+  value: string,
+  place: PlaceDto,
+  tag: string | null,
+): Fact => ({
+  gap,
+  value,
+  source: {
+    type: "place",
+    placeId: place.id,
+    tag,
+    fetchedAt: place.fetchedAt,
+  },
+});
+const computed = (
+  gap: string,
+  value: string,
+  name: string,
+  inputs: Record<string, string | number> = {},
+): Fact => ({ gap, value, source: { type: "computation", name, inputs } });
+
 /**
  * What about the traveller the place rests on (TB-RSN-02). It comes from a
  * factor that ranked the place when one applies; otherwise it says plainly
  * what the traveller has or has not told, with what the place adds.
  */
-function travellerSentence(ranked: Ranked, input: ProposeInput): string {
+function travellerSentence(ranked: Ranked, input: ProposeInput): Sentence {
   const { place, travel } = ranked;
   const { history, taste } = input;
   const meal = isMeal(input.slot.kind);
@@ -243,94 +277,220 @@ function travellerSentence(ranked: Ranked, input: ProposeInput): string {
   // is safe for one (PRD 12.2, TB-MEM-05).
   const rules = meal ? (taste.food ?? []) : [];
   const allergies = meal ? (taste.allergies ?? []) : [];
-  const allergy = `${words(allergies)} allergy`;
+  const ruleFact = fromTraveller("rules", words(rules), "trip-taste:food");
+  const allergyFact = fromTraveller(
+    "allergy",
+    `${words(allergies)} allergy`,
+    "trip-taste:allergies",
+  );
+  const listedFact = () =>
+    fromPlace("listed", words(listedWords(place, rules)), place, "diet:*");
   if (rules.length > 0 && allergies.length > 0) {
     return ranked.dietConfirmed
-      ? `${
-          isSample(place)
-            ? `The sample data says it serves ${words(rules)} food`
-            : `Its listing says it has ${words(listedWords(place, rules))} options`
-        }, but place data cannot tell whether it is safe for your ${allergy}, so check with the venue.`
-      : `You eat ${words(rules)} food and have a ${allergy}, and the place data confirms neither, so check with the venue.`;
+      ? isSample(place)
+        ? sentence(
+            "diet-allergy-confirmed-sample",
+            "The sample data says it serves {rules} food, but place data cannot tell whether it is safe for your {allergy}, so check with the venue.",
+            [ruleFact, allergyFact],
+          )
+        : sentence(
+            "diet-allergy-confirmed-listing",
+            "Its listing says it has {listed} options, but place data cannot tell whether it is safe for your {allergy}, so check with the venue.",
+            [listedFact(), allergyFact],
+          )
+      : sentence(
+          "diet-allergy-unconfirmed",
+          "You eat {rules} food and have a {allergy}, and the place data confirms neither, so check with the venue.",
+          [ruleFact, allergyFact],
+        );
   }
   if (rules.length > 0) {
     return ranked.dietConfirmed
-      ? `You eat ${words(rules)} food, and ${
-          isSample(place)
-            ? "the sample data says it serves it"
-            : `its listing says it has ${words(listedWords(place, rules))} options`
-        }.`
-      : `You eat ${words(rules)} food, and the place data does not say whether this place serves it, so check with the venue.`;
+      ? isSample(place)
+        ? sentence(
+            "diet-confirmed-sample",
+            "You eat {rules} food, and the sample data says it serves it.",
+            [ruleFact],
+          )
+        : sentence(
+            "diet-confirmed-listing",
+            "You eat {rules} food, and its listing says it has {listed} options.",
+            [ruleFact, listedFact()],
+          )
+      : sentence(
+          "diet-unconfirmed",
+          "You eat {rules} food, and the place data does not say whether this place serves it, so check with the venue.",
+          [ruleFact],
+        );
   }
   if (allergies.length > 0) {
-    return `You have a ${allergy}, and place data cannot tell whether a place is safe for it, so check with the venue.`;
+    return sentence(
+      "allergy-only",
+      "You have a {allergy}, and place data cannot tell whether a place is safe for it, so check with the venue.",
+      [allergyFact],
+    );
   }
   // A memory from another trip names that trip (TB-MEM-06).
-  const recalled = (trip: string | undefined, said: string, liked: string) =>
-    trip ? `I remember from your trip “${trip}” that you ${liked}` : said;
+  const recalled = (
+    trip: string | undefined,
+    template: string,
+    said: string,
+    liked: string,
+    facts: Fact[],
+    topic: string,
+  ) =>
+    trip
+      ? sentence(
+          `${template}-recalled`,
+          `I remember from your trip “{trip}” that you ${liked}`,
+          [fromTraveller("trip", trip, `profile:${topic}`), ...facts],
+        )
+      : sentence(`${template}-said`, said, facts);
   const from = taste.rememberedFrom ?? {};
   if (ranked.interest) {
-    return `${recalled(
+    const s = recalled(
       ranked.interest.from,
-      `You said you like ${ranked.interest.label}`,
-      `like ${ranked.interest.label}`,
-    )}.`;
+      "interest",
+      "You said you like {interest}",
+      "like {interest}",
+      [
+        fromTraveller(
+          "interest",
+          ranked.interest.label,
+          "trip-taste:interests",
+        ),
+      ],
+      "interests",
+    );
+    return { ...s, text: `${s.text}.` };
   }
   if (history.tooFar > 0 && travel) {
-    return "You said the last places were too far.";
+    return sentence("too-far", "You said the last places were too far.");
   }
   const known = notability(place);
+  const knownFact = () =>
+    fromPlace("notability", known ?? "", place, "wikipedia/wikidata");
+  const andKnown = (s: Sentence): Sentence => ({
+    ...s,
+    text: `${s.text}, and {notability}.`,
+    facts: [...s.facts, knownFact()],
+  });
   if (known && history.lessTouristy > 0 && !place.notable) {
-    return `You asked for somewhere less touristy, and ${known}.`;
+    return sentence(
+      "less-touristy",
+      "You asked for somewhere less touristy, and {notability}.",
+      [knownFact()],
+    );
   }
   if (known && taste.atmosphere === "quiet" && !place.notable) {
-    return `${recalled(from.atmosphere, "You asked for quiet places", "like quiet places")}, and ${known}.`;
+    return andKnown(
+      recalled(
+        from.atmosphere,
+        "quiet",
+        "You asked for quiet places",
+        "like quiet places",
+        [],
+        "atmosphere",
+      ),
+    );
   }
   if (known && taste.atmosphere === "lively" && place.notable) {
-    return `${recalled(from.atmosphere, "You like lively places", "like lively places")}, and ${known}.`;
+    return andKnown(
+      recalled(
+        from.atmosphere,
+        "lively",
+        "You like lively places",
+        "like lively places",
+        [],
+        "atmosphere",
+      ),
+    );
   }
   if (taste.onFoot && travel?.means === "walk") {
-    return `${recalled(from.onFoot, "You like to get around on foot", "like to get around on foot")}, and this is a walk away.`;
+    const s = recalled(
+      from.onFoot,
+      "on-foot",
+      "You like to get around on foot",
+      "like to get around on foot",
+      [],
+      "getting_around",
+    );
+    return { ...s, text: `${s.text}, and this is a walk away.` };
   }
 
-  const adds =
+  const adds: Fact | null =
     ranked.fresh && input.kindsInDay.length > 0
-      ? `you have no ${kindLabel(place.kind).toLowerCase()} in this day yet`
-      : place.notable
-        ? notability(place)
+      ? computed(
+          "adds",
+          `you have no ${kindLabel(place.kind).toLowerCase()} in this day yet`,
+          "kind-not-in-day",
+          { kind: place.kind },
+        )
+      : place.notable && known
+        ? { ...knownFact(), gap: "adds" }
         : null;
-  const [told, joiner] = meal
+  const [told, joiner, topic] = meal
     ? taste.food === null
-      ? ["You have not told me about food yet", "and"]
-      : ["You have no food rules", "and"]
+      ? ["You have not told me about food yet", "and", "food"]
+      : ["You have no food rules", "and", "food"]
     : taste.interests === null
-      ? ["You have not told me what you like to see yet", "and"]
+      ? ["You have not told me what you like to see yet", "and", "interests"]
       : taste.interests.length === 0
-        ? ["You left what to see open", "and"]
-        : ["It is not one of the interests you named", "but"];
-  return `${told}${adds ? `, ${joiner} ${adds}` : ""}.`;
+        ? ["You left what to see open", "and", "interests"]
+        : ["It is not one of the interests you named", "but", "interests"];
+  const toldFact = fromTraveller("told", told, `trip-taste:${topic}`);
+  return adds
+    ? sentence(`told-${joiner}-adds`, `{told}, ${joiner} {adds}.`, [
+        toldFact,
+        adds,
+      ])
+    : sentence("told", "{told}.", [toldFact]);
 }
 
 /**
  * One to three sentences from the factors that ranked the place: what about
  * the slot, what about the traveller, and what is known of its hours (PRD 13).
  */
-function reasonFor(ranked: Ranked, input: ProposeInput): string {
-  const { travel } = ranked;
-  const slot = SLOT_WORDS[input.slot.kind].toLowerCase();
+function reasonFor(ranked: Ranked, input: ProposeInput): Sentence[] {
+  const { travel, place } = ranked;
+  const slot = computed(
+    "slot",
+    SLOT_WORDS[input.slot.kind].toLowerCase(),
+    "slot-word",
+    { kind: input.slot.kind },
+  );
   return [
     travel && input.from
-      ? `It is about a ${travel.minutes}-minute ${meansWord[travel.means]} from ${input.from.name}, so it fits your ${slot}.`
-      : `It fits your ${slot} in ${input.cityName}.`,
+      ? sentence(
+          "slot-travel",
+          "It is about a {minutes}-minute {means} from {from}, so it fits your {slot}.",
+          [
+            computed("minutes", String(travel.minutes), "travel-estimate", {
+              means: travel.means,
+            }),
+            computed("means", meansWord[travel.means], "travel-estimate", {
+              means: travel.means,
+            }),
+            computed("from", input.from.name, "previous-stop"),
+            slot,
+          ],
+        )
+      : sentence("slot-city", "It fits your {slot} in {city}.", [
+          slot,
+          computed("city", input.cityName, "slot-city"),
+        ]),
     travellerSentence(ranked, input),
     ranked.open === "open"
-      ? ranked.place.origin === "OSM"
-        ? "Its listed hours cover the whole visit."
-        : ranked.place.origin === "SAMPLE"
-          ? "Its sample hours cover the whole visit."
-          : "It is open for the whole visit."
-      : "Its opening hours are not known, so check before you go.",
-  ].join(" ");
+      ? place.origin === "OSM"
+        ? sentence("hours-listed", "Its listed hours cover the whole visit.")
+        : place.origin === "SAMPLE"
+          ? sentence("hours-sample", "Its sample hours cover the whole visit.")
+          : sentence("hours-open", "It is open for the whole visit.")
+      : sentence(
+          "hours-unknown",
+          "Its opening hours are not known, so check before you go.",
+        ),
+  ];
 }
 
 /** A place as a card, with a reason. Used for proposals and for places already chosen. */
@@ -397,20 +557,26 @@ const CLOSE_SCORE = 0.1;
  * The proposal for a slot: the three best places that fit, or fewer when
  * fewer fit. It is never padded (TB-CRD-01).
  */
-export function proposeCards(input: ProposeInput): CardSet {
+export function proposeCards(
+  input: ProposeInput,
+): CardSet & { sentences: Record<string, Sentence[]> } {
   // The best three that fit. Only as many are tried as it takes to find them.
   const best: Ranked[] = [];
   for (const ranked of rank(input)) {
     if (best.length === 3) break;
     if (!input.fits || input.fits(ranked.place)) best.push(ranked);
   }
+  const sentences = Object.fromEntries(
+    best.map((ranked) => [ranked.place.id, reasonFor(ranked, input)]),
+  );
   return {
     slotId: input.slot.id,
+    sentences,
     cards: best.map((ranked) =>
       toCard(
         ranked.place,
         input.cityName,
-        reasonFor(ranked, input),
+        fillAll(sentences[ranked.place.id]),
         ranked.travel
           ? { means: ranked.travel.means, minutes: ranked.travel.minutes }
           : null,
