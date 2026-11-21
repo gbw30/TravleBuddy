@@ -33,6 +33,24 @@ describe("time shapes", () => {
     ).toBe(false);
   });
 
+  it("lets a stay keep its check-out beside an 'after' check-in", () => {
+    const stay = parse({
+      timeShape: "AFTER",
+      startTime: "15:00",
+      endDate: "2027-05-12",
+      endTime: "11:00",
+    });
+    expect(stay.success).toBe(true);
+    expect(
+      parse({
+        kind: "RESERVATION",
+        timeShape: "AFTER",
+        startTime: "15:00",
+        endDate: "2027-05-12",
+      }).success,
+    ).toBe(false);
+  });
+
   it("is not for a ticket, and a set time stays the default", () => {
     expect(
       parse({

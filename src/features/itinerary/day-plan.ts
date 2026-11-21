@@ -882,6 +882,17 @@ export function buildPlanView(
           commitmentId: commitment.id,
           commitmentKind: commitment.kind,
           title: commitment.title,
+          // A stay's last morning: its end time reads "Check out by".
+          ...(commitment.kind === "STAY" && commitment.date !== draft.date
+            ? {
+                window: {
+                  shape: "BEFORE" as const,
+                  from: null,
+                  to: commitment.endTime,
+                  name: commitment.title,
+                },
+              }
+            : {}),
           start: toClock(start),
           minutes: ticketBound ? ticketMinutes(commitment) : end - start,
           slotId: null,

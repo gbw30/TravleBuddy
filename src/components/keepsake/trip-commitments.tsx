@@ -197,9 +197,11 @@ function CommitmentForm({
           />
         </label>
       )}
-      {(shape === "" || shape === "BETWEEN") && (
+      {(shape === "" ||
+        shape === "BETWEEN" ||
+        (kind === "STAY" && shape === "AFTER")) && (
         <label className={fieldLabel}>
-          {shape === "" ? "Ends at · optional" : "To"}
+          {shape === "BETWEEN" ? "To" : "Ends at · optional"}
           <input
             name="endTime"
             type="time"
@@ -209,7 +211,7 @@ function CommitmentForm({
           />
         </label>
       )}
-      {shape === "" && (
+      {(shape === "" || (kind === "STAY" && shape === "AFTER")) && (
         <label className={fieldLabel}>
           Ends on another day · optional
           <input
@@ -346,7 +348,7 @@ export function TripCommitments({
             kindWord[c.kind],
             // A ticket's end is its arrival, perhaps on another day.
             c.endTime &&
-              `${c.kind === "TRANSPORT" ? "arrives" : "until"} ${c.endDate && c.endDate !== c.date ? `${dayLabel(c.endDate).slice(0, -5)} ` : ""}${c.endTime}`,
+              `${c.kind === "TRANSPORT" ? "arrives" : c.kind === "STAY" ? "check out by" : "until"} ${c.endDate && c.endDate !== c.date ? `${dayLabel(c.endDate).slice(0, -5)} ` : ""}${c.endTime}`,
             c.reference,
           ]
             .filter(Boolean)

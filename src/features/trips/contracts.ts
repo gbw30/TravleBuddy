@@ -139,7 +139,10 @@ export const commitmentInputSchema = z
   .refine(
     (c) => {
       if (c.timeShape === null) return true;
-      if (c.kind === "TRANSPORT" || !c.date || c.endDate) return false;
+      if (c.kind === "TRANSPORT" || !c.date) return false;
+      // A stay keeps its check-out date and time beside its check-in shape.
+      if (c.kind === "STAY" && c.timeShape === "AFTER") return !!c.startTime;
+      if (c.endDate) return false;
       if (c.timeShape === "ANY") return !c.startTime && !c.endTime;
       if (c.timeShape === "BETWEEN") {
         return !!c.startTime && !!c.endTime && c.endTime > c.startTime;

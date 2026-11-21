@@ -5,6 +5,7 @@ import {
   travelEstimate,
   type PlaceDto,
 } from "@/features/places/contracts";
+import { findClashes } from "@/features/trips/clashes";
 import { windowOf, type CommitmentDto } from "@/features/trips/contracts";
 
 import {
@@ -2342,6 +2343,121 @@ describe("time windows", () => {
     const out = entryOf(view, "out")!;
     expect(toMinutesOf(out.start!) + out.minutes!).toBeLessThanOrEqual(660);
     expect(entryOf(view, "any")).toMatchObject({ window: { shape: "ANY" } });
+  });
+
+  it("lays 'by' at the start of the day and 'any time' in the first gap after a booking", () => {
+    const tea = commitment({
+      id: "tea",
+      title: "Tea",
+      date: "2027-05-10",
+      startTime: "09:00",
+      endTime: "10:00",
+    });
+    expect(
+      entryOf(
+        plan([hire({ id: "out", timeShape: "BEFORE", startTime: "11:00" })]),
+        "out",
+      )?.start,
+    ).toBe("09:00");
+    const view = plan([tea, hire({ id: "any", timeShape: "ANY" })]);
+    expect(entryOf(view, "any")?.start).toBe("10:00");
+  });
+
+  it("holds a window back until the traveller has reached its city", () => {
+    const view = buildPlanView(
+      state(),
+      context({
+        facts: {
+          ...context().facts,
+          cities: [
+            { city: tokyo, nights: 1 },
+            { city: kyoto, nights: 1 },
+          ],
+        },
+        commitments: [
+          hire({
+            date: "2027-05-11",
+            timeShape: "AFTER",
+            startTime: "08:00",
+          }),
+        ],
+      }),
+    );
+    const entries = view.days[1].entries;
+    const transfer = found(entries, "transfer")[0];
+    const laid = found(entries, "commitment")[0];
+    expect(laid.city).toBe("Kyoto");
+    expect(toMinutesOf(laid.start!)).toBeGreaterThanOrEqual(
+      toMinutesOf(transfer.start) + transfer.minutes,
+    );
+  });
+
+  it("reports a 'by' window that cannot fit, and one pushed past a booking", () => {
+    const tea = commitment({
+      id: "tea",
+      title: "Tea",
+      date: "2027-05-10",
+      startTime: "09:00",
+      endTime: "10:00",
+    });
+    // Too early for the day to hold it.
+    const early = plan([
+      hire({ id: "out", timeShape: "BEFORE", startTime: "09:30" }),
+    ]);
+    expect(early.unplaced.map((u) => u.commitmentId)).toEqual(["out"]);
+    // The booking pushes it to 10:00, an hour that ends after 10:00.
+    const pushed = plan([
+      tea,
+      hire({ id: "out", timeShape: "BEFORE", startTime: "10:00" }),
+    ]);
+    expect(entryOf(pushed, "out")).toBeUndefined();
+    expect(pushed.unplaced.map((u) => u.commitmentId)).toEqual(["out"]);
+  });
+
+  it("never lays a windowed step over breakfast or a meal slot", () => {
+    for (const shape of ["ANY", "BEFORE"] as const) {
+      const view = buildPlanView(
+        state(),
+        context({
+          breakfast: "suggest",
+          commitments: [
+            hire({
+              timeShape: shape,
+              startTime: shape === "BEFORE" ? "18:00" : null,
+            }),
+          ],
+        }),
+      );
+      const entries = view.days[0].entries;
+      const win = found(entries, "commitment")[0];
+      const from = toMinutesOf(win.start!);
+      for (const entry of entries) {
+        if (entry === win || entry.type === "allowance") continue;
+        if (!("start" in entry) || !entry.start) continue;
+        const at = toMinutesOf(entry.start);
+        expect(at >= from + win.minutes! || at < from).toBe(true);
+      }
+    }
+  });
+
+  it("is not a clash party, while two set times still clash", () => {
+    const tea = commitment({
+      id: "tea",
+      title: "Tea",
+      date: "2027-05-10",
+      startTime: "10:00",
+      endTime: "11:00",
+    });
+    expect(
+      findClashes([
+        tea,
+        hire({ timeShape: "BETWEEN", startTime: "10:00", endTime: "12:00" }),
+        hire({ id: "by", timeShape: "BEFORE", startTime: "10:30" }),
+      ]),
+    ).toEqual([]);
+    expect(
+      findClashes([tea, { ...tea, id: "tea2", startTime: "10:30" }]),
+    ).toHaveLength(1);
   });
 
   it("reads a stay's check-in as 'any time after' with no stored shape", () => {
