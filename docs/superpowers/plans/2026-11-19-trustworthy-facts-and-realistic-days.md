@@ -38,6 +38,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
 | 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       | #91          |
 | 21. Time windows                          | `feature/m9-time-windows`      | TB-ITN-22                                                        |              |
+| 22. The trip page                         | `feature/m9-trip-page`         | TB-AGT-01, TB-AGT-02, TB-AGT-03, TB-FAC-01, TB-ITN-02            |              |
 
 The fixes from the whole-batch review of pieces 2 to 8 are on `feature/m9-batch-fixes`, pull request #89. Piece 20 is built straight after piece 16, because it stops the loss of a traveller's answers on the live site. It then reaches `main` with the milestone (developer, 2026-11-20).
 
@@ -602,9 +603,50 @@ Added on 2026-11-20. **Requirement:** TB-ITN-22. It takes over check-in as a win
 
 **Checks:** as piece 16.
 
+### Piece 22: The trip page
+
+Added on 2026-11-20. **Requirements:** TB-AGT-01, TB-AGT-02, TB-AGT-03, TB-FAC-01, TB-ITN-02. The developer picked from two rounds of mockups.
+
+- Round one (https://claude.ai/artifact/HgjhYdBmSuWhzYEaaFD2BP): 1B, 2B, 3A.
+- Round two (https://claude.ai/artifact/WUmfT5ha3mDdszYQU8TwEU): D1, M1 and M2, F2.
+
+The developer's reasons:
+
+- "A main selling point of this product is that you can see the schedule being built live", so the pick moving into the itinerary must be visible.
+- It must look premium.
+- The custom question controls "add value to the user experience, which is a differentiation factor".
+
+The parts:
+
+- **The question is the headline (1B).** The agent's question is the page's large headline. The trip title is small, and the trip's actions sit in a quiet row.
+  - The right column holds the itinerary from the first question to the last pick, so the page keeps one shape.
+  - Progress uses the numbered steps from the new-trip page.
+  - Limited mode sits under the message line, in small text.
+- **The desk (D1).** The planning area (the question or the cards, and the itinerary) sits on a deeper warm surface. The itinerary lies on it as a paper sheet, with two sheets showing underneath.
+  - The surface has its own text tokens, so muted text keeps 4.5:1.
+  - On a phone, the question sits on the surface, and the itinerary bar is the paper sheet.
+- **The answer slip (2B).**
+  - Nights per city: a strip of the trip's nights, divided by dragging, with a stepper for each city for keyboards and screen readers.
+  - Dates: a small calendar.
+  - Confirm, Skip and typing stay (TB-AGT-01, TB-AGT-02).
+- **Folded days (3A).** The current day is open. Every other day folds to one line with a dot per slot and a count, and open slots stay visible as dots (TB-ITN-02). City groups and the journey strip come from piece 19.
+- **The pick goes in (M1 and M2).**
+  - **Preview (M2).** Pointing at or focusing a card shows a dashed preview in its slot, with what it means for the day: when it ends, the free time before the next fixed thing, and the leg.
+  - **Flight (M1).** Pick sends a small copy of the card along an arc into the slot. The row fills, the leg unfolds, and the count goes up.
+  - **Stamp (M2).** A "PICKED" postmark presses onto the row.
+  - **Reduced motion.** With reduced motion set, the row fills with a short fade and nothing flies.
+  - **Touch screens.** There is no pointing preview; Pick still plays the flight and the stamp. Planner's call.
+- **The trip facts drawer (F2).** A "Trip facts" button beside the title opens a side panel with every fact's control stacked: nights per city, dates, who, daily budget, pace and purpose. One "Save changes".
+  - It saves through the same partial-edit path as piece 20: only the edits are sent.
+  - The conversation adds one quiet line ("You changed … I kept everything else you told me.") and asks nothing again.
+- **Picks a change displaces.** Changing nights or dates can move a day to another city, or drop it. Before saving, the drawer names each pick that leaves, and that pick goes back to Saved for later.
+  - Ruling: as drawn in round two, because the traveller sees what moves before it moves, and nothing is lost. The developer may change it.
+
+**Checks:** as piece 16. The design checks add a walk through the drawer, and checks that the flight and the stamp leave the same row as a plain pick.
+
 ## Waiting for the developer
 
-- **The trip page:** pick one option in each area of the workspace mockups (https://claude.ai/artifact/HgjhYdBmSuWhzYEaaFD2BP). The pick becomes its own piece.
+- **Picks a change displaces (piece 22):** the ruling sends them back to Saved for later and names them before saving. The alternative is to keep them and mark them as no longer fitting.
 
 - **Piece 1:** the live test on 2026-11-20 failed ("I could not reach the place provider"), and the code logged nothing to say why. Production went back to sample places (`PLACE_PROVIDER_MODE=mock`) the same day, at the developer's word. Step 2 now logs the host and status of every refusal, and the QA preview moves to this milestone (developer, 2026-11-20) so the test can run again there, with real places on the QA preview only.
 - **If Overpass refuses Vercel too:** the known mirrors are IPv6-only, and Vercel functions may have no outbound IPv6 (not verified). If the mirrors cannot be reached, places need a self-hosted or paid Overpass or an extract, which the operating constraints allow only with your approval.
