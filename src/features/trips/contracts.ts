@@ -98,6 +98,10 @@ export const locatedSchema = z.object({
 });
 export type Located = z.infer<typeof locatedSchema>;
 
+/** How a step's times read: after one, before one, any time that day, or between two. */
+export const TIME_SHAPES = ["AFTER", "BEFORE", "ANY", "BETWEEN"] as const;
+export type TimeShape = (typeof TIME_SHAPES)[number];
+
 export const commitmentInputSchema = z
   .object({
     kind: z.enum(COMMITMENT_KINDS),
@@ -106,6 +110,11 @@ export const commitmentInputSchema = z
     startTime: clock.nullish().transform((value) => value ?? null),
     endDate: isoDate.nullish().transform((value) => value ?? null),
     endTime: clock.nullish().transform((value) => value ?? null),
+    /** Null is a set time. */
+    timeShape: z
+      .enum(TIME_SHAPES)
+      .nullish()
+      .transform((value) => value ?? null),
     reference: optionalText(80),
     note: optionalText(500),
     located: locatedSchema.nullish().transform((value) => value ?? null),
@@ -127,6 +136,25 @@ export const commitmentInputSchema = z
     path: ["date"],
     message: "A time needs a date.",
   })
+  .refine(
+    (c) => {
+      if (c.timeShape === null) return true;
+      if (c.kind === "TRANSPORT" || !c.date) return false;
+      // A stay keeps its check-out date and time beside its check-in shape.
+      if (c.kind === "STAY" && c.timeShape === "AFTER") return !!c.startTime;
+      if (c.endDate) return false;
+      if (c.timeShape === "ANY") return !c.startTime && !c.endTime;
+      if (c.timeShape === "BETWEEN") {
+        return !!c.startTime && !!c.endTime && c.endTime > c.startTime;
+      }
+      return !!c.startTime && !c.endTime;
+    },
+    {
+      path: ["timeShape"],
+      message:
+        "That shape needs a date and its times, and is not for a ticket.",
+    },
+  )
   .refine((c) => !c.endTime || c.startTime, {
     path: ["startTime"],
     message: "An end time needs a start time.",
@@ -271,6 +299,8 @@ export type CommitmentDto = {
   startTime: string | null;
   endDate: string | null;
   endTime: string | null;
+  /** Null reads as a set time, except a stay's check-in: see `windowOf`. */
+  timeShape?: TimeShape | null;
   reference: string | null;
   note: string | null;
   /** A stay's confirmed address. Null: none confirmed, and nothing is guessed. */
@@ -295,3 +325,57 @@ export type TripDetail = TripSummary & {
   commitments: CommitmentDto[];
   clashes: Clash[];
 };
+
+/** A step laid inside a window of the day, not at a set time. A bound that is open is null. */
+export type TimeWindow = {
+  shape: TimeShape;
+  from: string | null;
+  to: string | null;
+};
+
+/**
+ * The window a commitment reads as, or null for a set time. A stay's check-in
+ * with a time and no stored shape is "any time after" it (TB-ITN-22).
+ */
+export function windowOf(
+  c: Pick<CommitmentDto, "kind" | "startTime" | "endTime" | "timeShape">,
+): TimeWindow | null {
+  const shape =
+    c.timeShape ?? (c.kind === "STAY" && c.startTime ? "AFTER" : null);
+  if (shape === "ANY") return { shape, from: null, to: null };
+  if (shape === "BETWEEN") {
+    return c.startTime && c.endTime
+      ? { shape, from: c.startTime, to: c.endTime }
+      : null;
+  }
+  if (!shape || !c.startTime) return null;
+  return shape === "AFTER"
+    ? { shape, from: c.startTime, to: null }
+    : { shape, from: null, to: c.startTime };
+}
+
+/** The words of a window's row: its title, and a note under it. Fixed interface text. */
+export function windowWords(
+  c: Pick<CommitmentDto, "kind" | "title">,
+  window: TimeWindow,
+): { title: string; note: string | null } {
+  const stay = c.kind === "STAY";
+  const phrase = {
+    AFTER: ` from ${window.from}`,
+    BEFORE: ` by ${window.to}`,
+    ANY: "",
+    BETWEEN: ` between ${window.from} and ${window.to}`,
+  }[window.shape];
+  const aside = {
+    AFTER: "any time after",
+    BEFORE: "any time before",
+    ANY: "Any time today",
+    BETWEEN: null,
+  }[window.shape];
+  return {
+    title: stay
+      ? `${window.shape === "BEFORE" ? "Check out" : "Check in"}${phrase}`
+      : `${c.title}${phrase}`,
+    note: [stay ? c.title : null, aside].filter(Boolean).join(" · ") || null,
+  };
+}

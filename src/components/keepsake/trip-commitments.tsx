@@ -8,10 +8,14 @@ import {
   COMMITMENT_KINDS,
   commitmentInputSchema,
   TICKET_MODES,
+  TIME_SHAPES,
+  windowOf,
+  windowWords,
   type Clash,
   type CommitmentDto,
   type CommitmentKind,
   type Located,
+  type TimeShape,
 } from "@/features/trips/contracts";
 import { changeTrip } from "@/lib/trip-api";
 
@@ -26,6 +30,7 @@ import {
   quiet,
 } from "./styles";
 import { TicketStub } from "./ticket-stub";
+import { WindowRow } from "./window-row";
 
 const kindWord: Record<CommitmentKind, string> = {
   TRANSPORT: "Transport",
@@ -40,6 +45,13 @@ const modeWord: Record<(typeof TICKET_MODES)[number], string> = {
   TRAIN: "Train",
   BUS: "Bus",
   FERRY: "Ferry",
+};
+
+const shapeWord: Record<TimeShape, string> = {
+  AFTER: "Any time after",
+  BEFORE: "Any time before",
+  ANY: "Any time that day",
+  BETWEEN: "Between two times",
 };
 
 type Saved = { commitments: CommitmentDto[]; clashes: Clash[] };
@@ -62,6 +74,9 @@ function CommitmentForm({
   const [problem, setProblem] = useState<string | null>(null);
   const initialKind = commitment?.kind ?? "RESERVATION";
   const [kind, setKind] = useState<CommitmentKind>(initialKind);
+  const [shape, setShape] = useState<TimeShape | "">(
+    commitment?.timeShape ?? "",
+  );
   const [located, setLocated] = useState<Located | null>(
     commitment?.located ?? null,
   );
@@ -88,6 +103,7 @@ function CommitmentForm({
       onSubmit={submit}
       onReset={() => {
         setKind(initialKind);
+        setShape(commitment?.timeShape ?? "");
         setLocated(commitment?.located ?? null);
       }}
       className="mt-3 grid gap-3 sm:grid-cols-2"
@@ -147,33 +163,65 @@ function CommitmentForm({
           className={fieldControl}
         />
       </label>
-      <label className={fieldLabel}>
-        Starts at · optional
-        <input
-          name="startTime"
-          type="time"
-          defaultValue={commitment?.startTime ?? ""}
-          className={fieldControl}
-        />
-      </label>
-      <label className={fieldLabel}>
-        Ends at · optional
-        <input
-          name="endTime"
-          type="time"
-          defaultValue={commitment?.endTime ?? ""}
-          className={fieldControl}
-        />
-      </label>
-      <label className={fieldLabel}>
-        Ends on another day · optional
-        <input
-          name="endDate"
-          type="date"
-          defaultValue={commitment?.endDate ?? ""}
-          className={fieldControl}
-        />
-      </label>
+      {kind !== "TRANSPORT" && (
+        <label className={fieldLabel}>
+          Time reads as
+          <select
+            name="timeShape"
+            value={shape}
+            onChange={(event) => setShape(event.target.value as TimeShape | "")}
+            className={fieldControl}
+          >
+            <option value="">A set time</option>
+            {TIME_SHAPES.map((value) => (
+              <option key={value} value={value}>
+                {shapeWord[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {shape !== "ANY" && (
+        <label className={fieldLabel}>
+          {shape === "" || shape === "BETWEEN"
+            ? `${shape === "" ? "Starts at" : "From"} · ${shape === "" ? "optional" : "required"}`
+            : shape === "AFTER"
+              ? "From"
+              : "By"}
+          <input
+            name="startTime"
+            type="time"
+            required={shape !== ""}
+            defaultValue={commitment?.startTime ?? ""}
+            className={fieldControl}
+          />
+        </label>
+      )}
+      {(shape === "" ||
+        shape === "BETWEEN" ||
+        (kind === "STAY" && shape === "AFTER")) && (
+        <label className={fieldLabel}>
+          {shape === "BETWEEN" ? "To" : "Ends at · optional"}
+          <input
+            name="endTime"
+            type="time"
+            required={shape === "BETWEEN"}
+            defaultValue={commitment?.endTime ?? ""}
+            className={fieldControl}
+          />
+        </label>
+      )}
+      {(shape === "" || (kind === "STAY" && shape === "AFTER")) && (
+        <label className={fieldLabel}>
+          Ends on another day · optional
+          <input
+            name="endDate"
+            type="date"
+            defaultValue={commitment?.endDate ?? ""}
+            className={fieldControl}
+          />
+        </label>
+      )}
       <label className={fieldLabel}>
         Booking reference · optional
         <input
@@ -300,7 +348,7 @@ export function TripCommitments({
             kindWord[c.kind],
             // A ticket's end is its arrival, perhaps on another day.
             c.endTime &&
-              `${c.kind === "TRANSPORT" ? "arrives" : "until"} ${c.endDate && c.endDate !== c.date ? `${dayLabel(c.endDate).slice(0, -5)} ` : ""}${c.endTime}`,
+              `${c.kind === "TRANSPORT" ? "arrives" : c.kind === "STAY" ? "check out by" : "until"} ${c.endDate && c.endDate !== c.date ? `${dayLabel(c.endDate).slice(0, -5)} ` : ""}${c.endTime}`,
             c.reference,
           ]
             .filter(Boolean)
@@ -327,9 +375,20 @@ export function TripCommitments({
             );
           }
 
+          const window = windowOf(c);
+          const words = window ? windowWords(c, window) : null;
           return (
             <li key={c.id}>
-              {c.startTime ? (
+              {window && words ? (
+                <WindowRow
+                  time={
+                    window.shape === "ANY" ? "any" : (window.from ?? window.to!)
+                  }
+                  title={words.title}
+                  note={[note, words.note].filter(Boolean).join(" · ")}
+                  window={window}
+                />
+              ) : c.startTime ? (
                 <TicketStub time={c.startTime} title={c.title} note={note} />
               ) : (
                 <div className="rounded-lg border-[1.5px] border-dashed border-ink/25 px-4 py-3 text-[15px]">

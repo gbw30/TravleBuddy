@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 import type { Leg } from "@/features/places/contracts";
-import type { CommitmentKind } from "@/features/trips/contracts";
+import type { CommitmentKind, TimeWindow } from "@/features/trips/contracts";
 
 export const PACES = ["relaxed", "balanced", "packed"] as const;
 export type Pace = (typeof PACES)[number];
@@ -188,6 +188,8 @@ type PlanEntryBody =
       } | null;
       /** Travel to a confirmed stay's check-in. Absent on every other commitment. */
       travelIn?: TravelLeg | null;
+      /** Set when the step is laid inside a window, with the commitment's own title as `name`. */
+      window?: TimeWindow & { name: string };
     }
   | {
       /** Travel between cities with no ticket yet: assumed, not booked (TB-ITN-19). */

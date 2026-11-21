@@ -35,7 +35,7 @@ The milestone branch is `milestone/9-trustworthy-wording`. It exists at `9a06c3e
 | 16. The rest of the review                | `feature/m9-day-order`         | TB-ITN-06, TB-ITN-21 to 24, TB-FIX-07, TB-TRU-05, TB-SYS-15      | #90          |
 | 17. Traveller choices                     | `feature/m9-traveller-choices` | TB-ITN-21, TB-FIX-08, TB-CRD-13                                  | #92          |
 | 18. Fair use                              | `feature/m9-fair-use`          | TB-SYS-16, TB-SYS-17                                             | #94          |
-| 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  |              |
+| 19. Cities and both ways to get there     | `feature/m9-itinerary-cities`  | TB-ITN-25, TB-ITN-26, TB-ITN-27                                  | #96          |
 | 20. Saving the facts keeps the answers    | `feature/m9-facts-save`        | TB-FAC-01, TB-FAC-02, TB-FAC-03, TB-AGT-03                       | #91          |
 | 21. Time windows                          | `feature/m9-time-windows`      | TB-ITN-22                                                        |              |
 | 22. The trip page                         | `feature/m9-trip-page`         | TB-AGT-01, TB-AGT-02, TB-AGT-03, TB-FAC-01, TB-ITN-02            |              |

@@ -171,6 +171,7 @@ describe("commitmentInputSchema", () => {
       title: "Dinner at Den",
       date: null,
       startTime: null,
+      timeShape: null,
       endDate: null,
       endTime: null,
       reference: null,
