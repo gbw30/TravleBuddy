@@ -13,6 +13,7 @@ import {
   type ProfileTopicInfo,
   type TasteTopic,
 } from "@/features/memory/contracts";
+import { fill, fromTraveller, sentence, type Sentence } from "@/lib/wording";
 import {
   tripFactsSchema,
   type TripDetail,
@@ -135,9 +136,13 @@ function thisTrip(
 }
 
 /** One style answer as a sentence: the answer and its source, or what is assumed. */
-export function styleLine(answer: BriefAnswer): string {
+export function styleSentence(answer: BriefAnswer): Sentence {
+  // The topic's name and what is assumed are fixed text of the brief.
   if (answer.from === "none" || answer.from === "default") {
-    return `${answer.name}: ${answer.assumes}`;
+    return sentence(
+      `style-${answer.topic}-assumed`,
+      `${answer.name}: ${answer.assumes}`,
+    );
   }
   const each = answer.values.map(
     (value) =>
@@ -149,8 +154,19 @@ export function styleLine(answer: BriefAnswer): string {
   const labels = each.some((label) => label.includes(" and "))
     ? each.join("; ")
     : list(each);
-  return `${answer.name}: ${labels}${answer.source ? ` (${answer.source})` : ""}.`;
+  const ref = `trip-taste:${answer.topic}`;
+  return sentence(
+    `style-${answer.topic}${answer.source ? "-from" : ""}`,
+    `${answer.name}: {answers}${answer.source ? " ({source})" : ""}.`,
+    [
+      fromTraveller("answers", labels, ref),
+      ...(answer.source ? [fromTraveller("source", answer.source, ref)] : []),
+    ],
+  );
 }
+
+export const styleLine = (answer: BriefAnswer): string =>
+  fill(styleSentence(answer));
 
 const styleSchema = z
   .partialRecord(z.enum(TASTE_TOPICS), z.array(z.string()).max(8))

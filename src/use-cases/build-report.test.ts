@@ -6,6 +6,7 @@ import type {
   PlanView,
 } from "@/features/itinerary/contracts";
 import type { PlaceDto } from "@/features/places/contracts";
+import { fillAll } from "@/lib/wording";
 
 import type { BriefAnswer } from "./brief-view";
 import { buildReportOf } from "./build-report";
@@ -116,7 +117,7 @@ const answer = (
   source,
   assumes: "I will keep a balanced pace.",
 });
-const report = (over: Partial<Parameters<typeof buildReportOf>[0]> = {}) =>
+const worded = (over: Partial<Parameters<typeof buildReportOf>[0]> = {}) =>
   buildReportOf({
     view: view([
       [
@@ -141,8 +142,37 @@ const report = (over: Partial<Parameters<typeof buildReportOf>[0]> = {}) =>
     decided: 0,
     ...over,
   });
+const report = (over: Partial<Parameters<typeof buildReportOf>[0]> = {}) =>
+  worded(over).report;
 
 describe("the report of a build", () => {
+  it("has a record of sentences for each line, in the order the report reads", () => {
+    const { report: made, sentences } = worded({
+      view: view([[at("d1-morning", "Castle", ["hours-unknown"])]], {
+        provisionalDates: true,
+      }),
+      style: [answer("pace", "profile", ["relaxed"], "from your trip")],
+      progress: progress({
+        built: { "d1-morning": "Castle" },
+        close: ["d1-morning"],
+      }),
+    });
+    const lines = [
+      ...made.built,
+      ...made.assumed.map((item) => item.line),
+      ...made.unfitted.map((item) => item.line),
+      ...made.unsure.map((item) => item.line),
+    ];
+    expect(lines.length).toBeGreaterThan(4);
+    expect(sentences.map((item) => fillAll(item))).toEqual(lines);
+    expect(sentences.flat().every((item) => item.template.length > 0)).toBe(
+      true,
+    );
+    expect(
+      sentences.flat().flatMap((item) => item.facts).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("says what was built in two sentences", () => {
     expect(report().built).toEqual([
       "2 days in Lisbon.",
@@ -298,7 +328,7 @@ describe("the report of a build", () => {
       dietaryRules: [],
       cities: ["Lisbon"],
       decided: 0,
-    }).unsure;
+    }).report.unsure;
     expect(all).toHaveLength(4);
     expect(all[3]).toEqual({
       line: "1 more choice was close too.",

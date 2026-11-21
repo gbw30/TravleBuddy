@@ -5,10 +5,18 @@ import {
   type PlanEntry,
   type PlanView,
 } from "@/features/itinerary/contracts";
-import type { PlaceDto } from "@/features/places/contracts";
 import type { TasteTopic } from "@/features/memory/contracts";
+import type { PlaceDto } from "@/features/places/contracts";
+import {
+  computed,
+  fillAll,
+  fromPlace,
+  fromTraveller,
+  sentence,
+  type Sentence,
+} from "@/lib/wording";
 
-import { count, day as dayWords, list, styleLine } from "./brief";
+import { count, day as dayWords, list, styleSentence } from "./brief";
 import type { BriefAnswer } from "./brief-view";
 import type { BuildReport, ReportLine } from "./plan-snapshot";
 
@@ -42,8 +50,21 @@ export function buildReportOf(input: {
   cities: string[];
   /** How many things were already decided. */
   decided: number;
-}): BuildReport {
+}): {
+  report: BuildReport;
+  /**
+   * The sentences each line is made of, in the order the report reads: what
+   * it built, assumed, left unfitted and was unsure of. Kept private.
+   */
+  sentences: Sentence[][];
+} {
   const { view, places, progress } = input;
+  const sentences: Sentence[][] = [];
+  /** A line of the report, kept with the sentences it is the fill of. */
+  const say = (...made: Sentence[]) => {
+    sentences.push(made);
+    return fillAll(made);
+  };
   const slots = new Map<string, { day: number; entry: Slot }>();
   for (const day of view.days) {
     for (const entry of day.entries) {
@@ -54,8 +75,16 @@ export function buildReportOf(input: {
   }
   const at = (slotId: string) => {
     const slot = slots.get(slotId)!;
-    return `${slotWords(slot.entry.kind)} on day ${slot.day}`;
+    return computed(
+      "slot",
+      `${slotWords(slot.entry.kind)} on day ${slot.day}`,
+      "slot-of-plan",
+      { slot: slotId },
+    );
   };
+  /** A number worked out from the plan, as the words that count it. */
+  const counted = (gap: string, words: string, name: string, n: number) =>
+    computed(gap, words, name, { count: n });
   // What the build put in place and the traveller has left there, in the
   // order of the days.
   const standing = [...slots].flatMap(([slotId, { entry }]) => {
@@ -71,22 +100,80 @@ export function buildReportOf(input: {
     [...slots.values()].filter(({ entry }) => entry.type === "place").length -
     standing.length;
 
+  const nDays = view.days.length;
+  const days = counted("days", count(nDays, "day"), "days-in-plan", nDays);
+  const cities = computed("cities", list(input.cities), "trip-cities", {
+    cities: input.cities.join(","),
+  });
+  const chosen = (n: number) =>
+    counted("places", count(n, "place"), "places-chosen", n);
   const built = [
-    `${count(view.days.length, "day")} in ${list(input.cities)}${
-      input.decided > 0
-        ? `, planned around ${count(input.decided, "thing")} already decided`
-        : ""
-    }.`,
-    standing.length === 0
-      ? "I have not placed anything yet."
-      : meals.length === 0
-        ? `I chose ${count(standing.length, "place")} to see.`
-        : meals.length === standing.length
-          ? `I chose ${count(meals.length, "place")} to eat at.`
-          : `I chose ${count(standing.length, "place")}: ${standing.length - meals.length} to see and ${meals.length} to eat at.`,
+    input.decided > 0
+      ? say(
+          sentence(
+            "built-days-decided",
+            "{days} in {cities}, planned around {things} already decided.",
+            [
+              days,
+              cities,
+              counted(
+                "things",
+                count(input.decided, "thing"),
+                "things-decided",
+                input.decided,
+              ),
+            ],
+          ),
+        )
+      : say(sentence("built-days", "{days} in {cities}.", [days, cities])),
+    say(
+      standing.length === 0
+        ? sentence("built-nothing", "I have not placed anything yet.")
+        : meals.length === 0
+          ? sentence("built-see", "I chose {places} to see.", [
+              chosen(standing.length),
+            ])
+          : meals.length === standing.length
+            ? sentence("built-eat", "I chose {places} to eat at.", [
+                chosen(meals.length),
+              ])
+            : sentence(
+                "built-both",
+                "I chose {places}: {see} to see and {eat} to eat at.",
+                [
+                  chosen(standing.length),
+                  counted(
+                    "see",
+                    String(standing.length - meals.length),
+                    "places-chosen",
+                    standing.length - meals.length,
+                  ),
+                  counted(
+                    "eat",
+                    String(meals.length),
+                    "places-chosen",
+                    meals.length,
+                  ),
+                ],
+              ),
+    ),
     ...(own > 0
       ? [
-          `${count(own, "place")} you chose yourself stayed where ${own === 1 ? "it was" : "they were"}.`,
+          say(
+            sentence(
+              "built-own",
+              "{places} you chose yourself stayed where {were}.",
+              [
+                counted("places", count(own, "place"), "places-left", own),
+                counted(
+                  "were",
+                  own === 1 ? "it was" : "they were",
+                  "plural",
+                  own,
+                ),
+              ],
+            ),
+          ),
         ]
       : []),
   ];
@@ -95,46 +182,87 @@ export function buildReportOf(input: {
     ...(view.provisionalDates && view.days[0]
       ? [
           {
-            line: `The trip starts on ${dayWords(view.days[0].date)}, as you gave no dates.`,
+            line: say(
+              sentence(
+                "assumed-start",
+                "The trip starts on {date}, as you gave no dates.",
+                [
+                  computed(
+                    "date",
+                    dayWords(view.days[0].date),
+                    "provisional-start",
+                    { date: view.days[0].date },
+                  ),
+                ],
+              ),
+            ),
             step: 1,
           },
         ]
       : []),
     ...input.style
       .filter((answer) => USED.includes(answer.topic) && answer.from !== "trip")
-      .map((answer) => ({ line: styleLine(answer), step: 4 })),
+      .map((answer) => ({ line: say(styleSentence(answer)), step: 4 })),
   ];
 
   /** The first few spelled out, the rest counted. */
-  const some = (lines: ReportLine[], rest: (more: number) => string) =>
-    lines.length <= SPELLED_OUT
-      ? lines
+  const some = <T extends { slotId: string }>(
+    items: T[],
+    line: (item: T) => ReportLine,
+    rest: (more: number) => Sentence,
+  ): ReportLine[] =>
+    items.length <= SPELLED_OUT
+      ? items.map(line)
       : [
-          ...lines.slice(0, SPELLED_OUT),
-          { line: rest(lines.length - SPELLED_OUT), slotId: null },
+          ...items.slice(0, SPELLED_OUT).map(line),
+          { line: say(rest(items.length - SPELLED_OUT)), slotId: null },
         ];
 
   const stillOpen = progress.empty.filter(
     (slotId) => slots.get(slotId)?.entry.type === "open",
   );
   const unfitted: ReportLine[] = [
-    ...view.shelf.flatMap((item) =>
-      places[item.placeId]
+    ...view.shelf.flatMap((item) => {
+      const shelved = places[item.placeId];
+      return shelved
         ? [
             {
-              line: `${places[item.placeId].name} is on your shelf. ${item.reason ?? "You saved it for later."}`,
+              line: say(
+                sentence("shelf-place", "{place} is on your shelf.", [
+                  fromPlace("place", shelved.name, shelved, null),
+                ]),
+                item.reason
+                  ? sentence("shelf-reason", "{reason}", [
+                      computed("reason", item.reason, "shelf-reason", {
+                        placeId: shelved.id,
+                      }),
+                    ])
+                  : sentence("shelf-saved", "You saved it for later."),
+              ),
               slotId: null,
             },
           ]
-        : [],
-    ),
+        : [];
+    }),
     ...some(
-      stillOpen.map((slotId) => ({
-        line: `Nothing I know fits ${at(slotId)}.`,
+      stillOpen.map((slotId) => ({ slotId })),
+      ({ slotId }) => ({
+        line: say(
+          sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
+            at(slotId),
+          ]),
+        ),
         slotId,
-      })),
+      }),
       (more) =>
-        `${count(more, "more slot is", "more slots are")} open for the same reason.`,
+        sentence("open-more", "{slots} open for the same reason.", [
+          counted(
+            "slots",
+            count(more, "more slot is", "more slots are"),
+            "slots-open",
+            more,
+          ),
+        ]),
     ),
   ];
 
@@ -149,21 +277,66 @@ export function buildReportOf(input: {
       input.dietaryRules.length > 0 &&
       !input.dietaryRules.every((rule) => place.serves.includes(rule)),
   );
+  /** The places by name, once each, as one fact. */
   const names = (items: typeof standing) =>
-    list([...new Set(items.map(({ place }) => place.name))]);
+    computed(
+      "names",
+      list([...new Set(items.map(({ place }) => place.name))]),
+      "places-named",
+      { placeIds: [...new Set(items.map(({ place }) => place.id))].join(",") },
+    );
+  const checkIt = sentence("check-first", "Check before you go.");
   const unsure: ReportLine[] = [
     ...some(
-      close.map(({ slotId, place }) => ({
-        line: `Two places were close for ${at(slotId)}. I chose ${place.name}.`,
+      close,
+      ({ slotId, place }) => ({
+        line: say(
+          sentence("close-for-slot", "Two places were close for {slot}.", [
+            at(slotId),
+          ]),
+          sentence("close-chose", "I chose {place}.", [
+            fromPlace("place", place.name, place, null),
+          ]),
+        ),
         slotId,
-      })),
+      }),
       (more) =>
-        `${count(more, "more choice was", "more choices were")} close too.`,
+        sentence("close-more", "{choices} close too.", [
+          counted(
+            "choices",
+            count(more, "more choice was", "more choices were"),
+            "close-choices",
+            more,
+          ),
+        ]),
     ),
     ...(unconfirmed.length > 0
       ? [
           {
-            line: `${names(unconfirmed)} ${new Set(unconfirmed.map(({ place }) => place.name)).size === 1 ? "does" : "do"} not say whether ${list(input.dietaryRules)} food is served. Check before you go.`,
+            line: say(
+              sentence(
+                "diet-unconfirmed",
+                "{names} {verb} not say whether {rules} food is served.",
+                [
+                  names(unconfirmed),
+                  counted(
+                    "verb",
+                    new Set(unconfirmed.map(({ place }) => place.name)).size ===
+                      1
+                      ? "does"
+                      : "do",
+                    "plural",
+                    unconfirmed.length,
+                  ),
+                  fromTraveller(
+                    "rules",
+                    list(input.dietaryRules),
+                    "trip-taste:food",
+                  ),
+                ],
+              ),
+              checkIt,
+            ),
             slotId: null,
           },
         ]
@@ -171,7 +344,14 @@ export function buildReportOf(input: {
     ...(hoursUnknown.length > 0
       ? [
           {
-            line: `I do not know the opening hours of ${names(hoursUnknown)}. Check before you go.`,
+            line: say(
+              sentence(
+                "hours-unknown",
+                "I do not know the opening hours of {names}.",
+                [names(hoursUnknown)],
+              ),
+              checkIt,
+            ),
             slotId: null,
           },
         ]
@@ -179,7 +359,12 @@ export function buildReportOf(input: {
     ...(progress.unreachable
       ? [
           {
-            line: "I could not look up new places for part of this, so I used the places I already knew.",
+            line: say(
+              sentence(
+                "places-unreachable",
+                "I could not look up new places for part of this, so I used the places I already knew.",
+              ),
+            ),
             slotId: null,
           },
         ]
@@ -187,15 +372,18 @@ export function buildReportOf(input: {
   ];
 
   return {
-    building: progress.nextDay <= view.days.length,
-    days: view.days.map((day) => ({
-      day: day.day,
-      date: day.date,
-      built: day.day < progress.nextDay,
-    })),
-    built,
-    assumed,
-    unfitted,
-    unsure,
+    report: {
+      building: progress.nextDay <= view.days.length,
+      days: view.days.map((day) => ({
+        day: day.day,
+        date: day.date,
+        built: day.day < progress.nextDay,
+      })),
+      built,
+      assumed,
+      unfitted,
+      unsure,
+    },
+    sentences,
   };
 }
