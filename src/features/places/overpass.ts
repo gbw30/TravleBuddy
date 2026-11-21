@@ -4,7 +4,12 @@ import type { FoundPlace, Gathered, Point, Reach } from "./place-source";
 
 // OpenStreetMap's Overpass API: one area query per city and kind of place,
 // saved by the caller and never repeated (ADR-009).
-const ENDPOINT = "https://overpass-api.de/api/interpreter";
+// Some addresses are refused by one host (HTTP 406), so the mirrors follow.
+export const OVERPASS_ENDPOINTS: readonly string[] = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+];
 const SIGHTS_RADIUS_M = 9000;
 const FOOD_RADIUS_M = 1200;
 const SIGHTS_LIMIT = 500;
@@ -159,16 +164,24 @@ export function readOverpass(reply: unknown, reach: Reply): Gathered {
   return { places: placesFromOverpass(reply), reach: whole ? reach : null };
 }
 
-/** Runs one query. Throws when Overpass cannot be reached or refuses. */
+/** Runs one query. Tries each endpoint in turn; throws the last error when all fail. */
 export async function runOverpass(
   query: string,
   reach: Reply,
 ): Promise<Gathered> {
-  const response = await politeFetch(ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ data: query }),
-    timeoutMs: 25_000,
-  });
-  return readOverpass(await response.json(), reach);
+  let lastError: unknown;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await politeFetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ data: query }),
+        timeoutMs: 25_000,
+      });
+      return readOverpass(await response.json(), reach);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
