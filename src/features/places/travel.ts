@@ -64,9 +64,9 @@ export function directionsUrl(
 }
 
 /**
- * The estimated time to get from one point to another. Without a preferred
- * means, every hop goes by transit: a walk is never assumed (TB-ITN-06), and
- * only shown beside it when the hop is short.
+ * The estimated time to get from one point to another. A stated means is
+ * always used, and a walk is then only shown beside it (TB-ITN-06). Without
+ * one, a short hop is walked and anything longer goes by transit.
  */
 export function travelEstimate(
   from: Point,
@@ -74,7 +74,7 @@ export function travelEstimate(
   preferred?: TravelMeans,
 ): TravelEstimate {
   const line = distanceKm(from, to);
-  const means = preferred ?? "transit";
+  const means = preferred ?? (line <= WALKABLE_KM ? "walk" : "transit");
   const { speed, overhead } = pace[means];
   const moving = ((line * DETOUR) / speed) * 60;
   const onFoot = (line * DETOUR * 60) / pace.walk.speed;

@@ -117,13 +117,12 @@ describe("proposeCards", () => {
       }),
     );
     expect(ids(set)).toEqual(["near", "mid", "far"]);
-    // No means said: never assumed to be walked, only offered.
-    expect(set.cards[0].travel).toMatchObject({ means: "transit" });
-    expect(set.cards[0].essentials).toMatch(
-      /^Museum · about \d+ min ride · or \d+ m, about \d+ min on foot$/,
-    );
+    // No means said: a short hop is walked, with no second walking part.
+    expect(set.cards[0].travel).toMatchObject({ means: "walk" });
+    expect(set.cards[0].travel?.walk).toBeUndefined();
+    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min walk$/);
     expect(set.cards[0].reason).toMatch(
-      /minute ride from Senso-ji, so it fits your morning/,
+      /minute walk from Senso-ji, so it fits your morning/,
     );
   });
 
@@ -359,7 +358,6 @@ describe("the traveller's taste in the ranking", () => {
           interests: [remembered],
           atmosphere: "lively",
           onFoot: true,
-          means: "walk",
           rememberedFrom: { atmosphere: "Lisbon", onFoot: "Lisbon" },
         }),
       }),

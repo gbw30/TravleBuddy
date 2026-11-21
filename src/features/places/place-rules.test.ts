@@ -186,11 +186,8 @@ describe("travelEstimate", () => {
     expect(distanceKm(sensoji, sensoji)).toBe(0);
   });
 
-  it("never assumes a walk: with no means a hop goes by transit, and a walker walks, always as an estimate", () => {
-    const short = travelEstimate(sensoji, skytree);
-    expect(short.means).toBe("transit");
-    expect(short.walk).not.toBeNull();
-    expect(travelEstimate(sensoji, skytree, "walk")).toEqual({
+  it("with no means said, walks a short hop and takes transit further, always as an estimate", () => {
+    expect(travelEstimate(sensoji, skytree)).toEqual({
       means: "walk",
       minutes: 22,
       walk: null,
@@ -202,6 +199,14 @@ describe("travelEstimate", () => {
     expect(far.walk).toBeNull();
     expect(far.minutes).toBeGreaterThan(40);
     expect(far.minutes).toBeLessThan(60);
+  });
+
+  it("keeps a stated means on a short hop, with the walk as information beside it", () => {
+    for (const means of ["transit", "drive"] as const) {
+      const hop = travelEstimate(sensoji, skytree, means);
+      expect(hop.means).toBe(means);
+      expect(hop.walk).toEqual({ metres: expect.any(Number), minutes: 22 });
+    }
   });
 
   it("adds the walk to a short hop by another means, and to nothing else", () => {

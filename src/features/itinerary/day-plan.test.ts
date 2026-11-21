@@ -405,7 +405,7 @@ describe("a picked place", () => {
         pace: "packed",
         picks: { "d2-morning": pick("museum"), "d2-morning-2": pick("shrine") },
       }),
-      context({ places, means: "walk" }),
+      context({ places }),
     );
     const [first, second] = found(view.days[1].entries, "place");
     // 09:00 + 120 minutes, then an estimated walk and the packed buffer of 10.
@@ -429,11 +429,11 @@ describe("a picked place", () => {
         ).days[1].entries,
         "place",
       )[1].travelIn;
-    // About a kilometre apart: never assumed to be walked, only offered.
-    expect(leg()?.means).toBe("transit");
-    expect(leg()?.walk).toBeDefined();
-    expect(leg("walk")?.means).toBe("walk");
-    expect(leg("walk")?.walk).toBeUndefined();
+    // About a kilometre apart: walked unless the traveller said otherwise,
+    // and then the walk is only information beside their means.
+    expect(leg()?.means).toBe("walk");
+    expect(leg()?.walk).toBeUndefined();
+    expect(leg("transit")?.walk).toBeDefined();
     expect(leg("drive")?.means).toBe("drive");
     expect(leg("transit")?.means).toBe("transit");
   });
