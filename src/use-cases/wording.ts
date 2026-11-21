@@ -6,6 +6,7 @@ import {
   wordingMode,
   wordSentences,
   WORDING_BUDGET_MS,
+  type TokenUsage,
   type WordingRow,
 } from "@/features/conversation";
 import { db } from "@/lib/db";
@@ -80,44 +81,13 @@ export async function shownWords(
     return shown;
   }
 
-  const now = new Date();
-  const gate = await modelGate(now, "on");
-  if (typeof gate === "string") {
-    await recordWordings(db, tripId, [
-      ...settled,
-      ...pending.map((i) => template(i, gate)),
-    ]);
-    return shown;
-  }
-
-  const signal = AbortSignal.timeout(WORDING_BUDGET_MS);
-  const wording = await wordSentences(pending.map(free), gate, signal);
-  if (wording.usage) await payForModel(wording.usage, now);
-
+  const { outcomes, usage } = await rewordAll(
+    pending.map((i) => items[i].sentences),
+  );
   const rows = pending.map((i, k): WordingRow => {
-    if (wording.status !== "worded") {
-      return template(
-        i,
-        wording.status === "discarded"
-          ? "unusable"
-          : signal.aborted
-            ? "timeout"
-            : "error",
-      );
-    }
-    const versions = wording.versions[k];
-    const reworded = free(i).map(({ text }, j) =>
-      checkWording(text, versions[j]),
-    );
-    const failed = reworded.find((check) => check !== null);
-    if (failed) return template(i, failed);
-    // Cautions keep their own words, in their place among the worded sentences.
-    let next = 0;
-    shown[i] = items[i].sentences
-      .map((made) =>
-        made.fixed ? fill(made) : fill({ ...made, text: versions[next++] }),
-      )
-      .join(" ");
+    const outcome = outcomes[k];
+    if ("fallback" in outcome) return template(i, outcome.fallback);
+    shown[i] = outcome.shown;
     return {
       ...template(i, ""),
       shown: shown[i],
@@ -127,10 +97,74 @@ export async function shownWords(
     };
   });
   // The call's tokens are recorded once, on its first row.
-  if (wording.usage) {
-    rows[0].inputTokens = wording.usage.inputTokens;
-    rows[0].outputTokens = wording.usage.outputTokens;
+  if (usage) {
+    rows[0].inputTokens = usage.inputTokens;
+    rows[0].outputTokens = usage.outputTokens;
   }
   await recordWordings(db, tripId, [...settled, ...rows]);
   return shown;
+}
+
+/** What the model's wording of one text came to: the words shown, or why the template stays. */
+export type Reworded = { shown: string } | { fallback: string };
+
+/**
+ * One model call for all the texts, each checked, and paid for. A text
+ * reworded keeps its cautions word for word, in place. Texts need at least
+ * one sentence that is not fixed. Never throws for a model that fails.
+ */
+async function rewordAll(
+  texts: Sentence[][],
+): Promise<{ outcomes: Reworded[]; usage?: TokenUsage }> {
+  const now = new Date();
+  const gate = await modelGate(now, "on");
+  if (typeof gate === "string")
+    return { outcomes: texts.map(() => ({ fallback: gate })) };
+
+  const free = (text: Sentence[]) => text.filter(({ fixed }) => !fixed);
+  const signal = AbortSignal.timeout(WORDING_BUDGET_MS);
+  const wording = await wordSentences(texts.map(free), gate, signal);
+  if (wording.usage) await payForModel(wording.usage, now);
+
+  const outcomes = texts.map((text, k): Reworded => {
+    if (wording.status !== "worded") {
+      return {
+        fallback:
+          wording.status === "discarded"
+            ? "unusable"
+            : signal.aborted
+              ? "timeout"
+              : "error",
+      };
+    }
+    const versions = wording.versions[k];
+    const failed = free(text)
+      .map(({ text }, j) => checkWording(text, versions[j]))
+      .find((check) => check !== null);
+    if (failed) return { fallback: failed };
+    // Cautions keep their own words, in their place among the worded sentences.
+    let next = 0;
+    return {
+      shown: text
+        .map((made) =>
+          made.fixed ? fill(made) : fill({ ...made, text: versions[next++] }),
+        )
+        .join(" "),
+    };
+  });
+  return { outcomes, usage: wording.usage };
+}
+
+/**
+ * The model's wording of one message the agent says, or why its template
+ * stays. Called outside any transaction. Costs nothing, and calls nothing,
+ * when wording is off or the text is all cautions and refusals.
+ */
+export async function wordMessage(
+  sentences: Sentence[],
+): Promise<Reworded & { usage?: TokenUsage }> {
+  if (wordingMode() === "off") return { fallback: "off" };
+  if (sentences.every(({ fixed }) => fixed)) return { fallback: "fixed" };
+  const { outcomes, usage } = await rewordAll([sentences]);
+  return { ...outcomes[0], usage };
 }

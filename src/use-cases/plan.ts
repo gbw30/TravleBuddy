@@ -14,7 +14,12 @@ import {
   writePlanVersion,
   type PlanContext,
 } from "@/features/itinerary";
-import { appendMessages, labelsOf, QUESTIONS } from "@/features/conversation";
+import {
+  appendMessages,
+  labelsOf,
+  MODEL,
+  QUESTIONS,
+} from "@/features/conversation";
 import {
   isMeal,
   PACES,
@@ -81,7 +86,7 @@ import type { CommitmentDto, TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
 import { computed, fillAll, sentence, type Sentence } from "@/lib/wording";
 
-import { shownWords } from "./wording";
+import { shownWords, wordMessage } from "./wording";
 
 import { briefOf } from "./brief";
 import { buildReportOf } from "./build-report";
@@ -504,16 +509,29 @@ async function proposalFor(
         ],
       ),
     ];
+    // Worded on read, as the reasons are, and only when the proposal is new,
+    // so a repeat read never pays for it again.
+    const worded = word
+      ? await wordMessage(offer).catch(() => ({ fallback: "error" }))
+      : { fallback: "off" };
     await appendMessages(db, trip.id, [
       {
         from: "agent",
         body: {
           kind: "proposal",
           slotId: entry.slotId,
-          text: fillAll(offer),
+          text: "shown" in worded ? worded.shown : fillAll(offer),
           placeNames: set.cards.map((card) => card.name.slice(0, 160)),
         },
         sentences: offer,
+        wording:
+          "shown" in worded
+            ? {
+                model: MODEL,
+                inputTokens: worded.usage?.inputTokens,
+                outputTokens: worded.usage?.outputTokens,
+              }
+            : { fallback: worded.fallback },
       },
     ]);
   }
@@ -673,17 +691,19 @@ async function readPlan(
     trip.planningMode === "GUIDED" &&
     taste.food === undefined;
   const proposing = focus !== null && !holding;
-  return {
-    view,
-    chosen: await chosenCards(
+  // The text groups (reasons of chosen places, the proposal's cards and
+  // message, the report) each make their own model call, so they are read
+  // together: the read waits for the slowest, not their sum.
+  const [chosen, proposal, build] = await Promise.all([
+    chosenCards(
       view,
       context.places,
       trip,
       new Set(builtPlaceIds(progress, state)),
       word,
     ),
-    proposal: proposing
-      ? await proposalFor(
+    proposing
+      ? proposalFor(
           trip,
           view,
           context.places,
@@ -696,13 +716,8 @@ async function readPlan(
           word,
         )
       : null,
-    holding: holding ? "food" : null,
-    shelfOffer: proposing
-      ? shelfOffer(view, context.places, focus.entry)
-      : null,
-    canUndo: saved.canUndo,
-    build: progress
-      ? await recordedReport(
+    progress
+      ? recordedReport(
           trip.id,
           buildReportOf({
             view,
@@ -714,8 +729,20 @@ async function readPlan(
             cities: trip.facts.cities.map(({ city }) => city.name),
             decided: trip.commitments.length,
           }),
+          word,
         )
       : null,
+  ]);
+  return {
+    view,
+    chosen,
+    proposal,
+    holding: holding ? "food" : null,
+    shelfOffer: proposing
+      ? shelfOffer(view, context.places, focus.entry)
+      : null,
+    canUndo: saved.canUndo,
+    build,
   };
 }
 
@@ -723,15 +750,27 @@ async function readPlan(
 async function recordedReport(
   tripId: string,
   { report, sentences }: ReturnType<typeof buildReportOf>,
+  word: boolean,
 ): Promise<BuildReport> {
-  await shownWords(
+  const shown = await shownWords(
     tripId,
     sentences.map((made, i) => ({
       subject: `report:${i + 1}`,
       sentences: made,
     })),
+    { word },
   );
-  return report;
+  // The lines were made in the order the report reads: built, assumed,
+  // unfitted, unsure. The shown words replace each, in that order.
+  let next = 0;
+  const line = () => shown[next++];
+  return {
+    ...report,
+    built: report.built.map(line),
+    assumed: report.assumed.map((item) => ({ ...item, line: line() })),
+    unfitted: report.unfitted.map((item) => ({ ...item, line: line() })),
+    unsure: report.unsure.map((item) => ({ ...item, line: line() })),
+  };
 }
 
 /** A shelved place that fits the open slot in focus, for the agent to offer (TB-ITN-14). */

@@ -2,6 +2,7 @@
 // Browser code imports ./contracts instead.
 export {
   addCommitment,
+  commitmentsFull,
   removeCommitment,
   updateCommitment,
   type CommitmentsResult,
@@ -22,5 +23,6 @@ export {
   setPlanFinished,
   setPlanningMode,
   setTripArchived,
+  datesBackwards,
   type NewTrip,
 } from "./trip-store";

@@ -10,6 +10,7 @@ import type { PlaceDto } from "@/features/places/contracts";
 import {
   computed,
   fillAll,
+  fixedSentence,
   fromPlace,
   fromTraveller,
   refsOf,
@@ -131,7 +132,7 @@ export function buildReportOf(input: {
       : say(sentence("built-days", "{days} in {cities}.", [days, cities])),
     say(
       standing.length === 0
-        ? sentence("built-nothing", "I have not placed anything yet.")
+        ? fixedSentence("built-nothing", "I have not placed anything yet.")
         : meals.length === 0
           ? sentence("built-see", "I chose {places} to see.", [
               chosen(standing.length),
@@ -186,7 +187,7 @@ export function buildReportOf(input: {
       ? [
           {
             line: say(
-              sentence(
+              fixedSentence(
                 "assumed-start",
                 "The trip starts on {date}, as you gave no dates.",
                 [
@@ -205,7 +206,11 @@ export function buildReportOf(input: {
       : []),
     ...input.style
       .filter((answer) => USED.includes(answer.topic) && answer.from !== "trip")
-      .map((answer) => ({ line: say(styleSentence(answer)), step: 4 })),
+      .map((answer) => ({
+        // The topic's name and what is assumed are the brief's fixed text.
+        line: say({ ...styleSentence(answer), fixed: true }),
+        step: 4,
+      })),
   ];
 
   /** The first few spelled out, the rest counted. */
@@ -235,7 +240,7 @@ export function buildReportOf(input: {
                   fromPlace("place", shelved.name, shelved, null),
                 ]),
                 item.reason
-                  ? sentence("shelf-reason", "{reason}", [
+                  ? fixedSentence("shelf-reason", "{reason}", [
                       computed("reason", item.reason, "shelf-reason", {
                         placeId: shelved.id,
                       }),
@@ -251,14 +256,14 @@ export function buildReportOf(input: {
       stillOpen.map((slotId) => ({ slotId })),
       ({ slotId }) => ({
         line: say(
-          sentence("open-nothing-fits", "Nothing I know fits {slot}.", [
+          fixedSentence("open-nothing-fits", "Nothing I know fits {slot}.", [
             at(slotId),
           ]),
         ),
         slotId,
       }),
       (more) =>
-        sentence("open-more", "{slots} open for the same reason.", [
+        fixedSentence("open-more", "{slots} open for the same reason.", [
           counted(
             "slots",
             count(more, "more slot is", "more slots are"),
@@ -288,13 +293,13 @@ export function buildReportOf(input: {
       "places-named",
       { placeIds: [...new Set(items.map(({ place }) => place.id))].join(",") },
     );
-  const checkIt = sentence("check-first", "Check before you go.");
+  const checkIt = fixedSentence("check-first", "Check before you go.");
   const unsure: ReportLine[] = [
     ...some(
       close,
       ({ slotId, place }) => ({
         line: say(
-          sentence("close-for-slot", "Two places were close for {slot}.", [
+          fixedSentence("close-for-slot", "Two places were close for {slot}.", [
             at(slotId),
           ]),
           sentence("close-chose", "I chose {place}.", [
@@ -304,7 +309,7 @@ export function buildReportOf(input: {
         slotId,
       }),
       (more) =>
-        sentence("close-more", "{choices} close too.", [
+        fixedSentence("close-more", "{choices} close too.", [
           counted(
             "choices",
             count(more, "more choice was", "more choices were"),
@@ -317,7 +322,7 @@ export function buildReportOf(input: {
       ? [
           {
             line: say(
-              sentence(
+              fixedSentence(
                 "diet-unconfirmed",
                 "{names} {verb} not say whether {rules} food is served.",
                 [
@@ -353,7 +358,7 @@ export function buildReportOf(input: {
       ? [
           {
             line: say(
-              sentence(
+              fixedSentence(
                 "hours-unknown",
                 "I do not know the opening hours of {names}.",
                 [names(hoursUnknown)],
@@ -368,7 +373,7 @@ export function buildReportOf(input: {
       ? [
           {
             line: say(
-              sentence(
+              fixedSentence(
                 "places-unreachable",
                 "I could not look up new places for part of this, so I used the places I already knew.",
               ),

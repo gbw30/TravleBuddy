@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   runTripAction: vi.fn(),
   aiShareLeft: vi.fn(),
   addAiSpend: vi.fn(),
+  wordingMode: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
 vi.mock("@/features/fair-use", () => ({
@@ -42,6 +43,15 @@ vi.mock("@/features/trips", () => ({
   saveTripFacts: mocks.saveTripFacts,
   addCommitment: mocks.addCommitment,
   findEditable: mocks.findEditable,
+  commitmentsFull: (count: number) => count >= 100,
+  datesBackwards: (
+    have: { startDate: string | null; endDate: string | null },
+    input: { startDate?: string | null; endDate?: string | null },
+  ) => {
+    const start = input.startDate ?? have.startDate;
+    const end = input.endDate ?? have.endDate;
+    return Boolean(start && end && end < start);
+  },
   todayIn: () => "2026-11-19",
 }));
 vi.mock("@/features/memory", async (actual) => ({
@@ -66,6 +76,7 @@ vi.mock("@/features/conversation", async (actual) => ({
   ...(await actual<typeof import("@/features/conversation")>()),
   aiMode: () => (mocks.modelCall() ? "on" : "off"),
   modelCall: mocks.modelCall,
+  wordingMode: mocks.wordingMode,
   readUsage: mocks.readUsage,
   addUsage: mocks.addUsage,
   appendMessages: mocks.appendMessages,
@@ -134,6 +145,8 @@ const trip = (over: Partial<TripDetail> = {}) =>
     id: "trip-1",
     archived: false,
     facts: allFacts,
+    // The revision the turns below are made against.
+    revision: 4,
     commitments: [dinner],
     clashes: [],
     ...over,
@@ -182,6 +195,7 @@ beforeEach(() => {
   mocks.saveTripFacts.mockResolvedValue({ saved: true });
   mocks.lastQuestionTopic.mockResolvedValue(null);
   mocks.modelCall.mockReturnValue(null);
+  mocks.wordingMode.mockReturnValue("off");
   mocks.aiShareLeft.mockResolvedValue(true);
   // The ledger runs the change once and answers with the next revision.
   mocks.runTripAction.mockImplementation(async ({ apply }) => {
@@ -356,6 +370,7 @@ describe("remembering something for every trip", () => {
         remember: { texts: ["Vegetarian"], hard: true },
       },
       sentences: expect.any(Array),
+      wording: { fallback: "off" },
     });
     expect(mocks.tellProfileIn).not.toHaveBeenCalled();
   });
@@ -994,5 +1009,168 @@ describe("a turn on a trip that cannot change", () => {
   it("passes on the ledger's answer for a stale revision", async () => {
     mocks.runTripAction.mockResolvedValue({ status: "stale" });
     expect(await say("relaxed")).toEqual({ status: "stale" });
+  });
+});
+
+describe("a reply the model words", () => {
+  const food = {
+    pace: { values: ["relaxed"], source: "told" },
+    day_shape: { values: ["early"], source: "told" },
+    interests: { values: ["views"], source: "told" },
+    atmosphere: { values: ["quiet"], source: "told" },
+  };
+  const vegetarian = () =>
+    takeTurn({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      turn: { type: "answer", topic: "food", values: ["vegetarian"] },
+    });
+  /** A model that answers every free sentence with these versions. */
+  const wording = (versions: string[]) =>
+    vi.fn(async () => ({
+      stop_reason: "end_turn",
+      content: [
+        { type: "text", text: JSON.stringify({ versions: [versions] }) },
+      ],
+      usage: { input_tokens: 300, output_tokens: 30 },
+    }));
+  const reply = () => mocks.appendMessages.mock.calls.at(-1)?.[2].at(-1);
+
+  beforeEach(() => {
+    mocks.readTripTaste.mockResolvedValue(food);
+    mocks.wordingMode.mockReturnValue("on");
+  });
+
+  it("shows the accepted version, keeps the fixed question word for word, and records the model", async () => {
+    const call = wording([
+      "Got {answers} down.",
+      "I think I have enough to find places to eat.",
+    ]);
+    mocks.modelCall.mockReturnValue(call);
+    await vegetarian();
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(reply().body.text).toBe(
+      "Got vegetarian down. I think I have enough to find places to eat. Should I remember that for every trip?",
+    );
+    // What the model is given never holds the question: it is fixed text.
+    const [request] = call.mock.calls[0] as unknown as [
+      { messages: { content: string }[] },
+    ];
+    expect(request.messages[0].content).not.toContain("remember");
+    expect(reply().wording).toMatchObject({
+      model: expect.any(String),
+      inputTokens: 300,
+      outputTokens: 30,
+    });
+    // The record keeps the templates, so the shown words can be checked.
+    expect(fillAll(reply().sentences)).toBe(
+      "Noted: vegetarian. I think I know enough to suggest places to eat. Should I remember that for every trip?",
+    );
+    expect(mocks.addUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the template, with the reason, when the version changes a fact", async () => {
+    mocks.modelCall.mockReturnValue(
+      wording([
+        "Got {answers} for 3 meals.",
+        "I know enough to suggest meals.",
+      ]),
+    );
+    await vegetarian();
+    expect(reply().body.text).toBe(
+      "Noted: vegetarian. I think I know enough to suggest places to eat. Should I remember that for every trip?",
+    );
+    expect(reply().wording).toEqual({ fallback: "digit" });
+    expect(mocks.addUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the template when the model fails, and the turn still goes through", async () => {
+    mocks.modelCall.mockReturnValue(
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
+    const outcome = await vegetarian();
+    expect(outcome.status).toBe("ok");
+    expect(reply().wording).toEqual({ fallback: "error" });
+  });
+
+  it("makes no call for a reply of fixed text, such as an instruction that names a label", async () => {
+    const call = wording([]);
+    mocks.modelCall.mockReturnValue(call);
+    mocks.getTrip.mockResolvedValue(
+      trip({ facts: { ...allFacts, purpose: null }, commitments: [] }),
+    );
+    await takeTurn({
+      userId: "user-1",
+      tripId: "trip-1",
+      control,
+      turn: { type: "answer", topic: "decided", values: ["something"] },
+    });
+    expect(call).not.toHaveBeenCalled();
+  });
+
+  it("does not word a repeat or a turn against an old revision, so it is never paid for twice", async () => {
+    const call = wording(["Got {answers} down.", "I know enough."]);
+    mocks.modelCall.mockReturnValue(call);
+    mocks.getTrip.mockResolvedValue(trip({ revision: 5 }));
+    await vegetarian();
+    expect(call).not.toHaveBeenCalled();
+    expect(mocks.addUsage).not.toHaveBeenCalled();
+    expect(reply().wording).toEqual({ fallback: "off" });
+  });
+
+  it("makes no call with wording off", async () => {
+    mocks.wordingMode.mockReturnValue("off");
+    const call = wording([]);
+    mocks.modelCall.mockReturnValue(call);
+    await vegetarian();
+    expect(call).not.toHaveBeenCalled();
+    expect(reply().wording).toEqual({ fallback: "off" });
+  });
+
+  describe("a turn the transaction will refuse", () => {
+    const lunch = {
+      type: "commitment",
+      kind: "RESERVATION",
+      title: "Lunch",
+      date: "2027-05-13",
+      startTime: "13:00",
+    };
+    /** The first call reads the typed message, the next ones would word the reply. */
+    const reads = (intent: unknown) => {
+      const reading = model(intent);
+      const calls = vi.fn(async () =>
+        calls.mock.calls.length === 1
+          ? reading()
+          : wording(["Added {title} on {day} at {time}."])(),
+      );
+      return calls;
+    };
+    const full = Array.from({ length: 100 }, (_, i) => ({
+      located: null,
+      ...dinner,
+      id: `c${i}`,
+    }));
+
+    it("is not worded, so the model is called once only to read the message", async () => {
+      const call = reads(lunch);
+      mocks.modelCall.mockReturnValue(call);
+      mocks.getTrip.mockResolvedValue(trip({ commitments: full }));
+      mocks.addCommitment.mockResolvedValue("too_many");
+      expect(await say("lunch on Thursday at 1")).toEqual({
+        status: "too_many",
+      });
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+
+    it("is worded when it is valid", async () => {
+      const call = reads(lunch);
+      mocks.modelCall.mockReturnValue(call);
+      mocks.addCommitment.mockResolvedValue({ commitments: [], clashes: [] });
+      await say("lunch on Thursday at 1");
+      expect(call).toHaveBeenCalledTimes(2);
+    });
   });
 });

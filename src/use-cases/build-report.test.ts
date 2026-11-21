@@ -173,6 +173,72 @@ describe("the report of a build", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("keeps every caution, doubt and assumption as fixed text, and leaves what it did free", () => {
+    const { sentences } = worded({
+      view: view(
+        [
+          [at("d1-morning", "Castle", ["hours-unknown"])],
+          [at("d2-lunch", "Garden Table")],
+        ],
+        { provisionalDates: true },
+      ),
+      style: [answer("pace", "profile", ["relaxed"], "from your trip")],
+      dietaryRules: ["vegetarian"],
+      progress: progress({
+        built: { "d1-morning": "Castle", "d2-lunch": "Garden Table" },
+        close: ["d1-morning"],
+        unreachable: true,
+      }),
+    });
+    const fixed = (template: string) =>
+      sentences.flat().filter((item) => item.template === template);
+    for (const template of [
+      "hours-unknown",
+      "check-first",
+      "diet-unconfirmed",
+      "places-unreachable",
+      "assumed-start",
+      "style-pace-from",
+      "close-for-slot",
+    ]) {
+      expect(fixed(template).length, template).toBeGreaterThan(0);
+      expect(fixed(template).every((item) => item.fixed === true)).toBe(true);
+    }
+    for (const template of ["built-days", "built-both", "close-chose"]) {
+      expect(fixed(template).length, template).toBeGreaterThan(0);
+      expect(fixed(template).some((item) => item.fixed)).toBe(false);
+    }
+  });
+
+  it("keeps the admissions of a limit as fixed text", () => {
+    const empty = worded({
+      view: view([
+        [at("d1-morning", null), at("d1-lunch", null)],
+        [at("d2-morning", null), at("d2-lunch", null)],
+        [at("d3-morning", null), at("d3-lunch", null)],
+        [at("d4-morning", null), at("d4-lunch", null)],
+      ]),
+      progress: progress({
+        empty: [
+          "d1-morning",
+          "d1-lunch",
+          "d2-morning",
+          "d2-lunch",
+          "d3-morning",
+        ],
+      }),
+    }).sentences.flat();
+    for (const template of [
+      "built-nothing",
+      "open-nothing-fits",
+      "open-more",
+    ]) {
+      const found = empty.filter((item) => item.template === template);
+      expect(found.length, template).toBeGreaterThan(0);
+      expect(found.every((item) => item.fixed === true)).toBe(true);
+    }
+  });
+
   it("says what was built in two sentences", () => {
     expect(report().built).toEqual([
       "2 days in Lisbon.",

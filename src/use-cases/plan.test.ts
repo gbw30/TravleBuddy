@@ -31,8 +31,16 @@ const mocks = vi.hoisted(() => ({
   wordingMode: vi.fn(),
   modelCall: vi.fn(),
   readWordings: vi.fn(),
+  readUsage: vi.fn(),
+  addUsage: vi.fn(),
+  aiShareLeft: vi.fn(),
+  addAiSpend: vi.fn(),
 }));
 vi.mock("@/lib/db", () => ({ db: { name: "db" } }));
+vi.mock("@/features/fair-use", () => ({
+  aiShareLeft: mocks.aiShareLeft,
+  addAiSpend: mocks.addAiSpend,
+}));
 vi.mock("@/features/trips", () => ({
   getTrip: mocks.getTrip,
   findEditable: mocks.findEditable,
@@ -76,6 +84,8 @@ vi.mock("@/features/conversation", async (actual) => ({
   readWordings: mocks.readWordings,
   wordingMode: mocks.wordingMode,
   modelCall: mocks.modelCall,
+  readUsage: mocks.readUsage,
+  addUsage: mocks.addUsage,
 }));
 vi.mock("./trip-action", () => ({
   runTripAction: mocks.runTripAction,
@@ -173,6 +183,9 @@ beforeEach(() => {
   mocks.readDiscards.mockResolvedValue([]);
   mocks.listTrips.mockResolvedValue([]);
   mocks.wordingMode.mockReturnValue("off");
+  mocks.readWordings.mockResolvedValue([]);
+  mocks.readUsage.mockResolvedValue({ inputTokens: 0, outputTokens: 0 });
+  mocks.aiShareLeft.mockResolvedValue(true);
   mocks.readTripTaste.mockResolvedValue({});
   mocks.readProfile.mockResolvedValue({ entries: [] });
   // Every card is shown for the first time.
@@ -528,6 +541,137 @@ describe("proposals in guided planning", () => {
     });
     mocks.getPlaces.mockResolvedValue([sights[0]]);
     expect(await load()).toMatchObject({ proposal: null, holding: "food" });
+  });
+});
+
+/** A model that rewords every sentence by `version`. */
+const rewords = (version: (text: string) => string) =>
+  vi.fn(async (request: { messages: { content: string }[] }) => {
+    const { texts } = JSON.parse(request.messages[0].content) as {
+      texts: string[][];
+    };
+    return {
+      stop_reason: "end_turn",
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            versions: texts.map((text) => text.map(version)),
+          }),
+        },
+      ],
+      usage: { input_tokens: 400, output_tokens: 40 },
+    };
+  });
+
+describe("the proposal's message, worded", () => {
+  const shown = () => mocks.appendMessages.mock.calls[0][2][0];
+
+  it("is the template with wording off", async () => {
+    await load();
+    expect(shown().body.text).toMatch(
+      /^For day 1, morning at \d\d:\d\d, I suggest one of these\.$/,
+    );
+    expect(shown().wording).toEqual({ fallback: "off" });
+    expect(mocks.modelCall).not.toHaveBeenCalled();
+  });
+
+  it("shows an accepted version and records the model", async () => {
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(
+      rewords((text) => text.replace("I suggest", "I would pick")),
+    );
+    await load();
+    expect(shown().body.text).toMatch(/I would pick one of these\.$/);
+    expect(shown().wording).toMatchObject({ model: expect.any(String) });
+    // The record keeps the template, so the shown words can be checked.
+    expect(fillAll(shown().sentences)).toMatch(/I suggest one of these\.$/);
+  });
+
+  it("shows the template when the version adds a number", async () => {
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(
+      rewords((text) => text.replace("I suggest", "I suggest 3 of")),
+    );
+    await load();
+    expect(shown().body.text).toMatch(/I suggest one of these\.$/);
+    expect(shown().wording).toEqual({ fallback: "digit" });
+  });
+
+  it("is not worded again on a read that proposes nothing new", async () => {
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(rewords((text) => text));
+    mocks.recordPresented.mockResolvedValue([]);
+    await load();
+    expect(mocks.appendMessages).not.toHaveBeenCalled();
+  });
+});
+
+describe("the report of a build, worded on read", () => {
+  const built = () => {
+    mocks.readPlanState.mockResolvedValue({
+      state: state({
+        picks: { "d1-morning": { placeId: "s1", minutes: null } },
+      }),
+      canUndo: false,
+    });
+    mocks.getPlaces.mockResolvedValue([sights[0]]);
+    mocks.readBuild.mockResolvedValue({
+      nextDay: 2,
+      built: { "d1-morning": "s1" },
+      close: [],
+      empty: [],
+      unreachable: false,
+    });
+  };
+  const rows = () => mocks.recordWordings.mock.calls.flatMap(([, , r]) => r);
+
+  it("is the template with wording off, and recorded as one", async () => {
+    built();
+    const plan = await load();
+    expect(plan?.build?.built).toContain("I chose 1 place to see.");
+    expect(
+      rows().find((row) => row.subject.startsWith("report:")),
+    ).toMatchObject({ wordedBy: "template", fallback: "off" });
+  });
+
+  it("shows an accepted version and records it as the model's", async () => {
+    built();
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(
+      rewords((text) => text.replace("I chose", "I picked")),
+    );
+    const plan = await load();
+    expect(plan?.build?.built).toContain("I picked 1 place to see.");
+    const recorded = rows().find(
+      (row) => row.subject === "report:2" && row.wordedBy === "model",
+    );
+    expect(recorded?.shown).toMatch(/^I picked 1 place to see\.$/);
+    expect(fillAll(recorded?.sentences)).toBe("I chose 1 place to see.");
+  });
+
+  it("shows the template when the version adds a claim", async () => {
+    built();
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(
+      rewords((text) => text.replace("I chose", "I chose the best")),
+    );
+    const plan = await load();
+    expect(plan?.build?.built).toContain("I chose 1 place to see.");
+    expect(
+      rows().find(
+        (row) => row.subject === "report:2" && row.fallback === "claim",
+      ),
+    ).toBeDefined();
+  });
+
+  it("is never worded by a read that shows no reasons", async () => {
+    built();
+    mocks.wordingMode.mockReturnValue("on");
+    mocks.modelCall.mockReturnValue(rewords((text) => text));
+    mocks.findPlacesByName.mockResolvedValue({ status: "ok", places: [] });
+    await findTripPlaces("user-1", "trip-1", "d1-morning", "senso");
+    expect(mocks.modelCall).not.toHaveBeenCalled();
   });
 });
 

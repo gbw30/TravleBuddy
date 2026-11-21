@@ -289,6 +289,16 @@ export async function renameTrip(
 }
 
 /** Saves the facts the input names and leaves the rest as they were. */
+/** Whether saving these dates would end the trip before it starts, against the dates it has. */
+export const datesBackwards = (
+  have: { startDate: string | null; endDate: string | null },
+  input: { startDate?: string | null; endDate?: string | null },
+): boolean => {
+  const start = input.startDate ?? have.startDate;
+  const end = input.endDate ?? have.endDate;
+  return Boolean(start && end && end < start);
+};
+
 export async function saveTripFacts(
   tx: Tx,
   userId: string,

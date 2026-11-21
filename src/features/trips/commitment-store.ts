@@ -15,6 +15,10 @@ type Tx = Prisma.TransactionClient;
 /** More than a trip can hold; a guard against a runaway client, not a product limit. */
 const MAX_COMMITMENTS = 100;
 
+/** Whether a trip already holds as many commitments as it may. */
+export const commitmentsFull = (count: number): boolean =>
+  count >= MAX_COMMITMENTS;
+
 export const commitmentSelect = {
   id: true,
   kind: true,
@@ -147,9 +151,7 @@ export async function addCommitment(
 ): Promise<Refused | "too_many" | CommitmentsResult> {
   const refused = await findEditable(tx, userId, tripId);
   if (refused) return refused;
-  if (
-    (await tx.fixedCommitment.count({ where: { tripId } })) >= MAX_COMMITMENTS
-  ) {
+  if (commitmentsFull(await tx.fixedCommitment.count({ where: { tripId } }))) {
     return "too_many";
   }
   await tx.fixedCommitment.create({ data: { ...rowData(input), tripId } });

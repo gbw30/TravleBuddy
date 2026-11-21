@@ -21,6 +21,10 @@ export type NewMessage = {
   body: MessageBody;
   /** What an agent message was made from. Recorded privately with the message. */
   sentences?: Sentence[];
+  /** How the body's words came about; a template when absent. */
+  wording?:
+    | { fallback: string }
+    | { model: string; inputTokens?: number; outputTokens?: number };
 };
 
 /** A fact that rests on what the traveller wrote just before, in the same batch. */
@@ -52,7 +56,7 @@ export async function appendMessages(
   const ids = rows.map((row) => row.id).sort((a, b) => a - b);
   let previous: number | null = null;
   const records: WordingRow[] = [];
-  messages.forEach(({ from, body, sentences }, i) => {
+  messages.forEach(({ from, body, sentences, wording }, i) => {
     if (from === "traveller") previous = ids[i];
     if (!sentences) return;
     const resolved = sentences.map((sentence) => ({
@@ -77,8 +81,9 @@ export async function appendMessages(
       factsKey: factsKeyOf(resolved),
       sentences: resolved,
       shown: body.text,
-      wordedBy: "template",
-      fallback: "off",
+      ...(wording && "model" in wording
+        ? { wordedBy: "model", fallback: null, ...wording }
+        : { wordedBy: "template", fallback: wording?.fallback ?? "off" }),
     });
   });
   await recordWordings(client, tripId, records);
