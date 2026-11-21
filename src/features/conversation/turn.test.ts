@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { fillAll } from "@/lib/wording";
+
 import type { PlanDay } from "@/features/itinerary/contracts";
 import type { CommitmentDto, TripFacts } from "@/features/trips/contracts";
 
@@ -95,7 +97,7 @@ const days: PlanDay[] = [1, 2, 3].map((number) => ({
   ],
 }));
 
-const run = (intent: Intent, over: Partial<DecideInput> = {}) =>
+const runFull = (intent: Intent, over: Partial<DecideInput> = {}) =>
   decide({
     intent,
     waiting: null,
@@ -105,6 +107,40 @@ const run = (intent: Intent, over: Partial<DecideInput> = {}) =>
     limited: false,
     ...over,
   });
+/** The decision without its sentences, which have their own test. */
+const run = (intent: Intent, over: Partial<DecideInput> = {}) => {
+  const { sentences, ...decision } = runFull(intent, over);
+  void sentences;
+  return decision;
+};
+
+describe("what the agent says", () => {
+  it("is the fill of named sentences, each fact with a source", () => {
+    const decision = runFull(
+      { type: "facts", adults: 2, purpose: "{a gap}" },
+      { waiting: QUESTIONS.pace },
+    );
+    expect(decision.says).toBe(fillAll(decision.sentences));
+    expect(decision.sentences[0]).toMatchObject({
+      template: "facts-saved",
+      version: 1,
+    });
+    expect(decision.sentences[0].facts[0].source).toEqual({
+      type: "traveller",
+      ref: "message:previous",
+    });
+    expect(decision.says).toContain("the trip is for: {a gap}");
+    const taste = runFull({
+      type: "taste",
+      topic: "pace",
+      values: ["relaxed"],
+    });
+    expect(taste.sentences[0].facts[0].source).toEqual({
+      type: "traveller",
+      ref: "trip-taste:pace",
+    });
+  });
+});
 
 describe("tapped choices", () => {
   it("become a taste answer made of the question's own values", () => {
@@ -601,7 +637,7 @@ describe("an answer to why this trip is different", () => {
   it("marks the trip as different with the purpose tapped", () => {
     expect(
       decideDifference(question, { type: "answer", values: ["Honeymoon"] }),
-    ).toEqual({
+    ).toMatchObject({
       said: "Yes, it is a honeymoon",
       change: { type: "difference", because: "Honeymoon" },
       says: "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
@@ -686,10 +722,12 @@ describe("saying when a topic becomes ready", () => {
       trip: { facts: before.facts, commitments: [] },
       ...over,
     });
-    return readinessNote(
-      readiness(before),
-      readiness(stateAfter(before, change)),
-      change,
+    return fillAll(
+      readinessNote(
+        readiness(before),
+        readiness(stateAfter(before, change)),
+        change,
+      ),
     );
   };
 

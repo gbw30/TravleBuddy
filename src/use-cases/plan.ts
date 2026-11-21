@@ -79,13 +79,13 @@ import {
 } from "@/features/trips";
 import type { CommitmentDto, TripDetail } from "@/features/trips/contracts";
 import { db } from "@/lib/db";
-import type { Sentence } from "@/lib/wording";
+import { computed, fillAll, sentence, type Sentence } from "@/lib/wording";
 
 import { shownWords } from "./wording";
 
 import { briefOf } from "./brief";
 import { buildReportOf } from "./build-report";
-import type { PlanSnapshot } from "./plan-snapshot";
+import type { BuildReport, PlanSnapshot } from "./plan-snapshot";
 import { Refusal, runTripAction, type TripActionOutcome } from "./trip-action";
 
 // Reading and changing a trip's plan spans four services: Trips holds the
@@ -479,15 +479,39 @@ async function proposalFor(
   // In guided planning a new proposal joins the conversation, naming its
   // slot with the day and the time (TB-AGT-09, TB-AGT-13).
   if (trip.planningMode === "GUIDED" && fresh.length > 0) {
+    const slot = { slot: entry.slotId };
+    const offer = [
+      sentence(
+        "proposal-offer",
+        "For day {day}, {part} at {start}, I suggest {choice}.",
+        [
+          computed("day", String(day.day), "slot-of-plan", slot),
+          computed(
+            "part",
+            SLOT_WORDS[entry.kind].toLowerCase(),
+            "slot-of-plan",
+            slot,
+          ),
+          computed("start", entry.start, "slot-of-plan", slot),
+          computed(
+            "choice",
+            set.cards.length === 1 ? "this" : "one of these",
+            "cards-offered",
+            { count: set.cards.length },
+          ),
+        ],
+      ),
+    ];
     await appendMessages(db, trip.id, [
       {
         from: "agent",
         body: {
           kind: "proposal",
           slotId: entry.slotId,
-          text: `For day ${day.day}, ${SLOT_WORDS[entry.kind].toLowerCase()} at ${entry.start}, I suggest ${set.cards.length === 1 ? "this" : "one of these"}.`,
+          text: fillAll(offer),
           placeNames: set.cards.map((card) => card.name.slice(0, 160)),
         },
+        sentences: offer,
       },
     ]);
   }
@@ -669,17 +693,36 @@ async function readPlan(
       : null,
     canUndo: saved.canUndo,
     build: progress
-      ? buildReportOf({
-          view,
-          places: context.places,
-          progress,
-          style: briefOf(trip, taste, personal).style,
-          dietaryRules: limits.dietaryRules,
-          cities: trip.facts.cities.map(({ city }) => city.name),
-          decided: trip.commitments.length,
-        })
+      ? await recordedReport(
+          trip.id,
+          buildReportOf({
+            view,
+            places: context.places,
+            progress,
+            style: briefOf(trip, taste, personal).style,
+            dietaryRules: limits.dietaryRules,
+            dietaryEntries: limits.entryIds.dietaryRules,
+            cities: trip.facts.cities.map(({ city }) => city.name),
+            decided: trip.commitments.length,
+          }),
+        )
       : null,
   };
+}
+
+/** The report, once what it says is recorded with its sentences, line by line. */
+async function recordedReport(
+  tripId: string,
+  { report, sentences }: ReturnType<typeof buildReportOf>,
+): Promise<BuildReport> {
+  await shownWords(
+    tripId,
+    sentences.map((made, i) => ({
+      subject: `report:${i + 1}`,
+      sentences: made,
+    })),
+  );
+  return report;
 }
 
 /** A shelved place that fits the open slot in focus, for the agent to offer (TB-ITN-14). */

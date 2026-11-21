@@ -1,3 +1,11 @@
+import {
+  computed,
+  fillAll,
+  fromTraveller,
+  sentence,
+  type Fact,
+  type Sentence,
+} from "@/lib/wording";
 import type { PlanDay } from "@/features/itinerary/contracts";
 import { cityLabel, type City } from "@/features/places/contracts";
 import {
@@ -16,6 +24,7 @@ import type {
   TasteTopic,
   TripAnswer,
 } from "./contracts";
+import { PREVIOUS } from "./conversation-store";
 import { readAnswerByRule } from "./read-answer";
 import {
   allowedValues,
@@ -45,8 +54,10 @@ export type Change =
 
 export type Decision = {
   change: Change;
-  /** What the agent says back. */
+  /** What the agent says back: the filled sentences. */
   says: string;
+  /** The named templates `says` is made of, with the facts in their gaps. */
+  sentences: Sentence[];
   /**
    * Something worth remembering for every trip. The agent asks, and it is
    * saved only when the traveller says yes (TB-MEM-07).
@@ -70,6 +81,21 @@ export type DecideInput = {
   /** The dietary rules the personal profile already holds. */
   knownRules?: string[];
 };
+
+/** A value the traveller gave in the message this turn answers. */
+const told = (gap: string, value: string): Fact =>
+  fromTraveller(gap, value, PREVIOUS);
+/** An answer saved to the trip's taste. */
+const tasteOf = (gap: string, value: string, topic: string): Fact =>
+  fromTraveller(gap, value, `trip-taste:${topic}`);
+const reply = (...sentences: Sentence[]) => ({
+  says: fillAll(sentences),
+  sentences,
+});
+/** A sentence with no fact in it: fixed words. */
+const fixed = (template: string, text: string) => sentence(template, text);
+const problem = (template: string, text: string, why: string, issue: string) =>
+  sentence(template, text, [computed("reason", why, "validation", { issue })]);
 
 const list = (items: string[]) =>
   items.length < 3
@@ -143,22 +169,44 @@ export function nightsWithoutStay(trip: Trip): number | null {
   return open;
 }
 
-function stayNote(trip: Trip): string {
+function stayNote(trip: Trip): Sentence[] {
   const open = nightsWithoutStay(trip);
-  if (open === null) return "";
+  if (open === null) return [];
   return open === 0
-    ? " Every night has a booked stay."
-    : ` ${count(open, "night has", "nights have")} no booked stay yet. Add a stay under Already decided when you book one.`;
+    ? [fixed("stay-all-booked", "Every night has a booked stay.")]
+    : [
+        sentence("stay-nights-open", "{nights} no booked stay yet.", [
+          computed(
+            "nights",
+            count(open, "night has", "nights have"),
+            "nights-without-stay",
+            { open },
+          ),
+        ]),
+        fixed(
+          "stay-add",
+          "Add a stay under Already decided when you book one.",
+        ),
+      ];
 }
 
-const nothing = (says: string): Decision => ({ change: null, says });
+const nothing = (...sentences: Sentence[]): Decision => ({
+  change: null,
+  ...reply(...sentences),
+});
 
 function skip(waiting: Question | null): Decision {
-  if (!waiting) return nothing("There is no question waiting just now.");
+  if (!waiting) {
+    return nothing(
+      fixed("skip-none", "There is no question waiting just now."),
+    );
+  }
+  // The question's own words for a skip are fixed text.
+  const skipped = fixed(`skip-${waiting.topic}`, waiting.skipSays);
   if (waiting.stage === "facts") {
     return {
       change: { type: "skip_fact", topic: waiting.topic as FactTopic },
-      says: waiting.skipSays,
+      ...reply(skipped),
     };
   }
   const topic = waiting.topic as TasteTopic;
@@ -171,7 +219,21 @@ function skip(waiting: Question | null): Decision {
         topic,
         answer: { values: waiting.remembered, source: "default" },
       },
-      says: `I will go with what I remember: ${list(labelsOf(QUESTIONS[topic], waiting.remembered)).toLowerCase()}.`,
+      ...reply(
+        sentence(
+          "skip-remembered",
+          "I will go with what I remember: {answers}.",
+          [
+            tasteOf(
+              "answers",
+              list(
+                labelsOf(QUESTIONS[topic], waiting.remembered),
+              ).toLowerCase(),
+              topic,
+            ),
+          ],
+        ),
+      ),
     };
   }
   return {
@@ -180,7 +242,7 @@ function skip(waiting: Question | null): Decision {
       topic,
       answer: { values: TASTE_DEFAULTS[topic], source: "default" },
     },
-    says: waiting.skipSays,
+    ...reply(skipped),
   };
 }
 
@@ -240,29 +302,49 @@ function facts(
       ([key]) => key !== "type" && key !== "cities",
     ),
   );
-  const notes: string[] = [];
+  const notes: Sentence[] = [];
 
   if (named?.length) {
     // The conversation only sets the cities of a trip that has none: saving
     // them replaces the whole list, and a typed "also Kyoto" must not do that.
     if (trip.facts.cities.length > 0) {
       notes.push(
-        "The cities are already set. You can change them under the facts.",
+        fixed(
+          "facts-cities-set",
+          "The cities are already set. You can change them under the facts.",
+        ),
       );
     } else if (cities === "unavailable") {
       notes.push(
-        "I cannot look up cities right now. Please add them under the facts.",
+        fixed(
+          "facts-cities-unavailable",
+          "I cannot look up cities right now. Please add them under the facts.",
+        ),
       );
     } else {
       const missing = named.filter((_, index) => !cities[index]);
       if (missing.length > 0) {
         notes.push(
-          `I could not find ${list(missing.map((name) => `"${name}"`))}. Please pick ${missing.length > 1 ? "them" : "it"} under the facts.`,
+          sentence(
+            "facts-cities-not-found",
+            "I could not find {names}. Please pick {them} under the facts.",
+            [
+              told("names", list(missing.map((name) => `"${name}"`))),
+              computed("them", missing.length > 1 ? "them" : "it", "plural", {
+                count: missing.length,
+              }),
+            ],
+          ),
         );
       } else {
         input.cities = cities.map((city) => ({ city: city!, nights: null }));
         if (cities.length > 1) {
-          notes.push("Set the nights in each city under the facts.");
+          notes.push(
+            fixed(
+              "facts-cities-nights",
+              "Set the nights in each city under the facts.",
+            ),
+          );
         }
       }
     }
@@ -272,7 +354,7 @@ function facts(
     if (!(input.budgetCurrency ?? trip.facts.budgetCurrency)) {
       delete input.budgetAmount;
       delete input.budgetBasis;
-      notes.push("Which currency is that budget in?");
+      notes.push(fixed("facts-currency", "Which currency is that budget in?"));
     } else {
       input.budgetBasis ??= trip.facts.budgetBasis ?? "TRIP";
     }
@@ -286,22 +368,40 @@ function facts(
     delete input.startDate;
     delete input.endDate;
     notes.push(
-      "Those dates would end the trip before it starts. Please give me both dates.",
+      fixed(
+        "facts-dates-backwards",
+        "Those dates would end the trip before it starts. Please give me both dates.",
+      ),
     );
   }
 
   if (Object.keys(input).length === 0) {
-    return nothing(notes.join(" ") || "I did not find a fact in that.");
+    return nothing(
+      ...(notes.length > 0
+        ? notes
+        : [fixed("facts-none", "I did not find a fact in that.")]),
+    );
   }
   const checked = tripFactsSchema.safeParse(input);
   if (!checked.success) {
+    const [issue] = checked.error.issues;
     return nothing(
-      `That does not fit: ${checked.error.issues[0].message} You can set it under the facts.`,
+      problem(
+        "facts-invalid",
+        "That does not fit: {reason} You can set it under the facts.",
+        issue.message,
+        issue.path.join("."),
+      ),
     );
   }
   return {
     change: { type: "facts", facts: checked.data },
-    says: [`Got it: ${summary(checked.data)}.`, ...notes].join(" "),
+    ...reply(
+      sentence("facts-saved", "Got it: {summary}.", [
+        told("summary", summary(checked.data)),
+      ]),
+      ...notes,
+    ),
   };
 }
 
@@ -309,19 +409,38 @@ function commitment(intent: Extract<Intent, { type: "commitment" }>): Decision {
   // The schema drops the intent's own "type" field.
   const checked = commitmentInputSchema.safeParse(intent);
   if (!checked.success) {
+    const [issue] = checked.error.issues;
     return nothing(
-      `I could not add that: ${checked.error.issues[0].message} You can add it under Already decided.`,
+      problem(
+        "commitment-invalid",
+        "I could not add that: {reason} You can add it under Already decided.",
+        issue.message,
+        issue.path.join("."),
+      ),
     );
   }
   const { title, date, startTime } = checked.data;
   return {
     change: { type: "commitment", commitment: checked.data },
-    says:
-      `Added to what is already decided: ${title}` +
-      (date ? ` on ${day(date)}` : "") +
-      (startTime ? ` at ${startTime}` : "") +
-      "." +
-      (date ? "" : " It has no day yet. Set one under Already decided."),
+    ...reply(
+      sentence(
+        `commitment-added${date ? "-day" : ""}${startTime ? "-time" : ""}`,
+        `Added to what is already decided: {title}${date ? " on {day}" : ""}${startTime ? " at {time}" : ""}.`,
+        [
+          told("title", title),
+          ...(date ? [told("day", day(date))] : []),
+          ...(startTime ? [told("time", startTime)] : []),
+        ],
+      ),
+      ...(date
+        ? []
+        : [
+            fixed(
+              "commitment-no-day",
+              "It has no day yet. Set one under Already decided.",
+            ),
+          ]),
+    ),
   };
 }
 
@@ -331,11 +450,22 @@ function goTo(
 ): Decision {
   if (days.length === 0) {
     return nothing(
-      "I cannot lay out the days yet. I need to know where you are going and when.",
+      fixed(
+        "go-to-no-days",
+        "I cannot lay out the days yet. I need to know where you are going and when.",
+      ),
     );
   }
   const wanted = days.find((item) => item.day === intent.day);
-  if (!wanted) return nothing(`This trip has ${count(days.length, "day")}.`);
+  if (!wanted) {
+    return nothing(
+      sentence("go-to-no-such-day", "This trip has {days}.", [
+        computed("days", count(days.length, "day"), "days-in-plan", {
+          days: days.length,
+        }),
+      ]),
+    );
+  }
   const slots = wanted.entries.filter(
     (entry) => entry.type === "open" || entry.type === "place",
   );
@@ -343,10 +473,24 @@ function goTo(
     (intent.part && slots.find((entry) => entry.kind === intent.part)) ||
     slots.find((entry) => entry.type === "open") ||
     slots[0];
-  if (!slot) return nothing(`Day ${wanted.day} has no slot to fill.`);
+  const dayFact = computed("day", String(wanted.day), "day-of-plan", {
+    day: wanted.day,
+  });
+  if (!slot) {
+    return nothing(
+      sentence("go-to-full", "Day {day} has no slot to fill.", [dayFact]),
+    );
+  }
   return {
     change: { type: "go_to", slotId: slot.slotId },
-    says: `Day ${wanted.day} it is${intent.part ? `, ${intent.part}` : ""}.`,
+    ...reply(
+      intent.part
+        ? sentence("go-to-part", "Day {day} it is, {part}.", [
+            dayFact,
+            told("part", intent.part),
+          ])
+        : sentence("go-to", "Day {day} it is.", [dayFact]),
+    ),
   };
 }
 
@@ -371,9 +515,18 @@ export function decide(input: DecideInput): Decision {
           topic: intent.topic,
           answer: { values: intent.values, source: "told" },
         },
-        says:
-          `Noted: ${list(labelsOf(QUESTIONS[intent.topic], intent.values)).toLowerCase()}.` +
-          (intent.topic === "stay" ? stayNote(trip) : ""),
+        ...reply(
+          sentence("taste-noted", "Noted: {answers}.", [
+            tasteOf(
+              "answers",
+              list(
+                labelsOf(QUESTIONS[intent.topic], intent.values),
+              ).toLowerCase(),
+              intent.topic,
+            ),
+          ]),
+          ...(intent.topic === "stay" ? stayNote(trip) : []),
+        ),
         ...(rules.length > 0
           ? {
               offer: { texts: labelsOf(QUESTIONS.food, rules), hard: true },
@@ -384,7 +537,11 @@ export function decide(input: DecideInput): Decision {
     case "statement":
       return {
         change: null,
-        says: `You said: “${intent.text}”.`,
+        ...reply(
+          sentence("statement-said", "You said: “{text}”.", [
+            told("text", intent.text),
+          ]),
+        ),
         offer: { texts: [intent.text], hard: intent.rule ?? false },
       };
     case "facts":
@@ -395,12 +552,31 @@ export function decide(input: DecideInput): Decision {
       return goTo(intent, input.days);
     case "none": {
       const ways = waiting
-        ? "You can tap a choice, type a short answer, or skip the question."
-        : "You can change the facts, what is already decided and the plan on this page.";
+        ? fixed(
+            "ways-waiting",
+            "You can tap a choice, type a short answer, or skip the question.",
+          )
+        : fixed(
+            "ways-free",
+            "You can change the facts, what is already decided and the plan on this page.",
+          );
+      if (limited) {
+        return nothing(
+          fixed(
+            "limited-mode",
+            "I am in a limited mode and can only read simple answers.",
+          ),
+          ways,
+        );
+      }
       return nothing(
-        limited
-          ? `I am in a limited mode and can only read simple answers. ${ways}`
-          : `I did not catch that. ${waiting ? ways : "You can tell me a fact about the trip, something you have booked, or a day to work on."}`,
+        fixed("not-understood", "I did not catch that."),
+        waiting
+          ? ways
+          : fixed(
+              "ways-tell",
+              "You can tell me a fact about the trip, something you have booked, or a day to work on.",
+            ),
       );
     }
   }
@@ -408,6 +584,7 @@ export function decide(input: DecideInput): Decision {
 
 /** The question that goes with an offer, said last in the agent's reply. */
 export const OFFER_ASKS = "Should I remember that for every trip?";
+export const OFFER_ASK = fixed("offer-ask", OFFER_ASKS);
 
 const NOT_DIFFERENT =
   /^(no|nope|not really|it is not|it isn'?t|same as usual|as usual|just this once|ordinary)\b/i;
@@ -445,10 +622,17 @@ export function decideDifference(
   return {
     said,
     change: { type: "difference", because },
-    says:
+    ...reply(
       because === null
-        ? "Understood. I will treat it as an ordinary trip."
-        : "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
+        ? fixed(
+            "difference-ordinary",
+            "Understood. I will treat it as an ordinary trip.",
+          )
+        : fixed(
+            "difference-different",
+            "Understood: this trip is different. I will plan it your way, and I will not take it as your usual.",
+          ),
+    ),
   };
 }
 
@@ -496,15 +680,32 @@ export function readinessNote(
   before: Readiness,
   after: Readiness,
   change: Change,
-): string {
+): Sentence[] {
   if (!before.sights && after.sights) {
-    return "I know enough to start suggesting places for your days.";
+    return [
+      fixed(
+        "ready-sights",
+        "I know enough to start suggesting places for your days.",
+      ),
+    ];
   }
   if (!before.meals && after.meals) {
-    return "I think I know enough to suggest places to eat.";
+    return [
+      fixed("ready-meals", "I think I know enough to suggest places to eat."),
+    ];
   }
   if (!after.sights && change?.type === "facts") {
-    return `Before I can suggest places I still need ${list(after.needs)}.`;
+    return [
+      sentence(
+        "needs-more",
+        "Before I can suggest places I still need {needs}.",
+        [
+          computed("needs", list(after.needs), "readiness", {
+            needs: after.needs.join(","),
+          }),
+        ],
+      ),
+    ];
   }
-  return "";
+  return [];
 }

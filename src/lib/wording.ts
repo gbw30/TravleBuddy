@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 // A sentence is a named template with a gap for every value that is a fact,
 // and each fact names where it comes from. What the traveller is shown is
 // recorded as these sentences, so a reworded text can be checked against the
@@ -55,3 +57,66 @@ export function fill(sentence: Sentence): string {
 
 export const fillAll = (sentences: Sentence[]): string =>
   sentences.map(fill).join(" ");
+
+export const sentence = (
+  template: string,
+  text: string,
+  facts: Fact[] = [],
+  version = 1,
+): Sentence => ({ template, version, text, facts });
+
+export const fromTraveller = (
+  gap: string,
+  value: string,
+  ref: string,
+): Fact => ({
+  gap,
+  value,
+  source: { type: "traveller", ref },
+});
+
+export const fromPlace = (
+  gap: string,
+  value: string,
+  place: { id: string; fetchedAt: string | null },
+  tag: string | null,
+): Fact => ({
+  gap,
+  value,
+  source: {
+    type: "place",
+    placeId: place.id,
+    tag,
+    fetchedAt: place.fetchedAt,
+  },
+});
+
+export const computed = (
+  gap: string,
+  value: string,
+  name: string,
+  inputs: Record<string, string | number> = {},
+): Fact => ({ gap, value, source: { type: "computation", name, inputs } });
+
+/** The same templates, versions, fact values and sources give the same key. */
+export const factsKeyOf = (sentences: Sentence[]): string =>
+  createHash("sha256")
+    .update(
+      JSON.stringify(
+        sentences.map(({ template, version, facts }) => [
+          template,
+          version,
+          facts,
+        ]),
+      ),
+    )
+    .digest("hex");
+
+/** "profile:<entryId>" for a value remembered in the profile, else the trip's own answers. */
+export const refOf = (entry: string | undefined, topic: string) =>
+  entry ? `profile:${entry}` : `trip-taste:${topic}`;
+/** One ref for several values, each from its own source; the distinct refs, comma separated. */
+export const refsOf = (entries: (string | undefined)[], topic: string) =>
+  entries.length === 0
+    ? refOf(undefined, topic)
+    : [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { fillAll, type Sentence } from "@/lib/wording";
 import type { TripDetail, TripFacts } from "@/features/trips/contracts";
 
 // The stores, the model and the ledger are stand-ins. The script, the rules
@@ -354,6 +355,7 @@ describe("remembering something for every trip", () => {
         text: "Noted: vegetarian. I think I know enough to suggest places to eat. Should I remember that for every trip?",
         remember: { texts: ["Vegetarian"], hard: true },
       },
+      sentences: expect.any(Array),
     });
     expect(mocks.tellProfileIn).not.toHaveBeenCalled();
   });
@@ -653,6 +655,13 @@ describe("a tapped answer", () => {
     expect(saved().at(-1)?.[2]).toBe(
       "Noted: relaxed. The plan now follows a relaxed pace.",
     );
+    // The reply carries the sentences it was made of, for its private record.
+    const [, , agent] = mocks.appendMessages.mock.calls.at(-1)?.[2] ?? [];
+    expect(agent.sentences.map((item: Sentence) => item.template)).toEqual([
+      "taste-noted",
+      "pace-follows",
+    ]);
+    expect(fillAll(agent.sentences)).toBe(agent.body.text);
     await takeTurn({ userId: "user-1", tripId: "trip-1", control, turn });
     expect(saved().at(-1)?.[2]).toBe("Noted: relaxed.");
   });

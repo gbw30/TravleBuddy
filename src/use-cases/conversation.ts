@@ -8,7 +8,7 @@ import {
   intentOfTap,
   labelsOf,
   lastQuestionTopic,
-  OFFER_ASKS,
+  OFFER_ASK,
   readLastMessage,
   modelCall,
   nextQuestion,
@@ -36,6 +36,7 @@ import type {
   TurnResult,
 } from "@/features/conversation/contracts";
 import { addAiSpend, aiShareLeft } from "@/features/fair-use";
+import { fillAll, fromTraveller, sentence } from "@/lib/wording";
 import { PACES } from "@/features/itinerary/contracts";
 import { TOPIC_NAMES } from "@/features/memory/contracts";
 import {
@@ -103,6 +104,12 @@ async function openModel(now: Date): Promise<ModelCall | null> {
     ? call
     : null;
 }
+
+/** A reply of one fixed sentence. */
+const reply = (template: string, text: string) => ({
+  says: text,
+  sentences: [sentence(template, text)],
+});
 
 /**
  * What a typed message means. The model reads it when it can; otherwise, and
@@ -193,7 +200,11 @@ async function prepare(
     }
     return {
       said: "Yes, remember it for every trip",
-      decision: { change: { type: "remember", ...last.remember }, says: "" },
+      decision: {
+        change: { type: "remember", ...last.remember },
+        says: "",
+        sentences: [],
+      },
     };
   }
   // "Is this trip different?" is answered by a tapped purpose, a skip, or
@@ -243,10 +254,12 @@ async function prepare(
       said: labelsOf(waiting, ["something"])[0],
       decision: {
         change: { type: "skip_fact", topic: "decided" },
-        says:
-          aiMode() === "on"
-            ? "Add it under Already decided, or tell me here what it is, with its day and time."
-            : "Add it under Already decided.",
+        ...(aiMode() === "on"
+          ? reply(
+              "decided-add-or-tell",
+              "Add it under Already decided, or tell me here what it is, with its day and time.",
+            )
+          : reply("decided-add", "Add it under Already decided.")),
       },
     };
   }
@@ -326,9 +339,12 @@ export async function takeTurn(input: {
         change,
       );
       // An offer's question comes last, after anything else the agent says.
-      let says = [decision.says, note, decision.offer ? OFFER_ASKS : ""]
-        .filter(Boolean)
-        .join(" ");
+      // The sentences the reply is made of, which are also its record.
+      let sentences = [
+        ...decision.sentences,
+        ...note,
+        ...(decision.offer ? [OFFER_ASK] : []),
+      ];
       if (change?.type === "facts") {
         const saved = await saveTripFacts(tx, userId, tripId, change.facts);
         if (typeof saved === "string") return saved;
@@ -342,7 +358,11 @@ export async function takeTurn(input: {
           pace &&
           (await setPlanPace(tx, trip, userId, pace))
         ) {
-          says += ` The plan now follows a ${pace} pace.`;
+          sentences.push(
+            sentence("pace-follows", "The plan now follows a {pace} pace.", [
+              fromTraveller("pace", pace, "trip-taste:pace"),
+            ]),
+          );
         }
       }
       if (change?.type === "remember") {
@@ -362,10 +382,33 @@ export async function takeTurn(input: {
         const entries = [...byTopic].map(
           ([name, labels]) => `${name}: ${labels.join(" and ")}`,
         );
-        says =
+        sentences =
           entries.length > 0
-            ? `I will remember that for every trip (${entries.join("; ")}).`
-            : "Noted for every trip. It does not affect suggestions yet.";
+            ? [
+                sentence(
+                  "remembered",
+                  "I will remember that for every trip ({entries}).",
+                  [
+                    fromTraveller(
+                      "entries",
+                      entries.join("; "),
+                      filed
+                        .flatMap((item) =>
+                          item.type === "entry"
+                            ? [`profile:${item.entry.id}`]
+                            : [],
+                        )
+                        .join(","),
+                    ),
+                  ],
+                ),
+              ]
+            : [
+                sentence(
+                  "remembered-note",
+                  "Noted for every trip. It does not affect suggestions yet.",
+                ),
+              ];
       }
       if (change?.type === "difference") {
         await saveTripDifference(tx, tripId, change.because);
@@ -389,8 +432,12 @@ export async function takeTurn(input: {
             (clash) => clash.first === fresh.id || clash.second === fresh.id,
           );
         if (clashes) {
-          says +=
-            " It overlaps with something else you have decided. Have a look under Already decided.";
+          sentences.push(
+            sentence(
+              "commitment-clash",
+              "It overlaps with something else you have decided. Have a look under Already decided.",
+            ),
+          );
         }
       }
 
@@ -409,6 +456,7 @@ export async function takeTurn(input: {
               },
             ]
           : [];
+      const says = fillAll(sentences);
       await appendMessages(tx, tripId, [
         ...asked,
         { from: "traveller", body: { kind: "text", text: said } },
@@ -417,6 +465,7 @@ export async function takeTurn(input: {
           body: decision.offer
             ? { kind: "offer", text: says, remember: decision.offer }
             : { kind: "text", text: says },
+          sentences,
         },
       ]);
       return {

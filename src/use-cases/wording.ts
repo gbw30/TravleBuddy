@@ -1,22 +1,6 @@
-import { createHash } from "node:crypto";
-
 import { recordWordings } from "@/features/conversation";
 import { db } from "@/lib/db";
-import { fill, type Sentence } from "@/lib/wording";
-
-/** The same templates, versions, fact values and sources give the same key. */
-export const factsKeyOf = (sentences: Sentence[]): string =>
-  createHash("sha256")
-    .update(
-      JSON.stringify(
-        sentences.map(({ template, version, facts }) => [
-          template,
-          version,
-          facts,
-        ]),
-      ),
-    )
-    .digest("hex");
+import { factsKeyOf, fill, type Sentence } from "@/lib/wording";
 
 /**
  * The words to show for each subject, and the record of them. With the

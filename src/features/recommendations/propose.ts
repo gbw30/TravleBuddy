@@ -16,7 +16,17 @@ import {
   type TravelMeans,
 } from "@/features/places/contracts";
 
-import { fillAll, type Fact, type Sentence } from "@/lib/wording";
+import {
+  computed,
+  fillAll,
+  type Fact,
+  fromPlace,
+  fromTraveller,
+  refOf,
+  refsOf,
+  sentence,
+  type Sentence,
+} from "@/lib/wording";
 
 import type { CardDto, CardSet } from "./contracts";
 
@@ -243,46 +253,6 @@ const words = (items: string[]) =>
   items.length < 3
     ? items.join(" and ")
     : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
-
-const sentence = (
-  template: string,
-  text: string,
-  facts: Fact[] = [],
-): Sentence => ({ template, version: 1, text, facts });
-const fromTraveller = (gap: string, value: string, ref: string): Fact => ({
-  gap,
-  value,
-  source: { type: "traveller", ref },
-});
-/** "profile:<entryId>" for a value remembered in the profile, else the trip's own answers. */
-const refOf = (entry: string | undefined, topic: string) =>
-  entry ? `profile:${entry}` : `trip-taste:${topic}`;
-/** One ref for several values, each from its own source; the distinct refs, comma separated. */
-const refsOf = (entries: (string | undefined)[], topic: string) =>
-  entries.length === 0
-    ? refOf(undefined, topic)
-    : [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");
-const fromPlace = (
-  gap: string,
-  value: string,
-  place: PlaceDto,
-  tag: string | null,
-): Fact => ({
-  gap,
-  value,
-  source: {
-    type: "place",
-    placeId: place.id,
-    tag,
-    fetchedAt: place.fetchedAt,
-  },
-});
-const computed = (
-  gap: string,
-  value: string,
-  name: string,
-  inputs: Record<string, string | number> = {},
-): Fact => ({ gap, value, source: { type: "computation", name, inputs } });
 
 /**
  * What about the traveller the place rests on (TB-RSN-02). It comes from a
