@@ -8,8 +8,15 @@ import {
   readTypedInput,
 } from "@/features/conversation/model/read-typed";
 import type { Intent } from "@/features/conversation/contracts";
+import {
+  wordSentences,
+  WORDING_BUDGET_MS,
+} from "@/features/conversation/model/word";
+import { checkWording } from "@/features/conversation/model/word-check";
+import { fill } from "@/lib/wording";
 
 import { CASES, type Case, type Category } from "./cases";
+import { WORDING_CASES } from "./wording-cases";
 
 // Measures how well the AI model reads typed messages into intents, through
 // the same function production calls (readTypedInput). Each case in cases.ts
@@ -17,6 +24,7 @@ import { CASES, type Case, type Category } from "./cases";
 //
 //   npx tsx scripts/model-eval/run.ts --dry-run          (no network)
 //   ANTHROPIC_API_KEY=... npx tsx scripts/model-eval/run.ts [--model <id>]
+//   npx tsx scripts/model-eval/run.ts --wording [--dry-run]   (rewording and its check)
 //
 // The dry run answers every case with its expected intent, to prove the
 // grading and report work. A real run refuses to start when its estimate is
@@ -67,7 +75,91 @@ function standIn(c: Case): ModelCall {
     }) as Awaited<ReturnType<ModelCall>>;
 }
 
+/** The wording evaluation: each case is worded once and put through the check. */
+async function wordingMain() {
+  const real = dry ? null : modelCall();
+  if (!dry && !real) {
+    console.error("No ANTHROPIC_API_KEY (or AI_MODE=off). Use --dry-run.");
+    process.exit(1);
+  }
+  const outFile = "docs/quality/model-eval-wording.md";
+  const usage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+  const rows: { name: string; kind: string; outcome: string; ok: boolean }[] =
+    [];
+  for (const c of WORDING_CASES) {
+    const call: ModelCall =
+      real ??
+      (async () =>
+        ({
+          stop_reason: "end_turn",
+          content: [
+            { type: "text", text: JSON.stringify({ versions: [c.dry] }) },
+          ],
+          usage: { input_tokens: 400, output_tokens: 40 },
+        }) as Awaited<ReturnType<ModelCall>>);
+    const wording = await wordSentences(
+      [c.sentences],
+      call,
+      // A real run is not a reader waiting: it gets longer than the budget.
+      AbortSignal.timeout(WORDING_BUDGET_MS * 4),
+    );
+    if (wording.usage) {
+      usage.inputTokens += wording.usage.inputTokens;
+      usage.outputTokens += wording.usage.outputTokens;
+    }
+    if (wording.status !== "worded") {
+      rows.push({
+        name: c.name,
+        kind: c.kind,
+        outcome: wording.status,
+        ok: false,
+      });
+      continue;
+    }
+    const versions = wording.versions[0];
+    const check = c.sentences
+      .map(({ text }, j) => checkWording(text, versions[j]))
+      .find((found) => found !== null);
+    // An accepted version must also fill: its gaps all have facts.
+    if (!check)
+      c.sentences.forEach((made, j) => fill({ ...made, text: versions[j] }));
+    rows.push({
+      name: c.name,
+      kind: c.kind,
+      outcome: check ?? "accepted",
+      // A dry run grades the check against what it must say; a real run only
+      // reports what the model did.
+      ok: dry ? (check ?? null) === c.expect : true,
+    });
+  }
+  const accepted = rows.filter((r) => r.outcome === "accepted").length;
+  const tempt = rows.filter((r) => r.kind === "tempt");
+  const report = [
+    `# Wording evaluation${dry ? " (dry run)" : ""}`,
+    "",
+    `Model: ${dry ? "stand-in" : MODEL}. Cases: ${rows.length}. Accepted by the check: ${accepted} (${Math.round((100 * accepted) / rows.length)}%).`,
+    `Tempting cases: ${tempt.length}; accepted: ${tempt.filter((r) => r.outcome === "accepted").length}.`,
+    `Tokens: ${usage.inputTokens} in, ${usage.outputTokens} out. Cost: $${costUsd(usage).toFixed(4)}.`,
+    "",
+    "| Case | Kind | Check says | As expected |",
+    "| --- | --- | --- | --- |",
+    ...rows.map(
+      (r) =>
+        `| ${r.name} | ${r.kind} | ${r.outcome} | ${r.ok ? "yes" : "NO"} |`,
+    ),
+    "",
+  ].join("\n");
+  console.log(report);
+  if (!dry) {
+    mkdirSync(dirname(outFile), { recursive: true });
+    writeFileSync(outFile, report);
+    console.log(`Wrote ${outFile}`);
+  }
+  process.exit(rows.some((r) => !r.ok) ? 1 : 0);
+}
+
 async function main() {
+  if (args.includes("--wording")) return wordingMain();
   const estimate = costUsd({
     inputTokens: ESTIMATE.inputTokens * CASES.length,
     outputTokens: ESTIMATE.outputTokens * CASES.length,

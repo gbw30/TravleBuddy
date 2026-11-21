@@ -6,11 +6,19 @@ import Anthropic from "@anthropic-ai/sdk";
 /** One request to the model. Tests pass a stand-in; nothing else builds one. */
 export type ModelCall = (
   request: Anthropic.MessageCreateParamsNonStreaming,
+  options?: { signal?: AbortSignal },
 ) => Promise<Anthropic.Message>;
 
 /** Off without a key, or when switched off. The monthly cap is checked by the caller. */
 export function aiMode(env: NodeJS.ProcessEnv = process.env): "on" | "off" {
   return env.AI_MODE !== "off" && env.ANTHROPIC_API_KEY ? "on" : "off";
+}
+
+/** Model wording of reasons is on only when the model is on and AI_WORDING=on. */
+export function wordingMode(
+  env: NodeJS.ProcessEnv = process.env,
+): "on" | "off" {
+  return aiMode(env) === "on" && env.AI_WORDING === "on" ? "on" : "off";
 }
 
 let client: Anthropic | undefined;
@@ -22,5 +30,5 @@ export function modelCall(): ModelCall | null {
   // retry, and let the conversation continue in its limited mode.
   client ??= new Anthropic({ timeout: 10_000, maxRetries: 1 });
   const { messages } = client;
-  return (request) => messages.create(request);
+  return (request, options) => messages.create(request, options);
 }

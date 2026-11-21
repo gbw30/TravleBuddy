@@ -17,7 +17,7 @@ export {
   usageMonth,
   type TokenUsage,
 } from "./model/budget";
-export { aiMode, modelCall, type ModelCall } from "./model/mode";
+export { aiMode, modelCall, wordingMode, type ModelCall } from "./model/mode";
 export { addUsage, readUsage } from "./model/usage-store";
 export {
   MODEL,
@@ -25,6 +25,12 @@ export {
   type ModelReading,
   type TypedInput,
 } from "./model/read-typed";
+export {
+  checkWording,
+  CLAIM_WORDS,
+  type WordingCheck,
+} from "./model/word-check";
+export { wordSentences, WORDING_BUDGET_MS, type Wording } from "./model/word";
 export { readAnswerByRule } from "./read-answer";
 export {
   allowedValues,

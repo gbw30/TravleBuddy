@@ -468,6 +468,7 @@ async function proposalFor(
       subject: `card:${entry.slotId}:${card.placeId}`,
       sentences: sentences[card.placeId],
     })),
+    { word: true },
   );
   set.cards = set.cards.map((card, i) => ({ ...card, reason: shown[i] }));
   const fresh = await recordPresented(
@@ -581,6 +582,7 @@ async function chosenCards(
   const shown = await shownWords(
     trip.id,
     ids.map((id) => words[id]),
+    { word: true },
   );
   ids.forEach((id, i) => (cards[id] = { ...cards[id], reason: shown[i] }));
   for (const item of view.shelf) {
