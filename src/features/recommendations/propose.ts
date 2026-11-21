@@ -22,6 +22,8 @@ import {
   type Fact,
   fromPlace,
   fromTraveller,
+  refOf,
+  refsOf,
   sentence,
   type Sentence,
 } from "@/lib/wording";
@@ -252,14 +254,6 @@ const words = (items: string[]) =>
     ? items.join(" and ")
     : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 
-/** "profile:<entryId>" for a value remembered in the profile, else the trip's own answers. */
-const refOf = (entry: string | undefined, topic: string) =>
-  entry ? `profile:${entry}` : `trip-taste:${topic}`;
-/** One ref for several values, each from its own source; the distinct refs, comma separated. */
-const refsOf = (entries: (string | undefined)[], topic: string) =>
-  entries.length === 0
-    ? refOf(undefined, topic)
-    : [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");
 /**
  * What about the traveller the place rests on (TB-RSN-02). It comes from a
  * factor that ranked the place when one applies; otherwise it says plainly

@@ -111,3 +111,12 @@ export const factsKeyOf = (sentences: Sentence[]): string =>
       ),
     )
     .digest("hex");
+
+/** "profile:<entryId>" for a value remembered in the profile, else the trip's own answers. */
+export const refOf = (entry: string | undefined, topic: string) =>
+  entry ? `profile:${entry}` : `trip-taste:${topic}`;
+/** One ref for several values, each from its own source; the distinct refs, comma separated. */
+export const refsOf = (entries: (string | undefined)[], topic: string) =>
+  entries.length === 0
+    ? refOf(undefined, topic)
+    : [...new Set(entries.map((entry) => refOf(entry, topic)))].join(",");

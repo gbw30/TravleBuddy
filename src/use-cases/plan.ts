@@ -701,6 +701,7 @@ async function readPlan(
             progress,
             style: briefOf(trip, taste, personal).style,
             dietaryRules: limits.dietaryRules,
+            dietaryEntries: limits.entryIds.dietaryRules,
             cities: trip.facts.cities.map(({ city }) => city.name),
             decided: trip.commitments.length,
           }),

@@ -362,6 +362,27 @@ describe("the report of a build", () => {
     ]);
   });
 
+  it("cites the profile entry of a remembered rule, and the trip's answer for one given for this trip", () => {
+    const refOfRules = (dietaryEntries: Record<string, string>) =>
+      worded({
+        view: view([[at("d1-lunch", "Garden Table")]]),
+        progress: progress({ built: { "d1-lunch": "Garden Table" } }),
+        dietaryRules: ["vegetarian", "halal"],
+        dietaryEntries,
+      })
+        .sentences.flat()
+        .flatMap((item) => item.facts)
+        .find((fact) => fact.gap === "rules")?.source;
+    expect(refOfRules({ vegetarian: "e1" })).toEqual({
+      type: "traveller",
+      ref: "profile:e1,trip-taste:food",
+    });
+    expect(refOfRules({})).toEqual({
+      type: "traveller",
+      ref: "trip-taste:food",
+    });
+  });
+
   it("says when it could not look up new places", () => {
     expect(
       report({ progress: progress({ unreachable: true }) }).unsure,

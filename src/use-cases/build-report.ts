@@ -12,6 +12,7 @@ import {
   fillAll,
   fromPlace,
   fromTraveller,
+  refsOf,
   sentence,
   type Sentence,
 } from "@/lib/wording";
@@ -47,6 +48,8 @@ export function buildReportOf(input: {
   style: BriefAnswer[];
   /** The dietary rules the trip's proposals respect. */
   dietaryRules: string[];
+  /** The profile entry each remembered rule came from, by rule; a rule given for this trip has none. */
+  dietaryEntries?: Record<string, string>;
   cities: string[];
   /** How many things were already decided. */
   decided: number;
@@ -331,7 +334,12 @@ export function buildReportOf(input: {
                   fromTraveller(
                     "rules",
                     list(input.dietaryRules),
-                    "trip-taste:food",
+                    refsOf(
+                      input.dietaryRules.map(
+                        (rule) => input.dietaryEntries?.[rule],
+                      ),
+                      "food",
+                    ),
                   ),
                 ],
               ),
