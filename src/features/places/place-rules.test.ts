@@ -186,15 +186,20 @@ describe("travelEstimate", () => {
     expect(distanceKm(sensoji, sensoji)).toBe(0);
   });
 
-  it("walks a short hop and takes transit further, always as an estimate", () => {
-    expect(travelEstimate(sensoji, skytree)).toMatchObject({
+  it("never assumes a walk: with no means a hop goes by transit, and a walker walks, always as an estimate", () => {
+    const short = travelEstimate(sensoji, skytree);
+    expect(short.means).toBe("transit");
+    expect(short.walk).not.toBeNull();
+    expect(travelEstimate(sensoji, skytree, "walk")).toEqual({
       means: "walk",
       minutes: 22,
       walk: null,
+      directions: directionsUrl(sensoji, skytree, "walk"),
       estimated: true,
     });
     const far = travelEstimate(sensoji, shibuya);
     expect(far.means).toBe("transit");
+    expect(far.walk).toBeNull();
     expect(far.minutes).toBeGreaterThan(40);
     expect(far.minutes).toBeLessThan(60);
   });

@@ -44,6 +44,7 @@ const view: PlanView = {
       entries: [
         {
           type: "commitment",
+          city: "Tokyo",
           commitmentId: "f",
           commitmentKind: "TRANSPORT",
           title: "Flight in",
@@ -54,6 +55,7 @@ const view: PlanView = {
         },
         {
           type: "commitment",
+          city: "Tokyo",
           commitmentId: "m",
           commitmentKind: "MUST_SEE",
           title: "teamLab",
@@ -64,6 +66,7 @@ const view: PlanView = {
         },
         {
           type: "place",
+          city: "Tokyo",
           slotId: "d1-afternoon-2",
           kind: "afternoon-2",
           cityKey: "tokyo|japan",
@@ -82,6 +85,7 @@ const view: PlanView = {
         },
         {
           type: "open",
+          city: "Tokyo",
           slotId: "d1-dinner",
           kind: "dinner",
           start: "19:00",
@@ -98,6 +102,7 @@ const view: PlanView = {
       entries: [
         {
           type: "open",
+          city: "Tokyo",
           slotId: "d2-morning",
           kind: "morning",
           start: "09:30",
@@ -105,13 +110,20 @@ const view: PlanView = {
         },
         {
           type: "transfer",
+          city: "Tokyo",
           from: "Tokyo",
           to: "Kyoto",
           start: "12:00",
           minutes: 345,
           arriveLocal: null,
         },
-        { type: "wander", start: "13:45", minutes: 60, area: "Ueno Park" },
+        {
+          type: "wander",
+          start: "13:45",
+          minutes: 60,
+          area: "Ueno Park",
+          city: "Tokyo",
+        },
       ],
     },
   ],
@@ -169,6 +181,7 @@ describe("PlanItinerary", () => {
           entries: [
             {
               type: "commitment",
+              city: "Tokyo",
               commitmentId: "f",
               commitmentKind: "TRANSPORT",
               title: "Flight",
@@ -262,7 +275,9 @@ describe("PlanItinerary", () => {
       days: [
         {
           ...view.days[0],
-          entries: [{ type: "allowance", way, mode, start, minutes }],
+          entries: [
+            { type: "allowance", way, mode, start, minutes, city: "Tokyo" },
+          ],
         },
       ],
     });
@@ -312,6 +327,7 @@ describe("PlanItinerary", () => {
           entries: [
             {
               type: "commitment",
+              city: "Tokyo",
               commitmentId: "s",
               commitmentKind: "STAY",
               title: "Check in at Hotel Aurora",
@@ -323,6 +339,7 @@ describe("PlanItinerary", () => {
             },
             {
               type: "return",
+              city: "Tokyo",
               stay: "Hotel Aurora",
               start: "19:30",
               travel: { means: "walk", minutes: 12 },
@@ -360,6 +377,7 @@ describe("slot labels and options", () => {
     expect(
       slotLabel(2, {
         type: "open",
+        city: "Tokyo",
         slotId: "d2-morning",
         kind: "morning",
         start: "09:30",
@@ -520,6 +538,40 @@ describe("a ticket that lands before it left (TB-ITN-26)", () => {
     expect(html).toContain("You go back a day");
     expect(html).toContain("You get Saturday twice");
     expect(html).not.toContain("earlier on the clock");
+  });
+
+  it("repeats the landing date in the heading of the city it lands in", () => {
+    const base = flight("2027-07-11", "01:00", "13:30", "2027-07-10");
+    const html = render(false, {
+      ...base,
+      days: [
+        {
+          ...base.days[0],
+          entries: [
+            ...base.days[0].entries,
+            {
+              type: "allowance",
+              way: "from",
+              mode: "FLIGHT",
+              start: "13:30",
+              minutes: 60,
+              city: "Honolulu",
+            },
+            {
+              type: "open",
+              slotId: "d1-dinner",
+              kind: "dinner",
+              start: "19:00",
+              cityKey: "honolulu|united states",
+              city: "Honolulu",
+            },
+          ],
+        },
+      ],
+    });
+    expect(html).toContain('data-qa="journey-strip"');
+    expect(html).toContain("Sat 10 Jul");
+    expect(html).toMatch(/Honolulu[\s\S]*second[\s\S]*Saturday/);
   });
 
   it("shows only a small clock when it lands on the same date at an earlier time", () => {

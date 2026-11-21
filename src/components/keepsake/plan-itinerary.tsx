@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 
 import { BackADay, EarlierClock } from "./back-a-day";
 import { DayStamp } from "./day-stamp";
-import { dayLabel, shortDayLabel } from "./format";
+import { dayLabel, shortDayLabel, weekdayName } from "./format";
 import { ItineraryRow } from "./itinerary-row";
 import { MoveMenu } from "./move-menu";
 import { eyebrow, field, quiet } from "./styles";
@@ -489,9 +489,21 @@ function DayRows({
       blocks.push({ journey, city: entry.city, at: [index] });
     }
   });
+  // The city a back-a-day ticket lands in repeats its date: say so in its heading.
+  const repeated = new Map<number, string>();
+  blocks.forEach((block, index) => {
+    for (const at of block.at) {
+      const entry = day.entries[at];
+      const landed =
+        entry.type === "commitment" ? entry.ticket?.arrivesOn : null;
+      if (landed && landed < day.date && blocks[index + 1]) {
+        repeated.set(index + 1, landed);
+      }
+    }
+  });
   return (
     <div className="space-y-3.5">
-      {blocks.map((block) => {
+      {blocks.map((block, blockIndex) => {
         const rows = (
           <ol>{block.at.map((index) => row(day.entries[index], index))}</ol>
         );
@@ -504,6 +516,12 @@ function DayRows({
             >
               <h4 className="mb-2 font-serif text-[22px] leading-tight tracking-[-0.02em]">
                 {block.city}
+                {repeated.has(blockIndex) && (
+                  <span className="ml-2 font-sans text-[13px] tracking-normal text-terracotta-deep">
+                    {shortDayLabel(repeated.get(blockIndex)!)} · second{" "}
+                    {weekdayName(repeated.get(blockIndex)!)}
+                  </span>
+                )}
               </h4>
               {rows}
             </div>

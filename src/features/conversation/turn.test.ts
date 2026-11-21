@@ -71,6 +71,7 @@ const days: PlanDay[] = [1, 2, 3].map((number) => ({
           slotId: "d1-morning",
           kind: "morning",
           cityKey: "tokyo|japan",
+          city: "Tokyo",
           placeId: "p1",
           start: "09:00",
           minutes: 90,
@@ -84,6 +85,7 @@ const days: PlanDay[] = [1, 2, 3].map((number) => ({
           kind: "morning",
           start: "09:00",
           cityKey: "tokyo|japan",
+          city: "Tokyo",
         },
     {
       type: "open",
@@ -91,6 +93,7 @@ const days: PlanDay[] = [1, 2, 3].map((number) => ({
       kind: "lunch",
       start: "12:30",
       cityKey: "tokyo|japan",
+      city: "Tokyo",
     },
   ],
 }));

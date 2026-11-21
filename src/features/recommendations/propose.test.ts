@@ -117,10 +117,13 @@ describe("proposeCards", () => {
       }),
     );
     expect(ids(set)).toEqual(["near", "mid", "far"]);
-    expect(set.cards[0].travel).toMatchObject({ means: "walk" });
-    expect(set.cards[0].essentials).toMatch(/^Museum · about \d+ min walk$/);
+    // No means said: never assumed to be walked, only offered.
+    expect(set.cards[0].travel).toMatchObject({ means: "transit" });
+    expect(set.cards[0].essentials).toMatch(
+      /^Museum · about \d+ min ride · or \d+ m, about \d+ min on foot$/,
+    );
     expect(set.cards[0].reason).toMatch(
-      /minute walk from Senso-ji, so it fits your morning/,
+      /minute ride from Senso-ji, so it fits your morning/,
     );
   });
 
@@ -356,6 +359,7 @@ describe("the traveller's taste in the ranking", () => {
           interests: [remembered],
           atmosphere: "lively",
           onFoot: true,
+          means: "walk",
           rememberedFrom: { atmosphere: "Lisbon", onFoot: "Lisbon" },
         }),
       }),
@@ -429,7 +433,11 @@ describe("the traveller's taste in the ranking", () => {
       "famous",
     );
     const onFoot = proposeCards(
-      input({ from: sensoji, candidates, taste: taste({ onFoot: true }) }),
+      input({
+        from: sensoji,
+        candidates,
+        taste: taste({ onFoot: true, means: "walk" }),
+      }),
     );
     expect(ids(onFoot)[0]).toBe("close");
     expect(reasonOf(onFoot, "close")).toContain(
