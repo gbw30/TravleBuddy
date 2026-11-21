@@ -90,4 +90,4 @@ Stage 0 evidence records exact commit/migration/fixture identity, operation and 
 
 `FAIL` means evidence proves a gate-failing defect or deterministic failure. `BLOCKED` means required verification could not run because of credentials, infrastructure, deployment, provider availability, or environment safety. `PASS` requires all applicable evidence and no failure condition.
 
-Production automation never seeds, cleans, repairs, applies migrations, creates accounts/trips, triggers provider spend, or permits browser `POST`, `PUT`, `PATCH`, or `DELETE`. Missing prerequisites never weaken deterministic checks or become a pass.
+Production automation never seeds, cleans, repairs, applies migrations, creates accounts/trips, triggers provider spend, or permits browser `POST`, `PUT`, `PATCH`, or `DELETE`. Exemption (developer, 2026-11-21): the app's own `fair_use_counts` upserts caused by the smoke's requests are allowed; nothing else is exempt. Missing prerequisites never weaken deterministic checks or become a pass.

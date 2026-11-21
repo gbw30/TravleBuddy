@@ -24,7 +24,7 @@ When the bundle uses `outputMode: artifacts`, write only `report.json` and `repo
 
 - Mutations require a passing doctor plus `QA_TARGET`, `QA_BASE_URL`, `QA_RUN_ID`, `QA_DATABASE_FINGERPRINT`, and `QA_ALLOW_WRITES=true`.
 - Mutate only exact run-owned fixtures in an isolated local or preview database. Never apply migrations during verification and never use broad destructive database operations.
-- Production permits only approved public/login, unauthenticated-protection, and synthetic-user read checks. Do not seed, clean, repair, create accounts or trips, trigger provider spend, inject failures, or issue browser `POST`, `PUT`, `PATCH`, or `DELETE` requests.
+- Production permits only approved public/login, unauthenticated-protection, and synthetic-user read checks. Do not seed, clean, repair, create accounts or trips, trigger provider spend, inject failures, or issue browser `POST`, `PUT`, `PATCH`, or `DELETE` requests. Exemption (developer, 2026-11-21): the app's own `fair_use_counts` upserts caused by the smoke's requests are allowed; nothing else is exempt.
 - Missing credentials, infrastructure, deployment, or proven environment safety is `BLOCKED`, not `PASS`.
 
 ## Audit and gate policy
