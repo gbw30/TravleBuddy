@@ -20,7 +20,8 @@
         "PlanningMutation",
         "Conversation",
         "ConversationMessage",
-        "AiUsage"
+        "AiUsage",
+        "WordingRecord"
       ]
     },
     "memory": {
@@ -61,6 +62,7 @@
     "PlanningMutation.trip -> Trip (conversation -> trips)",
     "Profile.user -> User (memory -> identity)",
     "Trip.user -> User (trips -> identity)",
-    "TripProfile.trip -> Trip (memory -> trips)"
+    "TripProfile.trip -> Trip (memory -> trips)",
+    "WordingRecord.trip -> Trip (conversation -> trips)"
   ]
 }

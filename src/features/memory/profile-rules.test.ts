@@ -205,7 +205,7 @@ describe("the hard limits a trip's proposals respect", () => {
       told("allergies", "shellfish"),
       told("pace", "relaxed"),
     ];
-    expect(limitsInUse(personal, ["gluten-free", "vegetarian"])).toEqual({
+    expect(limitsInUse(personal, ["gluten-free", "vegetarian"])).toMatchObject({
       dietaryRules: ["vegetarian", "gluten-free"],
       allergies: ["shellfish"],
     });
@@ -215,10 +215,25 @@ describe("the hard limits a trip's proposals respect", () => {
     expect(
       limitsInUse([told("dietary_rules", "halal")], ["none"]).dietaryRules,
     ).toEqual(["halal"]);
-    expect(limitsInUse([], ["none"])).toEqual({
+    expect(limitsInUse([], ["none"])).toMatchObject({
       dietaryRules: [],
       allergies: [],
     });
+  });
+
+  it("name the profile entry each remembered value came from, and none for a trip's own rule", () => {
+    const personal = [
+      { ...told("dietary_rules", "vegetarian"), id: "e-1" },
+      { ...told("allergies", "shellfish"), id: "e-2" },
+    ];
+    expect(limitsInUse(personal, ["halal"]).entryIds).toEqual({
+      dietaryRules: { vegetarian: "e-1" },
+      allergies: { shellfish: "e-2" },
+    });
+    expect(
+      tasteInUse([{ ...told("pace", "relaxed"), id: "e-3" }], {}).pace
+        ?.entries[0].id,
+    ).toBe("e-3");
   });
 });
 

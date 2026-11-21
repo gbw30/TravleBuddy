@@ -46,3 +46,4 @@ export {
   type Change,
   type Decision,
 } from "./turn";
+export { readWordings, recordWordings, type WordingRow } from "./wording-store";

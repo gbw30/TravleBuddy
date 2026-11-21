@@ -176,6 +176,7 @@ model Trip {
   conversationMessages ConversationMessage[]
   profile              TripProfile?
   planningMutations    PlanningMutation[]
+  wordingRecords       WordingRecord[]
 
   @@index([userId])
   @@index([status])
@@ -417,6 +418,33 @@ model ConversationMessage {
 
   @@index([tripId, id])
   @@map("conversation_messages")
+}
+
+/// The words shown to a traveller, as the sentences they were made from
+/// (Conversation service). A text is private to its trip.
+model WordingRecord {
+  id           String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  tripId       String   @map("trip_id")
+  /// "card:<slotId>:<placeId>", "message:<messageId>" or "report:<line>".
+  subject      String   @db.VarChar(160)
+  /// sha256 of the sentences' templates, versions, fact values and sources. Same key: unchanged.
+  factsKey     String   @map("facts_key") @db.VarChar(64)
+  /// Each sentence: its template id and version, and each gap's value and source.
+  sentences    Json
+  shown        String   @db.Text
+  /// "template" or "model".
+  wordedBy     String   @map("worded_by") @db.VarChar(10)
+  /// Why the template was shown: "off", "cap", "timeout", "error" or the failed check.
+  fallback     String?  @db.VarChar(40)
+  model        String?  @db.VarChar(40)
+  inputTokens  Int?     @map("input_tokens")
+  outputTokens Int?     @map("output_tokens")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, subject, factsKey, wordedBy])
+  @@map("wording_records")
 }
 
 /// What the traveller said about their taste for one trip (Memory service).

@@ -16,6 +16,7 @@ export {
   rememberedFor,
   tasteInUse,
   type Forgotten,
+  type RememberedEntry,
   type TasteInUse,
   type TripEvidence,
 } from "./profile-rules";

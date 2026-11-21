@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   readTripTaste: vi.fn(),
   readProfile: vi.fn(),
   appendMessages: vi.fn(),
+  recordWordings: vi.fn(),
   usesSamplePlaces: vi.fn(),
   removeOwnPlace: vi.fn(),
   listTrips: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock("@/features/memory", async (actual) => ({
 vi.mock("@/features/conversation", async (actual) => ({
   ...(await actual<typeof import("@/features/conversation")>()),
   appendMessages: mocks.appendMessages,
+  recordWordings: mocks.recordWordings,
 }));
 vi.mock("./trip-action", () => ({
   runTripAction: mocks.runTripAction,
@@ -512,6 +514,60 @@ describe("proposals in guided planning", () => {
     });
     mocks.getPlaces.mockResolvedValue([sights[0]]);
     expect(await load()).toMatchObject({ proposal: null, holding: "food" });
+  });
+});
+
+describe("the record of a card's reason", () => {
+  it("is the shown text, with its sentences, and is the same on the next read", async () => {
+    const first = await load();
+    const rows = () => mocks.recordWordings.mock.calls.flatMap(([, , r]) => r);
+    const proposed = rows().filter((row) =>
+      row.subject.startsWith("card:d1-morning:"),
+    );
+    expect(proposed).toHaveLength(3);
+    for (const card of first?.proposal?.cards ?? []) {
+      const row = proposed.find((r) => r.subject.endsWith(`:${card.placeId}`));
+      expect(row).toMatchObject({
+        shown: card.reason,
+        wordedBy: "template",
+        fallback: "off",
+      });
+      expect(row.sentences.length).toBeGreaterThan(0);
+    }
+    const again = await load();
+    const keys = (rs: typeof proposed) =>
+      rs.map((r) => `${r.subject}|${r.factsKey}`).sort();
+    // The same facts give the same key, so the store writes nothing new.
+    expect(keys(rows().slice(-proposed.length))).toEqual(keys(proposed));
+    expect(again?.proposal?.cards.map((c) => c.reason)).toEqual(
+      first?.proposal?.cards.map((c) => c.reason),
+    );
+    expect(first?.proposal).not.toHaveProperty("sentences");
+  });
+});
+
+describe("the facts of a reason that rest on the profile", () => {
+  it("cite the entry's id, read through to the record", async () => {
+    mocks.readProfile.mockResolvedValue({
+      entries: [
+        {
+          id: "entry-9",
+          topic: "interests",
+          value: "museums",
+          sureness: "always",
+          source: { type: "told" },
+        },
+      ],
+    });
+    await load();
+    const refs = mocks.recordWordings.mock.calls
+      .flatMap(([, , rows]) => rows)
+      .flatMap((row) => row.sentences)
+      .flatMap((sentence) => sentence.facts)
+      .flatMap((fact) =>
+        fact.source.type === "traveller" ? [fact.source.ref] : [],
+      );
+    expect(refs).toContain("profile:entry-9");
   });
 });
 

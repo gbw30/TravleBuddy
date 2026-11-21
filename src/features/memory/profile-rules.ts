@@ -12,6 +12,9 @@ import {
 // personal profile differ, and what may be learned from finished trips.
 // Pure: the stores apply what these functions decide.
 
+/** A remembered entry. Entries read from the store carry their id; the id is what a record of a reason cites. */
+export type RememberedEntry = ProfileEntry & { id?: string };
+
 /** The value in use on one topic, and where it came from. */
 export type TasteInUse = Partial<
   Record<
@@ -21,12 +24,12 @@ export type TasteInUse = Partial<
       /** "trip": said for this trip. "profile": remembered. "default": nothing known. */
       from: "trip" | "profile" | "default";
       /** The remembered entries used, so the agent can name their trip (TB-MEM-06). */
-      entries: ProfileEntry[];
+      entries: RememberedEntry[];
     }
   >
 >;
 
-const about = (entries: ProfileEntry[], topic: ProfileTopic) =>
+const about = (entries: RememberedEntry[], topic: ProfileTopic) =>
   entries.filter((entry) => entry.topic === topic);
 
 /**
@@ -34,9 +37,9 @@ const about = (entries: ProfileEntry[], topic: ProfileTopic) =>
  * food answer holds its dietary rules, so the remembered rules answer it.
  */
 export function rememberedFor(
-  personal: ProfileEntry[],
+  personal: RememberedEntry[],
   topic: TasteTopic,
-): ProfileEntry[] {
+): RememberedEntry[] {
   return about(personal, topic === "food" ? "dietary_rules" : topic);
 }
 
@@ -45,7 +48,7 @@ export function rememberedFor(
  * what is remembered; then the default of a question they skipped (TB-MEM-02).
  */
 export function tasteInUse(
-  personal: ProfileEntry[],
+  personal: RememberedEntry[],
   trip: TripTaste,
 ): TasteInUse {
   const inUse: TasteInUse = {};
@@ -73,9 +76,23 @@ export function tasteInUse(
  * to them and never takes one away (PRD 12.2).
  */
 export function limitsInUse(
-  personal: ProfileEntry[],
+  personal: RememberedEntry[],
   tripRules: string[],
-): { dietaryRules: string[]; allergies: string[] } {
+): {
+  dietaryRules: string[];
+  allergies: string[];
+  /** The profile entry each value came from, by value; a rule given for this trip has none. */
+  entryIds: {
+    dietaryRules: Record<string, string>;
+    allergies: Record<string, string>;
+  };
+} {
+  const ids = (topic: ProfileTopic) =>
+    Object.fromEntries(
+      about(personal, topic).flatMap((entry) =>
+        entry.id ? [[entry.value, entry.id]] : [],
+      ),
+    );
   const rules = [
     ...about(personal, "dietary_rules").map((entry) => entry.value),
     ...tripRules.filter((rule) => rule !== "none"),
@@ -85,6 +102,10 @@ export function limitsInUse(
     allergies: [
       ...new Set(about(personal, "allergies").map((entry) => entry.value)),
     ],
+    entryIds: {
+      dietaryRules: ids("dietary_rules"),
+      allergies: ids("allergies"),
+    },
   };
 }
 
