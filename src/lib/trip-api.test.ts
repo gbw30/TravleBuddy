@@ -84,6 +84,8 @@ describe("patiently", () => {
     let wanted = true;
     const result = patiently(ask, vi.fn(), () => wanted);
 
+    // The traveller turns to another slot while the wait lasts.
+    await vi.advanceTimersByTimeAsync(1);
     wanted = false;
     await vi.advanceTimersByTimeAsync(30_000);
     expect(await result).toEqual(limited);
